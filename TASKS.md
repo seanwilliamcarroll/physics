@@ -97,23 +97,17 @@ gained a wasm32 clippy run; `unsafe` now lives in two FFI modules
 when the hook is missing). `.wasm`: 28,593 → 34,230 B. Decision 8
 (checked JS) added for review before section 6.
 
-## 2. `PairwiseGravity` (test first, PR)
+## ✅ 2. `PairwiseGravity` (done)
 
-`docs/04-testing.md` step 3: momentum + center of mass, then the force.
-
-- [ ] Tests first (`tests/invariants.rs`, both scalars): a 16-body
-      `cluster` conserves momentum over 1000 steps; its center of mass
-      moves at constant velocity; two bodies attract equally and oppositely.
-- [ ] `diagnostics::center_of_mass` (static particles excluded, like
-      momentum).
-- [ ] `PairwiseGravity { g_const, softening_sq }`: O(n²), each pair once
-      (`i < j`), equal and opposite. `new(g_const, softening)` stores ε².
-- [ ] The `i < j` loop under `indexing_slicing`: `split_at_mut` or
-      iterator pairs, not indexing; an `#[expect]` only if neither reads
-      clearly.
-- [ ] `scenarios::cluster(n, seed)` for tests (and M2): bodies in a disk,
-      seeded.
-- [ ] `G` (CODATA 2018: 6.674 30 × 10⁻¹¹ m³ kg⁻¹ s⁻²) as a cited constant.
+`PairwiseGravity` (softened, O(n²), one force vector per pair applied ±,
+static particles excluded, ε stored squared, coincident unsoftened pairs
+skipped, `split_first_mut` instead of indexing), the CODATA 2018
+`GRAVITATIONAL_CONSTANT`, `diagnostics::center_of_mass` (returns `None`
+without dynamic mass), and `scenarios::cluster` (rejection-sampled disk,
+no trig, so it's bit-identical across platforms). Invariants over 1000
+steps of a 16-body cluster: momentum (f64 drift at rounding level) and
+center of mass at `P/M`, tolerances ~10x measured; verified to fail when
+the reaction force is wrong.
 
 ## 3. Integrators, orbit scenario, energy (test first, PR)
 
