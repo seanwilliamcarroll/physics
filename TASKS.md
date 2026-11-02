@@ -95,30 +95,21 @@ user (fountain correct; physics holds 60 steps/s across display rates).
 
 ---
 
-## Cleanup PR (after section 5, before M1)
+## ✅ Cleanup PR (done)
 
-- [ ] **Magic numbers:** every non-obvious literal in library code becomes a
-      named `const` whose doc comment gives its source (paper, spec, or
-      derivation). Prefer values derived in code over literals where the
-      language can express them, e.g. `1.0_f64.to_bits()` instead of
-      `0x3ff0_0000_0000_0000`, `64 - (f64::MANTISSA_DIGITS - 1)` instead of
-      `12`. Tests are exempt: inline inputs read better there.
-  - Known case: `SplitMix64` (golden-ratio increment from Steele, Lea &
-    Flood, OOPSLA 2014; Stafford's "Mix13" multipliers and shifts, 2011).
-- [ ] **Enforcement:** clippy has no magic-number lint (verified:
-      `clippy::magic_numbers` is unknown). Decide between convention plus a
-      review checklist (likely), an `xtask` scan, or a `dylint` custom
-      lint. Record the rule in `docs/lint-policy.md`.
-- [ ] **JS isn't checked by the hooks.** Add at least `node --check` on
-      `site/**/*.js` to pre-commit (no new tooling; Node is already used).
-- [ ] **Browser smoke test as a command** (`cargo xtask smoke` or similar):
-      serve `site/`, run headless Chrome with a fresh profile (a reused one
-      serves stale JS from cache), fail on console errors or Chrome's
-      `Failed to serialize op` log line, and save screenshots at a few `n`
-      values. Headless caught the 500k blank-canvas bug that no Rust test
-      could. Decide whether it joins pre-push (needs Chrome installed) or
-      stays manual.
-- [ ] General pass over M0 code for anything else that's grown awkward.
+Magic numbers named and cited (SplitMix64 constants with a provenance
+test; `STANDARD_GRAVITY` corrected to the defined 9.80665; fountain
+substeps; JS sizes and timing constants), enforced by convention plus a
+PR template checklist (`docs/lint-policy.md`). The wasm ABI has one owner
+(`crates/web/src/abi.rs`) and a JS mirror checked by a Rust test; canvas
+colors live once, in CSS. Pre-commit syntax-checks site JS as ES modules
+(plain `node --check` silently passes them). `cargo xtask smoke` (in
+pre-push, ~2-3 s) loads the demo in headless Chrome and fails on
+missing/zero output or dropped draw commands; it catches the 500k bug.
+
+Follow-up noticed: `FixedStep::new(dt)` documents `dt > 0` but doesn't
+enforce it (`dt = 0` would loop forever in `advance`). Only built from a
+constant today; revisit if `dt` ever becomes configurable.
 
 ## Decisions to make during M0 (from the docs' open questions)
 
