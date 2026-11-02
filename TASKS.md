@@ -16,6 +16,8 @@ in `crates/math`, not `engine`.
   up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
+- Merges are done by hand on the GitHub site, never by tooling
+  (`gh pr merge`). The next section starts once its predecessor is merged.
 - Commit frequently on branches: one commit per logical step (failing tests,
   implementation, refactor). The squash merge keeps `main` at one commit
   per section.
