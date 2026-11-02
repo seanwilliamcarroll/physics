@@ -10,11 +10,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, ExitCode};
 
+mod smoke;
+
 const USAGE: &str = "\
 usage: cargo xtask <command>
 
 commands:
   site           build crates/web for wasm32 (release) -> site/pkg/engine.wasm
+  smoke          build the site, load the demo in headless Chrome, check it draws
   install-hooks  point git at the tracked hooks in .githooks/
   help           show this message";
 
@@ -24,6 +27,7 @@ const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/web.wasm";
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
     Site,
+    Smoke,
     InstallHooks,
     Help,
 }
@@ -34,6 +38,7 @@ fn parse(args: &[String]) -> Result<Command, String> {
         [] => Ok(Command::Help),
         [cmd] => match cmd.as_str() {
             "site" => Ok(Command::Site),
+            "smoke" => Ok(Command::Smoke),
             "install-hooks" => Ok(Command::InstallHooks),
             "help" | "-h" | "--help" => Ok(Command::Help),
             other => Err(format!("unknown command `{other}`")),
@@ -60,6 +65,7 @@ fn run(cmd: Command) -> Result<(), String> {
     let root = workspace_root()?;
     match cmd {
         Command::Site => site(&root),
+        Command::Smoke => smoke::smoke(&root),
         Command::InstallHooks => install_hooks(&root),
         Command::Help => {
             println!("{USAGE}");
@@ -135,6 +141,7 @@ mod tests {
     #[test]
     fn parses_known_commands() {
         assert_eq!(parse(&args(&["site"])), Ok(Command::Site));
+        assert_eq!(parse(&args(&["smoke"])), Ok(Command::Smoke));
         assert_eq!(parse(&args(&["install-hooks"])), Ok(Command::InstallHooks));
     }
 
