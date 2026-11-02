@@ -1,0 +1,13 @@
+# Test code may panic, index, and print. Note: helpers in tests/common/ are
+# only exempt when declared `#[cfg(test)] mod common;`.
+allow-panic-in-tests = true
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+
+disallowed-methods = [
+  { path = "f32::mul_add", reason = "FMA rounds differently than a*b+c: breaks cross-platform determinism; software-emulated on wasm" },
+  { path = "f64::mul_add", reason = "FMA rounds differently than a*b+c: breaks cross-platform determinism; software-emulated on wasm" },
+]

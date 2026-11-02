@@ -1,0 +1,6 @@
+# Exact pin (not "stable"): float results, and later golden hashes, must not
+# change silently when the toolchain updates. Bump deliberately, in its own PR.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown", "wasm32-wasip1"]

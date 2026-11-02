@@ -1,0 +1,11 @@
+#!/bin/sh
+# Fast checks on every commit. Enable with: git config core.hooksPath .githooks
+# Bypass (emergencies only): git commit --no-verify
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-commit: cargo fmt --check"
+cargo fmt --all -- --check
+
+echo "pre-commit: cargo clippy (warnings are errors)"
+cargo clippy --workspace --all-targets --quiet -- -D warnings
