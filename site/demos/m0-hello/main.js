@@ -88,7 +88,7 @@ try {
   };
 
   if (smokeMode) {
-    runSmoke(engine, demo, ctx, drawFrame, colors.particle);
+    runSmoke(engine, [{ demo, ctx, draw: drawFrame }], colors.particle);
   } else {
     const fps = new RateMeter();
     const sps = new RateMeter();

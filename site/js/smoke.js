@@ -42,23 +42,38 @@ function report(text) {
   console.log(`SMOKE ${text}`);
 }
 
-/** Runs the smoke sequence: advance, draw once via `drawFrame()`, count
- *  pixels of `particleColor` ("#rrggbb") on the canvas, report.
+/** One demo on its own canvas, as the smoke test sees it.
+ *  @typedef {{ demo: DemoHandle, ctx: CanvasRenderingContext2D, draw: () => void }} SmokePanel */
+
+/** Runs the smoke sequence on every panel: advance, draw once, count pixels
+ *  of `particleColor` ("#rrggbb"), report. Reports the *minimum* steps and
+ *  pixel count across panels, so one blank or frozen panel fails the test
+ *  even if the others are fine. With `checkEnergy`, every panel's
+ *  `demo_energy` must also be finite.
  *  @param {EngineExports} engine
- *  @param {DemoHandle} demo
- *  @param {CanvasRenderingContext2D} ctx
- *  @param {() => void} drawFrame
- *  @param {string} particleColor */
-export function runSmoke(engine, demo, ctx, drawFrame, particleColor) {
+ *  @param {SmokePanel[]} panels
+ *  @param {string} particleColor
+ *  @param {{ checkEnergy?: boolean }} [options] */
+export function runSmoke(engine, panels, particleColor, { checkEnergy = false } = {}) {
   if (panicMode) {
     runPanicSmoke(engine);
     return;
   }
-  let steps = 0;
-  for (let i = 0; i < SMOKE_FRAMES; i++) steps += engine.demo_advance(demo, SMOKE_FRAME_S);
-  drawFrame();
-  const px = countPixels(ctx, parseHexColor(particleColor));
-  report(`ok steps=${steps} particle_px=${px}`);
+  const rgb = parseHexColor(particleColor);
+  let minSteps = Infinity;
+  let minPx = Infinity;
+  for (const { demo, ctx, draw } of panels) {
+    let steps = 0;
+    for (let i = 0; i < SMOKE_FRAMES; i++) steps += engine.demo_advance(demo, SMOKE_FRAME_S);
+    draw();
+    minSteps = Math.min(minSteps, steps);
+    minPx = Math.min(minPx, countPixels(ctx, rgb));
+    if (checkEnergy && !Number.isFinite(engine.demo_energy(demo))) {
+      report(`error demo_energy is not finite`);
+      return;
+    }
+  }
+  report(`ok steps=${minSteps} particle_px=${minPx}`);
 }
 
 /** Calls the deliberate-panic export. Expected: the call traps
