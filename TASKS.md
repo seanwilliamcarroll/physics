@@ -93,6 +93,22 @@ tests use a crate-level `#![cfg(test)]` (`docs/lint-policy.md`).
 
 ---
 
+## Cleanup PR (after section 5, before M1)
+
+- [ ] **Magic numbers:** every non-obvious literal in library code becomes a
+      named `const` whose doc comment gives its source (paper, spec, or
+      derivation). Prefer values derived in code over literals where the
+      language can express them, e.g. `1.0_f64.to_bits()` instead of
+      `0x3ff0_0000_0000_0000`, `64 - (f64::MANTISSA_DIGITS - 1)` instead of
+      `12`. Tests are exempt: inline inputs read better there.
+  - Known case: `SplitMix64` (golden-ratio increment from Steele, Lea &
+    Flood, OOPSLA 2014; Stafford's "Mix13" multipliers and shifts, 2011).
+- [ ] **Enforcement:** clippy has no magic-number lint (verified:
+      `clippy::magic_numbers` is unknown). Decide between convention plus a
+      review checklist (likely), an `xtask` scan, or a `dylint` custom
+      lint. Record the rule in `docs/lint-policy.md`.
+- [ ] General pass over M0 code for anything else that's grown awkward.
+
 ## Decisions to make during M0 (from the docs' open questions)
 
 - ~~**Units**~~: decided, SI (m, kg, s) with a render-space scale factor.
