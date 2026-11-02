@@ -4,6 +4,12 @@
 
 /** demo_new `kind` codes. */
 export const DEMO_FOUNTAIN = 0;
+export const DEMO_ORBIT = 1;
+
+/** demo_set_integrator codes. */
+export const INTEGRATOR_SYMPLECTIC_EULER = 0;
+export const INTEGRATOR_EXPLICIT_EULER = 1;
+export const INTEGRATOR_VELOCITY_VERLET = 2;
 
 /** demo_new `scalar` codes. */
 export const SCALAR_F32 = 0;

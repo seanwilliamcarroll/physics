@@ -70,7 +70,7 @@ Recommendations in **bold**; reply on the PR to change any.
    concern; Rust keeps returning positions only.
 7. **Golden hashes run natively only.** The cross-platform check (same
    hash under `wasm32-wasip1`) needs `wasmtime`, which isn't installed.
-   Install it (`brew install wasmtime`) and add `cargo xtask test-wasm`
+   Install it (MacPorts: `sudo port install wasmtime`; 50.0.0 is available) and add `cargo xtask test-wasm`
    now, or defer to M2? **Defer**, unless you want the cross-platform
    check in M1.
 
@@ -132,38 +132,16 @@ exactly the f64 orbit hashes. Decision 7: native only; the wasm
 comparison waits for `wasmtime`. Also recorded: a proposed controls track
 (PID demos C1–C3) in `docs/05-roadmap.md`.
 
-## 5. Web: scenes, controls, metrics (PR)
+## ✅ 5. Web: scenes, controls, metrics (done)
 
-- [ ] `Demo` holds a `Scene` enum (`Fountain`, `Orbit`), since only the
-      fountain respawns.
-- [ ] ABI (`abi.rs` + `abi.js`, sync test extended): `DEMO_ORBIT`,
-      integrator codes.
-- [ ] Exports: `demo_set_integrator(d, code) -> u32` (1 = ok),
-      `demo_set_rate(d, hz) -> u32` (parses to `NonZeroU32`, decision 3),
-      `demo_energy(d) -> f64` (total energy as `f64`, the readout).
-- [ ] Native tests: set-then-read round trips, bad codes rejected,
-      rate change resets the accumulator, energy matches `diagnostics`.
-- [ ] `.wasm` size after two new integrators (`docs/03` table).
-
-## 6. Site: shared infrastructure and the M1 page (PR)
-
-The roadmap's "shared demo infrastructure", reused by every later
-milestone.
-
-- [ ] `site/js/plot.js`: ring buffer of samples, multiple series, polyline,
-      autoscaled y-axis, zero line.
-- [ ] `site/js/controls.js`: slider and dropdown helpers wired to
-      `demo_set_*`, with the current value displayed.
-- [ ] Trails (decision 6): fading position history per panel.
-- [ ] `site/demos/m1-orbits/`: three panels (explicit Euler, symplectic
-      Euler, velocity Verlet), one energy-error plot with three lines, a
-      rate slider shared by all three (showing `dt`), a scalar dropdown,
-      reset.
-- [ ] Smoke test: `?smoke` support on the new page (pixels across all
-      three canvases), new cases in `cargo xtask smoke`.
-- [ ] Gallery link; options table like M0's, generated from one `OPTIONS`
-      object.
-- [ ] Manual check against **Done when**.
+`Demo` holds a `Scene` (fountain respawns, orbit doesn't); `DEMO_ORBIT`
+and integrator codes in the ABI (sync test extended); exports
+`demo_set_integrator`, `demo_set_rate` (parses `NonZeroU32` at the
+boundary; drops owed time), `demo_energy` (NaN where undefined). Engine:
+`World::set_integrator`, `scenarios::orbit_gravity` (single source for
+the orbit's force). M0's irrefutable `let DemoKind::Fountain` became a
+compile error on cue. `.wasm`: 41,820 B. wasmtime: not installed (MacPorts
+has 50.0.0; `cargo install wasmtime-cli` also works).
 
 ## 5½. Checked JS (PR, before section 6)
 

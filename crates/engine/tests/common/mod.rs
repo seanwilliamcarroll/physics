@@ -8,8 +8,8 @@
 )]
 
 use engine::diagnostics::total_energy;
-use engine::scenarios::{GRAVITATIONAL_CONSTANT, ORBIT_SOFTENING, orbit_period};
-use engine::{PairwiseGravity, Particles, Scalar, Vec2, World};
+use engine::scenarios::{orbit_gravity, orbit_period};
+use engine::{Particles, Scalar, Vec2, World};
 
 /// Per-scalar tolerances. These are hypotheses: when one fails, first decide
 /// whether the tolerance or the physics is wrong, and record why here.
@@ -83,13 +83,9 @@ pub fn bits<S: Scalar>(p: Vec2<S>) -> (u64, u64) {
     (p.x.to_f64().to_bits(), p.y.to_f64().to_bits())
 }
 
-/// Total energy of a `scenarios::orbit` world (same G and ε as the scene).
+/// Total energy of a `scenarios::orbit` world, under the scene's own force.
 pub fn orbit_energy<S: Scalar>(w: &World<S>) -> f64 {
-    let g = PairwiseGravity::new(
-        S::from_f64(GRAVITATIONAL_CONSTANT),
-        S::from_f64(ORBIT_SOFTENING),
-    );
-    total_energy(&w.particles, &g).to_f64()
+    total_energy(&w.particles, &orbit_gravity()).to_f64()
 }
 
 /// Distance between the two bodies of an orbit world, m.
