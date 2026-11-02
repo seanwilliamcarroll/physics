@@ -8,6 +8,11 @@ use crate::{ConfigError, Integrator, Scalar, UniformGravity, Vec2, World};
 /// `(0, -g₀)`. Exact by definition (3rd CGPM, 1901), not a measurement.
 pub const STANDARD_GRAVITY: f64 = 9.80665;
 
+/// Newtonian constant of gravitation G, m³ kg⁻¹ s⁻²: CODATA 2018
+/// recommended value (relative standard uncertainty 2.2 × 10⁻⁵). Unlike
+/// [`STANDARD_GRAVITY`] this is a measurement, not a definition.
+pub const GRAVITATIONAL_CONSTANT: f64 = 6.674_30e-11;
+
 /// Substeps per fixed step for [`Fountain`]. One is enough: symplectic
 /// Euler's error under constant gravity is ½ g h t (`tests/invariants.rs`),
 /// about 8 cm after 1 s of flight at 60 Hz, invisible at demo scale.
