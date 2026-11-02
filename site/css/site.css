@@ -8,6 +8,12 @@
   --stage-bg: #161a22;
   --ground: #2a2f3a;
   --particle: #6cb6ff;
+  --star: #f0e6c8;
+  --grid: #2a2f3a;
+  /* One color per series (integrator), shared by panels and plots. */
+  --series-1: #ff7b72;
+  --series-2: #e3b341;
+  --series-3: #56d364;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -86,4 +92,43 @@ th { color: var(--muted); font-weight: 500; }
 button {
   font: inherit;
   padding: 0.2rem 0.8rem;
+}
+
+/* Multi-panel demos (M1). */
+main.wide {
+  max-width: 72rem;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.panel h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+}
+
+.panel canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--stage-bg);
+}
+
+.readout,
+.hud-line {
+  font: 0.8rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+  margin-top: 0.3rem;
+}
+
+.plot canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3;
+  border-radius: 6px;
+  background: var(--stage-bg);
 }
