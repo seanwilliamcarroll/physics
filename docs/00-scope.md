@@ -152,6 +152,7 @@ References (full entries and links in `references.md`):
   Newton's cradle "wrong"? Is it a test case?
 - **Billiards spin:** top-down 2D cannot represent topspin/backspin directly.
   Model a sliding→rolling transition only, or carry an extra spin state?
-- **Units:** SI throughout (meters, kg, seconds) with render-space scaling?
+- ~~**Units**~~ — decided (M0): SI throughout (meters, kg, seconds);
+  the renderer applies a pixels-per-meter scale.
 - ~~**Scalar type**~~ — decided: generic. See "Scalar policy" below.
 - **Body handles:** indices, generational arenas, or something else?

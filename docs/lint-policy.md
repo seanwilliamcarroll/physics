@@ -23,10 +23,13 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
 
 ## Rules that come with it
 
-- **Integration tests:** clippy only exempts code inside `#[test]` fns or
-  `#[cfg(test)]` modules. Shared helpers must be declared
-  `#[cfg(test)] mod common;` in each `tests/*.rs` (tested: without it,
-  `tests/common/mod.rs` helpers get flagged).
+- **Integration tests:** every `tests/*.rs` starts with `#![cfg(test)]`.
+  Clippy only exempts code inside `#[test]` fns or `#[cfg(test)]` scopes,
+  and generic test bodies (`fn free_fall<S>()`, called by macro-generated
+  `#[test]` fns) and `tests/common/` helpers are neither. A crate-level
+  `#![cfg(test)]` puts the whole file, `mod common` included, in scope
+  (tested both ways). Unit tests in `src/` already sit in
+  `#[cfg(test)] mod tests`.
 - **`xtask`** is a CLI: `#![allow(clippy::print_stdout, clippy::print_stderr)]`
   at the top of `main.rs`. Cargo can't mix `workspace = true` with per-crate
   overrides, so the override goes in source.

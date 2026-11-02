@@ -110,20 +110,34 @@ Storage for point masses. **Struct of arrays** of `Vec2` fields:
 
 ```rust
 pub struct Particles<S> {
-    pub pos: Vec<Vec2<S>>,
-    pub vel: Vec<Vec2<S>>,
-    pub inv_mass: Vec<S>,     // 0 = static / pinned
-    acc: Vec<Vec2<S>>,        // scratch, reused every step
+    pos: Vec<Vec2<S>>,        // private: all three Vecs must stay the same length
+    vel: Vec<Vec2<S>>,
+    inv_mass: Vec<S>,         // 0 = static / pinned
 }
 
 impl<S: Scalar> Particles<S> {
-    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: S) -> ParticleId;
+    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: S);  // requires mass > 0
+    pub fn add_static(&mut self, pos: Vec2<S>);                  // inv_mass = 0, vel = 0
     pub fn len(&self) -> usize;
+    pub fn pos(&self) -> &[Vec2<S>];          // slices: readable and mutable
+    pub fn vel(&self) -> &[Vec2<S>];          // element-wise, but the length
+    pub fn inv_mass(&self) -> &[S];           // can't change
+    pub fn vel_mut(&mut self) -> &mut [Vec2<S>];
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct ParticleId(u32);
 ```
+
+**Decision (M0): two constructors, not one.** `add_static` exists so that
+`inv_mass = 0` never comes from `1 / 0`: that would be infinity on floats
+and has no representation on fixed point.
+
+**Decision (M0): the acceleration scratch buffer lives in `World`, not
+`Particles`.** `Force::accumulate(&self, p: &Particles<S>, acc: &mut [..])`
+borrows `p` immutably and `acc` mutably at once; if `acc` were a field of
+`p`, the borrow checker would reject every call.
+
+**Deferred to M3: `ParticleId`.** Nothing in M0 refers to an individual
+particle. Constraints (M3) will, and that's when to settle plain index vs
+generational handle (open question in `00-scope.md`).
 
 Why `inv_mass`: every solver formula uses `w = 1/m`, and `w = 0` gives an
 immovable pin for free. That's needed for the pendulum in phase 2.
@@ -132,9 +146,6 @@ Why SoA: the force and integration loops each touch one or two fields.
 This is a first guess, recorded as an open question in `00-scope.md`.
 Fully split (`pos_x: Vec<S>, pos_y: Vec<S>`) is the SIMD-friendly variant
 to benchmark later.
-
-`ParticleId` is a plain index for now. Fine while particles are never
-removed; revisit (generational indices) if removal is needed.
 
 ---
 
@@ -196,14 +207,20 @@ pub struct World<S: Scalar> {
     forces: Vec<Box<dyn Force<S>>>,
     integrator: Integrator,
     substeps: u32,
+    acc: Vec<Vec2<S>>,        // scratch, reused every substep
 }
 
 impl<S: Scalar> World<S> {
-    pub fn new(integrator: Integrator, substeps: u32) -> Self;
-    pub fn add_force(&mut self, f: Box<dyn Force<S>>);
+    pub fn new(integrator: Integrator, substeps: u32) -> Result<Self, ConfigError>;
+    pub fn add_force(&mut self, f: impl Force<S> + 'static);  // boxed internally
     pub fn step(&mut self, dt: S);   // one fixed step = `substeps` substeps
 }
 ```
+
+**Decision (M0): `new` returns `Result`.** `substeps = 0` is rejected with
+`ConfigError::ZeroSubsteps` rather than a panic (library code may not
+panic; see `lint-policy.md`). Considered: `NonZeroU32`, which moves the
+check into the type at the cost of clunkier call sites.
 
 **Decision: `dyn Force<S>`** (for now). Dispatch happens once per force per
 substep, and each call does O(n) or O(n²) work, so the indirect call is

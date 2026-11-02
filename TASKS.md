@@ -48,24 +48,17 @@ supertraits) for `f32`/`f64`, and `Vec2<S>` (`#[must_use]`; ops, `dot`,
 scalars via `for_each_scalar!` in `test_util.rs`; values chosen to be exactly
 representable, so tests assert equality, not tolerances. Compiles for wasm32.
 
-## 2. `crates/engine` (test first, PR)
+## ✅ 2. `crates/engine` (done)
 
-Following steps 1–2 of the "Phase 1 test-first order" in `04-testing.md`.
-Pairwise gravity, other integrators, golden hashes, and proptest are M1/M2.
-
-- [ ] `tests/common/mod.rs`: `Tol` trait (f32/f64 tolerances), `for_each_scalar!`
-- [ ] Write the failing tests first (`tests/invariants.rs`):
-  - free fall matches `x0 + v0 t + ½ g t²` within symplectic Euler's known error
-  - static particle (`inv_mass = 0`) is bit-identical after N steps
-  - zero `dt` leaves the state unchanged
-  - substep equivalence: `substeps = k` ≡ `k` steps of `dt/k`
-- [ ] `Particles<S>` (SoA, `ParticleId(u32)`), `Force<S>` trait, `UniformGravity`
-- [ ] `Integrator::SymplecticEuler` (enum with one variant for now)
-- [ ] `World<S>`: `new`, `add_force`, `step(dt)` with substeps
-- [ ] `diagnostics`: `momentum`, `kinetic_energy` (static particles excluded)
-- [ ] `scenarios`: `fountain(n, seed)`, particles with random upward velocities.
-      Needs a small in-house PRNG (e.g. SplitMix64) because of the dependency
-      policy. Seeded, so it's deterministic.
+`Particles<S>` (struct of arrays, private Vecs + slice accessors, `add` /
+`add_static`), `Force<S>` + `UniformGravity`, `Integrator::SymplecticEuler`,
+`World<S>` (`new` returns `Result`; `acc` scratch in `World`), `diagnostics`
+(momentum, kinetic energy), in-house `SplitMix64`, and `scenarios::fountain`.
+Invariant tests in `tests/invariants.rs` check free fall against the exact
+discrete solution, plus first-order error, static bit-identity, zero `dt`,
+and substep equivalence; tolerances are set ~10x above measured error.
+`Scalar` gained a `'static` bound (for `Box<dyn Force<S>>`). Integration
+tests use a crate-level `#![cfg(test)]` (`docs/lint-policy.md`).
 
 ## 3. `crates/web` (cdylib, PR)
 
@@ -102,8 +95,9 @@ Pairwise gravity, other integrators, golden hashes, and proptest are M1/M2.
 
 ## Decisions to make during M0 (from the docs' open questions)
 
-- **Units:** SI (m, kg, s) with a render-space scale factor? (Recommended:
-  yes, settle now, since every scenario depends on it.)
+- ~~**Units**~~: decided, SI (m, kg, s) with a render-space scale factor.
+- ~~**Engine API**~~: decided before section 2 and recorded in `docs/02`:
+  `World::new` returns `Result`, `add` + `add_static`, `ParticleId` deferred.
 - **`[workspace.dependencies]`:** M0 has no dependencies, so defer until
   `proptest`/`criterion` arrive.
 - **Where the library lints will bite** (each needs a design answer, not a
@@ -112,11 +106,8 @@ Pairwise gravity, other integrators, golden hashes, and proptest are M1/M2.
     `iter_mut().zip(...)`; that's also often what lets the loop vectorize.
     Pairwise `i < j` loops (M1) will need `split_at_mut` or a localized `expect`.
   - `cast_possible_truncation`: `to_f64() as f32` in the render buffer and
-    `len() as u32` in `ParticleId` and `demo_positions_len`. Both are intended;
-    each gets one `expect` with a reason, inside a small helper.
-  - `panic`/`unwrap_used`/`unreachable`: no panics for bad input in library
-    code. Constructors like `World::new(substeps = 0)` need a decision:
-    `Result`, or a `NonZeroU32` type that rules the bad value out.
+    `len() as u32` in `demo_positions_len`. Both are intended; each gets one
+    `expect` with a reason, inside a small helper.
 
 ## Known gap
 
