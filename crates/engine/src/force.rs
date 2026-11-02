@@ -17,7 +17,8 @@ pub trait Force<S: Scalar> {
     fn accumulate(&self, p: &Particles<S>, acc: &mut [Vec2<S>]);
 }
 
-/// The same acceleration `g` for every dynamic particle (e.g. `(0, -9.81)` m/s²).
+/// The same acceleration `g` for every dynamic particle, e.g.
+/// `(0, -STANDARD_GRAVITY)` m/s² (see [`crate::scenarios::STANDARD_GRAVITY`]).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct UniformGravity<S> {
     g: Vec2<S>,
