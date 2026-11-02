@@ -102,26 +102,7 @@ impl Scalar for f32 {
 #[cfg(test)]
 mod tests {
     use super::Scalar;
-
-    /// Runs a generic test body once per scalar type.
-    macro_rules! for_each_scalar {
-        ($name:ident) => {
-            mod $name {
-                #[test]
-                fn f32() {
-                    super::$name::<f32>();
-                }
-                #[test]
-                fn f64() {
-                    super::$name::<f64>();
-                }
-            }
-        };
-    }
-
-    fn s<S: Scalar>(v: f64) -> S {
-        S::from_f64(v)
-    }
+    use crate::test_util::s;
 
     fn constants_are_identities<S: Scalar>() {
         let x = s::<S>(2.5);
