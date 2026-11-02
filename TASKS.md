@@ -107,9 +107,11 @@ colors live once, in CSS. Pre-commit syntax-checks site JS as ES modules
 pre-push, ~2-3 s) loads the demo in headless Chrome and fails on
 missing/zero output or dropped draw commands; it catches the 500k bug.
 
-Follow-up noticed: `FixedStep::new(dt)` documents `dt > 0` but doesn't
-enforce it (`dt = 0` would loop forever in `advance`). Only built from a
-constant today; revisit if `dt` ever becomes configurable.
+Type-level invariants surveyed (`docs/type-invariants.md`): what types
+already enforce, what was adopted, what wasn't and why, and future
+extensions with adoption conditions. Adopted: `FixedStep::new` takes a
+`NonZeroU32` rate, so `dt > 0` by construction (`dt = 0` used to hang
+`advance`).
 
 ## Decisions to make during M0 (from the docs' open questions)
 
@@ -139,3 +141,18 @@ exist. Fine for a solo project; it's the main argument for adding CI later.
 - CI (GitHub Actions): later, around hosting
 - `wasmtime` / `cargo xtask test-wasm`: not installed, not an M0 gate
 - Pairwise gravity, explicit Euler/Verlet, plots, controls: M1
+
+## Next: M1 (orbits and integrators)
+
+Full task list to be written when M1 starts. Carried in:
+
+- [ ] **First task: wasm panic hook.** With `panic = "abort"`, a panic in
+      wasm reaches JS as a bare `RuntimeError: unreachable`. Install a hook
+      that sends the panic message to `console.error` (the module's first
+      import from JS, ~15 lines). Then: a debug-build-only `js_log` import
+      if Rust-side printf debugging is needed. Physics observability stays
+      in `diagnostics` and plots, not text logs.
+- [ ] Check `docs/type-invariants.md` triggers: M1 adds `PairwiseGravity`
+      softening (non-negative, since M2 sets ε = 0 on purpose) and the first
+      `demo_set_*` controls (the boundary where parameter types belong).
+

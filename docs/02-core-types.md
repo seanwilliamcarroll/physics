@@ -129,6 +129,8 @@ impl<S: Scalar> Particles<S> {
 **Decision (M0): two constructors, not one.** `add_static` exists so that
 `inv_mass = 0` never comes from `1 / 0`: that would be infinity on floats
 and has no representation on fixed point.
+`add` still trusts `mass > 0`; `type-invariants.md` records why that's
+not a type yet and when it should become one (M3).
 
 **Decision (M0): the acceleration scratch buffer lives in `World`, not
 `Particles`.** `Force::accumulate(&self, p: &Particles<S>, acc: &mut [..])`
