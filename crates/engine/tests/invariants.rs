@@ -6,9 +6,9 @@
 #[macro_use]
 mod common;
 
-use common::{Tol, bits, s, v};
+use common::{Tol, bits, energy_errors, envelope, s, steps_for, v};
 use engine::diagnostics::{center_of_mass, momentum};
-use engine::scenarios::cluster;
+use engine::scenarios::{ORBIT_SEPARATION, cluster, orbit, orbit_period};
 use engine::{ConfigError, Integrator, Particles, Scalar, UniformGravity, Vec2, World};
 
 const G: f64 = -9.81;
@@ -221,3 +221,94 @@ fn center_of_mass_moves_at_constant_velocity<S: Tol>() {
     assert!(err <= S::COM_ABS, "COM off by {err:e} m");
 }
 for_each_scalar!(center_of_mass_moves_at_constant_velocity);
+
+// --- Orbits (docs/04-testing.md, phase 1 step 4) ---
+
+/// Step size the integrators are compared at: one 60 Hz frame.
+const ORBIT_DT: f64 = 1.0 / 60.0;
+/// "Over 100 orbits" (docs/04-testing.md).
+const ORBITS: f64 = 100.0;
+
+/// ωh for the circular orbit: radians of orbit per step. Both integrators'
+/// energy errors scale with powers of it.
+fn omega_h() -> f64 {
+    2.0 * core::f64::consts::PI / orbit_period() * ORBIT_DT
+}
+
+/// Energy bounds are 1.5x the measured error law. Measured (f64, 100
+/// orbits, ωh = 0.0349): symplectic Euler max |ΔE/E| = 1.219e-3 vs
+/// (ωh)² = 1.218e-3; velocity Verlet 3.704e-7 vs (ωh)⁴/4 = 3.70e-7. The
+/// scalar's rounding floor (`Tol::ENERGY_FLOOR`) is added on top.
+const BOUND_FACTOR: f64 = 1.5;
+
+/// "Doesn't trend": the last 10% of the run's error envelope may exceed the
+/// first 10% by at most this factor (plus the rounding floor). Measured:
+/// 1.000x for both symplectic integrators; explicit Euler is 1.37x.
+const TREND_FACTOR: f64 = 1.1;
+
+/// Allowed relative deviation of the separation from `ORBIT_SEPARATION`.
+/// Measured: symplectic Euler 1.8%, velocity Verlet 0.06%.
+const SE_RADIUS_BAND: f64 = 0.025;
+const VV_RADIUS_BAND: f64 = 0.001;
+
+/// Velocity Verlet must beat symplectic Euler's error by at least this
+/// factor. Measured: 3,300x in f64, 125x in f32 (rounding-limited).
+const VERLET_ADVANTAGE: f64 = 50.0;
+
+/// First and last 10% envelopes of an error series.
+fn trend_envelopes(errors: &[f64]) -> (f64, f64) {
+    let tenth = errors.len() / 10;
+    (
+        envelope(&errors[..tenth]),
+        envelope(&errors[errors.len() - tenth..]),
+    )
+}
+
+fn orbit_run<S: Tol>(integrator: Integrator) -> (Vec<f64>, (f64, f64)) {
+    let mut w = orbit::<S>(integrator, 1.0).unwrap();
+    energy_errors(&mut w, ORBIT_DT, steps_for(ORBITS, ORBIT_DT))
+}
+
+fn symplectic_euler_orbit_energy_is_bounded_and_does_not_trend<S: Tol>() {
+    let (errors, (lo, hi)) = orbit_run::<S>(Integrator::SymplecticEuler);
+    let wh = omega_h();
+    let bound = BOUND_FACTOR * wh * wh + S::ENERGY_FLOOR;
+    let max = envelope(&errors);
+    assert!(max <= bound, "max |ΔE/E| {max:e} > bound {bound:e}");
+    let (first, last) = trend_envelopes(&errors);
+    assert!(
+        last <= TREND_FACTOR * first + S::ENERGY_FLOOR,
+        "energy error trends: first 10% {first:e}, last 10% {last:e}"
+    );
+    let d = ORBIT_SEPARATION;
+    assert!(
+        lo >= d * (1.0 - SE_RADIUS_BAND) && hi <= d * (1.0 + SE_RADIUS_BAND),
+        "separation left the band: [{lo}, {hi}]"
+    );
+}
+for_each_scalar!(symplectic_euler_orbit_energy_is_bounded_and_does_not_trend);
+
+fn velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_euler<S: Tol>() {
+    let (errors, (lo, hi)) = orbit_run::<S>(Integrator::VelocityVerlet);
+    let wh = omega_h();
+    let bound = BOUND_FACTOR * wh.powi(4) / 4.0 + S::ENERGY_FLOOR;
+    let max = envelope(&errors);
+    assert!(max <= bound, "max |ΔE/E| {max:e} > bound {bound:e}");
+    let (first, last) = trend_envelopes(&errors);
+    assert!(
+        last <= TREND_FACTOR * first + S::ENERGY_FLOOR,
+        "energy error trends: first 10% {first:e}, last 10% {last:e}"
+    );
+    let d = ORBIT_SEPARATION;
+    assert!(
+        lo >= d * (1.0 - VV_RADIUS_BAND) && hi <= d * (1.0 + VV_RADIUS_BAND),
+        "separation left the band: [{lo}, {hi}]"
+    );
+    let (se_errors, _) = orbit_run::<S>(Integrator::SymplecticEuler);
+    let advantage = envelope(&se_errors) / max;
+    assert!(
+        advantage >= VERLET_ADVANTAGE,
+        "Verlet only {advantage:.1}x better than symplectic Euler"
+    );
+}
+for_each_scalar!(velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_euler);
