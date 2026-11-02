@@ -59,9 +59,12 @@ Pairwise gravity, other integrators, golden hashes, and proptest are M1/M2.
   - static particle (`inv_mass = 0`) is bit-identical after N steps
   - zero `dt` leaves the state unchanged
   - substep equivalence: `substeps = k` ≡ `k` steps of `dt/k`
-- [ ] `Particles<S>` (SoA, `ParticleId(u32)`), `Force<S>` trait, `UniformGravity`
+- [ ] `Particles<S>` (SoA, private Vecs + slice accessors; `add(pos, vel, mass)`
+      and `add_static(pos)`; `ParticleId` deferred to M3), `Force<S>` trait,
+      `UniformGravity`
 - [ ] `Integrator::SymplecticEuler` (enum with one variant for now)
-- [ ] `World<S>`: `new`, `add_force`, `step(dt)` with substeps
+- [ ] `World<S>`: `new(..) -> Result<_, ConfigError>` (rejects `substeps = 0`),
+      `add_force`, `step(dt)` with substeps; `acc` scratch lives in `World`
 - [ ] `diagnostics`: `momentum`, `kinetic_energy` (static particles excluded)
 - [ ] `scenarios`: `fountain(n, seed)`, particles with random upward velocities.
       Needs a small in-house PRNG (e.g. SplitMix64) because of the dependency
@@ -102,8 +105,9 @@ Pairwise gravity, other integrators, golden hashes, and proptest are M1/M2.
 
 ## Decisions to make during M0 (from the docs' open questions)
 
-- **Units:** SI (m, kg, s) with a render-space scale factor? (Recommended:
-  yes, settle now, since every scenario depends on it.)
+- ~~**Units**~~: decided, SI (m, kg, s) with a render-space scale factor.
+- ~~**Engine API**~~: decided before section 2 and recorded in `docs/02`:
+  `World::new` returns `Result`, `add` + `add_static`, `ParticleId` deferred.
 - **`[workspace.dependencies]`:** M0 has no dependencies, so defer until
   `proptest`/`criterion` arrive.
 - **Where the library lints will bite** (each needs a design answer, not a
@@ -112,11 +116,8 @@ Pairwise gravity, other integrators, golden hashes, and proptest are M1/M2.
     `iter_mut().zip(...)`; that's also often what lets the loop vectorize.
     Pairwise `i < j` loops (M1) will need `split_at_mut` or a localized `expect`.
   - `cast_possible_truncation`: `to_f64() as f32` in the render buffer and
-    `len() as u32` in `ParticleId` and `demo_positions_len`. Both are intended;
-    each gets one `expect` with a reason, inside a small helper.
-  - `panic`/`unwrap_used`/`unreachable`: no panics for bad input in library
-    code. Constructors like `World::new(substeps = 0)` need a decision:
-    `Result`, or a `NonZeroU32` type that rules the bad value out.
+    `len() as u32` in `demo_positions_len`. Both are intended; each gets one
+    `expect` with a reason, inside a small helper.
 
 ## Known gap
 
