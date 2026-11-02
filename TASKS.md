@@ -60,17 +60,16 @@ and substep equivalence; tolerances are set ~10x above measured error.
 `Scalar` gained a `'static` bound (for `Box<dyn Force<S>>`). Integration
 tests use a crate-level `#![cfg(test)]` (`docs/lint-policy.md`).
 
-## 3. `crates/web` (cdylib, PR)
+## ✅ 3. `crates/web` (done)
 
-- [ ] `demo.rs`: `Demo { world: AnyWorld, render_buf, accumulator, dt }`,
-      `AnyWorld { F32, F64 }`, `advance(elapsed) -> u32`, `fill_render_buf`
-- [ ] Native unit tests for `advance`: clamp at 0.25 s, step counts for odd
-      elapsed times, no drift over many frames, 60 Hz vs 120 Hz frame
-      sequences produce the same step count over 1 s
-- [ ] `lib.rs`: one-line `extern "C"` exports (`demo_new`, `demo_free`,
-      `demo_advance`, `demo_positions_ptr`, `demo_positions_len`), each
-      `unsafe` with a `// SAFETY:` comment
-- [ ] Record the release `.wasm` size (baseline for "measure size per scalar")
+`FixedStep` accumulator (0.25 s clamp; negative/NaN frames ignored; tests
+assert the time-conservation invariant), `Demo` with `AnyWorld { F32, F64 }`
+and an `f32` render buffer, and `unsafe extern "C"` exports (`demo_new`,
+`demo_free`, `demo_advance`, `demo_positions_ptr`, `demo_positions_len`)
+with `# Safety` contracts; null handles are harmless. The engine's
+`fountain` became a `Fountain` scene with continuous respawn. Release
+`.wasm`: 28,593 B (9,998 B gzip), zero imports, recorded in `docs/03`;
+smoke-tested in Node.
 
 ## 4. `xtask` (PR)
 
@@ -92,6 +91,22 @@ tests use a crate-level `#![cfg(test)]` (`docs/lint-policy.md`).
       and 120 Hz (or with a throttled rAF)
 
 ---
+
+## Cleanup PR (after section 5, before M1)
+
+- [ ] **Magic numbers:** every non-obvious literal in library code becomes a
+      named `const` whose doc comment gives its source (paper, spec, or
+      derivation). Prefer values derived in code over literals where the
+      language can express them, e.g. `1.0_f64.to_bits()` instead of
+      `0x3ff0_0000_0000_0000`, `64 - (f64::MANTISSA_DIGITS - 1)` instead of
+      `12`. Tests are exempt: inline inputs read better there.
+  - Known case: `SplitMix64` (golden-ratio increment from Steele, Lea &
+    Flood, OOPSLA 2014; Stafford's "Mix13" multipliers and shifts, 2011).
+- [ ] **Enforcement:** clippy has no magic-number lint (verified:
+      `clippy::magic_numbers` is unknown). Decide between convention plus a
+      review checklist (likely), an `xtask` scan, or a `dylint` custom
+      lint. Record the rule in `docs/lint-policy.md`.
+- [ ] General pass over M0 code for anything else that's grown awkward.
 
 ## Decisions to make during M0 (from the docs' open questions)
 
