@@ -43,3 +43,16 @@ a { color: var(--accent); }
   white-space: pre;
   pointer-events: none;
 }
+
+table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.3rem 0.9rem 0.3rem 0;
+  border-bottom: 1px solid #2a2f3a;
+}
+
+th { color: var(--muted); font-weight: 500; }

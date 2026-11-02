@@ -35,3 +35,18 @@ export class RateMeter {
     return this.#times.length;
   }
 }
+
+/** Exponential moving average, for steady HUD readouts of jittery timings.
+ *  `alpha` is the weight of each new sample (0.05 ~ last 20 samples). */
+export class Smoothed {
+  #value = null;
+  constructor(alpha = 0.05) {
+    this.alpha = alpha;
+  }
+  add(sample) {
+    this.#value = this.#value === null ? sample : this.#value + this.alpha * (sample - this.#value);
+  }
+  get value() {
+    return this.#value ?? 0;
+  }
+}

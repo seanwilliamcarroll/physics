@@ -14,13 +14,14 @@
     <p class="muted">
       Particles launched from the origin under gravity (9.81 m/s²), simulated
       in Rust/WebAssembly at a fixed 60 steps/s whatever your display's
-      refresh rate. Options: <code>?scalar=f64&amp;n=1000&amp;seed=7</code>;
-      <code>?fps=30</code> emulates a slower display (physics should stay at 60 steps/s).
+      refresh rate. Physics steps/s only drops below 60 once a single frame
+      takes longer than 0.25 s; before that, watch display fps and the cost line.
     </p>
     <div class="stage">
       <canvas id="view"></canvas>
       <div class="hud" id="hud">loading…</div>
     </div>
+    <section id="options"></section>
   </main>
 </body>
 </html>
