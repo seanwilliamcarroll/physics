@@ -196,6 +196,16 @@ pub fn orbit_period() -> f64 {
     2.0 * core::f64::consts::PI * ORBIT_SEPARATION / orbit_relative_speed()
 }
 
+/// The force [`orbit`] adds: G and [`ORBIT_SOFTENING`]. Public so energy
+/// readouts (`diagnostics::total_energy`) use exactly the scene's force.
+#[must_use]
+pub fn orbit_gravity<S: Scalar>() -> PairwiseGravity<S> {
+    PairwiseGravity::new(
+        S::from_f64(GRAVITATIONAL_CONSTANT),
+        S::from_f64(ORBIT_SOFTENING),
+    )
+}
+
 /// A star and a planet [`ORBIT_SEPARATION`] apart, center of mass at the
 /// origin and at rest, advanced by `integrator`.
 ///
@@ -209,10 +219,7 @@ pub fn orbit_period() -> f64 {
 /// [`ORBIT_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
 pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(integrator, ORBIT_SUBSTEPS)?;
-    w.add_force(PairwiseGravity::new(
-        S::from_f64(GRAVITATIONAL_CONSTANT),
-        S::from_f64(ORBIT_SOFTENING),
-    ));
+    w.add_force(orbit_gravity());
     // Split the separation and the relative velocity by mass, so the
     // center of mass sits at the origin with zero momentum.
     let q = ORBIT_MASS_RATIO;
@@ -243,7 +250,8 @@ mod tests {
         CLUSTER_MASS, CLUSTER_RADIUS, CLUSTER_SPEED, FOUNTAIN_VX, FOUNTAIN_VY, Fountain, cluster,
     };
     use super::{
-        ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, orbit, orbit_period, orbit_relative_speed,
+        ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, orbit, orbit_gravity, orbit_period,
+        orbit_relative_speed,
     };
     use crate::diagnostics::{center_of_mass, momentum};
     use crate::{Force, Integrator, PairwiseGravity, Vec2, World};
@@ -399,5 +407,20 @@ mod tests {
         let slow = orbit::<f64>(Integrator::SymplecticEuler, 0.8).unwrap();
         let ratio = slow.particles.vel()[1].length() / circ.particles.vel()[1].length();
         assert!((ratio - 0.8).abs() < 1e-12);
+    }
+
+    #[test]
+    fn orbit_gravity_is_the_force_the_scene_uses() {
+        // Same accelerations from orbit_gravity() as from the world's own
+        // step: one source for the force, so energy readouts match it.
+        let w = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
+        let mut acc = vec![Vec2::ZERO; 2];
+        orbit_gravity::<f64>().accumulate(&w.particles, &mut acc);
+        let mut stepped = orbit::<f64>(Integrator::ExplicitEuler, 1.0).unwrap();
+        let v0 = stepped.particles.vel().to_vec();
+        stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
+        for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
+            assert_eq!(*v1 - *v0, *a);
+        }
     }
 }

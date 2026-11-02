@@ -64,6 +64,18 @@ impl<S: Scalar> World<S> {
         self.substeps
     }
 
+    #[must_use]
+    pub const fn integrator(&self) -> Integrator {
+        self.integrator
+    }
+
+    /// Switches integrators; takes effect from the next step. Safe at any
+    /// time: no integrator keeps state between steps (velocity Verlet
+    /// recomputes its accelerations every substep).
+    pub const fn set_integrator(&mut self, integrator: Integrator) {
+        self.integrator = integrator;
+    }
+
     /// Advances by `dt`, split into `substeps` equal substeps of `dt / substeps`.
     pub fn step(&mut self, dt: S) {
         let h = dt / S::from_f64(f64::from(self.substeps));
@@ -80,5 +92,36 @@ impl<S: Scalar> World<S> {
             &mut self.acc_next,
             h,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::World;
+    use crate::Integrator;
+    use crate::scenarios::orbit;
+
+    #[test]
+    fn set_integrator_switches_how_later_steps_integrate() {
+        // Switching before the first step must equal building with that
+        // integrator, bit for bit.
+        let mut switched = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
+        switched.set_integrator(Integrator::VelocityVerlet);
+        assert_eq!(switched.integrator(), Integrator::VelocityVerlet);
+        let mut built = orbit::<f64>(Integrator::VelocityVerlet, 1.0).unwrap();
+        for _ in 0..100 {
+            switched.step(1.0 / 60.0);
+            built.step(1.0 / 60.0);
+        }
+        assert_eq!(switched.particles.pos(), built.particles.pos());
+        assert_eq!(switched.particles.vel(), built.particles.vel());
+    }
+
+    #[test]
+    fn integrator_reports_what_new_was_given() {
+        for integrator in Integrator::ALL {
+            let w = World::<f32>::new(integrator, 1).unwrap();
+            assert_eq!(w.integrator(), integrator);
+        }
     }
 }
