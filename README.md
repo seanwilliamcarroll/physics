@@ -40,4 +40,4 @@ Building the site (`cargo xtask site`) and serving it
 
 `main` is protected: all changes land through a pull request (squash merge).
 Lint policy lives in the root `Cargo.toml` (`[workspace.lints]`) and
-`clippy.toml`; the rationale is in `TASKS.md`.
+`clippy.toml`; the rationale is in [`docs/lint-policy.md`](docs/lint-policy.md).
