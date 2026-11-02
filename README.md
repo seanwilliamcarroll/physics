@@ -16,7 +16,7 @@ pinned in `rust-toolchain.toml` and installed automatically on first use.
 Enable the git hooks once per clone:
 
 ```sh
-git config core.hooksPath .githooks
+cargo xtask install-hooks     # = git config core.hooksPath .githooks
 ```
 
 | Hook | Runs |
@@ -33,8 +33,15 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-Building the site (`cargo xtask site`) and serving it
-(`python3 -m http.server -d site`) arrive with M0.
+Build the wasm module into the site, then serve it (browsers won't
+instantiate wasm from `file://`):
+
+```sh
+cargo xtask site              # -> site/pkg/engine.wasm
+python3 -m http.server -d site
+```
+
+`cargo xtask help` lists all commands.
 
 ## Contributing
 
