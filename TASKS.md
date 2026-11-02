@@ -80,15 +80,18 @@ anchor at the workspace root, so it runs from any directory; argument
 parsing is unit-tested. Pre-push wasm check now excludes `xtask`; README
 documents both commands.
 
-## 5. Site: `site/demos/m0-hello` (PR)
+## ✅ 5. Site: `site/demos/m0-hello` (done)
 
-- [ ] `site/js/wasm.js` (instantiateStreaming), `loop.js` (rAF → `demo_advance`),
-      `canvas.js` (world→screen with y-up flip, high-DPI backing store,
-      batched `fillRect`)
-- [ ] `site/demos/m0-hello/{index.html,main.js}`: relative URLs only
-- [ ] `site/index.html`: gallery linking to the demo
-- [ ] Manual smoke test: `python3 -m http.server -d site`, check it at 60 Hz
-      and 120 Hz (or with a throttled rAF)
+Native ES modules, no bundler, relative URLs only: `js/wasm.js` (streaming
+instantiate, `engine.wasm` resolved via `import.meta.url`, fresh
+`Float32Array` view per frame), `js/loop.js` (rAF elapsed time only; Rust
+owns the timestep; optional fps cap), `js/canvas.js` (high-DPI backing
+store, one `setTransform` for meters/y-up, batched rects). The demo page's
+HUD shows display fps vs physics steps/s plus ms per frame in physics vs
+draw; an options table with presets is generated from the same `OPTIONS`
+object that parses the URL (`scalar`, `n` up to 2M, `seed`, `fps`).
+Verified by headless Chrome screenshots and a manual browser check by the
+user (fountain correct; physics holds 60 steps/s across display rates).
 
 ---
 
@@ -106,6 +109,8 @@ documents both commands.
       `clippy::magic_numbers` is unknown). Decide between convention plus a
       review checklist (likely), an `xtask` scan, or a `dylint` custom
       lint. Record the rule in `docs/lint-policy.md`.
+- [ ] **JS isn't checked by the hooks.** Add at least `node --check` on
+      `site/**/*.js` to pre-commit (no new tooling; Node is already used).
 - [ ] General pass over M0 code for anything else that's grown awkward.
 
 ## Decisions to make during M0 (from the docs' open questions)
