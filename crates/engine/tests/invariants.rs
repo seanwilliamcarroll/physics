@@ -7,7 +7,9 @@
 mod common;
 
 use common::{Tol, bits, s, v};
-use engine::{ConfigError, Integrator, UniformGravity, Vec2, World};
+use engine::diagnostics::{center_of_mass, momentum};
+use engine::scenarios::cluster;
+use engine::{ConfigError, Integrator, Particles, Scalar, UniformGravity, Vec2, World};
 
 const G: f64 = -9.81;
 
@@ -123,3 +125,62 @@ fn zero_substeps_is_rejected<S: Tol>() {
     assert!(matches!(w, Err(ConfigError::ZeroSubsteps)));
 }
 for_each_scalar!(zero_substeps_is_rejected);
+
+const CLUSTER_N: usize = 16;
+const CLUSTER_STEPS: u32 = 1000;
+const STEP: f64 = 1.0 / 60.0;
+
+/// `Σ m |v|`: the momentum a cluster *could* have if every body moved the
+/// same way. Momentum error is judged relative to it.
+fn momentum_scale<S: Scalar>(p: &Particles<S>) -> f64 {
+    p.vel()
+        .iter()
+        .zip(p.inv_mass())
+        .filter(|&(_, &w)| w != S::ZERO)
+        .map(|(v, w)| v.length().to_f64() / w.to_f64())
+        .sum()
+}
+
+/// `docs/04-testing.md`: pairwise forces are equal and opposite, so the
+/// total momentum of an isolated cluster can only change by rounding.
+fn pairwise_gravity_conserves_momentum<S: Tol>() {
+    let mut w = cluster::<S>(CLUSTER_N, 1).unwrap();
+    let p0 = momentum(&w.particles);
+    for _ in 0..CLUSTER_STEPS {
+        w.step(s(STEP));
+    }
+    let drift = (momentum(&w.particles) - p0).length().to_f64();
+    let scale = momentum_scale(&w.particles);
+    assert!(
+        drift <= S::MOMENTUM_REL * scale,
+        "drift {drift:e} vs scale {scale:e}"
+    );
+}
+for_each_scalar!(pairwise_gravity_conserves_momentum);
+
+/// With momentum conserved, the center of mass moves in a straight line at
+/// `P / M`, however violently the bodies interact.
+fn center_of_mass_moves_at_constant_velocity<S: Tol>() {
+    let mut w = cluster::<S>(CLUSTER_N, 1).unwrap();
+    let total_mass: f64 = w
+        .particles
+        .inv_mass()
+        .iter()
+        .map(|w| 1.0 / w.to_f64())
+        .sum();
+    let p0 = momentum(&w.particles);
+    let com_velocity = (p0.x.to_f64() / total_mass, p0.y.to_f64() / total_mass);
+    let c0 = center_of_mass(&w.particles).unwrap();
+    for _ in 0..CLUSTER_STEPS {
+        w.step(s(STEP));
+    }
+    let t = STEP * f64::from(CLUSTER_STEPS);
+    let c1 = center_of_mass(&w.particles).unwrap();
+    let expect = (
+        c0.x.to_f64() + com_velocity.0 * t,
+        c0.y.to_f64() + com_velocity.1 * t,
+    );
+    let err = (c1.x.to_f64() - expect.0).hypot(c1.y.to_f64() - expect.1);
+    assert!(err <= S::COM_ABS, "COM off by {err:e} m");
+}
+for_each_scalar!(center_of_mass_moves_at_constant_velocity);
