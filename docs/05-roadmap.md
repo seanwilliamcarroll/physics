@@ -439,6 +439,56 @@ on a platform, with disturbances from mouse pokes.
 tilt is the actuator. A 2D extension of C1's 1D model would also work if
 contacts aren't the point.
 
+## Web track (ideas)
+
+Raised during M1: what more the browser side could do. Rust/wasm stays
+the physics engine; these are about interaction, visualization, and
+tooling around it. Each lists when it's worth doing. None require new
+runtime dependencies unless noted.
+
+**Testing and tooling**
+- **JS unit tests with `node --test`** (built into Node, no dependency):
+  `RateMeter`, `Smoothed`, option parsing, and M1's `plot.js` ring buffer
+  are pure logic. *When:* section 6 of M1 adds `plot.js` and
+  `controls.js`, the first JS with real logic worth pinning down.
+- **Stricter `tsc` flags**, e.g. `noUncheckedIndexedAccess` (TS's analog
+  of clippy's `indexing_slicing`). *When:* after the `.ts` experiment, so
+  the strictness decision is made once for the final source format.
+- **Visual regression**: compare smoke-test screenshots against committed
+  references, with a tolerance. *When:* a rendering bug slips past the
+  pixel-count checks.
+
+**Interaction**
+- **Pause, single-step, and slow motion.** The fixed-step design makes
+  "advance exactly one physics step" trivial. *When:* M3, where watching
+  a solver iterate is the point.
+- **Replay and scrubbing.** The engine is deterministic, so recording
+  inputs (setting changes, mouse drags) replays a session exactly; a
+  timeline slider can rewind. *When:* demos gain user input (M4 dragging,
+  M7 cue shots).
+- **Shareable links**: every control mirrored into the URL, so a
+  configuration can be bookmarked or sent. *When:* M1 controls land; small.
+- **Touch and pointer input**, so demos work on phones. *When:* M4
+  (dragging particles).
+
+**Visualization**
+- **WebGL2 points** straight from the wasm position buffer. *When:* a demo
+  needs more than ~100k moving particles at 60 Hz; M0 measured drawing at
+  8–17x the physics cost (`03-wasm-shell.md`).
+- **Phase-space and overlay views**: position vs velocity plots, velocity
+  and force arrows, energy split into kinetic and potential. *When:* M1's
+  plot module exists; mostly reuse.
+- **Explainer pages**: the math next to the live demo, using native
+  MathML (built into browsers, no KaTeX/MathJax dependency). *When:* any
+  demo is ready to publish (`hosting.md`).
+
+**Performance**
+- **Physics in a Web Worker**, keeping the page responsive when a step is
+  slow, and later `OffscreenCanvas` to draw off the main thread. *When:* a
+  demo's frame time makes the controls feel sluggish. Sharing memory
+  between threads (`SharedArrayBuffer`) needs cross-origin isolation
+  headers on the host (`hosting.md`).
+
 ## Deferred / stretch
 
 - Rigid bodies with rotation and convex polygons (`Mat2`, SAT/GJK)
