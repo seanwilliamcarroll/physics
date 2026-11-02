@@ -3,10 +3,15 @@
 
 import { loadEngine, positionsView } from "../../js/wasm.js";
 import { runLoop, RateMeter, Smoothed } from "../../js/loop.js";
-import { setupCanvas, View, clear, drawPoints, drawHorizon } from "../../js/canvas.js";
+import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.js";
+import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.js";
+import { smokeMode, runSmoke, smokeError } from "../../js/smoke.js";
 
-const DEMO_FOUNTAIN = 0; // demo kind codes: crates/web/src/demo.rs
-const SCALAR_CODES = { f32: 0, f64: 1 };
+const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
+
+/** Particle squares and ground line, CSS pixels. */
+const POINT_SIZE_PX = 3;
+const GROUND_WIDTH_PX = 1;
 
 /** Every URL option, its legal values, and its default. The single source of
  *  truth: parsing below and the options table on the page both read it. */
@@ -31,8 +36,9 @@ const PRESETS = [
   ["1M at 30 fps", "?n=1000000&fps=30"],
 ];
 
-// The fountain reaches ~7.3 m high and ~4.9 m sideways (v ≤ 12 m/s up,
-// ≤ 2 m/s sideways), so this frames the whole arc with a little ground.
+// Framing, from the scene's launch ranges (engine::scenarios): apex
+// vy²/2g ≈ 12²/(2·9.81) ≈ 7.3 m; reach vx·(2 vy/g) ≈ 2·2.45 ≈ 4.9 m. A
+// framing choice with margin, so not derived at runtime.
 const VIEW = new View({ xMin: -6, xMax: 6, yMin: -0.5, yMax: 8 });
 
 const params = new URLSearchParams(location.search);
@@ -45,43 +51,58 @@ const maxFps = intOption("fps");
 
 renderOptionsTable(document.getElementById("options"));
 const hud = document.getElementById("hud");
-const ctx = setupCanvas(document.getElementById("view"));
+const canvas = document.getElementById("view");
+const ctx = setupCanvas(canvas);
+// Colors live in site.css (--stage-bg, --ground, --particle).
+const colors = {
+  background: cssColor(canvas, "--stage-bg"),
+  ground: cssColor(canvas, "--ground"),
+  particle: cssColor(canvas, "--particle"),
+};
 
 try {
   const engine = await loadEngine();
   const demo = engine.demo_new(DEMO_FOUNTAIN, SCALAR_CODES[scalar], n, seed);
   if (demo === 0) throw new Error("demo_new returned null (bad kind or scalar code)");
 
-  const fps = new RateMeter();
-  const sps = new RateMeter();
-  const physicsMs = new Smoothed();
-  const drawMs = new Smoothed();
-  runLoop((elapsed, now) => {
-    const t0 = performance.now();
-    const steps = engine.demo_advance(demo, elapsed);
-    const t1 = performance.now();
-
-    clear(ctx, "#161a22");
+  const drawFrame = () => {
+    clear(ctx, colors.background);
     VIEW.apply(ctx);
-    drawHorizon(ctx, VIEW, 0, 1, "#2a2f3a");
-    drawPoints(ctx, VIEW, positionsView(engine, demo), 3, "#6cb6ff");
-    // Measures issuing the draw calls; the browser may rasterize later, so
-    // a falling display fps can also reflect GPU/compositor time.
-    const t2 = performance.now();
+    drawHorizon(ctx, VIEW, 0, GROUND_WIDTH_PX, colors.ground);
+    drawPoints(ctx, VIEW, positionsView(engine, demo), POINT_SIZE_PX, colors.particle);
+  };
 
-    fps.add(now);
-    sps.add(now, steps);
-    physicsMs.add(t1 - t0);
-    drawMs.add(t2 - t1);
-    hud.textContent =
-      `display  ${fps.perSecond} fps\n` +
-      `physics  ${sps.perSecond} steps/s\n` +
-      `cost     physics ${physicsMs.value.toFixed(2)} ms · draw ${drawMs.value.toFixed(2)} ms per frame\n` +
-      `${n.toLocaleString()} particles · ${scalar} · seed ${seed}` +
-      (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-  }, { maxFps });
+  if (smokeMode) {
+    runSmoke(engine, demo, ctx, drawFrame, colors.particle);
+  } else {
+    const fps = new RateMeter();
+    const sps = new RateMeter();
+    const physicsMs = new Smoothed();
+    const drawMs = new Smoothed();
+    runLoop((elapsed, now) => {
+      const t0 = performance.now();
+      const steps = engine.demo_advance(demo, elapsed);
+      const t1 = performance.now();
+      drawFrame();
+      // Measures issuing the draw calls; the browser may rasterize later, so
+      // a falling display fps can also reflect GPU/compositor time.
+      const t2 = performance.now();
+
+      fps.add(now);
+      sps.add(now, steps);
+      physicsMs.add(t1 - t0);
+      drawMs.add(t2 - t1);
+      hud.textContent =
+        `display  ${fps.perSecond} fps\n` +
+        `physics  ${sps.perSecond} steps/s\n` +
+        `cost     physics ${physicsMs.value.toFixed(2)} ms · draw ${drawMs.value.toFixed(2)} ms per frame\n` +
+        `${n.toLocaleString()} particles · ${scalar} · seed ${seed}` +
+        (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
+    }, { maxFps });
+  }
 } catch (err) {
   hud.textContent = `error: ${err.message}`;
+  smokeError(err);
   throw err;
 }
 

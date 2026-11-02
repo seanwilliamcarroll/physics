@@ -5,6 +5,8 @@
 //! can never pass a variable `dt` to the engine. Displays at 60/120/144 Hz
 //! all advance the simulation at the same rate.
 
+use core::num::NonZeroU32;
+
 /// Most simulated time one frame may request, in seconds. Longer frames
 /// (a stalled or backgrounded tab) are clamped, so the simulation slows
 /// down instead of running hundreds of catch-up steps that make the next
@@ -14,6 +16,8 @@ pub const MAX_FRAME_TIME: f64 = 0.25;
 /// Accumulates real time and pays it out in steps of `dt`.
 #[derive(Clone, Debug)]
 pub struct FixedStep {
+    /// Seconds per step, `1 / rate`: positive and finite by construction
+    /// (a zero or negative `dt` would make `advance` loop forever).
     dt: f64,
     /// Elapsed time not yet simulated. Invariant: `0 <= leftover < dt`
     /// between calls to [`advance`](Self::advance).
@@ -21,10 +25,23 @@ pub struct FixedStep {
 }
 
 impl FixedStep {
-    /// `dt` must be positive.
+    /// A clock paying out `rate` steps per simulated second.
+    ///
+    /// Takes a rate, not a `dt`, so a bad step size can't be expressed:
+    /// `1 / rate` for a nonzero integer is always positive and finite
+    /// (`docs/type-invariants.md`).
     #[must_use]
-    pub const fn new(dt: f64) -> Self {
-        Self { dt, leftover: 0.0 }
+    pub fn new(rate: NonZeroU32) -> Self {
+        Self {
+            dt: 1.0 / f64::from(rate.get()),
+            leftover: 0.0,
+        }
+    }
+
+    /// Seconds per step.
+    #[must_use]
+    pub const fn dt(&self) -> f64 {
+        self.dt
     }
 
     /// Adds `elapsed` seconds of real time; returns how many steps of `dt`
@@ -56,15 +73,29 @@ impl FixedStep {
 
 #[cfg(test)]
 mod tests {
+    use core::num::NonZeroU32;
+
     use super::{FixedStep, MAX_FRAME_TIME};
 
     const DT: f64 = 1.0 / 60.0;
 
+    fn clock_60hz() -> FixedStep {
+        FixedStep::new(NonZeroU32::new(60).unwrap())
+    }
+
     /// Runs frames through a fresh clock; returns (total steps, clock).
     fn run(frames: impl IntoIterator<Item = f64>) -> (u32, FixedStep) {
-        let mut clock = FixedStep::new(DT);
+        let mut clock = clock_60hz();
         let steps = frames.into_iter().map(|e| clock.advance(e)).sum();
         (steps, clock)
+    }
+
+    #[test]
+    fn dt_is_the_reciprocal_of_the_rate() {
+        // Bit-identical to the literal 1/60 that the tests (and JS) use.
+        assert_eq!(clock_60hz().dt().to_bits(), DT.to_bits());
+        let slow = FixedStep::new(NonZeroU32::new(1).unwrap());
+        assert_eq!(slow.dt(), 1.0);
     }
 
     #[test]
@@ -77,7 +108,7 @@ mod tests {
     #[test]
     fn short_frames_accumulate_into_a_step() {
         // 240 Hz display, 60 Hz physics: a step every 4th frame.
-        let mut clock = FixedStep::new(DT);
+        let mut clock = clock_60hz();
         let per_frame: Vec<u32> = (0..8).map(|_| clock.advance(DT / 4.0)).collect();
         assert_eq!(per_frame.iter().sum::<u32>(), 2);
         assert!(per_frame.iter().all(|&n| n <= 1));
@@ -87,7 +118,7 @@ mod tests {
     fn irregular_frames_conserve_time() {
         // Jittery frame times that don't divide dt evenly.
         let frames = [0.016, 0.017, 0.0335, 0.008, 0.1, 0.0161, 0.05, 0.004];
-        let mut clock = FixedStep::new(DT);
+        let mut clock = clock_60hz();
         let (mut steps, mut total) = (0, 0.0);
         for _ in 0..100 {
             for e in frames {

@@ -9,8 +9,8 @@ use core::ptr;
 
 use crate::demo::{Demo, DemoKind, ScalarKind};
 
-/// Creates a demo of `n` particles. `kind`: 0 = fountain. `scalar`:
-/// 0 = f32, 1 = f64. Returns null for an unknown code or invalid scene.
+/// Creates a demo of `n` particles. `kind` and `scalar` are codes from
+/// [`crate::abi`]. Returns null for an unknown code or invalid scene.
 /// Free with [`demo_free`].
 #[unsafe(no_mangle)]
 pub extern "C" fn demo_new(kind: u32, scalar: u32, n: u32, seed: u32) -> *mut Demo {
@@ -62,7 +62,8 @@ pub unsafe extern "C" fn demo_positions_ptr(d: *const Demo) -> *const f32 {
     unsafe { d.as_ref() }.map_or(ptr::null(), |d| d.positions().as_ptr())
 }
 
-/// Number of `f32`s at [`demo_positions_ptr`] (2 per particle; 0 for null).
+/// Number of `f32`s at [`demo_positions_ptr`]
+/// ([`COORDS_PER_PARTICLE`](crate::abi::COORDS_PER_PARTICLE) per particle; 0 for null).
 ///
 /// # Safety
 /// `d` must be null or a live handle from [`demo_new`].

@@ -1,6 +1,8 @@
 // Canvas 2D helpers: high-DPI sizing and a world (meters, y up) to screen
 // (pixels, y down) transform.
 
+import { COORDS_PER_PARTICLE } from "./abi.js";
+
 /** Keeps the canvas backing store at devicePixelRatio x its CSS size, so
  *  drawing is sharp on high-DPI screens. Returns the 2D context. */
 export function setupCanvas(canvas) {
@@ -41,6 +43,19 @@ export class View {
       ctx.canvas.width / 2 - s * cx,
       ctx.canvas.height / 2 + s * cy);
   }
+
+  /** World x-range actually visible: wider than [xMin, xMax] when the
+   *  canvas is wider than the view's aspect ratio. */
+  visibleX(canvas) {
+    const halfWidth = canvas.width / this.scale(canvas) / 2;
+    const cx = (this.xMin + this.xMax) / 2;
+    return [cx - halfWidth, cx + halfWidth];
+  }
+}
+
+/** Device pixels for a length given in CSS pixels. */
+function devicePx(cssPx) {
+  return cssPx * (window.devicePixelRatio || 1);
 }
 
 /** Clears the whole canvas, regardless of the current transform. */
@@ -64,26 +79,34 @@ const RECTS_PER_PATH = 50_000;
  *  fills per point are far slower), chunked to stay under the browser's
  *  per-command size limit. Assumes `view.apply(ctx)` was called. */
 export function drawPoints(ctx, view, pos, sizePx, color) {
-  const size = (sizePx * (window.devicePixelRatio || 1)) / view.scale(ctx.canvas);
+  const size = devicePx(sizePx) / view.scale(ctx.canvas);
   const half = size / 2;
-  const chunk = 2 * RECTS_PER_PATH; // two floats per point
+  const chunk = COORDS_PER_PARTICLE * RECTS_PER_PATH;
   ctx.fillStyle = color;
   for (let start = 0; start < pos.length; start += chunk) {
     const end = Math.min(start + chunk, pos.length);
     ctx.beginPath();
-    for (let i = start; i < end; i += 2) {
+    for (let i = start; i < end; i += COORDS_PER_PARTICLE) {
       ctx.rect(pos[i] - half, pos[i + 1] - half, size, size);
     }
     ctx.fill();
   }
 }
 
-/** A horizontal line at world height `y` across the view, `widthPx` thick. */
+/** A horizontal line at world height `y` across the whole canvas,
+ *  `widthPx` CSS pixels thick. */
 export function drawHorizon(ctx, view, y, widthPx, color) {
+  const [left, right] = view.visibleX(ctx.canvas);
   ctx.strokeStyle = color;
-  ctx.lineWidth = (widthPx * (window.devicePixelRatio || 1)) / view.scale(ctx.canvas);
+  ctx.lineWidth = devicePx(widthPx) / view.scale(ctx.canvas);
   ctx.beginPath();
-  ctx.moveTo(view.xMin - 1e3, y);
-  ctx.lineTo(view.xMax + 1e3, y);
+  ctx.moveTo(left, y);
+  ctx.lineTo(right, y);
   ctx.stroke();
+}
+
+/** Reads a CSS custom property (e.g. "--particle") from `el`, so colors are
+ *  defined once, in the stylesheet. */
+export function cssColor(el, name) {
+  return getComputedStyle(el).getPropertyValue(name).trim();
 }

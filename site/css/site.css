@@ -4,6 +4,10 @@
   --fg: #d8dbe2;
   --muted: #8a90a0;
   --accent: #6cb6ff;
+  /* Canvas colors, read by JS (canvas.js cssColor). */
+  --stage-bg: #161a22;
+  --ground: #2a2f3a;
+  --particle: #6cb6ff;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -30,7 +34,7 @@ a { color: var(--accent); }
   display: block;
   width: 100%;
   aspect-ratio: 3 / 2;
-  background: #161a22; /* matches the canvas clear color */
+  background: var(--stage-bg);
   border-radius: 6px;
 }
 

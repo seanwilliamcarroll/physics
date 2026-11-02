@@ -4,8 +4,14 @@
 use crate::rng::SplitMix64;
 use crate::{ConfigError, Integrator, Scalar, UniformGravity, Vec2, World};
 
-/// Standard gravity, m/s² (pointing down: y is up).
-pub const STANDARD_GRAVITY: f64 = -9.81;
+/// Standard gravity g₀, m/s²: a magnitude, applied downward (y is up) as
+/// `(0, -g₀)`. Exact by definition (3rd CGPM, 1901), not a measurement.
+pub const STANDARD_GRAVITY: f64 = 9.80665;
+
+/// Substeps per fixed step for [`Fountain`]. One is enough: symplectic
+/// Euler's error under constant gravity is ½ g h t (`tests/invariants.rs`),
+/// about 8 cm after 1 s of flight at 60 Hz, invisible at demo scale.
+pub const FOUNTAIN_SUBSTEPS: u32 = 1;
 
 /// Launch velocity ranges for [`Fountain`], m/s: `(min, max)`.
 pub const FOUNTAIN_VX: (f64, f64) = (-2.0, 2.0);
@@ -34,13 +40,13 @@ impl Fountain {
     /// Builds a world with `n` freshly launched particles.
     ///
     /// # Errors
-    /// Only if the fixed configuration were invalid (it isn't: 1 substep);
-    /// the `Result` comes from [`World::new`].
+    /// Only if the fixed configuration were invalid (it isn't:
+    /// [`FOUNTAIN_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
     pub fn world<S: Scalar>(&mut self, n: usize) -> Result<World<S>, ConfigError> {
-        let mut w = World::new(Integrator::SymplecticEuler, 1)?;
+        let mut w = World::new(Integrator::SymplecticEuler, FOUNTAIN_SUBSTEPS)?;
         w.add_force(UniformGravity::new(Vec2::new(
             S::ZERO,
-            S::from_f64(STANDARD_GRAVITY),
+            -S::from_f64(STANDARD_GRAVITY),
         )));
         for _ in 0..n {
             let vel = self.launch_velocity();
@@ -109,7 +115,7 @@ mod tests {
 
     #[test]
     fn particles_fall_below_launch_height_without_respawn() {
-        // vy < 12 m/s under 9.81 m/s² lands within ~2.5 s.
+        // vy < 12 m/s under standard gravity lands within ~2.5 s.
         let mut w = Fountain::new(3).world::<f64>(20).unwrap();
         run(&mut w, 180);
         assert!(w.particles.pos().iter().all(|p| p.y < 0.0));
