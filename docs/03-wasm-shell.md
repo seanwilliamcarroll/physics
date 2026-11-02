@@ -114,6 +114,7 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | Milestone | Variants | `.wasm` (release) | gzip -9 | Notes |
 |---|---|---|---|---|
 | M0 | `F32`, `F64` | 28,593 B | 9,998 B | `opt-level = 3`, LTO, Rust 1.99.1; zero imports |
+| M1.1 | `F32`, `F64` | 34,230 B | 12,060 B | + panic hook (std panic formatting, ~5.2 KB) and `demo_panic_for_test`; one import, `env.console_error` |
 
 ### The render buffer
 

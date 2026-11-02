@@ -74,25 +74,27 @@ Recommendations in **bold**; reply on the PR to change any.
    now, or defer to M2? **Defer**, unless you want the cross-platform
    check in M1.
 
+8. **Checked JS before section 6** (raised during M1.1). The site JS
+   already passes the "few hundred lines" trigger in
+   `docs/type-invariants.md` (item 8), and section 6 roughly doubles it.
+   **JSDoc types + `tsc --checkJs --noEmit` in pre-commit**, plus an
+   `engine.d.ts` for the wasm exports; files stay plain `.js` with no
+   build step. Alternatives (`.ts` with a compile step, or nothing) and
+   their costs are in that doc. If adopted, it's its own small PR before
+   section 6.
 ---
 
-## 1. Wasm panic hook (PR)
+## ✅ 1. Wasm panic hook (done)
 
-With `panic = "abort"`, a panic in wasm reaches JS as a bare
-`RuntimeError: unreachable`, with no message.
-
-- [ ] `crates/web`: `std::panic::set_hook` that formats the panic message
-      and location and hands it to an imported `console_error(ptr, len)`.
-      The module's first import, so `abi.rs` and `abi.js` both document it.
-- [ ] `site/js/wasm.js`: supply the import (decode UTF-8 from wasm memory,
-      `console.error`). `loadEngine` no longer passes `{}`.
-- [ ] Install the hook once, in `demo_new` (cheap to repeat; or a
-      `demo_init` export, decide in the PR).
-- [ ] Test: a debug-only export that panics on purpose
-      (`#[cfg(debug_assertions)]`), checked in the browser smoke test
-      (`?smoke&panic` case expects the message in Chrome's log).
-- [ ] Measure `.wasm` size change (`docs/03` table): `std`'s panic
-      formatting can add several KB.
+A std panic hook (installed once from `demo_new`) sends "panicked at
+<file:line>: <message>" through the module's first import,
+`env.console_error`, supplied by `site/js/wasm.js`. Imports are
+wasm-only, so `crates/web/src/imports.rs` is cfg-gated and pre-commit
+gained a wasm32 clippy run; `unsafe` now lives in two FFI modules
+(`exports`, `imports`). Tested end to end by a shipped
+`demo_panic_for_test` export and a `panic` smoke case (verified to fail
+when the hook is missing). `.wasm`: 28,593 → 34,230 B. Decision 8
+(checked JS) added for review before section 6.
 
 ## 2. `PairwiseGravity` (test first, PR)
 
