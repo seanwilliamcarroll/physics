@@ -38,14 +38,13 @@ rights reserved"); PR 4 adds `--exclude xtask` to the pre-push wasm check.
 
 ---
 
-## 1. `crates/math` (test first, PR)
+## ✅ 1. `crates/math` (done)
 
-- [ ] `Scalar` trait: `ZERO`, `ONE`, `from_f64`, `to_f64`, `sqrt`, `abs`,
-      plus the operator supertraits from `02`. Impls for `f32` and `f64`.
-- [ ] `Vec2<S>`: `new`, `ZERO`, `dot`, `cross`, `perp`, `length_sq`, `length`,
-      ops `Add/Sub/Neg/AddAssign/SubAssign`, `Mul<S>`, `Div<S>` (always `v * s`)
-- [ ] Unit tests (both scalars): algebra identities, `perp` twice = `-v`,
-      `cross(v, v) = 0`, `length` of 3-4-5, `from_f64`/`to_f64` round-trip
+`Scalar` (`ZERO`, `ONE`, `from_f64`, `to_f64`, `sqrt`, `abs` + operator
+supertraits) for `f32`/`f64`, and `Vec2<S>` (`#[must_use]`; ops, `dot`,
+`cross`, `perp`, `length_sq`, `length`). 27 unit tests, each run for both
+scalars via `for_each_scalar!` in `test_util.rs`; values chosen to be exactly
+representable, so tests assert equality, not tolerances. Compiles for wasm32.
 
 ## 2. `crates/engine` (test first, PR)
 
