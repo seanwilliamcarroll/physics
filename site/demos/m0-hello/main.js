@@ -5,6 +5,7 @@ import { loadEngine, positionsView } from "../../js/wasm.js";
 import { runLoop, RateMeter, Smoothed } from "../../js/loop.js";
 import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.js";
 import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.js";
+import { smokeMode, runSmoke, smokeError } from "../../js/smoke.js";
 
 const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
 
@@ -64,36 +65,44 @@ try {
   const demo = engine.demo_new(DEMO_FOUNTAIN, SCALAR_CODES[scalar], n, seed);
   if (demo === 0) throw new Error("demo_new returned null (bad kind or scalar code)");
 
-  const fps = new RateMeter();
-  const sps = new RateMeter();
-  const physicsMs = new Smoothed();
-  const drawMs = new Smoothed();
-  runLoop((elapsed, now) => {
-    const t0 = performance.now();
-    const steps = engine.demo_advance(demo, elapsed);
-    const t1 = performance.now();
-
+  const drawFrame = () => {
     clear(ctx, colors.background);
     VIEW.apply(ctx);
     drawHorizon(ctx, VIEW, 0, GROUND_WIDTH_PX, colors.ground);
     drawPoints(ctx, VIEW, positionsView(engine, demo), POINT_SIZE_PX, colors.particle);
-    // Measures issuing the draw calls; the browser may rasterize later, so
-    // a falling display fps can also reflect GPU/compositor time.
-    const t2 = performance.now();
+  };
 
-    fps.add(now);
-    sps.add(now, steps);
-    physicsMs.add(t1 - t0);
-    drawMs.add(t2 - t1);
-    hud.textContent =
-      `display  ${fps.perSecond} fps\n` +
-      `physics  ${sps.perSecond} steps/s\n` +
-      `cost     physics ${physicsMs.value.toFixed(2)} ms · draw ${drawMs.value.toFixed(2)} ms per frame\n` +
-      `${n.toLocaleString()} particles · ${scalar} · seed ${seed}` +
-      (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-  }, { maxFps });
+  if (smokeMode) {
+    runSmoke(engine, demo, ctx, drawFrame, colors.particle);
+  } else {
+    const fps = new RateMeter();
+    const sps = new RateMeter();
+    const physicsMs = new Smoothed();
+    const drawMs = new Smoothed();
+    runLoop((elapsed, now) => {
+      const t0 = performance.now();
+      const steps = engine.demo_advance(demo, elapsed);
+      const t1 = performance.now();
+      drawFrame();
+      // Measures issuing the draw calls; the browser may rasterize later, so
+      // a falling display fps can also reflect GPU/compositor time.
+      const t2 = performance.now();
+
+      fps.add(now);
+      sps.add(now, steps);
+      physicsMs.add(t1 - t0);
+      drawMs.add(t2 - t1);
+      hud.textContent =
+        `display  ${fps.perSecond} fps\n` +
+        `physics  ${sps.perSecond} steps/s\n` +
+        `cost     physics ${physicsMs.value.toFixed(2)} ms · draw ${drawMs.value.toFixed(2)} ms per frame\n` +
+        `${n.toLocaleString()} particles · ${scalar} · seed ${seed}` +
+        (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
+    }, { maxFps });
+  }
 } catch (err) {
   hud.textContent = `error: ${err.message}`;
+  smokeError(err);
   throw err;
 }
 
