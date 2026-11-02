@@ -3,6 +3,7 @@
 //! Generic over [`Scalar`]; std only, no rendering or browser code.
 //! Design: `docs/02-core-types.md`. Units are SI (m, kg, s).
 
+pub mod diagnostics;
 mod force;
 mod integrate;
 mod particles;
