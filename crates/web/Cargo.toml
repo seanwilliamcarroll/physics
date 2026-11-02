@@ -1,0 +1,16 @@
+[package]
+name = "web"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+# cdylib: a standalone .wasm module with C-ABI exports (docs/03-wasm-shell.md).
+crate-type = ["cdylib"]
+
+[dependencies]
+engine = { path = "../engine" }
+
+[lints]
+workspace = true
