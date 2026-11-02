@@ -15,6 +15,8 @@
 //   SMOKE ok panic_logged=1
 
 import { lastPanicMessage } from "./wasm.js";
+/** @typedef {import("./engine").EngineExports} EngineExports */
+/** @typedef {import("./engine").DemoHandle} DemoHandle */
 import { TEST_PANIC_MESSAGE } from "./abi.js";
 
 /** Frames of 1/60 s to advance before drawing: half a second of flight,
@@ -35,12 +37,18 @@ if (smokeMode) {
   window.addEventListener("unhandledrejection", (e) => report(`error ${e.reason}`));
 }
 
+/** @param {string} text */
 function report(text) {
   console.log(`SMOKE ${text}`);
 }
 
 /** Runs the smoke sequence: advance, draw once via `drawFrame()`, count
- *  pixels of `particleColor` ("#rrggbb") on the canvas, report. */
+ *  pixels of `particleColor` ("#rrggbb") on the canvas, report.
+ *  @param {EngineExports} engine
+ *  @param {DemoHandle} demo
+ *  @param {CanvasRenderingContext2D} ctx
+ *  @param {() => void} drawFrame
+ *  @param {string} particleColor */
 export function runSmoke(engine, demo, ctx, drawFrame, particleColor) {
   if (panicMode) {
     runPanicSmoke(engine);
@@ -55,7 +63,8 @@ export function runSmoke(engine, demo, ctx, drawFrame, particleColor) {
 
 /** Calls the deliberate-panic export. Expected: the call traps
  *  (WebAssembly.RuntimeError, "unreachable") and, before that, the panic
- *  hook passed the message to JS through the console_error import. */
+ *  hook passed the message to JS through the console_error import.
+ *  @param {EngineExports} engine */
 function runPanicSmoke(engine) {
   try {
     engine.demo_panic_for_test();
@@ -72,11 +81,23 @@ function runPanicSmoke(engine) {
   }
 }
 
-/** Reports a caught error (the page's own try/catch). */
+/** Reports a caught error (the page's own try/catch). Anything can be
+ *  thrown in JS, not just Errors, hence `unknown`.
+ *  @param {unknown} err */
 export function smokeError(err) {
-  if (smokeMode) report(`error ${err.message}`);
+  if (smokeMode) report(`error ${errorText(err)}`);
 }
 
+/** A thrown value's message: `.message` for Errors, else its string form.
+ *  @param {unknown} err
+ *  @returns {string} */
+export function errorText(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** @param {CanvasRenderingContext2D} ctx
+ *  @param {[number, number, number]} rgb
+ *  @returns {number} */
 function countPixels(ctx, [r, g, b]) {
   const { data } = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   let count = 0;
@@ -88,7 +109,9 @@ function countPixels(ctx, [r, g, b]) {
   return count;
 }
 
-/** "#rrggbb" -> [r, g, b]. */
+/** "#rrggbb" -> [r, g, b].
+ *  @param {string} hex
+ *  @returns {[number, number, number]} */
 function parseHexColor(hex) {
   const v = Number.parseInt(hex.replace("#", ""), 16);
   return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
