@@ -111,6 +111,13 @@ user (fountain correct; physics holds 60 steps/s across display rates).
       lint. Record the rule in `docs/lint-policy.md`.
 - [ ] **JS isn't checked by the hooks.** Add at least `node --check` on
       `site/**/*.js` to pre-commit (no new tooling; Node is already used).
+- [ ] **Browser smoke test as a command** (`cargo xtask smoke` or similar):
+      serve `site/`, run headless Chrome with a fresh profile (a reused one
+      serves stale JS from cache), fail on console errors or Chrome's
+      `Failed to serialize op` log line, and save screenshots at a few `n`
+      values. Headless caught the 500k blank-canvas bug that no Rust test
+      could. Decide whether it joins pre-push (needs Chrome installed) or
+      stays manual.
 - [ ] General pass over M0 code for anything else that's grown awkward.
 
 ## Decisions to make during M0 (from the docs' open questions)

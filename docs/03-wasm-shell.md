@@ -185,6 +185,31 @@ Plan: **vector Canvas 2D** for phases 1–4. **Pixel buffer** for falling sand
 and the acoustic track (that's a tiny software rasterizer we write ourselves).
 GPU only if a demo outgrows Canvas.
 
+### Measured: rendering is the bottleneck (M0)
+
+The `m0-hello` HUD splits ms per frame between physics (`demo_advance`)
+and drawing (issuing the canvas calls; rasterization can add more):
+
+| Particles | Physics | Draw |
+|---|---|---|
+| 100,000 (f64) | 0.34 ms | 5.8 ms |
+| 2,000,000 (f32) | 7.0 ms | 57.6 ms |
+
+Physics costs ~4 ns per particle per step; drawing costs ~8x to ~17x
+more. Display fps falls long before physics can't keep up. Canvas 2D also
+silently drops any single draw command over ~16 MiB, so `drawPoints`
+fills every 50k rects.
+
+Not a problem for upcoming milestones (hundreds to thousands of bodies).
+Options when a demo needs it, cheapest first:
+
+- `fillRect` per point instead of path `rect` + `fill` (measure: fewer
+  path ops vs more calls)
+- Pixel buffer: Rust writes RGBA (already planned for falling sand), one
+  `putImageData` per frame; cost scales with canvas size, not `n`
+- WebGL2 instanced points straight from the wasm position buffer
+  (already listed under Deferred in `05-roadmap.md`)
+
 Canvas 2D tips:
 
 - Batch: one `beginPath()`, many `rect`/`arc` calls, one `fill()`.
