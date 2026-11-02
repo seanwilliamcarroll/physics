@@ -2,11 +2,16 @@
 //! scene you demo. All in SI units.
 
 use crate::rng::SplitMix64;
-use crate::{ConfigError, Integrator, Scalar, UniformGravity, Vec2, World};
+use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, UniformGravity, Vec2, World};
 
 /// Standard gravity g₀, m/s²: a magnitude, applied downward (y is up) as
 /// `(0, -g₀)`. Exact by definition (3rd CGPM, 1901), not a measurement.
 pub const STANDARD_GRAVITY: f64 = 9.80665;
+
+/// Newtonian constant of gravitation G, m³ kg⁻¹ s⁻²: CODATA 2018
+/// recommended value (relative standard uncertainty 2.2 × 10⁻⁵). Unlike
+/// [`STANDARD_GRAVITY`] this is a measurement, not a definition.
+pub const GRAVITATIONAL_CONSTANT: f64 = 6.674_30e-11;
 
 /// Substeps per fixed step for [`Fountain`]. One is enough: symplectic
 /// Euler's error under constant gravity is ½ g h t (`tests/invariants.rs`),
@@ -80,9 +85,71 @@ impl Fountain {
     }
 }
 
+/// Radius of the disk [`cluster`] fills, m.
+pub const CLUSTER_RADIUS: f64 = 2.0;
+
+/// Body mass range for [`cluster`], kg: `(min, max)`. With G ≈ 6.7 × 10⁻¹¹,
+/// `G m` is 0.3–1.3 m³/s², so bodies a meter apart accelerate at about
+/// 1 m/s²: visible motion within seconds at demo scale, in SI units.
+pub const CLUSTER_MASS: (f64, f64) = (0.5e10, 2.0e10);
+
+/// Largest initial speed per axis for [`cluster`], m/s. Random drift gives
+/// the cluster a nonzero net momentum, so conservation tests have a value
+/// to conserve (zero could hide a sign error).
+pub const CLUSTER_SPEED: f64 = 0.2;
+
+/// Softening ε for [`cluster`], m: 1/20 of the radius, so close passes
+/// give a bounded kick instead of flinging bodies apart.
+pub const CLUSTER_SOFTENING: f64 = 0.1;
+
+/// Substeps for [`cluster`]: one; tests probe conservation, not accuracy.
+pub const CLUSTER_SUBSTEPS: u32 = 1;
+
+/// `n` bodies under mutual softened gravity: positions uniform in a disk
+/// of [`CLUSTER_RADIUS`], masses in [`CLUSTER_MASS`], small random
+/// velocities. Deterministic per seed.
+///
+/// Positions use rejection sampling (draw in the square, keep points
+/// inside the disk) rather than `r = R√u, θ = 2πv`: no `sin`/`cos`, whose
+/// last bits depend on the platform's libm, so the scene is bit-identical
+/// on every platform, which cross-platform golden hashes rely on.
+///
+/// # Errors
+/// Only if the fixed configuration were invalid (it isn't:
+/// [`CLUSTER_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
+pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
+    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
+    w.add_force(PairwiseGravity::new(
+        S::from_f64(GRAVITATIONAL_CONSTANT),
+        S::from_f64(CLUSTER_SOFTENING),
+    ));
+    let mut rng = SplitMix64::new(seed);
+    let r = CLUSTER_RADIUS;
+    for _ in 0..n {
+        // Accepts with probability π/4 per try, so ~1.3 tries on average.
+        let (x, y) = loop {
+            let (x, y) = (rng.range(-r, r), rng.range(-r, r));
+            if x * x + y * y <= r * r {
+                break (x, y);
+            }
+        };
+        let vx = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
+        let vy = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
+        let mass = rng.range(CLUSTER_MASS.0, CLUSTER_MASS.1);
+        w.particles.add(
+            Vec2::new(S::from_f64(x), S::from_f64(y)),
+            Vec2::new(S::from_f64(vx), S::from_f64(vy)),
+            S::from_f64(mass),
+        );
+    }
+    Ok(w)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{FOUNTAIN_VX, FOUNTAIN_VY, Fountain};
+    use super::{
+        CLUSTER_MASS, CLUSTER_RADIUS, CLUSTER_SPEED, FOUNTAIN_VX, FOUNTAIN_VY, Fountain, cluster,
+    };
     use crate::{Vec2, World};
 
     fn in_launch_range(v: Vec2<f64>) -> bool {
@@ -156,5 +223,40 @@ mod tests {
             scene.respawn_fallen(&mut w);
             assert!(w.particles.pos().iter().all(|p| p.y >= 0.0));
         }
+    }
+
+    #[test]
+    fn cluster_places_n_bodies_in_the_disk_with_bounded_mass_and_speed() {
+        let w = cluster::<f64>(200, 4).unwrap();
+        assert_eq!(w.particles.len(), 200);
+        assert!(
+            w.particles
+                .pos()
+                .iter()
+                .all(|x| x.length() <= CLUSTER_RADIUS)
+        );
+        assert!(
+            w.particles
+                .vel()
+                .iter()
+                .all(|v| v.x.abs() <= CLUSTER_SPEED && v.y.abs() <= CLUSTER_SPEED)
+        );
+        let (lo, hi) = CLUSTER_MASS;
+        assert!(
+            w.particles
+                .inv_mass()
+                .iter()
+                .all(|&iw| (lo..=hi).contains(&(1.0 / iw)))
+        );
+    }
+
+    #[test]
+    fn cluster_is_deterministic_per_seed() {
+        let a = cluster::<f32>(16, 1).unwrap();
+        let b = cluster::<f32>(16, 1).unwrap();
+        let c = cluster::<f32>(16, 2).unwrap();
+        assert_eq!(a.particles.pos(), b.particles.pos());
+        assert_eq!(a.particles.vel(), b.particles.vel());
+        assert_ne!(a.particles.pos(), c.particles.pos());
     }
 }

@@ -74,14 +74,15 @@ Recommendations in **bold**; reply on the PR to change any.
    now, or defer to M2? **Defer**, unless you want the cross-platform
    check in M1.
 
-8. **Checked JS before section 6** (raised during M1.1). The site JS
+8. ✅ **Decided: checked JS before section 6** (raised during M1.1). The site JS
    already passes the "few hundred lines" trigger in
    `docs/type-invariants.md` (item 8), and section 6 roughly doubles it.
    **JSDoc types + `tsc --checkJs --noEmit` in pre-commit**, plus an
    `engine.d.ts` for the wasm exports; files stay plain `.js` with no
    build step. Alternatives (`.ts` with a compile step, or nothing) and
-   their costs are in that doc. If adopted, it's its own small PR before
-   section 6.
+   their costs are in that doc. Agreed: its own small PR before
+   section 6. The longer-term goal is `.ts` source; see the experiment
+   section below.
 ---
 
 ## ✅ 1. Wasm panic hook (done)
@@ -96,23 +97,17 @@ gained a wasm32 clippy run; `unsafe` now lives in two FFI modules
 when the hook is missing). `.wasm`: 28,593 → 34,230 B. Decision 8
 (checked JS) added for review before section 6.
 
-## 2. `PairwiseGravity` (test first, PR)
+## ✅ 2. `PairwiseGravity` (done)
 
-`docs/04-testing.md` step 3: momentum + center of mass, then the force.
-
-- [ ] Tests first (`tests/invariants.rs`, both scalars): a 16-body
-      `cluster` conserves momentum over 1000 steps; its center of mass
-      moves at constant velocity; two bodies attract equally and oppositely.
-- [ ] `diagnostics::center_of_mass` (static particles excluded, like
-      momentum).
-- [ ] `PairwiseGravity { g_const, softening_sq }`: O(n²), each pair once
-      (`i < j`), equal and opposite. `new(g_const, softening)` stores ε².
-- [ ] The `i < j` loop under `indexing_slicing`: `split_at_mut` or
-      iterator pairs, not indexing; an `#[expect]` only if neither reads
-      clearly.
-- [ ] `scenarios::cluster(n, seed)` for tests (and M2): bodies in a disk,
-      seeded.
-- [ ] `G` (CODATA 2018: 6.674 30 × 10⁻¹¹ m³ kg⁻¹ s⁻²) as a cited constant.
+`PairwiseGravity` (softened, O(n²), one force vector per pair applied ±,
+static particles excluded, ε stored squared, coincident unsoftened pairs
+skipped, `split_first_mut` instead of indexing), the CODATA 2018
+`GRAVITATIONAL_CONSTANT`, `diagnostics::center_of_mass` (returns `None`
+without dynamic mass), and `scenarios::cluster` (rejection-sampled disk,
+no trig, so it's bit-identical across platforms). Invariants over 1000
+steps of a 16-body cluster: momentum (f64 drift at rounding level) and
+center of mass at `P/M`, tolerances ~10x measured; verified to fail when
+the reaction force is wrong.
 
 ## 3. Integrators, orbit scenario, energy (test first, PR)
 
@@ -184,6 +179,18 @@ milestone.
       object.
 - [ ] Manual check against **Done when**.
 
+## 5½. Checked JS (PR, before section 6)
+
+Decision 8: JSDoc types + `tsc --checkJs --noEmit`.
+
+- [ ] `package.json` pinning `typescript` (dev only) and a `tsconfig.json`
+      (`checkJs`, `strict`, `noEmit`, ES modules); dependency-policy entry
+      in `docs/00-scope.md`.
+- [ ] `site/js/engine.d.ts`: the wasm exports and the `env` import, typed.
+- [ ] JSDoc annotations across `site/js/` and `demos/m0-hello/`.
+- [ ] Pre-commit runs `tsc` (fails if `node_modules` is missing, like the
+      Node check); README setup gains `npm ci`.
+
 ## 7. M1 cleanup (PR, if needed)
 
 - [ ] Magic-number pass over new code; `docs/type-invariants.md` triggers
@@ -191,6 +198,20 @@ milestone.
 - [ ] Anything that grew awkward.
 
 ---
+
+## After M1, before M2: TypeScript experiment
+
+Goal: decide whether to move `site/` from JSDoc-checked `.js` to `.ts`
+source (the long-term preference). Time-boxed, on a branch; merge only
+if it wins.
+
+- [ ] Convert a slice (e.g. `site/js/` + one demo) to `.ts`; `tsc` emits
+      `.js` for the browser, run by `cargo xtask site`.
+- [ ] Compare against the JSDoc version: type ergonomics, the edit →
+      reload loop, generated files kept out of git, hook and smoke-test
+      changes, and what the wasm `engine.d.ts` looks like in each.
+- [ ] Record the outcome in `docs/type-invariants.md` (item 8) and adopt
+      or drop it before M2's site work starts.
 
 ## Out of scope for M1
 

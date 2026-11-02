@@ -180,6 +180,15 @@ Expect N-body to be a *demo of fixed-point failure* before it's a success.
 Accelerations, not forces: storing `a = F/m` means static particles
 (`inv_mass = 0`) are skipped naturally, with no division by zero.
 
+**As built (M1.2):** each pair computes one force vector and applies it
+`+F·wᵢ` / `−F·wⱼ`, so forces are equal and opposite by construction
+(momentum drift is at rounding level). Static particles have no defined
+mass: they neither pull nor are pulled. `new(g, ε)` stores ε², so a
+negative ε is harmless; ε = 0 is allowed, and a coincident pair with
+ε = 0 is skipped rather than producing `0/0`. Masses are computed once
+per call (n divisions, not n²). The `i < j` loop walks slices with
+`split_first_mut` (no indexing).
+
 ---
 
 ## Integrators

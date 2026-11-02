@@ -11,7 +11,7 @@ mod rng;
 pub mod scenarios;
 mod world;
 
-pub use force::{Force, UniformGravity};
+pub use force::{Force, PairwiseGravity, UniformGravity};
 pub use integrate::Integrator;
 pub use math::{Scalar, Vec2};
 pub use particles::Particles;

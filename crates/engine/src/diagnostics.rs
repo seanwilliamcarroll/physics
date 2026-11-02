@@ -28,9 +28,27 @@ pub fn kinetic_energy<S: Scalar>(p: &Particles<S>) -> S {
     dynamic(p).fold(S::ZERO, |acc, (v, w)| acc + v.length_sq() / (w + w))
 }
 
+/// Mass-weighted mean position `Σ m x / Σ m` of the dynamic particles, or
+/// `None` if there are none (total mass 0, so the mean is undefined).
+///
+/// Under internal forces alone (e.g. [`PairwiseGravity`](crate::PairwiseGravity))
+/// it moves in a straight line at `momentum / total mass`.
+#[must_use]
+pub fn center_of_mass<S: Scalar>(p: &Particles<S>) -> Option<Vec2<S>> {
+    let (weighted, total) = p
+        .pos()
+        .iter()
+        .zip(p.inv_mass())
+        .filter(|&(_, &w)| w != S::ZERO)
+        .fold((Vec2::ZERO, S::ZERO), |(sum_mx, sum_m), (&x, &w)| {
+            (sum_mx + x / w, sum_m + S::ONE / w)
+        });
+    (total != S::ZERO).then(|| weighted / total)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{kinetic_energy, momentum};
+    use super::{center_of_mass, kinetic_energy, momentum};
     use crate::{Particles, Vec2};
 
     fn two_dynamic_one_static() -> Particles<f64> {
@@ -69,5 +87,22 @@ mod tests {
         let p = Particles::<f32>::new();
         assert_eq!(momentum(&p), Vec2::ZERO);
         assert_eq!(kinetic_energy(&p), 0.0);
+    }
+
+    #[test]
+    fn center_of_mass_is_mass_weighted_and_skips_static() {
+        let mut p = Particles::<f64>::new();
+        p.add(Vec2::new(0.0, 0.0), Vec2::ZERO, 1.0);
+        p.add(Vec2::new(4.0, 2.0), Vec2::ZERO, 3.0); // (0*1 + 4*3)/4 = 3
+        p.add_static(Vec2::new(100.0, 100.0));
+        assert_eq!(center_of_mass(&p), Some(Vec2::new(3.0, 1.5)));
+    }
+
+    #[test]
+    fn center_of_mass_is_none_without_dynamic_particles() {
+        let mut p = Particles::<f32>::new();
+        assert_eq!(center_of_mass(&p), None);
+        p.add_static(Vec2::new(1.0, 1.0));
+        assert_eq!(center_of_mass(&p), None);
     }
 }
