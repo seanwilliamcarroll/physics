@@ -153,7 +153,7 @@ before instantiation in the panic import, `.message` on non-Error throws,
 and an untagged `OPTIONS` union. Verified: swapped boundary arguments
 fail to type-check. Also: a "Web track (ideas)" section in the roadmap.
 
-## ✅ 6. Site: shared infrastructure and the M1 page (done, pending your check)
+## ✅ 6. Site: shared infrastructure and the M1 page (done)
 
 Shared modules: `options.js`, `ring.js`, `plot.js` (`LinePlot`, linear or
 log `|ΔE/E|`), `trail.js`, `controls.js`, with `node --test` unit tests
@@ -162,7 +162,7 @@ in `tests/site/` (pre-push). `site/demos/m1-orbits/`: three panels
 readouts, one energy plot, rate slider (showing `dt`), scalar dropdown,
 plot scale toggle, reset, URL options; gallery link. Smoke: M1 cases in
 both scalars (minimum across panels). Fixed two canvas sizing bugs found
-by a headless probe. **Pending: your manual check against Done when.**
+by a headless probe. **Done when** confirmed in a real browser.
 
 ## 7. M1 cleanup (PR, if needed)
 
