@@ -44,6 +44,25 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
 - **Local exceptions** use `#[expect(lint, reason = "...")]`, not `#[allow]`.
   `expect` fails if the lint stops firing, so stale exceptions don't build up.
 
+## Magic numbers (convention, enforced in review)
+
+Clippy has no magic-number lint (`clippy::magic_numbers` is unknown;
+checked against the pinned toolchain), so this rule is a convention, and the
+PR template (`.github/pull_request_template.md`) asks about it on every PR.
+
+- **Name every non-obvious literal** in library code (Rust and site JS) as a
+  constant whose doc comment says where the value comes from: a paper, a
+  spec, a derivation, or "a choice, because …".
+- **Derive instead of writing the value** when the language can express it:
+  `1.0_f64.to_bits()`, not `0x3ff0_0000_0000_0000`;
+  `u64::BITS - (f64::MANTISSA_DIGITS - 1)`, not `12`.
+- **Cross-language values have one owner plus a checked mirror.** The wasm
+  ABI lives in `crates/web/src/abi.rs`; `site/js/abi.js` mirrors it, and a
+  Rust test fails if they disagree. Colors live once, in CSS custom
+  properties.
+- **Exempt:** `0`, `1`, `2` as in "half" or "pair", array indices, and test
+  inputs (`v(3.0, -4.0)` reads better inline than as a named constant).
+
 ## Perf and numeric lints: on vs off
 
 | Lint | Group | Decision | Why |
