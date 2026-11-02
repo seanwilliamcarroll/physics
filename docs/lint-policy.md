@@ -46,6 +46,10 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
   `must_use_candidate` makes us annotate the function itself (tested:
   without it, `v.dot(w);` compiles silently).
 - **Local exceptions** use `#[expect(lint, reason = "...")]`, not `#[allow]`.
+  The one justified `allow`: `tests/common/mod.rs` has
+  `#![allow(dead_code, reason = ...)]`, because each `tests/*.rs` compiles
+  it separately and uses a different subset, so an `expect` would be
+  unfulfilled in whichever file uses everything.
   `expect` fails if the lint stops firing, so stale exceptions don't build up.
 
 ## Magic numbers (convention, enforced in review)

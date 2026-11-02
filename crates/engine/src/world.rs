@@ -31,6 +31,9 @@ pub struct World<S: Scalar> {
     /// step. Lives here, not in `Particles`: forces borrow the particles
     /// immutably while writing into this buffer.
     acc: Vec<Vec2<S>>,
+    /// Second scratch buffer: velocity Verlet's accelerations at the new
+    /// positions.
+    acc_next: Vec<Vec2<S>>,
 }
 
 impl<S: Scalar> World<S> {
@@ -48,6 +51,7 @@ impl<S: Scalar> World<S> {
             integrator,
             substeps,
             acc: Vec::new(),
+            acc_next: Vec::new(),
         })
     }
 
@@ -69,11 +73,12 @@ impl<S: Scalar> World<S> {
     }
 
     fn substep(&mut self, h: S) {
-        self.acc.clear();
-        self.acc.resize(self.particles.len(), Vec2::ZERO);
-        for force in &self.forces {
-            force.accumulate(&self.particles, &mut self.acc);
-        }
-        self.integrator.substep(&mut self.particles, &self.acc, h);
+        self.integrator.substep(
+            &self.forces,
+            &mut self.particles,
+            &mut self.acc,
+            &mut self.acc_next,
+            h,
+        );
     }
 }
