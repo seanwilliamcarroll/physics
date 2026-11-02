@@ -223,7 +223,7 @@ Golden-hash tests running on both targets give the cross-platform check above.
 ## Browser smoke test
 
 `cargo xtask smoke` (also in pre-push) builds the site and loads the demo
-in headless Chrome, one fresh profile per case (default, f64, 500k). The
+in headless Chrome, one fresh profile per case (default, f64, 500k, panic). The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs
 `SMOKE ok steps=N particle_px=N`.
@@ -238,6 +238,13 @@ Lessons that shaped it:
   alone would pass the latter. The 500k blank-canvas bug produced 0
   particle pixels and a `Failed to serialize op` log; the test checks both.
 - **Fresh profile per run**: a reused one served stale JS from cache.
+- **The panic case** (`?smoke&panic`) calls the shipped
+  `demo_panic_for_test` export and passes only if the page saw
+  `TEST_PANIC_MESSAGE` arrive through the `console_error` import *and*
+  Chrome logged the `engine.wasm panicked at` line. The export ships in
+  every build so the test checks the real binary. Its panic lives in a
+  Rust-ABI helper, because a panic can't unwind out of an `extern "C"` fn
+  (Rust aborts), so only the helper is natively testable.
 
 The JS itself gets a syntax check in pre-commit
 (`node --input-type=module --check`; plain `node --check` passes ES-module

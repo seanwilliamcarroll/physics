@@ -10,26 +10,46 @@ use std::process::{self, Child, Stdio};
 use std::thread;
 use std::time::Duration;
 
-/// One page load to check: a name (for the screenshot) and a URL query.
+/// What a case must show.
+#[derive(Copy, Clone)]
+enum Check {
+    /// Physics stepped and particles were drawn ([`judge`]).
+    Draws,
+    /// A deliberate Rust panic reached the console via the hook ([`judge_panic`]).
+    PanicReported,
+}
+
+/// One page load to check: a name (for the screenshot), a URL query, and
+/// what it must show.
 struct Case {
     name: &'static str,
     query: &'static str,
+    check: Check,
 }
 
-/// Default settings, the other scalar, and the size that once rendered a
-/// blank canvas (one path over Chrome's ~16 MiB draw-command limit).
-const CASES: [Case; 3] = [
+/// Default settings, the other scalar, the size that once rendered a blank
+/// canvas (one path over Chrome's ~16 MiB draw-command limit), and the
+/// panic hook.
+const CASES: [Case; 4] = [
     Case {
         name: "default",
         query: "?smoke",
+        check: Check::Draws,
     },
     Case {
         name: "f64",
         query: "?smoke&scalar=f64&n=1000",
+        check: Check::Draws,
     },
     Case {
         name: "500k",
         query: "?smoke&n=500000",
+        check: Check::Draws,
+    },
+    Case {
+        name: "panic",
+        query: "?smoke&panic",
+        check: Check::PanicReported,
     },
 ];
 
@@ -50,6 +70,10 @@ const SERVER_POLL_ATTEMPTS: u32 = 50;
 /// Chrome's log line when it drops a draw command that's too large.
 const SERIALIZE_FAILURE: &str = "Failed to serialize";
 
+/// Prefix of the console line `site/js/wasm.js` writes for a Rust panic
+/// (`engine.wasm ` + std's "panicked at <file:line:col>:").
+const PANIC_CONSOLE_PREFIX: &str = "engine.wasm panicked at";
+
 /// Where Chrome is usually installed, checked after `$CHROME`.
 const CHROME_PATHS: [&str; 2] = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -69,8 +93,9 @@ pub struct Report {
     pub particle_px: u64,
 }
 
-/// Judges one page load from Chrome's stderr. Pure, so it's unit-tested.
-pub fn judge(stderr: &str) -> Result<Report, String> {
+/// The page's `SMOKE ok ...` fields, after the checks every case shares:
+/// no dropped draw commands, a SMOKE line exists, and it isn't an error.
+fn ok_fields(stderr: &str) -> Result<&str, String> {
     if stderr.contains(SERIALIZE_FAILURE) {
         return Err("Chrome dropped a draw command (\"Failed to serialize op\")".to_owned());
     }
@@ -83,16 +108,33 @@ pub fn judge(stderr: &str) -> Result<Report, String> {
     if let Some(err) = msg.strip_prefix("error ") {
         return Err(format!("page error: {err}"));
     }
-    let fields = msg
-        .strip_prefix("ok ")
-        .ok_or_else(|| format!("unrecognized report `{msg}`"))?;
+    msg.strip_prefix("ok ")
+        .ok_or_else(|| format!("unrecognized report `{msg}`"))
+}
+
+/// Judges a panic-hook load: the page saw the panic text arrive through
+/// the import (`panic_logged=1`), and Chrome's log shows the console line.
+pub fn judge_panic(stderr: &str) -> Result<String, String> {
+    let fields = ok_fields(stderr)?;
+    if fields.split_whitespace().all(|kv| kv != "panic_logged=1") {
+        return Err(format!("unexpected panic report `{fields}`"));
+    }
+    if !stderr.contains(PANIC_CONSOLE_PREFIX) {
+        return Err(format!("no `{PANIC_CONSOLE_PREFIX}` console line"));
+    }
+    Ok("panic message reached the console".to_owned())
+}
+
+/// Judges a drawing load from Chrome's stderr. Pure, so it's unit-tested.
+pub fn judge(stderr: &str) -> Result<Report, String> {
+    let fields = ok_fields(stderr)?;
     let get = |key: &str| -> Result<u64, String> {
         fields
             .split_whitespace()
             .find_map(|kv| kv.strip_prefix(key)?.strip_prefix('='))
-            .ok_or_else(|| format!("report `{msg}` has no `{key}`"))?
+            .ok_or_else(|| format!("report `{fields}` has no `{key}`"))?
             .parse()
-            .map_err(|e| format!("report `{msg}`: bad `{key}`: {e}"))
+            .map_err(|e| format!("report `{fields}`: bad `{key}`: {e}"))
     };
     let report = Report {
         steps: get("steps")?,
@@ -120,11 +162,14 @@ pub fn smoke(root: &Path) -> Result<(), String> {
     for case in &CASES {
         let url = format!("http://127.0.0.1:{}/{DEMO_PATH}{}", server.port, case.query);
         let shot = shots.join(format!("{}.png", case.name));
-        match run_chrome(&chrome, &url, &shot, case.name).and_then(|stderr| judge(&stderr)) {
-            Ok(r) => println!(
-                "smoke {:<8} ok   steps={} particle_px={}",
-                case.name, r.steps, r.particle_px
-            ),
+        let verdict =
+            run_chrome(&chrome, &url, &shot, case.name).and_then(|stderr| match case.check {
+                Check::Draws => judge(&stderr)
+                    .map(|r| format!("steps={} particle_px={}", r.steps, r.particle_px)),
+                Check::PanicReported => judge_panic(&stderr),
+            });
+        match verdict {
+            Ok(summary) => println!("smoke {:<8} ok   {summary}", case.name),
             Err(e) => {
                 println!("smoke {:<8} FAIL {e}", case.name);
                 failed.push(case.name);
@@ -232,7 +277,7 @@ impl Drop for Server {
 
 #[cfg(test)]
 mod tests {
-    use super::{Report, judge};
+    use super::{Report, judge, judge_panic};
 
     /// Real line shapes from Chrome's `--enable-logging=stderr` output.
     fn console(msg: &str) -> String {
@@ -281,5 +326,38 @@ mod tests {
     fn rejects_malformed_reports() {
         assert!(judge(&console("SMOKE ok steps=many particle_px=1")).is_err());
         assert!(judge(&console("SMOKE ok steps=30")).is_err());
+    }
+
+    const PANIC_CONSOLE: &str =
+        "engine.wasm panicked at crates/web/src/exports.rs:99:5:\\ndeliberate test panic";
+
+    #[test]
+    fn panic_case_needs_both_the_page_report_and_the_console_line() {
+        let good = format!(
+            "{}{}",
+            console(PANIC_CONSOLE),
+            console("SMOKE ok panic_logged=1")
+        );
+        assert!(judge_panic(&good).is_ok(), "{:?}", judge_panic(&good));
+
+        let no_console = console("SMOKE ok panic_logged=1");
+        assert!(judge_panic(&no_console).unwrap_err().contains("console"));
+
+        let page_error = format!(
+            "{}{}",
+            console(PANIC_CONSOLE),
+            console("SMOKE error hook did not report")
+        );
+        assert!(
+            judge_panic(&page_error)
+                .unwrap_err()
+                .contains("hook did not report")
+        );
+
+        assert!(
+            judge_panic(&console(PANIC_CONSOLE))
+                .unwrap_err()
+                .contains("no SMOKE line")
+        );
     }
 }

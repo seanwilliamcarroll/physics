@@ -33,7 +33,11 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
 - **`xtask`** is a CLI: `#![allow(clippy::print_stdout, clippy::print_stderr)]`
   at the top of `main.rs`. Cargo can't mix `workspace = true` with per-crate
   overrides, so the override goes in source.
-- **`web`:** `#[expect(unsafe_code, reason = "...")]` on the exports module only.
+- **`web`:** `#[expect(unsafe_code, reason = "...")]` on exactly two modules,
+  the FFI boundary in each direction: `exports` (JS calls in) and `imports`
+  (Rust calls out; wasm-only, so its expectation is
+  `cfg_attr(target_arch = "wasm32", ...)`). Wasm-only code is linted by a
+  second clippy run with `--target wasm32-unknown-unknown` in pre-commit.
 - **`#[must_use]` on value types** (`Vec2`, later `Fixed`, `ParticleId`).
   Discarding one is then a rustc warning at the call site (`v.perp();`), and
   clippy stops asking for `#[must_use]` on each method that returns one.

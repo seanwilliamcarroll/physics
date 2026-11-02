@@ -111,11 +111,27 @@ adopt it in that milestone's PR and move the row up.
    (samples at 44.1/48 kHz, physics seconds, frame milliseconds). The
    `FixedStep` rate-vs-`dt` change is a small instance of the same idea.
 
-8. **Checked JS.** JSDoc types checked by `tsc --checkJs` (or moving the
-   site to TypeScript). *Adopt when* the shared site JS grows past a few
-   hundred lines (M1's plots and controls), or a type-shaped JS bug costs
-   real time. Needs an npm package (`typescript`), so it needs a
-   dependency-policy entry, even as a dev tool.
+8. **Checked JS.** *Trigger met at M1.1:* the site JS is 465 lines in 6
+   files, and M1's plots, controls, and three-panel page roughly double
+   it. Options, cheapest first:
+   - **JSDoc types + `tsc --checkJs --noEmit` (recommended).** Files stay
+     plain `.js`, served as-is, so there is still no build step and no
+     bundler; `tsc` only *checks*, in pre-commit. A hand-written
+     `engine.d.ts` types the wasm exports (pointers, codes, return values),
+     which is where untyped JS is riskiest: every export takes and returns
+     bare numbers.
+   - **TypeScript source (`.ts`).** Nicer syntax for types, but browsers
+     can't run it, so it needs a compile step (`tsc` emitting into
+     `site/`, run by `cargo xtask site`). That loses "edit, reload", adds
+     generated files to keep out of git, and buys little over JSDoc at
+     this size.
+   - **Neither.** Keep `node --check` (syntax only) and rely on the smoke
+     test to catch wiring mistakes at runtime.
+
+   Either typed option needs `typescript` (an npm dev tool, Microsoft-
+   maintained, very widely used: meets the dependency bar) pinned in a
+   `package.json`, which is a dependency-policy entry. Decision tracked in
+   `TASKS.md` (before M1 section 6).
 
 9. **Typestate builders** (a world that's "being configured" vs "running"
    as different types). *Adopt when* there is configuration that is invalid
