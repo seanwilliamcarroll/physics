@@ -5,7 +5,7 @@
 //! principle. Mass is recovered as `1 / inv_mass`, a division per particle;
 //! fine for once-per-frame readouts, which is what these are for.
 
-use crate::{Particles, Scalar, Vec2};
+use crate::{PairwiseGravity, Particles, Scalar, Vec2};
 
 /// Iterates `(velocity, inv_mass)` over dynamic particles only.
 fn dynamic<S: Scalar>(p: &Particles<S>) -> impl Iterator<Item = (Vec2<S>, S)> + '_ {
@@ -46,9 +46,49 @@ pub fn center_of_mass<S: Scalar>(p: &Particles<S>) -> Option<Vec2<S>> {
     (total != S::ZERO).then(|| weighted / total)
 }
 
+/// Gravitational potential energy `Σ_{i<j} −G mᵢ mⱼ / √(|r|² + ε²)` of the
+/// dynamic particles under `g`.
+///
+/// The softened (Plummer) potential is the one whose gradient *is*
+/// [`PairwiseGravity`]'s softened force, so `kinetic_energy + this` is
+/// exactly conserved by the true dynamics. A mismatched potential would
+/// make an energy plot measure the mismatch instead of the integrator.
+/// Like the force: static particles are excluded, and a coincident pair
+/// with ε = 0 is skipped (its potential is −∞).
+#[must_use]
+pub fn gravity_potential<S: Scalar>(p: &Particles<S>, g: &PairwiseGravity<S>) -> S {
+    let bodies: Vec<(Vec2<S>, S)> = p
+        .pos()
+        .iter()
+        .zip(p.inv_mass())
+        .filter(|&(_, &w)| w != S::ZERO)
+        .map(|(&x, &w)| (x, S::ONE / w))
+        .collect();
+    let mut total = S::ZERO;
+    let mut rest = bodies.as_slice();
+    while let Some((&(x_i, m_i), tail)) = rest.split_first() {
+        for &(x_j, m_j) in tail {
+            let d_sq = (x_j - x_i).length_sq() + g.softening_sq();
+            if d_sq != S::ZERO {
+                total -= g.g_const() * m_i * m_j / d_sq.sqrt();
+            }
+        }
+        rest = tail;
+    }
+    total
+}
+
+/// [`kinetic_energy`] + [`gravity_potential`]: conserved by the exact
+/// dynamics, so its drift measures an integrator's error.
+#[must_use]
+pub fn total_energy<S: Scalar>(p: &Particles<S>, g: &PairwiseGravity<S>) -> S {
+    kinetic_energy(p) + gravity_potential(p, g)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{center_of_mass, kinetic_energy, momentum};
+    use super::{center_of_mass, gravity_potential, kinetic_energy, momentum, total_energy};
+    use crate::PairwiseGravity;
     use crate::{Particles, Vec2};
 
     fn two_dynamic_one_static() -> Particles<f64> {
@@ -104,5 +144,58 @@ mod tests {
         assert_eq!(center_of_mass(&p), None);
         p.add_static(Vec2::new(1.0, 1.0));
         assert_eq!(center_of_mass(&p), None);
+    }
+
+    const G: f64 = 6.674_30e-11;
+
+    #[test]
+    fn potential_of_a_pair_is_the_softened_plummer_form() {
+        let (m1, m2, d, eps) = (1.0e10, 3.0e10, 2.0, 0.1);
+        let mut p = Particles::new();
+        p.add(Vec2::ZERO, Vec2::ZERO, m1);
+        p.add(Vec2::new(d, 0.0), Vec2::ZERO, m2);
+        let u = gravity_potential(&p, &PairwiseGravity::new(G, eps));
+        let expect = -G * m1 * m2 / (d * d + eps * eps).sqrt();
+        assert!(
+            (u - expect).abs() <= 1e-12 * expect.abs(),
+            "{u} vs {expect}"
+        );
+    }
+
+    #[test]
+    fn potential_sums_every_pair_once() {
+        // Three unit-ish bodies at the corners of a 3-4-5 triangle,
+        // unsoftened: U = -G m² (1/3 + 1/4 + 1/5).
+        let m = 1.0e10;
+        let mut p = Particles::new();
+        for (x, y) in [(0.0, 0.0), (3.0, 0.0), (0.0, 4.0)] {
+            p.add(Vec2::new(x, y), Vec2::ZERO, m);
+        }
+        let u = gravity_potential(&p, &PairwiseGravity::new(G, 0.0));
+        let expect = -G * m * m * (1.0 / 3.0 + 1.0 / 4.0 + 1.0 / 5.0);
+        assert!(
+            (u - expect).abs() <= 1e-12 * expect.abs(),
+            "{u} vs {expect}"
+        );
+    }
+
+    #[test]
+    fn potential_skips_static_and_coincident_unsoftened_pairs() {
+        let g = PairwiseGravity::new(G, 0.0);
+        let mut p = Particles::new();
+        p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10);
+        p.add_static(Vec2::new(1.0, 0.0));
+        assert_eq!(gravity_potential(&p, &g), 0.0);
+        p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10); // coincident with body 0
+        assert!(gravity_potential(&p, &g).is_finite());
+        assert_eq!(gravity_potential(&p, &g), 0.0);
+    }
+
+    #[test]
+    fn total_energy_is_kinetic_plus_potential() {
+        let g = PairwiseGravity::new(G, 0.1);
+        let p = two_dynamic_one_static();
+        let sum = kinetic_energy(&p) + gravity_potential(&p, &g);
+        assert_eq!(total_energy(&p, &g).to_bits(), sum.to_bits());
     }
 }
