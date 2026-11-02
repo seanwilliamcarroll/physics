@@ -167,6 +167,20 @@ correctly rounded IEEE everywhere; Rust does not fuse multiply-adds
 implicitly). Treat a mismatch as an interesting bug, not a test failure,
 until `Fixed` exists, which **must** match everywhere.
 
+**As built (M1.4)** (`tests/determinism.rs`): five reference runs
+(fountain with respawn, cluster, orbit × 3 integrators) × 2 scalars. The
+hash covers position, velocity, and inverse mass as `to_f64()` bits (exact
+for f32). On mismatch the test prints paste-ready replacement lines.
+Keeping that guarantee meant scenarios avoid libm functions whose last bits
+vary by platform: rejection sampling instead of `sin`/`cos` in `cluster`,
+`q·√q` instead of `powf(1.5)` in `orbit`. Native only so far; the
+`wasm32-wasip1` comparison needs `wasmtime` (`cargo xtask test-wasm`,
+planned).
+
+A useful property, seen when checking the goldens: a change smaller than
+f32's resolution (1 nm on a 1 cm softening) changes only the f64 hashes,
+because the f32 runs are genuinely identical.
+
 ## Property tests (proptest)
 
 Strategies generate random worlds:
