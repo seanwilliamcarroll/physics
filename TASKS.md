@@ -153,28 +153,16 @@ before instantiation in the panic import, `.message` on non-Error throws,
 and an untagged `OPTIONS` union. Verified: swapped boundary arguments
 fail to type-check. Also: a "Web track (ideas)" section in the roadmap.
 
-## 6. Site: shared infrastructure and the M1 page (PR)
+## ✅ 6. Site: shared infrastructure and the M1 page (done, pending your check)
 
-The roadmap's "shared demo infrastructure", reused by every later
-milestone.
-
-- [ ] `site/js/plot.js`: ring buffer of samples, multiple series, polyline,
-      autoscaled y-axis, zero line.
-- [ ] `site/js/controls.js`: slider and dropdown helpers wired to
-      `demo_set_*`, with the current value displayed.
-- [ ] Trails (decision 6): fading position history per panel.
-- [ ] `site/demos/m1-orbits/`: three panels (explicit Euler, symplectic
-      Euler, velocity Verlet), one energy-error plot with three lines, a
-      rate slider shared by all three (showing `dt`), a scalar dropdown,
-      reset.
-- [ ] Smoke test: `?smoke` support on the new page (pixels across all
-      three canvases), new cases in `cargo xtask smoke`.
-- [ ] JS unit tests with `node --test` (built in, no dependency) for the
-      new pure logic: `plot.js`'s ring buffer, option parsing, and the
-      existing `RateMeter`/`Smoothed`; run in pre-push (roadmap web track).
-- [ ] Gallery link; options table like M0's, generated from one `OPTIONS`
-      object.
-- [ ] Manual check against **Done when**.
+Shared modules: `options.js`, `ring.js`, `plot.js` (`LinePlot`, linear or
+log `|ΔE/E|`), `trail.js`, `controls.js`, with `node --test` unit tests
+in `tests/site/` (pre-push). `site/demos/m1-orbits/`: three panels
+(explicit Euler, symplectic Euler, velocity Verlet) with trails and ΔE/E
+readouts, one energy plot, rate slider (showing `dt`), scalar dropdown,
+plot scale toggle, reset, URL options; gallery link. Smoke: M1 cases in
+both scalars (minimum across panels). Fixed two canvas sizing bugs found
+by a headless probe. **Pending: your manual check against Done when.**
 
 ## 7. M1 cleanup (PR, if needed)
 

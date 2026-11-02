@@ -16,8 +16,13 @@ export function setupCanvas(canvas) {
   }
   const resize = () => {
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(canvas.clientWidth * dpr);
-    canvas.height = Math.round(canvas.clientHeight * dpr);
+    const width = Math.round(canvas.clientWidth * dpr);
+    const height = Math.round(canvas.clientHeight * dpr);
+    // Assigning width or height clears the canvas, even to the same value,
+    // and ResizeObserver calls back on layout changes that don't change
+    // this canvas's size. Only assign on a real change.
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
   };
   new ResizeObserver(resize).observe(canvas);
   resize();
@@ -72,7 +77,7 @@ export class View {
 /** Device pixels for a length given in CSS pixels.
  *  @param {number} cssPx
  *  @returns {number} */
-function devicePx(cssPx) {
+export function devicePx(cssPx) {
   return cssPx * (window.devicePixelRatio || 1);
 }
 

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M1 · Orbits and integrators</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Orbits and integrators</h1>
+    <p class="muted">
+      The same star–planet orbit, three ways of stepping time forward. Explicit
+      Euler gains energy every step and spirals out; symplectic Euler's error
+      stays bounded; velocity Verlet's is thousands of times smaller. Lower the
+      rate (bigger <code>dt</code>) and watch them diverge.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="panels" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Energy error</h2>
+    <p class="muted">
+      Relative error <code>|ΔE / E₀|</code> of each orbit's total energy, over
+      simulated time. 0 would be perfect; the log scale shows all three at once.
+    </p>
+    <div class="plot"><canvas id="plot"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
