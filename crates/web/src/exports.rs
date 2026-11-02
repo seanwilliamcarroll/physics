@@ -14,6 +14,9 @@ use crate::demo::{Demo, DemoKind, ScalarKind};
 /// Free with [`demo_free`].
 #[unsafe(no_mangle)]
 pub extern "C" fn demo_new(kind: u32, scalar: u32, n: u32, seed: u32) -> *mut Demo {
+    // Every page creates a demo before anything else, so this is the one
+    // entry point that needs it. Idempotent.
+    crate::imports::install_panic_hook();
     let (Some(kind), Some(scalar), Ok(n)) = (
         DemoKind::from_code(kind),
         ScalarKind::from_code(scalar),
