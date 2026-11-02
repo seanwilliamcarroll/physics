@@ -14,19 +14,21 @@ Requirements:
 
 - `rustup`. The toolchain version, components, and wasm targets are pinned
   in `rust-toolchain.toml` and installed automatically on first use.
-- Node.js (pre-commit syntax-checks the site's JS).
+- Node.js and npm: pre-commit syntax- and type-checks the site's JS.
+  Install the pinned TypeScript once per clone with `npm ci`.
 - Python 3 (local dev server) and Google Chrome or Chromium (the pre-push
   browser smoke test; set `CHROME` to its path if it isn't found).
 
-Enable the git hooks once per clone:
+Once per clone:
 
 ```sh
 cargo xtask install-hooks     # = git config core.hooksPath .githooks
+npm ci                        # pinned TypeScript, for the type check
 ```
 
 | Hook | Runs |
 |---|---|
-| `pre-commit` | JS syntax check, `cargo fmt --check`, `cargo clippy -D warnings` |
+| `pre-commit` | JS syntax and type checks (`tsc`), `cargo fmt --check`, `cargo clippy -D warnings` (native and wasm32) |
 | `pre-push` | `cargo test`, `cargo check --target wasm32-unknown-unknown`, `cargo xtask smoke` |
 
 The hooks check the working tree, not just what's staged.
