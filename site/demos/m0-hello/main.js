@@ -7,6 +7,9 @@ import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../
 import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.js";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.js";
 import { byId } from "../../js/dom.js";
+import { readInt, optionsTableHtml } from "../../js/options.js";
+/** @typedef {import("../../js/options.js").ChoiceOption} ChoiceOption */
+/** @typedef {import("../../js/options.js").IntOption} IntOption */
 
 /** Scalar names on the URL → abi.js codes. The source of truth for which
  *  scalars exist. */
@@ -23,12 +26,6 @@ function isScalar(s) {
 const POINT_SIZE_PX = 3;
 const GROUND_WIDTH_PX = 1;
 
-/** An option chosen from a list, or an integer in a range. `kind` tells
- *  them apart (a discriminated union), so code that reads `min` or `values`
- *  has checked which one it holds.
- *  @typedef {{ kind: "choice", values: string[], default: string, help: string }} ChoiceOption
- *  @typedef {{ kind: "int", min: number, max: number, default: number, help: string }} IntOption */
-
 /** Every URL option, its legal values, and its default. The single source of
  *  truth: parsing below and the options table on the page both read it.
  *  @type {{ scalar: ChoiceOption, n: IntOption, seed: IntOption, fps: IntOption }} */
@@ -39,7 +36,8 @@ const OPTIONS = {
   fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
 };
 
-/** Preset links shown under the table: [label, query string]. */
+/** Preset links shown under the table: [label, query string].
+ *  @type {[string, string][]} */
 const PRESETS = [
   ["default", ""],
   ["f64", "?scalar=f64"],
@@ -62,11 +60,11 @@ const params = new URLSearchParams(location.search);
 const scalarParam = params.get("scalar");
 /** @type {ScalarName} */
 const scalar = isScalar(scalarParam) ? scalarParam : "f32";
-const n = intOption("n");
-const seed = intOption("seed");
-const maxFps = intOption("fps");
+const n = readInt(params, "n", OPTIONS.n);
+const seed = readInt(params, "seed", OPTIONS.seed);
+const maxFps = readInt(params, "fps", OPTIONS.fps);
 
-renderOptionsTable(byId("options", HTMLElement));
+byId("options", HTMLElement).innerHTML = optionsTableHtml(OPTIONS, PRESETS);
 const hud = byId("hud", HTMLElement);
 const canvas = byId("view", HTMLCanvasElement);
 const ctx = setupCanvas(canvas);
@@ -121,35 +119,4 @@ try {
   hud.textContent = `error: ${errorText(err)}`;
   smokeError(err);
   throw err;
-}
-
-/** Reads an integer option, clamped to its legal range (default if absent).
- *  @param {"n" | "seed" | "fps"} name
- *  @returns {number} */
-function intOption(name) {
-  const { min, max, default: fallback } = OPTIONS[name];
-  const v = Number.parseInt(params.get(name) ?? "", 10);
-  return Number.isFinite(v) ? Math.min(Math.max(v, min), max) : fallback;
-}
-
-/** Fills the options table and preset links from OPTIONS and PRESETS.
- *  @param {HTMLElement} section */
-function renderOptionsTable(section) {
-  const rows = Object.entries(OPTIONS).map(([name, o]) => {
-    const legal = o.kind === "choice"
-      ? o.values.join(" | ")
-      : `${o.min.toLocaleString()} – ${o.max.toLocaleString()}`;
-    const dflt = o.kind === "choice" || Number.isFinite(o.default) ? o.default.toLocaleString() : "uncapped";
-    return `<tr><td><code>${name}</code></td><td>${legal}</td><td>${dflt}</td><td>${o.help}</td></tr>`;
-  });
-  const links = PRESETS.map(([label, q]) => `<a href="./${q}">${label}</a>`).join(" · ");
-  section.innerHTML = `
-    <h2>Options</h2>
-    <p class="muted">Add to the URL, e.g. <code>?scalar=f64&amp;n=100000</code>.
-      Out-of-range numbers are clamped to the nearest legal value.</p>
-    <table>
-      <thead><tr><th>option</th><th>legal values</th><th>default</th><th>effect</th></tr></thead>
-      <tbody>${rows.join("")}</tbody>
-    </table>
-    <p>Try: ${links}</p>`;
 }

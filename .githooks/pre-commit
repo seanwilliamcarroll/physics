@@ -10,12 +10,12 @@ cd "$(git rev-parse --show-toplevel)"
 # Files go through stdin with --input-type=module: `node --check file.js`
 # silently passes ES-module syntax errors in .js files (Node 22 parses as
 # CommonJS first, then gives up without checking as a module).
-echo "pre-commit: node --check (site JS, as ES modules)"
+echo "pre-commit: node --check (site JS and its tests, as ES modules)"
 if ! command -v node >/dev/null 2>&1; then
   echo "pre-commit: node not found; install Node.js (see README)" >&2
   exit 1
 fi
-find site -name '*.js' -not -path 'site/pkg/*' | while IFS= read -r f; do
+find site tests/site -name '*.js' -not -path 'site/pkg/*' | while IFS= read -r f; do
   if ! node --input-type=module --check < "$f"; then
     echo "pre-commit: JS syntax error in $f" >&2
     exit 1

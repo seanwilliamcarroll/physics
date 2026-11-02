@@ -6,6 +6,11 @@ cd "$(git rev-parse --show-toplevel)"
 echo "pre-push: cargo test"
 cargo test --workspace --quiet
 
+# Site JS unit tests (pure modules only; node's built-in runner, no deps).
+# A glob, not a directory: node --test treats a directory as a module path.
+echo "pre-push: node --test (site JS)"
+node --test 'tests/site/**/*.test.js'
+
 # Every library crate must compile for wasm, not just `web` (xtask is a
 # host-only CLI). `check` skips codegen, so this is fast; the release .wasm
 # is `cargo xtask site`'s job.
