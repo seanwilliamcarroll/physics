@@ -17,6 +17,11 @@ pub const INTEGRATOR_VELOCITY_VERLET: u32 = 2;
 pub const SCALAR_F32: u32 = 0;
 pub const SCALAR_F64: u32 = 1;
 
+/// Physics steps per second a new demo starts with, and the page's
+/// default for its rate control: 60 Hz, one step per frame on the most
+/// common display rate.
+pub const DEFAULT_RATE_HZ: u32 = 60;
+
 /// Floats per particle in the positions buffer: `[x, y]`.
 pub const COORDS_PER_PARTICLE: usize = 2;
 
@@ -28,7 +33,7 @@ pub const TEST_PANIC_MESSAGE: &str = "deliberate test panic";
 #[cfg(test)]
 mod tests {
     use super::{
-        COORDS_PER_PARTICLE, DEMO_FOUNTAIN, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER,
+        COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_FOUNTAIN, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER,
         INTEGRATOR_SYMPLECTIC_EULER, INTEGRATOR_VELOCITY_VERLET, SCALAR_F32, SCALAR_F64,
         TEST_PANIC_MESSAGE,
     };
@@ -55,6 +60,7 @@ mod tests {
             ("SCALAR_F32", u64::from(SCALAR_F32)),
             ("SCALAR_F64", u64::from(SCALAR_F64)),
             ("COORDS_PER_PARTICLE", COORDS_PER_PARTICLE as u64),
+            ("DEFAULT_RATE_HZ", u64::from(DEFAULT_RATE_HZ)),
         ];
         for (name, value) in expected {
             let line = format!("export const {name} = {value};");

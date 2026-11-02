@@ -3,10 +3,10 @@
 // integrator at the same rate, plus their energy errors on one plot.
 
 import { loadEngine, positionsView } from "../../js/wasm.js";
-import { runLoop, RateMeter } from "../../js/loop.js";
+import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.js";
 import { setupCanvas, View, clear, drawPoints, cssColor } from "../../js/canvas.js";
 import {
-  COORDS_PER_PARTICLE, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
+  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
   INTEGRATOR_VELOCITY_VERLET, SCALAR_F32, SCALAR_F64,
 } from "../../js/abi.js";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.js";
@@ -38,7 +38,7 @@ const PANELS = [
 /** @type {{ scalar: ChoiceOption, rate: IntOption, scale: ChoiceOption, fps: IntOption }} */
 const OPTIONS = {
   scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f64", help: "engine number type (f32 shows Verlet hitting f32's rounding floor)" },
-  rate: { kind: "int", min: 1, max: 240, default: 60, help: "physics steps per second; dt = 1 / rate" },
+  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate" },
   scale: { kind: "choice", values: ["log", "linear"], default: "log", help: "energy plot's y axis" },
   fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
 };
@@ -172,7 +172,7 @@ try {
     min: OPTIONS.rate.min,
     max: OPTIONS.rate.max,
     value: state.rate,
-    format: (hz) => `${hz} Hz · dt ${(1000 / hz).toFixed(1)} ms`,
+    format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
     onInput: (hz) => {
       state.rate = hz;
       for (const p of panels) engine.demo_set_rate(handle(p), hz);
