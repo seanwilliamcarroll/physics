@@ -36,7 +36,7 @@ a README. Public repo created with `main` protected. Verified: hooks reject fmt 
 violations, and a direct push to `main` is rejected.
 
 Follow-ups: choose a license (the repo currently has none, which means "all
-rights reserved"); PR 4 adds `--exclude xtask` to the pre-push wasm check.
+rights reserved").
 
 ---
 
@@ -71,14 +71,14 @@ with `# Safety` contracts; null handles are harmless. The engine's
 `.wasm`: 28,593 B (9,998 B gzip), zero imports, recorded in `docs/03`;
 smoke-tested in Node.
 
-## 4. `xtask` (PR)
+## ✅ 4. `xtask` (done)
 
-- [ ] Add `"xtask"` to workspace `members`; add `--exclude xtask` to the
-      pre-push wasm check (a host-only CLI doesn't need to build for wasm)
-- [ ] `cargo xtask site`: release build of `web` for wasm32, then copy it to
-      `site/pkg/engine.wasm`
-- [ ] `cargo xtask install-hooks`: set `core.hooksPath`
-- [ ] `.cargo/config.toml` alias: `xtask = "run -p xtask --"`
+Std-only build helper, run as `cargo xtask <cmd>` via the alias in
+`.cargo/config.toml`: `site` (release wasm build → `site/pkg/engine.wasm`,
+using the same pinned cargo) and `install-hooks` (`core.hooksPath`). Paths
+anchor at the workspace root, so it runs from any directory; argument
+parsing is unit-tested. Pre-push wasm check now excludes `xtask`; README
+documents both commands.
 
 ## 5. Site: `site/demos/m0-hello` (PR)
 
