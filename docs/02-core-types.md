@@ -208,6 +208,14 @@ Planned side-by-side: one orbit, three integrators. Explicit Euler spirals
 outward, symplectic Euler stays bounded with small wobble, Verlet is tighter.
 Plot total energy over time.
 
+**As built (M1.3):** `Integrator::substep` takes the forces and two
+`World`-owned scratch buffers; velocity Verlet evaluates forces a second
+time into the second buffer (no cached acceleration, so teleports like
+the fountain's respawn can't leave it stale). `Integrator::ALL` drives
+tests and demos. Measured on the M1 orbit (ωh = 0.035): symplectic
+Euler's max |ΔE/E| ≈ (ωh)², velocity Verlet's ≈ (ωh)⁴/4, and explicit
+Euler gains energy every orbit and escapes. Details in `04-testing.md`.
+
 ---
 
 ## `World<S>`

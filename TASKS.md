@@ -109,29 +109,18 @@ steps of a 16-body cluster: momentum (f64 drift at rounding level) and
 center of mass at `P/M`, tolerances ~10x measured; verified to fail when
 the reaction force is wrong.
 
-## 3. Integrators, orbit scenario, energy (test first, PR)
+## ✅ 3. Integrators, orbit scenario, energy (done)
 
-`docs/04-testing.md` step 4: orbit tests and the explicit Euler known
-failure, then the integrators.
-
-- [ ] `scenarios::orbit(...)`: star + planet on a circular orbit, with the
-      circular speed computed for the *softened* force (so it really is
-      circular). Constants named and derived (decision 1).
-- [ ] `diagnostics::gravity_potential(p, &PairwiseGravity)` (Plummer:
-      `−G mᵢ mⱼ / √(r² + ε²)`, consistent with the softened force) and
-      `total_energy`.
-- [ ] Tests first:
-  - symplectic Euler: relative energy error bounded over 100 orbits and
-    **doesn't trend** (first vs last 10% envelope); radius within a band
-  - velocity Verlet: same, with a tighter bound than symplectic Euler
-  - known failure `explicit_euler_gains_energy_on_orbit`: energy rises
-    monotonically when sampled per orbit; radius grows
-  - known failure: symplectic Euler at a coarse `dt` precesses but stays
-    bounded
-- [ ] `Integrator::ExplicitEuler` and `Integrator::VelocityVerlet`
-      (decision 2). `World` asks the integrator whether it needs a second
-      force pass.
-- [ ] Update `docs/02` (integrator section) with what was built.
+`ExplicitEuler` and `VelocityVerlet` (second force pass into a second
+scratch buffer, no cache), `Integrator::ALL`; free fall checks each
+integrator's exact closed form (`c = +1 / −1 / 0`). Plummer
+`gravity_potential` (consistent with the softened force) and
+`total_energy`. `scenarios::orbit(integrator, speed_ratio)`: mass from
+Kepler's third law (const), circular speed for the softened force, no
+`powf`. Orbit tests bound energy by measured error laws, (ωh)² and
+(ωh)⁴/4, plus an f32 rounding floor; known failures: explicit Euler
+escapes; coarse-dt symplectic Euler precesses (LRL vector) but stays
+bounded. Verified tests fail if symplectic Euler's step order is swapped.
 
 ## 4. Determinism and golden hashes (PR)
 

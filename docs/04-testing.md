@@ -114,6 +114,24 @@ tolerance or the physics is wrong, and record why in the test.
 "Does not trend": compare the energy-error envelope in the first and last
 10% of the run. A symplectic method oscillates; a bad one drifts.
 
+**Measured (M1.3)**, circular orbit, dt = 1/60 s, 100 orbits, ωh = 0.0349:
+
+| Integrator | max \|ΔE/E\| (f64) | Error law | f32 |
+|---|---|---|---|
+| Symplectic Euler | 1.219e-3 | (ωh)² = 1.218e-3 | same |
+| Velocity Verlet | 3.704e-7 | (ωh)⁴/4 = 3.70e-7 | 9.7e-6: rounding-limited |
+| Explicit Euler | 0.81, rising every orbit | (escapes) | same |
+
+The tests bound each integrator by 1.5x its law plus a per-scalar
+rounding floor (`Tol::ENERGY_FLOOR`), rather than by a measured constant.
+In f32, rounding noise exceeds Verlet's truncation error and random-walks
+upward, so f32 can't resolve Verlet's accuracy, and without the floor the
+"does not trend" check would blame Verlet for f32's limits.
+
+Precession is measured with the Laplace–Runge–Lenz vector on an eccentric
+orbit (launch at 0.8x circular speed): over 3 orbits, symplectic Euler
+turns 0.044 rad at dt = 1/60 s and 1.22 rad at 1/10 s.
+
 ## Known-failure catalog
 
 These guarantee the demos remain demonstrations.
