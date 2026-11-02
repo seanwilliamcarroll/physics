@@ -212,9 +212,36 @@ Golden-hash tests running on both targets give the cross-platform check above.
 
 ## The wasm shell
 
-- `Demo::advance` (accumulator logic) is plain Rust; it's unit-tested natively:
-  clamping, step counts for odd elapsed times, and no drift over many frames.
-- The `extern "C"` wrappers are one line each; covered by a manual browser smoke test.
+- The accumulator (`FixedStep`) is plain Rust, unit-tested natively against
+  its invariant: `steps * dt + leftover == elapsed`, `0 <= leftover < dt`,
+  plus clamping and bad (negative/NaN) frame times.
+- The `extern "C"` exports have a native round-trip test (create, advance,
+  read positions, free; null handles).
+- **ABI mirror:** `crates/web/src/abi.rs` owns the `demo_new` codes and
+  buffer layout; a test reads `site/js/abi.js` and fails on any mismatch.
+
+## Browser smoke test
+
+`cargo xtask smoke` (also in pre-push) builds the site and loads the demo
+in headless Chrome, one fresh profile per case (default, f64, 500k). The
+page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
+synchronously, draws once, counts particle-colored pixels, and logs
+`SMOKE ok steps=N particle_px=N`.
+
+Lessons that shaped it:
+
+- **Headless rAF pacing is unreliable** (a few frames, then stalls; slower
+  with more particles), so smoke mode doesn't use the rAF loop.
+- **Console levels and uncaught errors aren't distinguishable** in Chrome's
+  stderr, so the page reports a positive result line; a missing line fails.
+- **Count particle pixels, not "non-background" pixels**: the ground line
+  alone would pass the latter. The 500k blank-canvas bug produced 0
+  particle pixels and a `Failed to serialize op` log; the test checks both.
+- **Fresh profile per run**: a reused one served stale JS from cache.
+
+The JS itself gets a syntax check in pre-commit
+(`node --input-type=module --check`; plain `node --check` passes ES-module
+syntax errors in `.js` files).
 
 ## Phase 1 test-first order
 
