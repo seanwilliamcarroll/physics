@@ -31,6 +31,11 @@ graph TD
   A2 --> A3[A3 Piano voice]
   A1 --> A4[A4 FD drum]
   A4 --> A5[A5 Nonlinear drum & mesh]
+  M1 --> C1[C1 PID: ball on a beam]
+  C1 --> C2[C2 Inverted pendulum]
+  M3 --> C2
+  C1 --> C3[C3 Ball on a plate]
+  M6 --> C3
 ```
 
 The core path is M0 → M1 → M3 → M6 → M7. M8 (fixed point) can move
@@ -383,6 +388,56 @@ frequencies of a square membrane match analytic ratios.
 comparison display.
 
 ---
+
+## Controls track (proposed)
+
+Raised during M1 (feedback control as a demo subject). Not yet scheduled;
+each item lists what must exist first. The engine supplies the plant; the
+new pieces are a **controller** running at its own sample rate, an
+**actuator** input, and plots of setpoint vs measured value.
+
+Shared infrastructure (built with C1):
+- Discrete PID in Rust (testable natively): P, I, D terms with gains as
+  `demo_set_*` controls; derivative on measurement (no "derivative kick"
+  on setpoint changes); integral clamping (anti-windup).
+- Controller sample rate separate from the physics rate (sample and hold),
+  plus optional sensor noise, actuator saturation, and delay: the things
+  that make real loops hard.
+- Plots: setpoint, measurement, and control effort over time.
+
+### C1 — PID: ball on a beam
+
+**Showcases:** the classic step response. Tune P, I, D live and watch
+overshoot, settling, steady-state error (P only), windup (saturated
+actuator), and noise amplification (too much D).
+
+**Needs:** M1's integrators and plots. The ball rolls along a tilting beam
+(a 1D plant: acceleration `(5/7) g sin θ` for a rolling solid sphere), so
+no contacts are required; the beam angle is the actuator.
+
+**Tests:** closed-loop step response settles within a band; P-only leaves
+a steady-state error under a constant disturbance and adding I removes it;
+anti-windup bounds overshoot when the actuator saturates.
+
+### C2 — Inverted pendulum
+
+**Showcases:** stabilizing an unstable equilibrium: a fixed-pivot arm
+balanced upright by a torque at the pivot (or a cart-pole). Shows why
+gains that work near upright fail at large angles.
+
+**Needs:** C1's controller. Either a reduced-coordinate model (one angle,
+no engine constraints; could come right after C1) or the particle +
+constraint version from M3 (the same pendulum as the solver duel, now
+actively controlled). Decide when scheduling.
+
+### C3 — Ball on a plate
+
+**Showcases:** two coupled PID loops (x and y tilt) keeping a ball centered
+on a platform, with disturbances from mouse pokes.
+
+**Needs:** C1, and contacts (M6) for a real ball on a surface; platform
+tilt is the actuator. A 2D extension of C1's 1D model would also work if
+contacts aren't the point.
 
 ## Deferred / stretch
 
