@@ -5,9 +5,10 @@
 //! coexist on one page. Wasm is single-threaded and JS never holds a Rust
 //! reference, so a live handle is never aliased during a call.
 
+use core::num::NonZeroU32;
 use core::ptr;
 
-use crate::demo::{Demo, DemoKind, ScalarKind};
+use crate::demo::{Demo, DemoKind, ScalarKind, integrator_from_code};
 
 /// Creates a demo of `n` particles. `kind` and `scalar` are codes from
 /// [`crate::abi`]. Returns null for an unknown code or invalid scene.
@@ -76,6 +77,50 @@ pub unsafe extern "C" fn demo_positions_len(d: *const Demo) -> usize {
     unsafe { d.as_ref() }.map_or(0, |d| d.positions().len())
 }
 
+/// Switches integrator (`code` from [`crate::abi`]); takes effect next
+/// step. Returns 1 on success, 0 for an unknown code or a null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn demo_set_integrator(d: *mut Demo, code: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(integrator)) = (unsafe { d.as_mut() }, integrator_from_code(code)) else {
+        return 0;
+    };
+    d.set_integrator(integrator);
+    1
+}
+
+/// Sets the physics rate in steps per second (`dt = 1 / hz`), dropping any
+/// owed time. Returns 1 on success, 0 for `hz = 0` or a null handle: the
+/// `u32 → NonZeroU32` parse happens here, at the boundary.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn demo_set_rate(d: *mut Demo, hz: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(rate)) = (unsafe { d.as_mut() }, NonZeroU32::new(hz)) else {
+        return 0;
+    };
+    d.set_rate(rate);
+    1
+}
+
+/// Total energy in joules, or NaN where it isn't defined (the fountain) or
+/// for a null handle: NaN is JS's natural "no number".
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn demo_energy(d: *const Demo) -> f64 {
+    // SAFETY: per the contract, null (-> None) or a live Demo.
+    unsafe { d.as_ref() }
+        .and_then(Demo::energy)
+        .unwrap_or(f64::NAN)
+}
+
 /// Test hook: panics on purpose with [`TEST_PANIC_MESSAGE`], so
 /// `cargo xtask smoke` can check end to end that the panic hook reaches the
 /// browser console. Shipped in every build so the smoke test checks the
@@ -101,7 +146,11 @@ fn deliberate_panic() {
 
 #[cfg(test)]
 mod tests {
-    use super::{demo_advance, demo_free, demo_new, demo_positions_len, demo_positions_ptr};
+    use super::{
+        demo_advance, demo_energy, demo_free, demo_new, demo_positions_len, demo_positions_ptr,
+        demo_set_integrator, demo_set_rate,
+    };
+    use crate::abi;
     use core::ptr;
 
     #[test]
@@ -122,6 +171,39 @@ mod tests {
     #[should_panic(expected = "deliberate test panic")]
     fn test_hook_panics_with_the_shared_message() {
         super::deliberate_panic();
+    }
+
+    #[test]
+    fn orbit_controls_through_the_c_abi() {
+        let d = demo_new(abi::DEMO_ORBIT, abi::SCALAR_F64, 0, 0);
+        assert!(!d.is_null());
+        // SAFETY: `d` came from `demo_new` and is freed exactly once, last.
+        unsafe {
+            assert_eq!(demo_set_integrator(d, abi::INTEGRATOR_VELOCITY_VERLET), 1);
+            assert_eq!(demo_set_integrator(d, 99), 0, "unknown integrator code");
+            assert_eq!(demo_set_rate(d, 0), 0, "zero rate rejected at the boundary");
+            assert_eq!(demo_set_rate(d, 30), 1);
+            assert_eq!(demo_advance(d, 1.0 / 30.0), 1);
+            let e = demo_energy(d);
+            assert!(
+                e.is_finite() && e < 0.0,
+                "bound orbit has negative energy: {e}"
+            );
+            demo_free(d);
+        }
+    }
+
+    #[test]
+    fn fountain_energy_and_null_handles_read_as_nan() {
+        let d = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F32, 10, 1);
+        // SAFETY: `d` from `demo_new`, freed once; null is allowed everywhere.
+        unsafe {
+            assert!(demo_energy(d).is_nan());
+            demo_free(d);
+            assert!(demo_energy(ptr::null()).is_nan());
+            assert_eq!(demo_set_integrator(ptr::null_mut(), 0), 0);
+            assert_eq!(demo_set_rate(ptr::null_mut(), 60), 0);
+        }
     }
 
     #[test]

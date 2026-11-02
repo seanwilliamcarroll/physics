@@ -44,6 +44,13 @@ impl FixedStep {
         self.dt
     }
 
+    /// Switches to `rate` steps per second and drops any owed time: the
+    /// leftover was measured in the old step size, and carrying it over
+    /// could fire a step immediately at the new one.
+    pub fn set_rate(&mut self, rate: NonZeroU32) {
+        *self = Self::new(rate);
+    }
+
     /// Adds `elapsed` seconds of real time; returns how many steps of `dt`
     /// to simulate now. Negative or `NaN` frame times count as zero.
     pub fn advance(&mut self, elapsed: f64) -> u32 {
@@ -96,6 +103,18 @@ mod tests {
         assert_eq!(clock_60hz().dt().to_bits(), DT.to_bits());
         let slow = FixedStep::new(NonZeroU32::new(1).unwrap());
         assert_eq!(slow.dt(), 1.0);
+    }
+
+    #[test]
+    fn set_rate_changes_dt_and_drops_owed_time() {
+        // A half-step of owed time at 60 Hz must not leak into the new rate:
+        // the slider changes dt, not how much time has passed.
+        let mut clock = clock_60hz();
+        assert_eq!(clock.advance(DT / 2.0), 0);
+        clock.set_rate(NonZeroU32::new(30).unwrap());
+        assert_eq!(clock.dt(), 1.0 / 30.0);
+        assert_eq!(clock.leftover(), 0.0);
+        assert_eq!(clock.advance(1.0 / 30.0), 1);
     }
 
     #[test]
