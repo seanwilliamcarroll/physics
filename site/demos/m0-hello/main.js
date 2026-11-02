@@ -5,21 +5,38 @@ import { loadEngine, positionsView } from "../../js/wasm.js";
 import { runLoop, RateMeter, Smoothed } from "../../js/loop.js";
 import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.js";
 import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.js";
-import { smokeMode, runSmoke, smokeError } from "../../js/smoke.js";
+import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.js";
+import { byId } from "../../js/dom.js";
 
+/** Scalar names on the URL → abi.js codes. The source of truth for which
+ *  scalars exist. */
 const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
+/** @typedef {keyof typeof SCALAR_CODES} ScalarName */
+
+/** @param {string | null} s
+ *  @returns {s is ScalarName} */
+function isScalar(s) {
+  return s !== null && Object.hasOwn(SCALAR_CODES, s);
+}
 
 /** Particle squares and ground line, CSS pixels. */
 const POINT_SIZE_PX = 3;
 const GROUND_WIDTH_PX = 1;
 
+/** An option chosen from a list, or an integer in a range. `kind` tells
+ *  them apart (a discriminated union), so code that reads `min` or `values`
+ *  has checked which one it holds.
+ *  @typedef {{ kind: "choice", values: string[], default: string, help: string }} ChoiceOption
+ *  @typedef {{ kind: "int", min: number, max: number, default: number, help: string }} IntOption */
+
 /** Every URL option, its legal values, and its default. The single source of
- *  truth: parsing below and the options table on the page both read it. */
+ *  truth: parsing below and the options table on the page both read it.
+ *  @type {{ scalar: ChoiceOption, n: IntOption, seed: IntOption, fps: IntOption }} */
 const OPTIONS = {
-  scalar: { values: ["f32", "f64"], default: "f32", help: "engine number type" },
-  n: { min: 1, max: 2_000_000, default: 300, help: "particle count" },
-  seed: { min: 0, max: 2 ** 32 - 1, default: 1, help: "launch randomness; same seed, same fountain" },
-  fps: { min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f32", help: "engine number type" },
+  n: { kind: "int", min: 1, max: 2_000_000, default: 300, help: "particle count" },
+  seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "launch randomness; same seed, same fountain" },
+  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
 };
 
 /** Preset links shown under the table: [label, query string]. */
@@ -42,16 +59,16 @@ const PRESETS = [
 const VIEW = new View({ xMin: -6, xMax: 6, yMin: -0.5, yMax: 8 });
 
 const params = new URLSearchParams(location.search);
-const scalar = OPTIONS.scalar.values.includes(params.get("scalar"))
-  ? params.get("scalar")
-  : OPTIONS.scalar.default;
+const scalarParam = params.get("scalar");
+/** @type {ScalarName} */
+const scalar = isScalar(scalarParam) ? scalarParam : "f32";
 const n = intOption("n");
 const seed = intOption("seed");
 const maxFps = intOption("fps");
 
-renderOptionsTable(document.getElementById("options"));
-const hud = document.getElementById("hud");
-const canvas = document.getElementById("view");
+renderOptionsTable(byId("options", HTMLElement));
+const hud = byId("hud", HTMLElement);
+const canvas = byId("view", HTMLCanvasElement);
 const ctx = setupCanvas(canvas);
 // Colors live in site.css (--stage-bg, --ground, --particle).
 const colors = {
@@ -101,23 +118,28 @@ try {
     }, { maxFps });
   }
 } catch (err) {
-  hud.textContent = `error: ${err.message}`;
+  hud.textContent = `error: ${errorText(err)}`;
   smokeError(err);
   throw err;
 }
 
-/** Reads an integer option, clamped to its legal range (default if absent). */
+/** Reads an integer option, clamped to its legal range (default if absent).
+ *  @param {"n" | "seed" | "fps"} name
+ *  @returns {number} */
 function intOption(name) {
   const { min, max, default: fallback } = OPTIONS[name];
   const v = Number.parseInt(params.get(name) ?? "", 10);
   return Number.isFinite(v) ? Math.min(Math.max(v, min), max) : fallback;
 }
 
-/** Fills the options table and preset links from OPTIONS and PRESETS. */
+/** Fills the options table and preset links from OPTIONS and PRESETS.
+ *  @param {HTMLElement} section */
 function renderOptionsTable(section) {
   const rows = Object.entries(OPTIONS).map(([name, o]) => {
-    const legal = o.values ? o.values.join(" | ") : `${o.min.toLocaleString()} – ${o.max.toLocaleString()}`;
-    const dflt = Number.isFinite(o.default) || typeof o.default === "string" ? o.default.toLocaleString() : "uncapped";
+    const legal = o.kind === "choice"
+      ? o.values.join(" | ")
+      : `${o.min.toLocaleString()} – ${o.max.toLocaleString()}`;
+    const dflt = o.kind === "choice" || Number.isFinite(o.default) ? o.default.toLocaleString() : "uncapped";
     return `<tr><td><code>${name}</code></td><td>${legal}</td><td>${dflt}</td><td>${o.help}</td></tr>`;
   });
   const links = PRESETS.map(([label, q]) => `<a href="./${q}">${label}</a>`).join(" · ");

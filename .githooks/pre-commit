@@ -22,6 +22,15 @@ find site -name '*.js' -not -path 'site/pkg/*' | while IFS= read -r f; do
   fi
 done
 
+# Type-check the same files (JSDoc + engine.d.ts; tsconfig.json). The
+# compiler is pinned in package-lock.json; `npm ci` installs it.
+echo "pre-commit: tsc (site JS types)"
+if [ ! -x node_modules/.bin/tsc ]; then
+  echo "pre-commit: TypeScript not installed; run \`npm ci\` (see README)" >&2
+  exit 1
+fi
+node_modules/.bin/tsc -p tsconfig.json
+
 echo "pre-commit: cargo fmt --check"
 cargo fmt --all -- --check
 

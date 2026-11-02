@@ -143,22 +143,46 @@ the orbit's force). M0's irrefutable `let DemoKind::Fountain` became a
 compile error on cue. `.wasm`: 41,820 B. wasmtime: not installed (MacPorts
 has 50.0.0; `cargo install wasmtime-cli` also works).
 
-## 5½. Checked JS (PR, before section 6)
+## ✅ 5½. Checked JS (done)
 
-Decision 8: JSDoc types + `tsc --checkJs --noEmit`.
+TypeScript 7.0.2 (pinned, dev-only) type-checks all site JS through JSDoc
+and `site/js/engine.d.ts` (branded `DemoHandle`/`Ptr`), in pre-commit
+(`npm ci` once per clone). Baseline was 81 errors; typing fixed real gaps:
+null `getElementById`/`getContext` (new `dom.js` `byId`), memory read
+before instantiation in the panic import, `.message` on non-Error throws,
+and an untagged `OPTIONS` union. Verified: swapped boundary arguments
+fail to type-check. Also: a "Web track (ideas)" section in the roadmap.
 
-- [ ] `package.json` pinning `typescript` (dev only) and a `tsconfig.json`
-      (`checkJs`, `strict`, `noEmit`, ES modules); dependency-policy entry
-      in `docs/00-scope.md`.
-- [ ] `site/js/engine.d.ts`: the wasm exports and the `env` import, typed.
-- [ ] JSDoc annotations across `site/js/` and `demos/m0-hello/`.
-- [ ] Pre-commit runs `tsc` (fails if `node_modules` is missing, like the
-      Node check); README setup gains `npm ci`.
+## 6. Site: shared infrastructure and the M1 page (PR)
+
+The roadmap's "shared demo infrastructure", reused by every later
+milestone.
+
+- [ ] `site/js/plot.js`: ring buffer of samples, multiple series, polyline,
+      autoscaled y-axis, zero line.
+- [ ] `site/js/controls.js`: slider and dropdown helpers wired to
+      `demo_set_*`, with the current value displayed.
+- [ ] Trails (decision 6): fading position history per panel.
+- [ ] `site/demos/m1-orbits/`: three panels (explicit Euler, symplectic
+      Euler, velocity Verlet), one energy-error plot with three lines, a
+      rate slider shared by all three (showing `dt`), a scalar dropdown,
+      reset.
+- [ ] Smoke test: `?smoke` support on the new page (pixels across all
+      three canvases), new cases in `cargo xtask smoke`.
+- [ ] JS unit tests with `node --test` (built in, no dependency) for the
+      new pure logic: `plot.js`'s ring buffer, option parsing, and the
+      existing `RateMeter`/`Smoothed`; run in pre-push (roadmap web track).
+- [ ] Gallery link; options table like M0's, generated from one `OPTIONS`
+      object.
+- [ ] Manual check against **Done when**.
 
 ## 7. M1 cleanup (PR, if needed)
 
 - [ ] Magic-number pass over new code; `docs/type-invariants.md` triggers
       re-checked (softening, rate, integrator codes).
+- [ ] Decision 7 now unblocked (wasmtime 50.0.1 installed via cargo):
+      `cargo xtask test-wasm` runs the engine tests under `wasm32-wasip1`,
+      so the golden hashes are checked on wasm too.
 - [ ] Anything that grew awkward.
 
 ---

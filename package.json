@@ -1,0 +1,12 @@
+{
+  "name": "physics-site-tooling",
+  "private": true,
+  "description": "Dev tooling for site/: TypeScript type-checks the plain .js files (JSDoc + checkJs). Nothing here ships to browsers.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
