@@ -76,6 +76,29 @@ pub unsafe extern "C" fn demo_positions_len(d: *const Demo) -> usize {
     unsafe { d.as_ref() }.map_or(0, |d| d.positions().len())
 }
 
+/// Test hook: panics on purpose with [`TEST_PANIC_MESSAGE`], so
+/// `cargo xtask smoke` can check end to end that the panic hook reaches the
+/// browser console. Shipped in every build so the smoke test checks the
+/// real binary; pages call it only under `?smoke&panic`.
+///
+/// [`TEST_PANIC_MESSAGE`]: crate::abi::TEST_PANIC_MESSAGE
+#[unsafe(no_mangle)]
+pub extern "C" fn demo_panic_for_test() {
+    crate::imports::install_panic_hook();
+    deliberate_panic();
+}
+
+/// The panic itself, in a Rust-ABI function so it's testable natively: a
+/// panic may not unwind out of an `extern "C"` fn (Rust aborts the process
+/// instead), which `#[should_panic]` can't observe.
+#[expect(
+    clippy::panic,
+    reason = "test hook: a deliberate panic is the behavior under test"
+)]
+fn deliberate_panic() {
+    panic!("{}", crate::abi::TEST_PANIC_MESSAGE);
+}
+
 #[cfg(test)]
 mod tests {
     use super::{demo_advance, demo_free, demo_new, demo_positions_len, demo_positions_ptr};
@@ -93,6 +116,12 @@ mod tests {
             assert!(pos.chunks(2).all(|p| p[1] > 0.0));
             demo_free(d);
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "deliberate test panic")]
+    fn test_hook_panics_with_the_shared_message() {
+        super::deliberate_panic();
     }
 
     #[test]

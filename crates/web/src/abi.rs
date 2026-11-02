@@ -14,9 +14,14 @@ pub const SCALAR_F64: u32 = 1;
 /// Floats per particle in the positions buffer: `[x, y]`.
 pub const COORDS_PER_PARTICLE: usize = 2;
 
+/// What [`demo_panic_for_test`](crate::exports::demo_panic_for_test)
+/// panics with. The smoke test checks that this text reached JS through the
+/// panic hook.
+pub const TEST_PANIC_MESSAGE: &str = "deliberate test panic";
+
 #[cfg(test)]
 mod tests {
-    use super::{COORDS_PER_PARTICLE, DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64};
+    use super::{COORDS_PER_PARTICLE, DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64, TEST_PANIC_MESSAGE};
 
     const ABI_JS: &str = include_str!("../../../site/js/abi.js");
 
@@ -32,5 +37,8 @@ mod tests {
             let line = format!("export const {name} = {value};");
             assert!(ABI_JS.contains(&line), "site/js/abi.js is missing `{line}`");
         }
+        // Strings: Rust's Debug quoting matches a plain JS double-quoted literal.
+        let line = format!("export const TEST_PANIC_MESSAGE = {TEST_PANIC_MESSAGE:?};");
+        assert!(ABI_JS.contains(&line), "site/js/abi.js is missing `{line}`");
     }
 }

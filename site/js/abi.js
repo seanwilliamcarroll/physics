@@ -11,3 +11,6 @@ export const SCALAR_F64 = 1;
 
 /** Floats per particle in the positions buffer: [x, y]. */
 export const COORDS_PER_PARTICLE = 2;
+
+/** What demo_panic_for_test panics with (the smoke test looks for it). */
+export const TEST_PANIC_MESSAGE = "deliberate test panic";
