@@ -3,10 +3,14 @@
 
 import { loadEngine, positionsView } from "../../js/wasm.js";
 import { runLoop, RateMeter, Smoothed } from "../../js/loop.js";
-import { setupCanvas, View, clear, drawPoints, drawHorizon } from "../../js/canvas.js";
+import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.js";
+import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.js";
 
-const DEMO_FOUNTAIN = 0; // demo kind codes: crates/web/src/demo.rs
-const SCALAR_CODES = { f32: 0, f64: 1 };
+const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
+
+/** Particle squares and ground line, CSS pixels. */
+const POINT_SIZE_PX = 3;
+const GROUND_WIDTH_PX = 1;
 
 /** Every URL option, its legal values, and its default. The single source of
  *  truth: parsing below and the options table on the page both read it. */
@@ -31,8 +35,9 @@ const PRESETS = [
   ["1M at 30 fps", "?n=1000000&fps=30"],
 ];
 
-// The fountain reaches ~7.3 m high and ~4.9 m sideways (v ≤ 12 m/s up,
-// ≤ 2 m/s sideways), so this frames the whole arc with a little ground.
+// Framing, from the scene's launch ranges (engine::scenarios): apex
+// vy²/2g ≈ 12²/(2·9.81) ≈ 7.3 m; reach vx·(2 vy/g) ≈ 2·2.45 ≈ 4.9 m. A
+// framing choice with margin, so not derived at runtime.
 const VIEW = new View({ xMin: -6, xMax: 6, yMin: -0.5, yMax: 8 });
 
 const params = new URLSearchParams(location.search);
@@ -45,7 +50,14 @@ const maxFps = intOption("fps");
 
 renderOptionsTable(document.getElementById("options"));
 const hud = document.getElementById("hud");
-const ctx = setupCanvas(document.getElementById("view"));
+const canvas = document.getElementById("view");
+const ctx = setupCanvas(canvas);
+// Colors live in site.css (--stage-bg, --ground, --particle).
+const colors = {
+  background: cssColor(canvas, "--stage-bg"),
+  ground: cssColor(canvas, "--ground"),
+  particle: cssColor(canvas, "--particle"),
+};
 
 try {
   const engine = await loadEngine();
@@ -61,10 +73,10 @@ try {
     const steps = engine.demo_advance(demo, elapsed);
     const t1 = performance.now();
 
-    clear(ctx, "#161a22");
+    clear(ctx, colors.background);
     VIEW.apply(ctx);
-    drawHorizon(ctx, VIEW, 0, 1, "#2a2f3a");
-    drawPoints(ctx, VIEW, positionsView(engine, demo), 3, "#6cb6ff");
+    drawHorizon(ctx, VIEW, 0, GROUND_WIDTH_PX, colors.ground);
+    drawPoints(ctx, VIEW, positionsView(engine, demo), POINT_SIZE_PX, colors.particle);
     // Measures issuing the draw calls; the browser may rasterize later, so
     // a falling display fps can also reflect GPU/compositor time.
     const t2 = performance.now();

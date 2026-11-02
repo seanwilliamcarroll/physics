@@ -6,6 +6,7 @@
 use engine::scenarios::Fountain;
 use engine::{ConfigError, Scalar, World};
 
+use crate::abi;
 use crate::fixed_step::FixedStep;
 
 /// Physics step, seconds (60 Hz). Displays at any refresh rate advance the
@@ -20,12 +21,12 @@ pub enum ScalarKind {
 }
 
 impl ScalarKind {
-    /// The integer code used across the wasm boundary.
+    /// Decodes a `demo_new` scalar code ([`abi`]).
     #[must_use]
     pub const fn from_code(code: u32) -> Option<Self> {
         match code {
-            0 => Some(Self::F32),
-            1 => Some(Self::F64),
+            abi::SCALAR_F32 => Some(Self::F32),
+            abi::SCALAR_F64 => Some(Self::F64),
             _ => None,
         }
     }
@@ -38,11 +39,11 @@ pub enum DemoKind {
 }
 
 impl DemoKind {
-    /// The integer code used across the wasm boundary.
+    /// Decodes a `demo_new` kind code ([`abi`]).
     #[must_use]
     pub const fn from_code(code: u32) -> Option<Self> {
         match code {
-            0 => Some(Self::Fountain),
+            abi::DEMO_FOUNTAIN => Some(Self::Fountain),
             _ => None,
         }
     }
@@ -85,7 +86,7 @@ impl Demo {
             world,
             scene,
             clock: FixedStep::new(PHYSICS_DT),
-            render_buf: Vec::with_capacity(2 * n),
+            render_buf: Vec::with_capacity(abi::COORDS_PER_PARTICLE * n),
         };
         demo.fill_render_buf();
         Ok(demo)
