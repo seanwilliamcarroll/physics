@@ -30,6 +30,7 @@ a { color: var(--accent); }
   display: block;
   width: 100%;
   aspect-ratio: 3 / 2;
+  background: #161a22; /* matches the canvas clear color */
   border-radius: 6px;
 }
 

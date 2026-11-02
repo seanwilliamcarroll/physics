@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M0 · Hello particles</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main>
+    <p><a href="../../">← all demos</a></p>
+    <h1>Hello particles</h1>
+    <p class="muted">
+      Particles launched from the origin under gravity (9.81 m/s²), simulated
+      in Rust/WebAssembly at a fixed 60 steps/s whatever your display's
+      refresh rate. Options: <code>?scalar=f64&amp;n=1000&amp;seed=7</code>;
+      <code>?fps=30</code> emulates a slower display (physics should stay at 60 steps/s).
+    </p>
+    <div class="stage">
+      <canvas id="view"></canvas>
+      <div class="hud" id="hud">loading…</div>
+    </div>
+  </main>
+</body>
+</html>
