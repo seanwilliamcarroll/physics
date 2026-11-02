@@ -122,18 +122,15 @@ Kepler's third law (const), circular speed for the softened force, no
 escapes; coarse-dt symplectic Euler precesses (LRL vector) but stays
 bounded. Verified tests fail if symplectic Euler's step order is swapped.
 
-## 4. Determinism and golden hashes (PR)
+## ✅ 4. Determinism and golden hashes (done)
 
-`docs/04-testing.md` step 5.
-
-- [ ] FNV-1a over state bits (`to_f64().to_bits()` per coordinate), in
-      `tests/common`, with its own reference-value test.
-- [ ] Repeatability: every scenario × scalar × integrator, run twice, is
-      bit-identical.
-- [ ] Golden hashes for reference runs, committed as constants. On
-      mismatch the test prints the new hash and asks whether the change
-      was intended.
-- [ ] Decision 7: native only, or add `cargo xtask test-wasm` + `wasmtime`.
+FNV-1a 64 (reference vectors checked independently) over every particle's
+state bits; five reference runs (fountain with respawn, cluster, orbit ×
+3 integrators) × 2 scalars are repeatable and match committed goldens; a
+mismatch prints paste-ready replacements. A 1 nm softening change alters
+exactly the f64 orbit hashes. Decision 7: native only; the wasm
+comparison waits for `wasmtime`. Also recorded: a proposed controls track
+(PID demos C1–C3) in `docs/05-roadmap.md`.
 
 ## 5. Web: scenes, controls, metrics (PR)
 
