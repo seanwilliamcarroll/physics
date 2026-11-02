@@ -74,14 +74,15 @@ Recommendations in **bold**; reply on the PR to change any.
    now, or defer to M2? **Defer**, unless you want the cross-platform
    check in M1.
 
-8. **Checked JS before section 6** (raised during M1.1). The site JS
+8. ✅ **Decided: checked JS before section 6** (raised during M1.1). The site JS
    already passes the "few hundred lines" trigger in
    `docs/type-invariants.md` (item 8), and section 6 roughly doubles it.
    **JSDoc types + `tsc --checkJs --noEmit` in pre-commit**, plus an
    `engine.d.ts` for the wasm exports; files stay plain `.js` with no
    build step. Alternatives (`.ts` with a compile step, or nothing) and
-   their costs are in that doc. If adopted, it's its own small PR before
-   section 6.
+   their costs are in that doc. Agreed: its own small PR before
+   section 6. The longer-term goal is `.ts` source; see the experiment
+   section below.
 ---
 
 ## ✅ 1. Wasm panic hook (done)
@@ -184,6 +185,18 @@ milestone.
       object.
 - [ ] Manual check against **Done when**.
 
+## 5½. Checked JS (PR, before section 6)
+
+Decision 8: JSDoc types + `tsc --checkJs --noEmit`.
+
+- [ ] `package.json` pinning `typescript` (dev only) and a `tsconfig.json`
+      (`checkJs`, `strict`, `noEmit`, ES modules); dependency-policy entry
+      in `docs/00-scope.md`.
+- [ ] `site/js/engine.d.ts`: the wasm exports and the `env` import, typed.
+- [ ] JSDoc annotations across `site/js/` and `demos/m0-hello/`.
+- [ ] Pre-commit runs `tsc` (fails if `node_modules` is missing, like the
+      Node check); README setup gains `npm ci`.
+
 ## 7. M1 cleanup (PR, if needed)
 
 - [ ] Magic-number pass over new code; `docs/type-invariants.md` triggers
@@ -191,6 +204,20 @@ milestone.
 - [ ] Anything that grew awkward.
 
 ---
+
+## After M1, before M2: TypeScript experiment
+
+Goal: decide whether to move `site/` from JSDoc-checked `.js` to `.ts`
+source (the long-term preference). Time-boxed, on a branch; merge only
+if it wins.
+
+- [ ] Convert a slice (e.g. `site/js/` + one demo) to `.ts`; `tsc` emits
+      `.js` for the browser, run by `cargo xtask site`.
+- [ ] Compare against the JSDoc version: type ergonomics, the edit →
+      reload loop, generated files kept out of git, hook and smoke-test
+      changes, and what the wasm `engine.d.ts` looks like in each.
+- [ ] Record the outcome in `docs/type-invariants.md` (item 8) and adopt
+      or drop it before M2's site work starts.
 
 ## Out of scope for M1
 
