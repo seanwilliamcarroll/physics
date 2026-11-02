@@ -72,7 +72,7 @@ export class View {
 /** Device pixels for a length given in CSS pixels.
  *  @param {number} cssPx
  *  @returns {number} */
-function devicePx(cssPx) {
+export function devicePx(cssPx) {
   return cssPx * (window.devicePixelRatio || 1);
 }
 
