@@ -145,12 +145,108 @@ pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> 
     Ok(w)
 }
 
+/// Star–planet separation for [`orbit`], m.
+pub const ORBIT_SEPARATION: f64 = 2.0;
+
+/// Nominal period for [`orbit`], s: the unsoftened Kepler period that
+/// fixes the total mass. About 3 s keeps a few orbits on screen per
+/// demo-minute while each orbit still spans many 60 Hz steps.
+pub const ORBIT_NOMINAL_PERIOD: f64 = 3.0;
+
+/// Planet mass / star mass. Small, so the star barely wobbles and the
+/// orbit reads as "planet around star", but not zero: both bodies move,
+/// so momentum conservation is still exercised.
+pub const ORBIT_MASS_RATIO: f64 = 1.0e-3;
+
+/// Softening ε for [`orbit`], m: 1/200 of the separation, so the force is
+/// nearly pure 1/r² (period changes by < 10⁻⁴) while ε = 0 stays an
+/// explicit choice for M2.
+pub const ORBIT_SOFTENING: f64 = 0.01;
+
+/// Substeps for [`orbit`]: one, so `dt` is exactly what the integrators
+/// are compared at.
+pub const ORBIT_SUBSTEPS: u32 = 1;
+
+/// Total mass, kg, from Kepler's third law for the nominal period:
+/// `G M = 4π² d³ / T²` (about 5.3 × 10¹¹ kg). Evaluated at compile time.
+pub const ORBIT_TOTAL_MASS: f64 = 4.0
+    * core::f64::consts::PI
+    * core::f64::consts::PI
+    * ORBIT_SEPARATION
+    * ORBIT_SEPARATION
+    * ORBIT_SEPARATION
+    / (GRAVITATIONAL_CONSTANT * ORBIT_NOMINAL_PERIOD * ORBIT_NOMINAL_PERIOD);
+
+/// Relative speed for a circular orbit under the *softened* force, m/s:
+/// `v² / d = G M d / (d² + ε²)^(3/2)`.
+///
+/// `(d² + ε²)^(3/2)` is computed as `q √q`, not `powf(1.5)`: `sqrt` is
+/// correctly rounded everywhere (IEEE 754), `powf` comes from the
+/// platform's libm and may differ in the last bits across targets.
+#[must_use]
+pub fn orbit_relative_speed() -> f64 {
+    let (d, eps) = (ORBIT_SEPARATION, ORBIT_SOFTENING);
+    let q = d * d + eps * eps;
+    (GRAVITATIONAL_CONSTANT * ORBIT_TOTAL_MASS * d * d / (q * q.sqrt())).sqrt()
+}
+
+/// The actual (softened) period of the circular orbit, s: `2π d / v`.
+#[must_use]
+pub fn orbit_period() -> f64 {
+    2.0 * core::f64::consts::PI * ORBIT_SEPARATION / orbit_relative_speed()
+}
+
+/// A star and a planet [`ORBIT_SEPARATION`] apart, center of mass at the
+/// origin and at rest, advanced by `integrator`.
+///
+/// `speed_ratio` scales the circular launch speed: 1 is a circle, below 1
+/// an ellipse with the planet starting at apoapsis (the precession
+/// tests use one). Must be positive: 0 drops the planet straight onto
+/// the star.
+///
+/// # Errors
+/// Only if the fixed configuration were invalid (it isn't:
+/// [`ORBIT_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
+pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<World<S>, ConfigError> {
+    let mut w = World::new(integrator, ORBIT_SUBSTEPS)?;
+    w.add_force(PairwiseGravity::new(
+        S::from_f64(GRAVITATIONAL_CONSTANT),
+        S::from_f64(ORBIT_SOFTENING),
+    ));
+    // Split the separation and the relative velocity by mass, so the
+    // center of mass sits at the origin with zero momentum.
+    let q = ORBIT_MASS_RATIO;
+    let (star_mass, planet_mass) = (
+        ORBIT_TOTAL_MASS / (1.0 + q),
+        ORBIT_TOTAL_MASS * q / (1.0 + q),
+    );
+    let (star_share, planet_share) = (q / (1.0 + q), 1.0 / (1.0 + q));
+    let v_rel = orbit_relative_speed() * speed_ratio;
+    let d = ORBIT_SEPARATION;
+    let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
+    w.particles.add(
+        vec(-d * star_share, 0.0),
+        vec(0.0, -v_rel * star_share),
+        S::from_f64(star_mass),
+    );
+    w.particles.add(
+        vec(d * planet_share, 0.0),
+        vec(0.0, v_rel * planet_share),
+        S::from_f64(planet_mass),
+    );
+    Ok(w)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         CLUSTER_MASS, CLUSTER_RADIUS, CLUSTER_SPEED, FOUNTAIN_VX, FOUNTAIN_VY, Fountain, cluster,
     };
-    use crate::{Vec2, World};
+    use super::{
+        ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, orbit, orbit_period, orbit_relative_speed,
+    };
+    use crate::diagnostics::{center_of_mass, momentum};
+    use crate::{Force, Integrator, PairwiseGravity, Vec2, World};
 
     fn in_launch_range(v: Vec2<f64>) -> bool {
         (FOUNTAIN_VX.0..FOUNTAIN_VX.1).contains(&v.x)
@@ -258,5 +354,50 @@ mod tests {
         assert_eq!(a.particles.pos(), b.particles.pos());
         assert_eq!(a.particles.vel(), b.particles.vel());
         assert_ne!(a.particles.pos(), c.particles.pos());
+    }
+
+    #[test]
+    fn orbit_starts_centered_at_rest_and_at_the_separation() {
+        let w = orbit::<f64>(Integrator::VelocityVerlet, 1.0).unwrap();
+        let (pos, vel) = (w.particles.pos(), w.particles.vel());
+        assert_eq!(pos.len(), 2);
+        assert!((pos[1] - pos[0]).length() - ORBIT_SEPARATION < 1e-12);
+        assert!(center_of_mass(&w.particles).unwrap().length() < 1e-12);
+        // Zero net momentum, relative to the planet's own momentum.
+        let planet_p = vel[1].length() / w.particles.inv_mass()[1];
+        assert!(momentum(&w.particles).length() <= 1e-12 * planet_p);
+    }
+
+    #[test]
+    fn circular_speed_balances_the_softened_pull() {
+        // Centripetal check without integrating: the relative acceleration
+        // from the actual force must equal v_rel² / d.
+        let w = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
+        let mut acc = vec![Vec2::ZERO; 2];
+        PairwiseGravity::new(super::GRAVITATIONAL_CONSTANT, super::ORBIT_SOFTENING)
+            .accumulate(&w.particles, &mut acc);
+        let a_rel = (acc[0] - acc[1]).length();
+        let v_rel = (w.particles.vel()[1] - w.particles.vel()[0]).length();
+        let centripetal = v_rel * v_rel / ORBIT_SEPARATION;
+        assert!(
+            (a_rel - centripetal).abs() <= 1e-12 * centripetal,
+            "{a_rel} vs {centripetal}"
+        );
+        assert!((v_rel - orbit_relative_speed()).abs() <= 1e-12 * v_rel);
+    }
+
+    #[test]
+    fn softened_period_is_close_to_the_nominal_one() {
+        // ε = 1 cm on a 2 m orbit lengthens the period by ~(1 + ε²/d²)^(3/4).
+        let ratio = orbit_period() / ORBIT_NOMINAL_PERIOD;
+        assert!(ratio > 1.0 && ratio < 1.0001, "{ratio}");
+    }
+
+    #[test]
+    fn speed_ratio_scales_the_launch_speed() {
+        let circ = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
+        let slow = orbit::<f64>(Integrator::SymplecticEuler, 0.8).unwrap();
+        let ratio = slow.particles.vel()[1].length() / circ.particles.vel()[1].length();
+        assert!((ratio - 0.8).abs() < 1e-12);
     }
 }
