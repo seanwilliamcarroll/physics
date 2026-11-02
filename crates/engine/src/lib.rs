@@ -7,6 +7,8 @@ pub mod diagnostics;
 mod force;
 mod integrate;
 mod particles;
+mod rng;
+pub mod scenarios;
 mod world;
 
 pub use force::{Force, UniformGravity};
