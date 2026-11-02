@@ -3,15 +3,20 @@
 //! Everything the exports do is implemented here as plain, safe Rust and
 //! tested natively; `lib.rs` only adapts it to the C ABI.
 
+use core::num::NonZeroU32;
+
 use engine::scenarios::Fountain;
 use engine::{ConfigError, Scalar, World};
 
 use crate::abi;
 use crate::fixed_step::FixedStep;
 
-/// Physics step, seconds (60 Hz). Displays at any refresh rate advance the
-/// simulation at this rate via [`FixedStep`].
-pub const PHYSICS_DT: f64 = 1.0 / 60.0;
+/// Physics steps per simulated second. Displays at any refresh rate advance
+/// the simulation at this rate via [`FixedStep`]. A `NonZeroU32` so the step
+/// size `1 / rate` is positive by construction.
+// `unwrap` in a const item runs at compile time: a zero here fails the
+// build, so it can't panic at runtime (and clippy's unwrap_used agrees).
+pub const PHYSICS_RATE: NonZeroU32 = NonZeroU32::new(60).unwrap();
 
 /// Which numeric type the engine runs on, chosen at runtime by JS.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -85,7 +90,7 @@ impl Demo {
         let mut demo = Self {
             world,
             scene,
-            clock: FixedStep::new(PHYSICS_DT),
+            clock: FixedStep::new(PHYSICS_RATE),
             render_buf: Vec::with_capacity(abi::COORDS_PER_PARTICLE * n),
         };
         demo.fill_render_buf();
@@ -96,9 +101,10 @@ impl Demo {
     /// and refreshes the render buffer. Returns the number of steps taken.
     pub fn advance(&mut self, elapsed: f64) -> u32 {
         let steps = self.clock.advance(elapsed);
+        let dt = self.clock.dt();
         match &mut self.world {
-            AnyWorld::F32(w) => step_scene(w, &mut self.scene, steps),
-            AnyWorld::F64(w) => step_scene(w, &mut self.scene, steps),
+            AnyWorld::F32(w) => step_scene(w, &mut self.scene, steps, dt),
+            AnyWorld::F64(w) => step_scene(w, &mut self.scene, steps, dt),
         }
         self.fill_render_buf();
         steps
@@ -118,8 +124,8 @@ impl Demo {
     }
 }
 
-fn step_scene<S: Scalar>(w: &mut World<S>, scene: &mut Fountain, steps: u32) {
-    let dt = S::from_f64(PHYSICS_DT);
+fn step_scene<S: Scalar>(w: &mut World<S>, scene: &mut Fountain, steps: u32, dt: f64) {
+    let dt = S::from_f64(dt);
     for _ in 0..steps {
         w.step(dt);
         scene.respawn_fallen(w);
@@ -146,7 +152,10 @@ fn to_render<S: Scalar>(x: S) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Demo, DemoKind, PHYSICS_DT, ScalarKind};
+    use super::{Demo, DemoKind, ScalarKind};
+
+    /// One physics step at the 60 Hz `PHYSICS_RATE`.
+    const PHYSICS_DT: f64 = 1.0 / 60.0;
 
     fn demo(scalar: ScalarKind) -> Demo {
         Demo::new(DemoKind::Fountain, scalar, 50, 1).unwrap()
