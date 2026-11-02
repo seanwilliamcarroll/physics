@@ -45,8 +45,9 @@ impl FixedStep {
         steps
     }
 
-    /// Simulated time owed but not yet stepped, in `[0, dt)`. Later usable
-    /// for render interpolation (`leftover / dt`).
+    /// Simulated time owed but not yet stepped, in `[0, dt)`. Test-only for
+    /// now; render interpolation (`leftover / dt`) would make it public.
+    #[cfg(test)]
     #[must_use]
     pub const fn leftover(&self) -> f64 {
         self.leftover

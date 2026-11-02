@@ -2,15 +2,7 @@
 //! behind them. Logic lives in plain Rust modules that are tested natively.
 //! Design: `docs/03-wasm-shell.md`.
 
-// Temporary: unused until the exports land. `expect` (not `allow`) makes
-// clippy fail once the code is used, forcing these attributes' removal.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "scaffolding until the exports land")
-)]
 mod demo;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "scaffolding until the exports land")
-)]
+#[expect(unsafe_code, reason = "the C ABI boundary: raw pointers in and out")]
+mod exports;
 mod fixed_step;
