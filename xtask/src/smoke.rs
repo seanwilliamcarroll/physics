@@ -19,42 +19,60 @@ enum Check {
     PanicReported,
 }
 
-/// One page load to check: a name (for the screenshot), a URL query, and
-/// what it must show.
+/// One page load to check: a name (for the screenshot), the page (relative
+/// to `site/`), a URL query, and what it must show.
 struct Case {
     name: &'static str,
+    page: &'static str,
     query: &'static str,
     check: Check,
 }
 
-/// Default settings, the other scalar, the size that once rendered a blank
-/// canvas (one path over Chrome's ~16 MiB draw-command limit), and the
-/// panic hook.
-const CASES: [Case; 4] = [
+const M0: &str = "demos/m0-hello/";
+const M1: &str = "demos/m1-orbits/";
+
+/// M0: default settings, the other scalar, the size that once rendered a
+/// blank canvas (one path over Chrome's ~16 MiB draw-command limit), and
+/// the panic hook. M1: all three orbit panels must draw and report finite
+/// energy, in both scalars.
+const CASES: [Case; 6] = [
     Case {
         name: "default",
+        page: M0,
         query: "?smoke",
         check: Check::Draws,
     },
     Case {
         name: "f64",
+        page: M0,
         query: "?smoke&scalar=f64&n=1000",
         check: Check::Draws,
     },
     Case {
         name: "500k",
+        page: M0,
         query: "?smoke&n=500000",
         check: Check::Draws,
     },
     Case {
         name: "panic",
+        page: M0,
         query: "?smoke&panic",
         check: Check::PanicReported,
     },
+    Case {
+        name: "orbits",
+        page: M1,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "orbits32",
+        page: M1,
+        query: "?smoke&scalar=f32",
+        check: Check::Draws,
+    },
 ];
-
-/// Page under test, relative to `site/`.
-const DEMO_PATH: &str = "demos/m0-hello/";
 
 /// How long Chrome waits before its screenshot (and exit). Smoke mode is
 /// synchronous, so this only has to cover loading: about 1 s at 500k.
@@ -160,7 +178,10 @@ pub fn smoke(root: &Path) -> Result<(), String> {
 
     let mut failed = Vec::new();
     for case in &CASES {
-        let url = format!("http://127.0.0.1:{}/{DEMO_PATH}{}", server.port, case.query);
+        let url = format!(
+            "http://127.0.0.1:{}/{}{}",
+            server.port, case.page, case.query
+        );
         let shot = shots.join(format!("{}.png", case.name));
         let verdict =
             run_chrome(&chrome, &url, &shot, case.name).and_then(|stderr| match case.check {
