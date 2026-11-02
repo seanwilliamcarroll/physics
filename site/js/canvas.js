@@ -52,18 +52,30 @@ export function clear(ctx, color) {
   ctx.restore();
 }
 
+/** Rects per path in drawPoints. Chrome serializes each draw call into one
+ *  GPU command of at most ~16 MiB ("Failed to serialize op in 16777152
+ *  bytes"), roughly 34 bytes per rect, so one path of ~500k rects is
+ *  silently dropped. 50k rects (~1.7 MB) leaves a wide margin while still
+ *  needing only 40 fills at the 2M maximum. */
+const RECTS_PER_PATH = 50_000;
+
 /** Draws interleaved [x0, y0, ...] world positions as squares `sizePx` CSS
- *  pixels wide. Batched: one path, many rects, one fill (separate fills per
- *  point are far slower). Assumes `view.apply(ctx)` was called. */
+ *  pixels wide. Batched: many rects per path, one fill per path (separate
+ *  fills per point are far slower), chunked to stay under the browser's
+ *  per-command size limit. Assumes `view.apply(ctx)` was called. */
 export function drawPoints(ctx, view, pos, sizePx, color) {
   const size = (sizePx * (window.devicePixelRatio || 1)) / view.scale(ctx.canvas);
   const half = size / 2;
+  const chunk = 2 * RECTS_PER_PATH; // two floats per point
   ctx.fillStyle = color;
-  ctx.beginPath();
-  for (let i = 0; i < pos.length; i += 2) {
-    ctx.rect(pos[i] - half, pos[i + 1] - half, size, size);
+  for (let start = 0; start < pos.length; start += chunk) {
+    const end = Math.min(start + chunk, pos.length);
+    ctx.beginPath();
+    for (let i = start; i < end; i += 2) {
+      ctx.rect(pos[i] - half, pos[i + 1] - half, size, size);
+    }
+    ctx.fill();
   }
-  ctx.fill();
 }
 
 /** A horizontal line at world height `y` across the view, `widthPx` thick. */
