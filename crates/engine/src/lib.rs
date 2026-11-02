@@ -4,8 +4,12 @@
 //! Design: `docs/02-core-types.md`. Units are SI (m, kg, s).
 
 mod force;
+mod integrate;
 mod particles;
+mod world;
 
 pub use force::{Force, UniformGravity};
+pub use integrate::Integrator;
 pub use math::{Scalar, Vec2};
 pub use particles::Particles;
+pub use world::{ConfigError, World};

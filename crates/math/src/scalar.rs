@@ -11,8 +11,13 @@ use core::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 ///
 /// Swapped at compile time via generics, so arithmetic is monomorphized and
 /// costs nothing over using the concrete type directly.
+///
+/// `'static`: scalars are plain values that never borrow, so this rules out
+/// nothing, and it lets generic code box values containing `S` (e.g.
+/// `Box<dyn Force<S>>` in the engine) without repeating the bound everywhere.
 pub trait Scalar:
-    Copy
+    'static
+    + Copy
     + PartialOrd
     + Debug
     + Add<Output = Self>
