@@ -11,132 +11,45 @@ in `crates/math`, not `engine`.
 
 ## Workflow
 
-- **Section 0** is committed directly to `main`. Its last step turns on
-  branch protection.
-- **Sections 1–5** each get their own branch (`m0/1-math`, `m0/2-engine`, …)
-  and one PR into `main`. Merge them in order; each branches from an
+- Sections 1–5 each get their own branch (`m0/1-math`, `m0/2-engine`, …)
+  and one PR into `main`, merged in order. Each branches from an
   up-to-date `main`.
-- After section 0, `main` takes no direct pushes and no merges without a PR,
-  admins included.
-- **Clippy warnings fail the commit.** The pre-commit hook runs clippy with
-  `-D warnings`, which turns every warning into an error.
+- `main` is protected (ruleset `protect-main`): PR required, squash merge
+  only, no force pushes, no bypass.
+- Commit frequently on branches: one commit per logical step (failing tests,
+  implementation, refactor). The squash merge keeps `main` at one commit
+  per section.
+- Clippy warnings fail the commit (`-D warnings` in the pre-commit hook).
+- When a section is done, collapse it here to a one-paragraph summary.
 
 ---
 
-## 0. Repo infrastructure (direct to `main`)
+## ✅ 0. Repo infrastructure (done)
 
-### Repo and docs
-- [ ] `git mv doc docs` (all docs already refer to `docs/`)
-- [ ] Update `02-core-types.md` and `03-wasm-shell.md` to the `crates/` layout
-      from `repo-layout.md`; mark `repo-layout.md` status **Adopted**
-- [ ] `.gitignore`: `target/`, `site/pkg/`, `dist/`
-- [ ] Minimal `README.md`: what this is, how to build/test/serve, hook setup
+Committed directly to `main`. `doc/` → `docs/`, docs updated to the
+`crates/` layout. A Cargo workspace with a placeholder `crates/math`, the
+toolchain pinned to 1.99.1, the lint policy below, `.githooks/` (pre-commit:
+fmt + clippy; pre-push: test + wasm32 check), and a README. Public repo
+created with `main` protected. Verified: hooks reject fmt and lint
+violations, and a direct push to `main` is rejected.
 
-### Workspace (so the hooks always have something to check)
-- [ ] Root `Cargo.toml`: `[workspace]`, `members = ["crates/*"]`
-      (`xtask` added in its PR), `resolver = "3"`, edition 2024 via
-      `[workspace.package]`, release profile from `03`
-      (`lto`, `codegen-units = 1`, `panic = "abort"`)
-- [ ] `rust-toolchain.toml`: pin the exact version (1.99.1) plus `rustfmt` and
-      `clippy` components, targets `wasm32-unknown-unknown` and `wasm32-wasip1`.
-      An exact pin, not `stable`, so later golden hashes don't change when the
-      toolchain updates.
-- [ ] **Placeholder crate `crates/math`**: `Cargo.toml` + a `lib.rs` with only
-      a crate doc comment. Not throwaway: PR 1 fills it in, so no deletion
-      later. It makes fmt/clippy/test/wasm-check meaningful from the first commit.
-- [ ] Lint config (see "Lint policy" below): `[workspace.lints]` in the root
-      `Cargo.toml`, `clippy.toml` at the root, `[lints] workspace = true`
-      in `crates/math/Cargo.toml`
-
-### Hooks
-- [ ] Tracked `.githooks/` dir (plain `sh`, no frameworks), no special cases
-      for an empty repo:
-  - `pre-commit` (fast, every commit):
-    - `cargo fmt --all -- --check`
-    - `cargo clippy --workspace --all-targets -- -D warnings`
-  - `pre-push` (slower, once per push):
-    - `cargo test --workspace`
-    - `cargo check --workspace --target wasm32-unknown-unknown`
-      (every library crate must compile for wasm, not just `web`; `check`
-      skips codegen, so it's fast. The release `.wasm` build is
-      `cargo xtask site`'s job. PR 4 adds `--exclude xtask`.)
-  - Enabled per clone with `git config core.hooksPath .githooks`
-    (wrapped later as `cargo xtask install-hooks`; documented in README)
-- [ ] Verify: a commit with a formatting error, or with a lint violation
-      planted in the placeholder crate, is rejected
-
-### GitHub
-- [ ] Create public repo `seanwilliamcarroll/physics` with `gh repo create`,
-      set it as `origin`, push `main`
-- [ ] **Last:** protect `main` with a GitHub ruleset (`gh api`):
-  - require a pull request before merging; 0 required approvals (you can't
-    approve your own PR on GitHub, so 1 would block you)
-  - block force pushes and deletion of `main`
-  - no bypass list: the rules apply to admins (you) too
-  - allow only squash merges, so each section becomes one commit on `main`;
-    turn on auto-delete of merged branches
-  - verify: `git push origin main` with a test commit is rejected
-
-**Done when:** a commit with bad formatting or a clippy warning is rejected
-locally, the repo is live on GitHub, and a direct push to `main` is rejected.
+Follow-ups: choose a license (the repo currently has none, which means "all
+rights reserved"); PR 4 adds `--exclude xtask` to the pre-push wasm check.
 
 ---
 
 ## Lint policy
 
-Defined once in the root `Cargo.toml`. Every crate opts in with
-`[lints] workspace = true`; nothing is repeated per crate.
+Configured in the root `Cargo.toml` (`[workspace.lints]`) and `clippy.toml`;
+those files are the source of truth. Every crate opts in with
+`[lints] workspace = true`. Summary: `pedantic` on (minus three
+notation-hostile lints), library-safety restriction lints denied (`panic`,
+`unwrap_used`, `print_stdout`, …), tests exempted via `clippy.toml`'s
+`allow-*-in-tests`, and `f32`/`f64::mul_add` disallowed.
 
-**Why not a macro?** A macro can't emit crate-level `#![...]` attributes
-(tested: "an inner attribute is not permitted in this context").
-**Why not `#![cfg_attr(not(test), ...)]` in each `lib.rs`?** It's the
-repetition this section exists to remove. Instead, `clippy.toml` exempts
-tests with its `allow-*-in-tests` settings.
-
-```toml
-# Cargo.toml
-[workspace.lints.rust]
-unsafe_code = "deny"            # web's export module opts out locally
-
-[workspace.lints.clippy]
-# --- Groups ---
-# `perf`, `correctness`, `style`, `complexity`, `suspicious` are on by default.
-pedantic = { level = "warn", priority = -1 }   # includes doc_markdown + all cast_* lints
-
-# Pedantic lints that fight physics notation (x, v, a, m, dt, p0/p1, pos/vel)
-many_single_char_names = "allow"
-similar_names = "allow"
-module_name_repetitions = "allow"
-# must_use_candidate and return_self_not_must_use stay ON (see rules below)
-
-# --- Library safety (restriction group, opt-in) ---
-panic = "deny"
-unreachable = "deny"
-todo = "deny"
-unimplemented = "deny"
-print_stdout = "deny"
-print_stderr = "deny"
-dbg_macro = "deny"
-unwrap_used = "deny"            # added: `.unwrap()` is a hidden panic!
-expect_used = "deny"            # added: same
-indexing_slicing = "warn"
-string_slice = "warn"
-```
-
-```toml
-# clippy.toml
-allow-panic-in-tests = true
-allow-unwrap-in-tests = true
-allow-expect-in-tests = true
-allow-indexing-slicing-in-tests = true
-allow-print-in-tests = true
-allow-dbg-in-tests = true
-
-disallowed-methods = [
-  { path = "f32::mul_add", reason = "FMA rounds differently than a*b+c: breaks cross-platform determinism; software-emulated on wasm" },
-  { path = "f64::mul_add", reason = "same as f32::mul_add" },
-]
-```
+Why not a per-crate `#![cfg_attr(not(test), ...)]` block or a macro: a
+macro can't emit crate-level `#![...]` attributes (tested), and the
+`clippy.toml` test exemptions remove the need to repeat a block in each crate.
 
 Rules that come with it:
 
