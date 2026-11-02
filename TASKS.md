@@ -60,17 +60,16 @@ and substep equivalence; tolerances are set ~10x above measured error.
 `Scalar` gained a `'static` bound (for `Box<dyn Force<S>>`). Integration
 tests use a crate-level `#![cfg(test)]` (`docs/lint-policy.md`).
 
-## 3. `crates/web` (cdylib, PR)
+## ✅ 3. `crates/web` (done)
 
-- [ ] `demo.rs`: `Demo { world: AnyWorld, render_buf, accumulator, dt }`,
-      `AnyWorld { F32, F64 }`, `advance(elapsed) -> u32`, `fill_render_buf`
-- [ ] Native unit tests for `advance`: clamp at 0.25 s, step counts for odd
-      elapsed times, no drift over many frames, 60 Hz vs 120 Hz frame
-      sequences produce the same step count over 1 s
-- [ ] `lib.rs`: one-line `extern "C"` exports (`demo_new`, `demo_free`,
-      `demo_advance`, `demo_positions_ptr`, `demo_positions_len`), each
-      `unsafe` with a `// SAFETY:` comment
-- [ ] Record the release `.wasm` size (baseline for "measure size per scalar")
+`FixedStep` accumulator (0.25 s clamp; negative/NaN frames ignored; tests
+assert the time-conservation invariant), `Demo` with `AnyWorld { F32, F64 }`
+and an `f32` render buffer, and `unsafe extern "C"` exports (`demo_new`,
+`demo_free`, `demo_advance`, `demo_positions_ptr`, `demo_positions_len`)
+with `# Safety` contracts; null handles are harmless. The engine's
+`fountain` became a `Fountain` scene with continuous respawn. Release
+`.wasm`: 28,593 B (9,998 B gzip), zero imports, recorded in `docs/03`;
+smoke-tested in Node.
 
 ## 4. `xtask` (PR)
 

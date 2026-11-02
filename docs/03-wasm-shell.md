@@ -111,6 +111,10 @@ enum AnyWorld {
 One `match` per call. Each variant monomorphizes a full engine copy into the
 `.wasm`. **Measure binary size per added scalar.**
 
+| Milestone | Variants | `.wasm` (release) | gzip -9 | Notes |
+|---|---|---|---|---|
+| M0 | `F32`, `F64` | 28,593 B | 9,998 B | `opt-level = 3`, LTO, Rust 1.99.1; zero imports |
+
 ### The render buffer
 
 After stepping, `Demo` converts positions to `f32` into `render_buf`.
