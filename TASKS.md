@@ -164,16 +164,14 @@ plot scale toggle, reset, URL options; gallery link. Smoke: M1 cases in
 both scalars (minimum across panels). Fixed two canvas sizing bugs found
 by a headless probe. **Done when** confirmed in a real browser.
 
-## 7. M1 cleanup (PR, if needed)
+## ✅ 7. M1 cleanup (done)
 
-- [ ] Magic-number pass over new code; `docs/type-invariants.md` triggers
-      re-checked (softening, rate, integrator codes).
-- [ ] Decision 7 now unblocked (wasmtime 50.0.1 installed via cargo):
-      `cargo xtask test-wasm` runs the engine tests under `wasm32-wasip1`,
-      so the golden hashes are checked on wasm too.
-- [ ] Anything that grew awkward.
-
----
+`cargo xtask test-wasm` (pre-push) runs the math and engine suites as
+`wasm32-wasip1` under wasmtime: the native golden hashes match bit for bit
+on wasm (decision 7, cross-platform determinism confirmed). Magic-number
+pass: `ORBIT_CIRCULAR`, `DEFAULT_RATE_HZ` (one owner in `abi.rs`, mirrored
+in JS, sync-tested), `MS_PER_SECOND` reused. `docs/type-invariants.md`
+updated with M1's adoptions and re-checked triggers.
 
 ## After M1, before M2: TypeScript experiment
 
