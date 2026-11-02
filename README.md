@@ -10,8 +10,13 @@ more than feature breadth.
 
 ## Setup
 
-Requires `rustup`. The toolchain version, components, and wasm targets are
-pinned in `rust-toolchain.toml` and installed automatically on first use.
+Requirements:
+
+- `rustup`. The toolchain version, components, and wasm targets are pinned
+  in `rust-toolchain.toml` and installed automatically on first use.
+- Node.js (pre-commit syntax-checks the site's JS).
+- Python 3 (local dev server) and Google Chrome or Chromium (the pre-push
+  browser smoke test; set `CHROME` to its path if it isn't found).
 
 Enable the git hooks once per clone:
 
@@ -21,8 +26,8 @@ cargo xtask install-hooks     # = git config core.hooksPath .githooks
 
 | Hook | Runs |
 |---|---|
-| `pre-commit` | `cargo fmt --check`, `cargo clippy -D warnings` |
-| `pre-push` | `cargo test`, `cargo check --target wasm32-unknown-unknown` |
+| `pre-commit` | JS syntax check, `cargo fmt --check`, `cargo clippy -D warnings` |
+| `pre-push` | `cargo test`, `cargo check --target wasm32-unknown-unknown`, `cargo xtask smoke` |
 
 The hooks check the working tree, not just what's staged.
 
