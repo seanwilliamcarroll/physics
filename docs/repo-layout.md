@@ -1,6 +1,6 @@
-# Repository Layout (proposal)
+# Repository Layout
 
-Status: **Proposal** — not yet reflected in `02-core-types.md` or `03-wasm-shell.md`.
+Status: **Adopted** (M0). `02-core-types.md` and `03-wasm-shell.md` follow it.
 Unnumbered on purpose: `05-roadmap.md` reserves `06-constraints.md` for M3.
 
 ## Tree

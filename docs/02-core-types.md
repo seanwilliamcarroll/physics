@@ -4,16 +4,22 @@ Status: **Draft**
 Depends on: `00-scope.md`, `01-solvers.md`
 Target: everything needed for the first demo (N-body gravity, phase 1)
 
-## Crate
+## Crates
 
-`engine` — library crate, std only, no rendering or browser code.
+Two library crates, std only, no rendering or browser code
+(full tree: `repo-layout.md`). Math types live in their own crate so the
+acoustic track can share them without depending on the physics engine.
 
 ```
-engine/
+crates/math/         // shared by engine, acoustic, sand
   src/
     lib.rs
     scalar.rs        // Scalar trait + f32/f64 impls (Fixed comes later)
     vec2.rs          // Vec2<S>
+
+crates/engine/       // depends on math
+  src/
+    lib.rs
     particles.rs     // Particles<S> storage
     force.rs         // Force<S> trait + UniformGravity, PairwiseGravity
     integrate.rs     // integrators

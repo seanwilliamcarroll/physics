@@ -28,7 +28,7 @@ Re-check both before each phase. Nothing else without a doc entry.
 ## Layout
 
 ```
-engine/
+crates/engine/
   src/
     diagnostics.rs        // energy, momentum, etc. — shared by tests AND demo plots
     ...                   // unit tests inline: #[cfg(test)] mod tests

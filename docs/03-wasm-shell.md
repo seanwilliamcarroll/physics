@@ -11,18 +11,24 @@ drawing APIs.
 
 ## Workspace layout
 
+Abbreviated; full tree in `repo-layout.md`.
+
 ```
 physics/
-  Cargo.toml          // [workspace] members = ["engine", "web"]
-  engine/             // std-only library (02-core-types.md)
-  web/                // cdylib: exports + demo glue, depends on engine
+  Cargo.toml          // [workspace] members = ["crates/*", "xtask"]
+  crates/
+    math/             // Scalar, Vec2 (02-core-types.md)
+    engine/           // std-only library (02-core-types.md)
+    web/              // cdylib: exports + demo glue, depends on engine
+  xtask/              // build helper: `cargo xtask site`
   site/
     index.html
-    main.js
-    engine.wasm       // copied from the build
+    js/               // shared ES modules
+    demos/<name>/     // one folder per demo
+    pkg/engine.wasm   // copied from the build (gitignored)
 ```
 
-`web/Cargo.toml`:
+`crates/web/Cargo.toml`:
 
 ```toml
 [lib]
@@ -30,6 +36,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 engine = { path = "../engine" }
+math = { path = "../math" }
 ```
 
 Workspace `Cargo.toml`, release profile tuned for download size:
@@ -45,11 +52,18 @@ panic = "abort"
 ## Build and run
 
 ```sh
-rustup target add wasm32-unknown-unknown
-cargo build --release --target wasm32-unknown-unknown -p web
-cp target/wasm32-unknown-unknown/release/web.wasm site/engine.wasm
-cd site && python3 -m http.server     # instantiateStreaming won't load from file://
+cargo xtask site                      # release build of `web` → site/pkg/engine.wasm
+python3 -m http.server -d site        # instantiateStreaming won't load from file://
 ```
+
+`cargo xtask site` wraps the manual steps:
+
+```sh
+cargo build --release --target wasm32-unknown-unknown -p web
+cp target/wasm32-unknown-unknown/release/web.wasm site/pkg/engine.wasm
+```
+
+Targets are installed automatically by `rust-toolchain.toml`.
 
 ## The boundary
 
