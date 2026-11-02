@@ -70,7 +70,7 @@ Recommendations in **bold**; reply on the PR to change any.
    concern; Rust keeps returning positions only.
 7. **Golden hashes run natively only.** The cross-platform check (same
    hash under `wasm32-wasip1`) needs `wasmtime`, which isn't installed.
-   Install it (`brew install wasmtime`) and add `cargo xtask test-wasm`
+   Install it (MacPorts: `sudo port install wasmtime`; 50.0.0 is available) and add `cargo xtask test-wasm`
    now, or defer to M2? **Defer**, unless you want the cross-platform
    check in M1.
 
