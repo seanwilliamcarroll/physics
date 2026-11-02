@@ -9,6 +9,13 @@
 //   SMOKE ok steps=<n> particle_px=<n>
 //   SMOKE error <message>
 // A missing line (crash, hang) is itself a failure.
+//
+// `?smoke&panic` instead calls the deliberate-panic export and checks that
+// the Rust panic hook delivered TEST_PANIC_MESSAGE through the wasm import:
+//   SMOKE ok panic_logged=1
+
+import { lastPanicMessage } from "./wasm.js";
+import { TEST_PANIC_MESSAGE } from "./abi.js";
 
 /** Frames of 1/60 s to advance before drawing: half a second of flight,
  *  so the fountain has spread out from the origin. */
@@ -19,7 +26,9 @@ const SMOKE_FRAME_S = 1 / 60;
  *  are antialiased, cores are exact. */
 const COLOR_TOLERANCE = 16;
 
-export const smokeMode = new URLSearchParams(location.search).has("smoke");
+const params = new URLSearchParams(location.search);
+export const smokeMode = params.has("smoke");
+const panicMode = smokeMode && params.has("panic");
 
 if (smokeMode) {
   window.addEventListener("error", (e) => report(`error ${e.message}`));
@@ -33,11 +42,34 @@ function report(text) {
 /** Runs the smoke sequence: advance, draw once via `drawFrame()`, count
  *  pixels of `particleColor` ("#rrggbb") on the canvas, report. */
 export function runSmoke(engine, demo, ctx, drawFrame, particleColor) {
+  if (panicMode) {
+    runPanicSmoke(engine);
+    return;
+  }
   let steps = 0;
   for (let i = 0; i < SMOKE_FRAMES; i++) steps += engine.demo_advance(demo, SMOKE_FRAME_S);
   drawFrame();
   const px = countPixels(ctx, parseHexColor(particleColor));
   report(`ok steps=${steps} particle_px=${px}`);
+}
+
+/** Calls the deliberate-panic export. Expected: the call traps
+ *  (WebAssembly.RuntimeError, "unreachable") and, before that, the panic
+ *  hook passed the message to JS through the console_error import. */
+function runPanicSmoke(engine) {
+  try {
+    engine.demo_panic_for_test();
+    report("error demo_panic_for_test returned instead of trapping");
+  } catch (err) {
+    const msg = lastPanicMessage();
+    if (!(err instanceof WebAssembly.RuntimeError)) {
+      report(`error expected a wasm trap, got ${err}`);
+    } else if (msg?.includes(TEST_PANIC_MESSAGE)) {
+      report("ok panic_logged=1");
+    } else {
+      report(`error hook did not report the panic (got ${JSON.stringify(msg)})`);
+    }
+  }
 }
 
 /** Reports a caught error (the page's own try/catch). */
