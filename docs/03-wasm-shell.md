@@ -187,6 +187,20 @@ Plan: **vector Canvas 2D** for phases 1–4. **Pixel buffer** for falling sand
 and the acoustic track (that's a tiny software rasterizer we write ourselves).
 GPU only if a demo outgrows Canvas.
 
+### Multiple demos and plots (M1)
+
+The M1 page runs three `Demo` handles from one wasm instance, one per
+canvas, each stepped with the same elapsed time. Shared site modules:
+`plot.js` (`LinePlot`: several series from `Ring` buffers, linear or log
+`|v|` scale floored at 1e-16), `trail.js` (fading per-particle history,
+drawn in 8 opacity bands), `controls.js` (slider/select/checkbox/button),
+`options.js` (URL options and the generated options table).
+
+Two Canvas facts learned the hard way: assigning `canvas.width`/`height`
+clears the canvas even to the same value, so `setupCanvas` only assigns
+on a real change; and a canvas sized before its grid is complete measures
+the wrong column width, so pages build all panels before sizing any.
+
 ### Measured: rendering is the bottleneck (M0)
 
 The `m0-hello` HUD splits ms per frame between physics (`demo_advance`)

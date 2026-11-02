@@ -255,7 +255,10 @@ Golden-hash tests running on both targets give the cross-platform check above.
 ## Browser smoke test
 
 `cargo xtask smoke` (also in pre-push) builds the site and loads the demo
-in headless Chrome, one fresh profile per case (default, f64, 500k, panic). The
+in headless Chrome, one fresh profile per case: M0 (default, f64, 500k,
+panic) and M1 (orbits in f64 and f32; every panel must step, draw its
+planet, and report finite energy; the reported pixels are the minimum
+across panels, so one blank panel fails). The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs
 `SMOKE ok steps=N particle_px=N`.
@@ -281,6 +284,15 @@ Lessons that shaped it:
 The JS itself gets a syntax check in pre-commit
 (`node --input-type=module --check`; plain `node --check` passes ES-module
 syntax errors in `.js` files).
+
+## Site JS unit tests
+
+`tests/site/*.test.js`, run by Node's built-in runner (`node --test`, no
+dependency) in pre-push: the pure modules (`options.js`, `ring.js`, the
+scale math in `plot.js`, the fade bands in `trail.js`, `RateMeter` and
+`Smoothed`). DOM-touching code is covered by the browser smoke test
+instead. The tests live outside `site/`, so they're never served. Note:
+`node --test` needs a glob; a directory argument is treated as a module.
 
 ## Phase 1 test-first order
 
