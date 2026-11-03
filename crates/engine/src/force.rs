@@ -1,5 +1,9 @@
 //! Force generators: anything that contributes acceleration each substep.
 
+mod spring;
+
+pub use spring::{Spring, SpringForce};
+
 use crate::{Particles, Scalar, Softening, Vec2};
 
 /// A source of acceleration.

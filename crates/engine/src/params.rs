@@ -44,14 +44,18 @@ macro_rules! checked_param {
 
 mod baumgarte;
 mod compliance;
+mod damping;
 mod mass;
 mod opening_angle;
 mod softening;
+mod stiffness;
 
 pub use baumgarte::{Baumgarte, DEFAULT_BAUMGARTE};
 pub use compliance::Compliance;
+pub use damping::Damping;
 pub use mass::Mass;
 #[cfg(test)]
 pub(crate) use mass::kg;
 pub use opening_angle::OpeningAngle;
 pub use softening::Softening;
+pub use stiffness::Stiffness;

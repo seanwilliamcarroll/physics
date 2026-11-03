@@ -142,11 +142,13 @@ have no threshold (implicit in disguise, paid for in damping);
 (Macklin eq. 26, Catto 2011); the network, the ground, live stiffness,
 energy terms. Hairer–Lubich–Wanner added to references.
 
-## 2. `Stiffness`, `Damping`, `SpringForce` (test first, PR)
+## ✅ 2. `Stiffness`, `Damping`, `SpringForce` (done)
 
-- [ ] Types; `SpringForce` (momentum conserved, period `2π √(m/k)`,
-      damped decay); spring potential diagnostic.
-- [ ] Known failure at 1.1 `k_crit`; stable at 0.9.
+`Stiffness` (k > 0, finite) and `Damping` (c ≥ 0, finite), written out
+with a fallible `cast` (narrowing can overflow). `Spring`/`SpringForce`
+(equal and opposite, potential). Period within 0.04%, damped energy within
+0.8%, momentum 1.3e-14. Known failure: energy 2e2× at 0.99 `k_crit`,
+6e71× at 1.01; below it the true energy still swings (19× at 0.9).
 
 ## 3. Damping in the constraint solvers (test first, PR)
 
