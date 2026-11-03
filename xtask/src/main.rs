@@ -1,8 +1,10 @@
 //! Build helper, run as `cargo xtask <command>` (alias in `.cargo/config.toml`).
-//! Std only. See `docs/repo-layout.md`.
-// A CLI prints by design; Cargo can't mix `workspace = true` lints with
-// per-crate overrides, so the override lives here (docs/lint-policy.md).
-#![allow(clippy::print_stdout, clippy::print_stderr)]
+//! Arguments are parsed by `clap`; see `docs/repo-layout.md`.
+// A CLI prints by design, and with clap's derive API the doc comments on
+// `Cli` and `Command` *are* the --help text, where doc_markdown's
+// backticks would print literally. Cargo can't mix `workspace = true` lints
+// with per-crate overrides, so the overrides live here (docs/lint-policy.md).
+#![allow(clippy::print_stdout, clippy::print_stderr, clippy::doc_markdown)]
 
 use std::env;
 use std::ffi::OsString;
@@ -10,74 +12,51 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, ExitCode};
 
+use clap::{Parser, Subcommand};
+
 mod serve;
 mod smoke;
-
-const USAGE: &str = "\
-usage: cargo xtask <command>
-
-commands:
-  site           compile site TypeScript, build crates/web for wasm32 -> site/pkg/engine.wasm
-  smoke          build the site, load the demo in headless Chrome, check it draws
-  test-wasm      run the math and engine tests as wasm32-wasip1 under wasmtime
-  serve          build the site, then serve it (default port 8000) with
-                 `tsc --watch` alongside; Ctrl-C stops both. [--port N]
-  install-hooks  point git at the tracked hooks in .githooks/
-  help           show this message";
 
 /// Where `cargo build` puts the wasm artifact, relative to the target dir.
 const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/web.wasm";
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// Build, test, and serve helpers for the physics engine and its demo site.
+#[derive(Parser, Debug)]
+// bin_name: usage lines show how it's actually invoked (argv[0] would be
+// the bare binary name, "xtask").
+#[command(
+    name = "cargo xtask",
+    bin_name = "cargo xtask",
+    arg_required_else_help = true
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
+    /// Compile the site TypeScript and build crates/web for wasm32 into site/pkg/engine.wasm
     Site,
-    Serve { port: u16 },
+    /// Build the site, then serve it with tsc --watch alongside; Ctrl-C stops both
+    Serve {
+        /// Port to serve on (1-65535)
+        #[arg(long, default_value_t = serve::DEFAULT_PORT,
+              value_parser = clap::value_parser!(u16).range(1..))]
+        port: u16,
+    },
+    /// Build the site, load the demos in headless Chrome, and check they draw
     Smoke,
+    /// Run the math and engine tests as wasm32-wasip1 under wasmtime
     TestWasm,
+    /// Point git at the tracked hooks in .githooks/
     InstallHooks,
-    Help,
-}
-
-/// Parses the arguments after `cargo xtask`. Pure, so it's unit-tested.
-fn parse(args: &[String]) -> Result<Command, String> {
-    match args {
-        [] => Ok(Command::Help),
-        [cmd, rest @ ..] if cmd == "serve" => parse_serve(rest),
-        [cmd] => match cmd.as_str() {
-            "site" => Ok(Command::Site),
-            "smoke" => Ok(Command::Smoke),
-            "test-wasm" => Ok(Command::TestWasm),
-            "install-hooks" => Ok(Command::InstallHooks),
-            "help" | "-h" | "--help" => Ok(Command::Help),
-            other => Err(format!("unknown command `{other}`")),
-        },
-        [cmd, extra, ..] => Err(format!("`{cmd}` takes no arguments (got `{extra}`)")),
-    }
-}
-
-/// `serve [--port N]`: N must be 1–65535.
-fn parse_serve(rest: &[String]) -> Result<Command, String> {
-    match rest {
-        [] => Ok(Command::Serve {
-            port: serve::DEFAULT_PORT,
-        }),
-        [flag, value] if flag == "--port" => match value.parse::<u16>() {
-            Ok(port) if port != 0 => Ok(Command::Serve { port }),
-            _ => Err(format!(
-                "`--port` needs a port number 1–65535, got `{value}`"
-            )),
-        },
-        [flag] if flag == "--port" => Err("`--port` needs a value".to_owned()),
-        [other, ..] => Err(format!("`serve` doesn't take `{other}`")),
-    }
 }
 
 fn main() -> ExitCode {
-    let args: Vec<String> = env::args().skip(1).collect();
-    let result = parse(&args)
-        .map_err(|e| format!("{e}\n\n{USAGE}"))
-        .and_then(run);
-    match result {
+    // Parse errors and --help exit here, with clap's own messages and codes.
+    let cli = Cli::parse();
+    match run(cli.command) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("xtask: {e}");
@@ -94,10 +73,6 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Smoke => smoke::smoke(&root),
         Command::TestWasm => test_wasm(&root),
         Command::InstallHooks => install_hooks(&root),
-        Command::Help => {
-            println!("{USAGE}");
-            Ok(())
-        }
     }
 }
 

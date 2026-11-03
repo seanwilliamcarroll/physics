@@ -14,6 +14,8 @@ publish = false
 # Default features include `fork`/`timeout` (each case in a subprocess),
 # which WASI doesn't have; the engine tests also run on wasm32-wasip1.
 proptest = { version = "1.12.0", default-features = false, features = ["std"] }
+# CLI parsing for xtask (dev tooling only; never in the engine or wasm).
+clap = { version = "4.6.7", features = ["derive"] }
 
 [profile.release]
 opt-level = 3   # try "s"/"z" later and measure size vs speed

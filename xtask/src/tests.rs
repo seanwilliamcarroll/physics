@@ -1,42 +1,55 @@
-use super::{Command, parse};
+use clap::{CommandFactory, Parser, error::ErrorKind};
 
-fn args(a: &[&str]) -> Vec<String> {
-    a.iter().map(|s| (*s).to_owned()).collect()
+use super::{Cli, Command};
+
+/// Parses `cargo xtask <args>` (argv[0] is the binary name).
+fn parse(args: &[&str]) -> Result<Command, ErrorKind> {
+    Cli::try_parse_from(std::iter::once("xtask").chain(args.iter().copied()))
+        .map(|cli| cli.command)
+        .map_err(|e| e.kind())
+}
+
+#[test]
+fn cli_definition_is_consistent() {
+    // clap's own check for mistakes in the definition (duplicate names,
+    // conflicting flags) that would otherwise only show at runtime.
+    Cli::command().debug_assert();
 }
 
 #[test]
 fn parses_known_commands() {
-    assert_eq!(parse(&args(&["site"])), Ok(Command::Site));
-    assert_eq!(parse(&args(&["smoke"])), Ok(Command::Smoke));
-    assert_eq!(parse(&args(&["test-wasm"])), Ok(Command::TestWasm));
-    assert_eq!(parse(&args(&["install-hooks"])), Ok(Command::InstallHooks));
+    assert_eq!(parse(&["site"]), Ok(Command::Site));
+    assert_eq!(parse(&["smoke"]), Ok(Command::Smoke));
+    assert_eq!(parse(&["test-wasm"]), Ok(Command::TestWasm));
+    assert_eq!(parse(&["install-hooks"]), Ok(Command::InstallHooks));
 }
 
 #[test]
 fn serve_takes_an_optional_port() {
-    assert_eq!(parse(&args(&["serve"])), Ok(Command::Serve { port: 8000 }));
+    assert_eq!(parse(&["serve"]), Ok(Command::Serve { port: 8000 }));
     assert_eq!(
-        parse(&args(&["serve", "--port", "9001"])),
+        parse(&["serve", "--port", "9001"]),
         Ok(Command::Serve { port: 9001 })
     );
-    assert!(parse(&args(&["serve", "--port"])).is_err(), "missing value");
-    assert!(parse(&args(&["serve", "--port", "0"])).is_err(), "port 0");
-    assert!(
-        parse(&args(&["serve", "--port", "http"])).is_err(),
-        "not a number"
-    );
-    assert!(parse(&args(&["serve", "--fast"])).is_err(), "unknown flag");
+    assert!(parse(&["serve", "--port"]).is_err(), "missing value");
+    assert!(parse(&["serve", "--port", "0"]).is_err(), "port 0");
+    assert!(parse(&["serve", "--port", "http"]).is_err(), "not a number");
+    assert!(parse(&["serve", "--port", "70000"]).is_err(), "over 65535");
+    assert!(parse(&["serve", "--fast"]).is_err(), "unknown flag");
 }
 
 #[test]
 fn no_args_or_help_shows_usage() {
-    assert_eq!(parse(&args(&[])), Ok(Command::Help));
-    assert_eq!(parse(&args(&["help"])), Ok(Command::Help));
-    assert_eq!(parse(&args(&["--help"])), Ok(Command::Help));
+    assert_eq!(
+        parse(&[]),
+        Err(ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand)
+    );
+    assert_eq!(parse(&["--help"]), Err(ErrorKind::DisplayHelp));
+    assert_eq!(parse(&["help"]), Err(ErrorKind::DisplayHelp));
 }
 
 #[test]
 fn rejects_unknown_commands_and_extra_args() {
-    assert!(parse(&args(&["deploy"])).is_err());
-    assert!(parse(&args(&["site", "--fast"])).is_err());
+    assert_eq!(parse(&["deploy"]), Err(ErrorKind::InvalidSubcommand));
+    assert_eq!(parse(&["site", "--fast"]), Err(ErrorKind::UnknownArgument));
 }
