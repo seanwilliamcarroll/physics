@@ -2,5 +2,7 @@
 # change silently when the toolchain updates. Bump deliberately, in its own PR.
 [toolchain]
 channel = "1.99.1"
-components = ["rustfmt", "clippy"]
+# llvm-tools: llvm-profdata and llvm-cov, matching this rustc's LLVM, which
+# cargo-llvm-cov needs to merge and report coverage (cargo xtask coverage).
+components = ["rustfmt", "clippy", "llvm-tools"]
 targets = ["wasm32-unknown-unknown", "wasm32-wasip1"]
