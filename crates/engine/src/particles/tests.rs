@@ -1,6 +1,6 @@
 use super::{ParticleId, Particles};
 use crate::Vec2;
-use crate::mass::kg;
+use crate::params::kg;
 
 #[test]
 fn starts_empty() {

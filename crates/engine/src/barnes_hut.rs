@@ -3,7 +3,7 @@
 //! Design, accuracy, and what it gives up (momentum): `docs/barnes-hut.md`.
 //! Reference: Barnes & Hut (1986), <https://doi.org/10.1038/324446a0>.
 
-use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
+use crate::{Force, OpeningAngle, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
 /// Quadtree levels resolved by the Morton key: two bits per level in a
 /// `u64`. Bodies still sharing a cell at this depth (closer than
@@ -11,34 +11,6 @@ use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 /// so the limit costs time in pathological cases, never accuracy. Also
 /// bounds the build's recursion depth.
 const MAX_DEPTH: u32 = u64::BITS / 2;
-
-/// Barnes–Hut opening angle θ: a value known to be `≥ 0`, checked once
-/// like [`Softening`] (`docs/type-invariants.md`: θ became a slider).
-/// θ = 0 is valid (exact direct summation through the tree).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct OpeningAngle<S>(S);
-
-impl<S: Scalar> OpeningAngle<S> {
-    /// `Some` if `theta ≥ 0`; NaN fails the comparison, so it's rejected
-    /// too.
-    #[must_use]
-    pub fn new(theta: S) -> Option<Self> {
-        (theta >= S::ZERO).then_some(Self(theta))
-    }
-
-    /// θ.
-    #[must_use]
-    pub const fn get(self) -> S {
-        self.0
-    }
-
-    /// The same θ in another scalar type, unchecked: rounding a
-    /// non-negative, non-NaN value can't make it negative or NaN.
-    #[must_use]
-    pub fn cast<T: Scalar>(self) -> OpeningAngle<T> {
-        OpeningAngle(T::from_f64(self.0.to_f64()))
-    }
-}
 
 /// Same physics as [`PairwiseGravity`] (softened
 /// Newtonian gravity between dynamic particles), but a group of bodies far
@@ -69,7 +41,7 @@ impl<S: Scalar> BarnesHut<S> {
         Self {
             g_const,
             softening_sq: softening.squared(),
-            theta_sq: theta.0 * theta.0,
+            theta_sq: theta.get() * theta.get(),
         }
     }
 
@@ -82,7 +54,7 @@ impl<S: Scalar> BarnesHut<S> {
         Self {
             g_const: exact.g_const(),
             softening_sq: exact.softening_sq(),
-            theta_sq: theta.0 * theta.0,
+            theta_sq: theta.get() * theta.get(),
         }
     }
 

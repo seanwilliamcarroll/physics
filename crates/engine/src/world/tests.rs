@@ -75,7 +75,7 @@ fn config_errors_explain_themselves() {
 #[test]
 fn add_constraint_rejects_bodies_from_another_world() {
     use super::ConfigError;
-    use crate::mass::kg;
+    use crate::params::kg;
     use crate::{DistanceConstraint, Vec2};
     let mut big = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
     let a = big.particles.add_static(Vec2::ZERO);

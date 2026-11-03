@@ -4,7 +4,7 @@
 use core::num::NonZeroU32;
 
 use crate::integrate::{drift, evaluate, kick};
-use crate::{Constraint, Force, Particles, Scalar, Vec2};
+use crate::{Baumgarte, Constraint, Force, Particles, Scalar, Vec2};
 
 /// How a world with constraints is stepped.
 ///
@@ -27,38 +27,6 @@ pub enum Solver {
 impl Solver {
     /// Both solvers, for tests and side-by-side demos.
     pub const ALL: [Self; 2] = [Self::Xpbd, Self::Impulse];
-}
-
-/// `Box2D` v2's `b2_baumgarte` (`b2Settings.h`): a common default, and the β
-/// in `01-solvers.md`'s measured table.
-pub const DEFAULT_BAUMGARTE: f64 = 0.2;
-
-/// The impulse solver's Baumgarte factor β: a value known to be in
-/// `[0, 1]`. 0 is no feedback (the rod drifts); 1 asks for the whole
-/// position error back in one substep; above 1 overshoots, so it's
-/// rejected, as is NaN.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Baumgarte<S>(S);
-
-impl<S: Scalar> Baumgarte<S> {
-    /// `Some` if `0 ≤ beta ≤ 1` (NaN fails both comparisons).
-    #[must_use]
-    pub fn new(beta: S) -> Option<Self> {
-        (beta >= S::ZERO && beta <= S::ONE).then_some(Self(beta))
-    }
-
-    /// β.
-    #[must_use]
-    pub const fn get(self) -> S {
-        self.0
-    }
-
-    /// The same β in another scalar type, unchecked: rounding a value in
-    /// `[0, 1]` stays in `[0, 1]`.
-    #[must_use]
-    pub fn cast<T: Scalar>(self) -> Baumgarte<T> {
-        Baumgarte(T::from_f64(self.0.to_f64()))
-    }
 }
 
 /// Everything a solver substep reads and writes, borrowed from `World`.
@@ -229,6 +197,3 @@ fn project<S: Scalar, C: Constraint<S>>(
     *xa -= n * (wa * d_lambda);
     *xb += n * (wb * d_lambda);
 }
-
-#[cfg(test)]
-mod tests;

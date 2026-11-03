@@ -37,6 +37,7 @@ physics/
 │   │   │   ├── integrate.rs
 │   │   │   ├── world.rs
 │   │   │   ├── diagnostics.rs
+│   │   │   ├── params.rs           # checked parameters (Mass, Softening, θ, β), one file each in params/
 │   │   │   ├── scenarios.rs        # shared by tests AND demos; hub re-exporting
 │   │   │   ├── scenarios/          #   one file per scene (+ shared.rs, <scene>/tests.rs)
 │   │   │   └── <module>/tests.rs   # each module's unit tests (no mod.rs)
