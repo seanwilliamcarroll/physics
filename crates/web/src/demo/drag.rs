@@ -67,7 +67,7 @@ impl Demo {
 
     pub(super) fn refresh_links(&mut self) {
         let links = &mut self.links;
-        each_scalar!(&self.world, s => fill_links(&s.world, links));
+        each_scalar!(&self.world, s => fill_links(&s.world, s.spring_ends(), links));
     }
 }
 
@@ -82,10 +82,20 @@ fn grab_in<S: Scalar>(w: &mut World<S>, x: f64, y: f64, radius: f64) -> Option<e
 
 /// Rebuilds `links` from `w`'s constraints. Indices past `u32::MAX` can't
 /// occur in a wasm32 address space; one would be skipped, not wrapped.
-fn fill_links<S: Scalar>(w: &World<S>, links: &mut Vec<u32>) {
+/// Rebuilds `links` from `w`'s constraints and then `springs` (a jelly's
+/// force springs, which aren't constraints but are drawn the same way).
+fn fill_links<S: Scalar>(
+    w: &World<S>,
+    springs: Vec<[engine::ParticleId; 2]>,
+    links: &mut Vec<u32>,
+) {
     links.clear();
-    for c in w.constraints() {
-        let [a, b] = engine::Constraint::bodies(c);
+    let ends = w
+        .constraints()
+        .iter()
+        .map(engine::Constraint::bodies)
+        .chain(springs);
+    for [a, b] in ends {
         if let (Ok(a), Ok(b)) = (u32::try_from(a.index()), u32::try_from(b.index())) {
             links.extend([a, b]);
         }

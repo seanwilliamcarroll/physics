@@ -177,6 +177,15 @@ bodies) are M6.
   constraint in place, except a held drag rod, so the slider doesn't
   reset the jelly.
 
+**As built (M5.7, `site/demos/m5-jelly/`):** the slider is `log10 k` from
+1 to 7 in half decades, plus one stop past the top for rigid. The force
+panel refuses rigid (`demo_set_stiffness` returns 0) and keeps its last
+finite `k`, saying so in its readout. A panel whose kinetic energy passes
+100 J (20× the drop's peak) counts as exploded and freezes until reset,
+so the plot never sees infinities. The hint under the controls computes
+`k_crit = 4m/h²` for the current grid, rate and substeps, with the
+measured 0.1–0.15 band for the whole grid.
+
 ## Energy
 
 For the energy plot (where the explosion shows first, a moment before

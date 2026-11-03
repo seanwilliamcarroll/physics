@@ -193,10 +193,16 @@ IMPULSE`, 10 substeps to start), live `demo_set_stiffness` and
 take; a held drag rod keeps its stiffness), `demo_kinetic_energy`.
 `.wasm` 127,655 B (gzip 42,813).
 
-## 7. Site: the M5 page (PR)
+## ✅ 7. Site: the M5 page (done, manual check pending)
 
-- [ ] `m5-jelly`: three panels, one log stiffness slider with a rigid
-      end, damping, grid size, drag, energy plot; smoke cases; gallery.
+`site/demos/m5-jelly/`: force springs, XPBD and impulse panels; a log
+stiffness slider (10–10⁷ N/m in half decades, then rigid; the force panel
+keeps its k at rigid), damping, grid, substeps, rate, drag in every
+panel, the ground line, a log kinetic-energy plot (a panel past 100 J
+freezes as exploded), and a live `k_crit` hint. `stiffness.ts` with node
+tests; the links buffer now includes force springs. Smoke `m5`,
+`m5rigid`; gallery link.
+
 - [ ] Manual check against **Done when** (yours).
 
 ## 8. M5 cleanup (PR, if needed)

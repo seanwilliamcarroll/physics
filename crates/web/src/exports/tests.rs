@@ -269,6 +269,10 @@ fn jelly_constructor_and_live_stiffness_check_their_input() {
     assert!(!springs.is_null());
     // SAFETY: both from the constructor, freed once, last; null allowed.
     unsafe {
+        // 4x4 grid: 24 structural (3×4 + 4×3) + 18 shear + 16 bend = 58
+        // springs drawn, as force springs or as rods.
+        assert_eq!(demo_links_len(springs), 2 * 58);
+        assert_eq!(demo_links_len(rods), 2 * 58);
         assert_eq!(demo_set_stiffness(springs, 1000.0), 1);
         assert_eq!(
             demo_set_stiffness(springs, f64::INFINITY),

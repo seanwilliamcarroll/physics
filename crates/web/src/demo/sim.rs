@@ -109,6 +109,17 @@ impl<S: Scalar> Sim<S> {
         }
     }
 
+    /// The ends of a jelly's force springs (empty for every other scene),
+    /// for the links buffer.
+    pub(super) fn spring_ends(&self) -> Vec<[engine::ParticleId; 2]> {
+        match &self.force {
+            SceneForce::Jelly {
+                springs: Some(f), ..
+            } => f.springs().iter().map(engine::Spring::ends).collect(),
+            _ => Vec::new(),
+        }
+    }
+
     /// A jelly's spring stiffness `k` (N/m), live: the force realization
     /// rebuilds its springs (`0 < k < ∞`); the constraint realization
     /// updates every rod but `grab`'s (`k > 0`, ∞ is rigid). `false`,
