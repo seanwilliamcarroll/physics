@@ -130,7 +130,7 @@ adopt it in that milestone's PR and move the row up.
    (samples at 44.1/48 kHz, physics seconds, frame milliseconds). The
    `FixedStep` rate-vs-`dt` change is a small instance of the same idea.
 
-8. **Checked JS.** ✅ *Adopted in M1.5½ as JSDoc + `tsc --checkJs`; the `.ts` experiment follows M1.* *Trigger met at M1.1:* the site JS is 465 lines in 6
+8. **Checked JS.** ✅ *Adopted in M1.5½ as JSDoc + `tsc --checkJs`; `.ts` source adopted after M1 (below).* *Trigger met at M1.1:* the site JS is 465 lines in 6
    files, and M1's plots, controls, and three-panel page roughly double
    it. Options, cheapest first:
    - **JSDoc types + `tsc --checkJs --noEmit` (recommended).** Files stay
@@ -172,6 +172,10 @@ adopt it in that milestone's PR and move the row up.
    comment-casts. **What it costs:** a build step before the site can be
    served, generated files, and a second tsconfig, all cheap with TS 7's
    0.14 s builds and `--watch`.
+
+   **Decision (after M1): adopt.** The shared library stays `.ts`; new pages
+   (M2 onward) are written in `.ts`; the M0 and M1 demo pages convert when
+   next touched.
 
 9. **Typestate builders** (a world that's "being configured" vs "running"
    as different types). *Adopt when* there is configuration that is invalid

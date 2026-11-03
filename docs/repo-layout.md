@@ -60,12 +60,14 @@ physics/
 └── site/
     ├── index.html          # demo gallery
     ├── css/site.css
-    ├── js/                 # native ES modules, no bundler
-    │   ├── wasm.js         # load + instantiate engine.wasm
-    │   ├── loop.js         # rAF loop → demo_advance
-    │   ├── canvas.js       # world→screen, high-DPI, batched drawing
-    │   ├── plot.js         # ring-buffer line plots
-    │   └── controls.js     # sliders/dropdowns → demo_set_*
+    ├── js/                 # TypeScript library; tsc emits .js beside it (gitignored)
+    │   ├── wasm.ts         # load + instantiate engine.wasm
+    │   ├── loop.ts         # rAF loop → demo_advance
+    │   ├── canvas.ts       # world→screen, high-DPI, batched drawing
+    │   ├── plot.ts         # ring-buffer line plots
+    │   ├── controls.ts     # sliders/dropdowns → demo_set_*
+    │   ├── …               # abi, dom, options, ring, smoke, trail
+    │   └── engine.d.ts     # types for the wasm exports/imports
     ├── demos/
     │   └── m0-hello/
     │       ├── index.html
@@ -115,7 +117,11 @@ Local serving stays `python3 -m http.server -d site`.
 
 - **One folder per demo.** Each page stays tiny; shared behavior lives in `site/js/`.
 - **Native ES modules, no bundler.** `<script type="module">` and `import`
-  work in every current browser. Zero JS tooling.
+  work in every current browser. The shared library is TypeScript
+  (adopted after M1, `type-invariants.md` item 8): `tsc` deletes the types
+  (`erasableSyntaxOnly`) and emits one `.js` per `.ts`, unbundled. New
+  pages are `.ts`; the M0/M1 demo pages are JSDoc-checked `.js` until next
+  touched.
 - **Relative URLs everywhere.** `./js/wasm.js`, `../../pkg/engine.wasm`.
   Never `/js/...`. This is what lets the site later be served from a
   sub-path of another domain (`hosting.md`) without changes.
