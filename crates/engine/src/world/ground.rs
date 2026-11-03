@@ -4,7 +4,7 @@
 //! loses its downward velocity: inelastic, no friction.
 
 use super::World;
-use crate::Scalar;
+use crate::{Particles, Scalar};
 
 impl<S: Scalar> World<S> {
     /// The ground's height, m, or `None` (the default) for no ground.
@@ -20,3 +20,24 @@ impl<S: Scalar> World<S> {
         self.ground = y;
     }
 }
+
+/// Clamps every dynamic particle to `y >= ground`: one at or below it moves
+/// up to it, and a downward velocity becomes zero (horizontal velocity is
+/// kept: no friction). At the ground, not just below, so a resting particle
+/// that a stepper left on the ground with a downward velocity (explicit
+/// Euler moves before it accelerates) stops too. Static particles are left
+/// where they are.
+pub(super) fn clamp<S: Scalar>(p: &mut Particles<S>, ground: S) {
+    let dynamic = p.inv_mass.iter().map(|&w| w != S::ZERO);
+    for ((x, v), dynamic) in p.pos.iter_mut().zip(p.vel.iter_mut()).zip(dynamic) {
+        if dynamic && x.y <= ground {
+            x.y = ground;
+            if v.y < S::ZERO {
+                v.y = S::ZERO;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

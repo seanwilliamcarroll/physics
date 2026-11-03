@@ -168,7 +168,10 @@ impl<S: Scalar> World<S> {
 
     /// No constraints: the integrator, exactly as before M3. With
     /// constraints: the solver owns the whole substep, and the integrator
-    /// setting is ignored (`docs/06-constraints.md`).
+    /// setting is ignored (`docs/06-constraints.md`). Then the ground, if
+    /// any, clamps the result: after the stepper, so it applies to all of
+    /// them alike, and after XPBD derives its velocities, so the next
+    /// substep starts from a clamped position *and* velocity.
     fn substep(&mut self, h: S) {
         if self.constraints.is_empty() {
             self.integrator.substep(
@@ -181,6 +184,9 @@ impl<S: Scalar> World<S> {
         } else {
             self.constraints
                 .substep(&self.forces, &mut self.particles, &mut self.acc, h);
+        }
+        if let Some(y) = self.ground {
+            ground::clamp(&mut self.particles, y);
         }
     }
 }
