@@ -248,6 +248,11 @@ impl<S: Scalar> World<S> {
 `ConfigError::ZeroSubsteps` rather than a panic (library code may not
 panic; see `lint-policy.md`). Considered: `NonZeroU32`, which moves the
 check into the type at the cost of clunkier call sites.
+**Revised (M3/M4 audit):** `World::new(integrator, substeps: NonZeroU32)`
+returns `World` directly. The `Result` had spread to every scene for an
+error none could hit, and M3 had already given `set_substeps` the type.
+Scene constants are `const` items (`NonZeroU32::MIN`); tests write
+`nonzero(4)` (`test-support`).
 
 **Decision: `dyn Force<S>`** (for now). Dispatch happens once per force per
 substep, and each call does O(n) or O(n²) work, so the indirect call is

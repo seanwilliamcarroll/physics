@@ -9,7 +9,8 @@ use engine::scenarios::{
 };
 use engine::{Integrator, Scalar, Softening, Vec2, World};
 use test_support::{
-    Tol, energy_errors, envelope, for_each_scalar, kg, orbit_energy, s, separation, steps_for,
+    Tol, energy_errors, envelope, for_each_scalar, kg, nonzero, orbit_energy, s, separation,
+    steps_for,
 };
 
 /// One 60 Hz frame: the step the demo uses.
@@ -122,7 +123,7 @@ const SOFTENED_PEAK_MAX: f64 = 10.0;
 
 /// Fastest speed reached by either body during the close pass.
 fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
-    let mut w = World::<S>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let mut w = World::<S>::new(Integrator::SymplecticEuler, nonzero(1));
     w.add_force(gravity(Softening::new(s::<S>(softening)).unwrap()));
     let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
     let half_b = PASS_IMPACT_M / 2.0;

@@ -5,7 +5,7 @@
 use engine::diagnostics::{constraint_error, momentum};
 use engine::scenarios::{PENDULUM_LENGTH, pendulum};
 use engine::{DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
-use test_support::{Tol, for_each_scalar, kg, pendulum_energy, s, v};
+use test_support::{Tol, for_each_scalar, kg, nonzero, pendulum_energy, s, v};
 
 /// The `01-solvers.md` setup: 10 s at 60 Hz.
 const DT: f64 = 1.0 / 60.0;
@@ -19,7 +19,7 @@ fn max_rod_error<S: Scalar>(w: &World<S>) -> f64 {
 /// error is rounding, not drift: `01`'s "~0 (float eps)" column. Bound:
 /// a few ulps of the 1 m rod per step, checked after every step.
 fn xpbd_holds_the_rod_to_rounding<S: Tol>() {
-    let mut w = pendulum::<S>(Solver::Xpbd, 1).unwrap();
+    let mut w = pendulum::<S>(Solver::Xpbd, nonzero(1)).unwrap();
     let mut worst = 0.0_f64;
     for _ in 0..STEPS {
         w.step(s(DT));
@@ -33,7 +33,7 @@ for_each_scalar!(xpbd_holds_the_rod_to_rounding);
 /// The anchor is a static particle: inverse-mass weighting never moves it.
 #[test]
 fn the_pin_never_moves() {
-    let mut w = pendulum::<f64>(Solver::Xpbd, 4).unwrap();
+    let mut w = pendulum::<f64>(Solver::Xpbd, nonzero(4)).unwrap();
     for _ in 0..STEPS {
         w.step(DT);
     }
@@ -47,7 +47,7 @@ fn the_pin_never_moves() {
 #[test]
 fn xpbd_energy_loss_shrinks_with_substeps() {
     let lost = |substeps| {
-        let mut w = pendulum::<f64>(Solver::Xpbd, substeps).unwrap();
+        let mut w = pendulum::<f64>(Solver::Xpbd, nonzero(substeps)).unwrap();
         let e0 = pendulum_energy(&w);
         for _ in 0..STEPS {
             w.step(DT);
@@ -63,7 +63,7 @@ fn xpbd_energy_loss_shrinks_with_substeps() {
 /// forces are internal, so momentum is conserved (mass weighting, `01`)
 /// and the rod holds.
 fn free_rod_conserves_momentum<S: Tol>() {
-    let mut w = World::<S>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let mut w = World::<S>::new(Integrator::SymplecticEuler, nonzero(1));
     let a = w.particles.add(v(-0.5, 0.0), v(0.1, -1.0), kg(1.0));
     let b = w.particles.add(v(0.5, 0.0), v(0.3, 2.0), kg(3.0));
     let rod = DistanceConstraint::between(&w.particles, a, b).unwrap();
@@ -87,7 +87,7 @@ for_each_scalar!(free_rod_conserves_momentum);
 #[test]
 fn integrator_is_ignored_with_constraints() {
     let run = |integrator| {
-        let mut w = pendulum::<f64>(Solver::Xpbd, 2).unwrap();
+        let mut w = pendulum::<f64>(Solver::Xpbd, nonzero(2)).unwrap();
         w.set_integrator(integrator);
         for _ in 0..60 {
             w.step(DT);

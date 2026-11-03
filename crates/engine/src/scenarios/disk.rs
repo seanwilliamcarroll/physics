@@ -41,10 +41,10 @@ pub const DISK_ORBITERS_TOTAL_MASS: f64 = 1.0e10;
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive, and
-/// the masses positive and far from `S`'s range limits).
+/// [`CLUSTER_SOFTENING`] positive, and the masses positive and far from
+/// `S`'s range limits).
 pub fn disk<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
+    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
     w.add_force(cluster_gravity()?);
     let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
     for (pos, vel, m) in disk_bodies(n, seed) {

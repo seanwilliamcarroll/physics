@@ -31,7 +31,7 @@ pub fn pendulum_energy<S: Scalar>(w: &World<S>) -> f64 {
 /// and `substeps` per step.
 #[must_use]
 pub fn pendulum_run<S: Scalar>(solver: Solver, beta: f64, substeps: u32) -> PendulumRun {
-    let mut w = pendulum::<S>(solver, substeps).unwrap();
+    let mut w = pendulum::<S>(solver, crate::nonzero(substeps)).unwrap();
     w.set_baumgarte(Baumgarte::new(s(beta)).unwrap());
     let e0 = pendulum_energy(&w);
     let mut max_rod_error = 0.0_f64;

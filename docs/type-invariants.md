@@ -32,7 +32,7 @@ and a test are cheaper.
 |---|---|---|
 | `Particles` | `pos`, `vel`, `inv_mass` stay the same length | Private `Vec`s; accessors return slices (can edit elements, can't resize) |
 | `Particles::add_static` | Static means `inv_mass = 0` and zero velocity, never `1 / 0` | A separate constructor instead of `add(mass = 0)` |
-| `World::new` | `substeps ≥ 1` | `Result<_, ConfigError>` (runtime check, typed error) |
+| `World::new`, `set_substeps` | `substeps ≥ 1` | `NonZeroU32` (since the M3/M4 audit; was a `Result`) |
 | `ScalarKind`, `DemoKind`, xtask `Command` | Only known codes/commands | Enums parsed once at the boundary (`from_code`, `parse`); `None`/`Err` otherwise |
 | `Vec2`, scalar-returning methods | Results aren't silently discarded | `#[must_use]` (`docs/lint-policy.md`) |
 | `crates/web/src/abi.rs` | Rust and JS agree on wasm codes | One owner, a mirror, and a test that compares them |
@@ -87,9 +87,8 @@ met: `DistanceConstraint::evaluate` is the first `x / |x|` in a constraint
 gradient, and it returns `None` at `|x| = 0`. Its trigger asks for a second
 call site; M4's chains reuse the same constraint, so likely M6 (contact
 normals). Item 2's `Compliance` waits for M5's springs (rods are rigid-only
-until then). Item 4 (`NonZeroU32` substeps) is now half adopted:
-`set_substeps` takes it (the slider triggered it), `World::new` keeps its
-`Result`. Item 5's generational `ParticleId` waits for removal.
+until then). Item 4 (`NonZeroU32` substeps) was half adopted in M3
+(`set_substeps`) and finished in the M3/M4 audit (`World::new`). Item 5's generational `ParticleId` waits for removal.
 
 **Triggers re-checked at the end of M2:** item 1 (mass types) still
 waits: masses are still scenario-computed, never user input, and M2 added
@@ -134,7 +133,6 @@ bug yet (item 7).
 | Where | Invariant | Decision | Why |
 |---|---|---|---|
 | `World::step(dt)` | `dt ≥ 0`? | No type | A negative `dt` is meaningful: it steps backward in time (velocity Verlet is time-reversible in exact arithmetic; symplectic Euler isn't time-symmetric, so it only approximately retraces). Zero is a tested no-op. NaN only comes from a caller bug and `Scalar` makes no NaN promises. No loop depends on the sign, so nothing hangs. |
-| `World::new(substeps)` | `substeps ≥ 1` | Keep `Result` | Decided in M0 (`docs/02-core-types.md`): `NonZeroU32` is the type-level alternative. See **`NonZeroU32` substeps** below. |
 | `demo_advance(elapsed_s)` | finite, `≥ 0` | Sanitize, no type | It arrives from JS across the C ABI as a raw `f64`; a type can't be imposed on the caller. `FixedStep::advance` is the parse step: NaN and negatives become 0, long frames are clamped. |
 | `SplitMix64::range(lo, hi)`, `FOUNTAIN_VX/VY` | `lo < hi` | Doc + tests | Only called with constants, and tests assert generated values fall in range. |
 | Units (s, m, kg) | No mixing | No types | No unit-mixing bug so far, and unit types multiply operator impls (`Meters / Seconds = MetersPerSecond`, ...). Crates that do this well (`uom`) fail the dependency bar for one benefit. |
@@ -169,7 +167,9 @@ adopt it in that milestone's PR and move the row up.
    direction. It matters more on fixed point (**M8**), where `x / |x|` near
    zero loses all precision.
 
-4. **`NonZeroU32` substeps** in `World::new`. *Adopt if* the `Result`
+4. **`NonZeroU32` substeps** in `World::new`. ✅ *Adopted in the M3/M4
+   audit*, together with `Baumgarte::default()`, so `World::new` can't
+   fail at all. Original trigger: *adopt if* the `Result`
    plumbing keeps propagating errors that can't happen (as `Fountain::world`
    already does for a constant `1`) across several scenarios, or substeps
    become a slider where the export layer parses anyway. The cost is

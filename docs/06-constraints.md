@@ -100,8 +100,8 @@ for more than the whole error back in one step.
 exactly in one pass (below), so iterations only matter from M4's chains.
 **Substeps become settable** too: `World::set_substeps(NonZeroU32)`. The
 slider is `type-invariants.md` item 4's trigger, so the setter takes the
-type; `World::new` keeps its `Result` (changing it is churn for no new
-safety).
+type. (`World::new` followed in the M3/M4 audit: it takes `NonZeroU32`
+and can no longer fail.)
 
 ## Who steps: the solver owns the step when there are constraints
 

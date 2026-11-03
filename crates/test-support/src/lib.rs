@@ -65,6 +65,13 @@ pub fn v<S: Scalar>(x: f64, y: f64) -> Vec2<S> {
     Vec2::new(s(x), s(y))
 }
 
+/// `NonZeroU32` from a literal in a test (`nonzero(4)`), for substeps and
+/// the like: panics on 0, which no test passes.
+#[must_use]
+pub fn nonzero(n: u32) -> core::num::NonZeroU32 {
+    core::num::NonZeroU32::new(n).unwrap()
+}
+
 /// A [`Mass`] from an `f64` literal known to be valid (panics otherwise).
 #[must_use]
 pub fn kg<S: Scalar>(m: f64) -> Mass<S> {

@@ -16,10 +16,10 @@ pub const COLLAPSE_TOTAL_MASS: f64 = 3.0e10;
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`](super::CLUSTER_SOFTENING) positive, and
-/// the masses positive and far from `S`'s range limits).
+/// [`CLUSTER_SOFTENING`](super::CLUSTER_SOFTENING) positive, and the masses
+/// positive and far from `S`'s range limits).
 pub fn collapse<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
+    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
     w.add_force(cluster_gravity()?);
     #[expect(
         clippy::cast_precision_loss,

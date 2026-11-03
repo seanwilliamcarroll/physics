@@ -459,16 +459,14 @@ code came with its tests, and those tests covered two earlier gaps.)
 - `web` `demo_panic_for_test` (`exports.rs`): can't run natively, since
   a panic can't unwind out of an `extern "C"` fn. Its Rust-ABI helper is
   tested, and the smoke test's panic case runs the export in Chrome. Fine.
-- `engine` `ConfigError::ZeroSubsteps`'s `Display` text (`world.rs`):
-  `InvalidSoftening`'s message is tested (M2.4), this one isn't. One
-  assertion; left for the cleanup PR. (The f32 energy gap the first run
-  found on `main` closed when M2.5 tested every gravity scene in both
+- (Closed since: `ZeroSubsteps`'s message was tested in M2.9, and the
+  variant itself is gone since `World::new` takes `NonZeroU32`. The f32
+  energy gap closed when M2.5 tested every gravity scene in both
   scalars.)
 - `engine` `World::substeps()` getter and `Particles::default()`: unused
   accessors. Harmless.
-- `engine` scenarios: the `?` after `World::new(.., *_SUBSTEPS)` never
-  takes the error branch (the constants are nonzero). Region-only misses;
-  unreachable by construction.
+- (Closed since: the never-taken `?` after `World::new` in every scene is
+  gone with the `Result`.)
 - Site JS: the uncovered lines are drawing code (`canvas.ts`, the
   drawing halves of `plot.ts` and `trail.ts`, `perf.ts`'s HTML and
   `performance.now()` helpers) and `runLoop` (rAF). They

@@ -10,7 +10,7 @@ use core::num::NonZeroU32;
 pub use config_error::ConfigError;
 use constraints::Constraints;
 
-use crate::{Baumgarte, DEFAULT_BAUMGARTE};
+use crate::Baumgarte;
 use crate::{DistanceConstraint, Force, Integrator, Particles, Scalar, Solver, Vec2};
 
 /// A simulation: particles, the forces acting on them, and how to integrate.
@@ -32,23 +32,19 @@ pub struct World<S: Scalar> {
 }
 
 impl<S: Scalar> World<S> {
-    /// An empty world.
-    ///
-    /// # Errors
-    /// [`ConfigError::ZeroSubsteps`] if `substeps` is 0.
-    pub fn new(integrator: Integrator, substeps: u32) -> Result<Self, ConfigError> {
-        if substeps == 0 {
-            return Err(ConfigError::ZeroSubsteps);
-        }
-        Ok(Self {
+    /// An empty world, `substeps` per step. Can't fail: the type rules out
+    /// zero substeps, and the built-in β is valid by construction.
+    #[must_use]
+    pub fn new(integrator: Integrator, substeps: NonZeroU32) -> Self {
+        Self {
             particles: Particles::new(),
             forces: Vec::new(),
             integrator,
-            substeps,
+            substeps: substeps.get(),
             acc: Vec::new(),
             acc_next: Vec::new(),
-            constraints: Constraints::new(default_baumgarte()?),
-        })
+            constraints: Constraints::new(Baumgarte::default()),
+        }
     }
 
     pub fn add_force(&mut self, force: impl Force<S> + 'static) {
@@ -109,8 +105,7 @@ impl<S: Scalar> World<S> {
         self.constraints.iterations = iterations;
     }
 
-    /// The type makes 0 unrepresentable, so unlike [`World::new`] there's
-    /// nothing to report.
+    /// The type makes 0 unrepresentable, so there's nothing to report.
     pub const fn set_substeps(&mut self, substeps: NonZeroU32) {
         self.substeps = substeps.get();
     }
@@ -157,12 +152,6 @@ impl<S: Scalar> World<S> {
         self.constraints
             .substep(&self.forces, &mut self.particles, &mut self.acc, h);
     }
-}
-
-/// [`DEFAULT_BAUMGARTE`] in `S`. It's in `[0, 1]`, so this never fails;
-/// the `Result` is [`World::new`]'s, like the scenes' checked constants.
-fn default_baumgarte<S: Scalar>() -> Result<Baumgarte<S>, ConfigError> {
-    Baumgarte::new(S::from_f64(DEFAULT_BAUMGARTE)).ok_or(ConfigError::InvalidBaumgarte)
 }
 
 #[cfg(test)]

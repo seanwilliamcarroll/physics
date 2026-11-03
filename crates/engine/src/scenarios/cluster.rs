@@ -1,5 +1,7 @@
 //! [`cluster`]: `n` bodies drifting under mutual softened gravity (M1, M2).
 
+use core::num::NonZeroU32;
+
 use super::shared::{BodyF64, gravity, mass, point_in_annulus, softening};
 use crate::rng::SplitMix64;
 use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, Vec2, World};
@@ -31,7 +33,7 @@ pub const CLUSTER_SPEED: f64 = 0.2;
 pub const CLUSTER_SOFTENING: f64 = 0.1;
 
 /// Substeps for [`cluster`]: one; tests probe conservation, not accuracy.
-pub const CLUSTER_SUBSTEPS: u32 = 1;
+pub const CLUSTER_SUBSTEPS: NonZeroU32 = NonZeroU32::MIN;
 
 /// The force [`cluster`] adds: [`gravity`] with [`CLUSTER_SOFTENING`].
 /// Public so energy readouts use exactly the scene's force (like
@@ -55,10 +57,10 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive, and
-/// the masses positive and far from `S`'s range limits).
+/// [`CLUSTER_SOFTENING`] positive, and the masses positive and far from
+/// `S`'s range limits).
 pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
+    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
     w.add_force(cluster_gravity()?);
     let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
     for (pos, vel, m) in cluster_bodies(n, seed) {

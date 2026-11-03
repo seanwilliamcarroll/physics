@@ -1,14 +1,16 @@
 //! [`Fountain`]: the M0 demo, particles launched and relaunched under
 //! standard gravity.
 
+use core::num::NonZeroU32;
+
 use super::shared::STANDARD_GRAVITY;
 use crate::rng::SplitMix64;
-use crate::{ConfigError, Integrator, Mass, Scalar, UniformGravity, Vec2, World};
+use crate::{Integrator, Mass, Scalar, UniformGravity, Vec2, World};
 
 /// Substeps per fixed step for [`Fountain`]. One is enough: symplectic
 /// Euler's error under constant gravity is ½ g h t (`tests/invariants.rs`),
 /// about 8 cm after 1 s of flight at 60 Hz, invisible at demo scale.
-pub const FOUNTAIN_SUBSTEPS: u32 = 1;
+pub const FOUNTAIN_SUBSTEPS: NonZeroU32 = NonZeroU32::MIN;
 
 /// Launch velocity ranges for [`Fountain`], m/s: `(min, max)`.
 pub const FOUNTAIN_VX: (f64, f64) = (-2.0, 2.0);
@@ -36,11 +38,9 @@ impl Fountain {
 
     /// Builds a world with `n` freshly launched particles.
     ///
-    /// # Errors
-    /// Only if the fixed configuration were invalid (it isn't:
-    /// [`FOUNTAIN_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
-    pub fn world<S: Scalar>(&mut self, n: usize) -> Result<World<S>, ConfigError> {
-        let mut w = World::new(Integrator::SymplecticEuler, FOUNTAIN_SUBSTEPS)?;
+    #[must_use]
+    pub fn world<S: Scalar>(&mut self, n: usize) -> World<S> {
+        let mut w = World::new(Integrator::SymplecticEuler, FOUNTAIN_SUBSTEPS);
         w.add_force(UniformGravity::new(Vec2::new(
             S::ZERO,
             -S::from_f64(STANDARD_GRAVITY),
@@ -49,7 +49,7 @@ impl Fountain {
             let vel = self.launch_velocity();
             w.particles.add(Vec2::ZERO, vel, Mass::ONE);
         }
-        Ok(w)
+        w
     }
 
     /// Relaunches every dynamic particle below the launch height (y < 0)

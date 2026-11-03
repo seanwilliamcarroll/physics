@@ -53,7 +53,7 @@ pub fn world_spec() -> impl Strategy<Value = Vec<BodySpec>> {
 /// A world of `bodies` under softened pairwise gravity.
 #[must_use]
 pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> World<S> {
-    let mut w = World::new(integrator, 1).unwrap();
+    let mut w = World::new(integrator, core::num::NonZeroU32::MIN);
     w.add_force(gravity(Softening::new(s::<S>(PROP_SOFTENING_M)).unwrap()));
     for b in bodies {
         let pos = v::<S>(b.pos.0, b.pos.1);
