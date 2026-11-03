@@ -216,6 +216,26 @@ Configuration: modest `cases` by default (fast `cargo test`), with a higher
 count behind an env var for CI or overnight runs. Commit
 `proptest-regressions/` so every shrunk failure replays forever.
 
+**As built (M2.2)** (`tests/properties.rs`, generators in `tests/common`):
+- 64 cases by default; `PROPTEST_CASES=N` for more (verified: 6400 cases
+  in under half a second, release). Each property runs f32 and f64 on the
+  same generated world (2–12 bodies in a ±10 m box, one in ten static).
+- Translation and permutation tolerances are ~10x the worst case over
+  2000 calibration worlds (f32: 3.7e-4 m and 4.8e-6 m; f64: 4.3e-13 m and
+  1.2e-14 m).
+- **Rotation by 90° is exact in value, not in bits.** Its first failure
+  shrank to two bodies at rest at the origin: rotating `0.0` gives `-0.0`,
+  and `-0.0 + 0.0 = +0.0`, so the result matches with `==` but not bit
+  for bit. That case is committed and replays forever.
+- With `fork` disabled, failures are saved beside the test file
+  (`tests/properties.proptest-regressions`), not in a
+  `proptest-regressions/` directory.
+- **Under wasm** (`test-wasm`): properties pass, and a `prop_assert!`
+  failure still shrinks (it's a returned error). But wasm uses
+  `panic = abort`, so a *panic* inside a property aborts without
+  shrinking, and saved regressions aren't replayed (WASI can't see the
+  source tree). The native run is the one that reports and replays.
+
 ## Running as wasm
 
 Run the same test suite compiled to wasm under `wasmtime` (an external
@@ -232,9 +252,13 @@ rustup target add wasm32-wasip1
 cargo test -p engine --target wasm32-wasip1
 ```
 
-To verify when set up: proptest's default `fork`/`timeout` features may not
-build for WASI. If so, use `default-features = false, features = ["std"]`
-for the wasm run.
+Verified (M2.2): proptest's default `fork`/`timeout` features run cases in
+subprocesses, which WASI doesn't have, so the workspace uses
+`default-features = false, features = ["std"]` everywhere.
+
+`cargo xtask test-wasm` passes `--nocapture`: with `panic = abort`, a
+failing test kills the process before libtest prints the output it
+captured, and the panic message would otherwise be lost.
 
 Golden-hash tests running on both targets give the cross-platform check above.
 

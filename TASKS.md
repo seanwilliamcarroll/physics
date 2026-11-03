@@ -93,25 +93,16 @@ orphaned watcher. The M0 and M1 pages are now `.ts`, so `site/` is all
 TypeScript and one `tsconfig.json` both checks (`--noEmit`) and builds;
 `tsconfig.build.json` is gone.
 
-## 2. Dependencies and property tests (test first, PR)
+## ✅ 2. Dependencies and property tests (done)
 
-`docs/04-testing.md` step 6.
-
-- [ ] `[workspace.dependencies]` with `proptest` (decision 2) and
-      `criterion` (section 3); dependency-policy entries re-checked in
-      `docs/00-scope.md`.
-- [ ] `proptest` strategies in `tests/common`: random particle sets
-      (positions in a box, bounded velocities, masses in a range,
-      occasionally static).
-- [ ] Properties (`tests/properties.rs`), both scalars: pairwise gravity
-      conserves momentum for **any** world; finiteness with softening;
-      translation invariance; rotation by 90° (`perp`, no trig); permutation
-      invariance (the canary for M3's Gauss–Seidel); determinism.
-- [ ] Known failure `unsoftened_close_pass_spikes`: with ε = 0, a
-      near-head-on encounter produces a velocity spike over a threshold.
-- [ ] Commit `proptest-regressions/`; modest default case count, more via
-      `PROPTEST_CASES` for longer runs.
-- [ ] Confirm the property tests build and pass under `test-wasm`.
+`proptest` 1.12.0 via `[workspace.dependencies]`, default features off
+(no subprocesses on WASI). Six properties in `tests/properties.rs`, f32
+and f64 on the same generated worlds: momentum, finiteness, translation,
+exact 90° rotation, permutation, determinism. Rotation found that it's
+exact in value, not bits (signed zero); that case is committed and
+replays. Known failure `unsoftened_close_pass_spikes` (1024 vs 2.8 m/s).
+`test-wasm` now passes `--nocapture`, so wasm test failures print their
+message instead of a bare trap.
 
 ## 3. Benchmarks (PR)
 

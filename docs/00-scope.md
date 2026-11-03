@@ -74,7 +74,11 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   boundary) and has broad community adoption plus an active maintenance record.
 - Each dependency gets a short justification in the design doc that introduces it.
 - Dev-dependencies (benchmarking, property testing) follow the same bar.
-- Approved so far: `proptest`, `criterion` (dev-only; see `04-testing.md`).
+- Approved so far: `proptest`, `criterion` (dev-only; see `04-testing.md`),
+  pinned once in the root `Cargo.toml` (`[workspace.dependencies]`).
+  `proptest` 1.12.0 (re-checked M2: `proptest-rs` org, active) without
+  default features: its `fork`/`timeout` need subprocesses, which WASI
+  lacks.
 - `typescript` (npm, dev-only, M1): type-checks `site/`'s plain `.js`
   through JSDoc annotations and `site/js/engine.d.ts` (`tsc --noEmit`).
   Nothing it produces ships to browsers. Microsoft-maintained, very widely
