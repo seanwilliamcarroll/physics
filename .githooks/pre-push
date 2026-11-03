@@ -8,6 +8,12 @@ cargo test --workspace --quiet
 
 # Site JS unit tests (pure modules only; node's built-in runner, no deps).
 # A glob, not a directory: node --test treats a directory as a module path.
+# Doc comments' intra-doc links ([`Item`]) must resolve: moving items
+# between modules breaks them silently otherwise (found splitting
+# scenarios.rs; three were already broken on main).
+echo "pre-push: cargo doc (links checked)"
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+
 echo "pre-push: node --test (site JS)"
 node --test 'tests/site/**/*.test.js'
 

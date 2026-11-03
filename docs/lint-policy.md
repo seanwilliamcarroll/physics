@@ -57,6 +57,9 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
   For functions returning plain scalars (`dot -> S`, `len`),
   `must_use_candidate` makes us annotate the function itself (tested:
   without it, `v.dot(w);` compiles silently).
+- **Doc links are checked** (pre-push): `RUSTDOCFLAGS="-D warnings" cargo
+  doc --workspace --no-deps`, so an intra-doc link (``[`Item`]``) that
+  stops resolving (an item moved, renamed, or went private) fails the push.
 - **Local exceptions** use `#[expect(lint, reason = "...")]`, not `#[allow]`.
   `expect` fails if the lint stops firing, so stale exceptions don't build up.
 

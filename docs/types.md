@@ -53,12 +53,13 @@ Each is checked once where the value enters, then trusted
 
 | Type | Why it exists |
 |---|---|
-| [`Fountain`](../crates/engine/src/scenarios.rs) | The one scene with state between steps (respawning), so it owns its PRNG and the run is deterministic per seed. |
+| [`Fountain`](../crates/engine/src/scenarios/fountain.rs) | The one scene with state between steps (respawning), so it owns its PRNG and the run is deterministic per seed. |
 | [`SplitMix64`](../crates/engine/src/rng.rs) | A tiny in-house seeded PRNG: integer-only, so scenes are bit-identical on every platform (`00-scope.md`, dependency policy). |
 
-Scenes without state are functions (`cluster`, `disk`, `collapse`,
-`orbit`, `pendulum` in [`scenarios.rs`](../crates/engine/src/scenarios.rs)),
-not types.
+Scenes without state are functions, not types, one file each under
+[`scenarios/`](../crates/engine/src/scenarios/) (`cluster`, `disk`,
+`collapse`, `orbit`, `pendulum`), re-exported by
+[`scenarios.rs`](../crates/engine/src/scenarios.rs).
 
 ## `web` — the wasm boundary
 

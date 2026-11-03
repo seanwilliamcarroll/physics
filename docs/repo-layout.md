@@ -37,7 +37,8 @@ physics/
 │   │   │   ├── integrate.rs
 │   │   │   ├── world.rs
 │   │   │   ├── diagnostics.rs
-│   │   │   ├── scenarios.rs        # shared by tests AND demos
+│   │   │   ├── scenarios.rs        # shared by tests AND demos; hub re-exporting
+│   │   │   ├── scenarios/          #   one file per scene (+ shared.rs, <scene>/tests.rs)
 │   │   │   └── <module>/tests.rs   # each module's unit tests (no mod.rs)
 │   │   ├── tests/
 │   │   │   ├── invariants.rs
