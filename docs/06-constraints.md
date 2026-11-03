@@ -47,9 +47,11 @@ d = xb − xa,   C = |d| − L,   ∇_b C = d / |d| = n,   ∇_a C = −n
   both positions and uses their distance as `L`. No length parameter means
   no invalid length (negative, NaN). `None` if either id is unknown, or
   `a == b`.
-- **Rigid only in M3** (α = 0). A settable compliance is
-  `type-invariants.md`'s `Compliance` (α ≥ 0), adopted with the spring
-  slider in M5; until then there is no way to pass a bad α.
+- **Rigid only in M3** (α = 0). **M4 adds compliance** (the drag needs a
+  soft constraint): `Compliance<S>` (α ≥ 0, m/N, a `params/` type) and a
+  constructor taking it plus an explicit rest length
+  (`with_length(p, a, b, length, compliance)`; length ≥ 0, checked), for
+  the drag's rest length of 0. See "Compliance in both solvers" below.
 - **`n = d / |d|` is the first normalization in a constraint gradient**,
   which is half of `type-invariants.md` item 3's trigger (`UnitVec2`).
   `evaluate` returns `None` for `|d| = 0`, so the degenerate case is
@@ -222,14 +224,67 @@ the other. Adding a constraint pushes a 0.
 - **Uniform-gravity potential:** `Σ m (−g · x)`. `diagnostics` has had only
   the pairwise potential so far; the pendulum's energy needs this one.
 
-## Extending (not M3)
+## M4: compliance, iteration order, dragging
 
-- **M4 chains, mass ratios:** iterations and their order matter; a
-  forward / reverse / alternating order setting goes on `World`. Nothing
-  above moves.
-- **M5 springs:** `DistanceConstraint` with compliance α > 0 (XPBD), via
-  the `Compliance` type. The impulse solver gets the soft-constraint form
-  (Catto's soft step) or is documented as rigid-only; decide then.
+### Compliance in both solvers
+
+XPBD already has the compliant form (`α̃ = α / h²` above). The impulse
+solver gets Catto's soft constraint (GDC 2011, "Soft Constraints"), which
+lands in the same shape. For a spring of stiffness `k` and damper `c`,
+Catto defines `γ = 1 / (h (c + h k))` and a bias factor `β' = h k / (c + h k)`;
+with no damper (`c = 0`) that is `γ = 1/(h² k) = α / h² = α̃` and `β' = 1`:
+
+```
+Δλ = −(Jv + b + α̃ λ) / (w + α̃)
+b  = (β / h) C     rigid rod (α = 0): today's Baumgarte, the β setting
+b  = C / h         compliant (α > 0): the spring's own bias (β' = 1)
+```
+
+So α = 0 is exactly today's rigid update (goldens unchanged), and a
+compliant rod means the same physical stiffness `k = 1/α` in both
+solvers. Check: a bob on a compliant rod oscillates with period
+`2π √(m α)` (small amplitude) under either. No damping in M4; M5's springs
+decide whether to add `c`.
+
+### Iteration order
+
+Gauss–Seidel uses each constraint's correction immediately, so the order
+constraints are visited is part of the method: along a chain, forward
+order propagates a correction down the chain within one pass, reverse up
+it. `Order::{Forward, Reverse, Alternating}` lives on `Constraints` (with
+the other solver settings), default `Forward` (goldens unchanged).
+`Alternating` flips every iteration, a cheap way to cancel the directional
+bias.
+
+**Consequence for the permutation property** (`tests/properties.rs`):
+shuffling bodies changes only rounding *without* constraints, and that
+property stays. *With* constraints, a shuffle reorders the Gauss–Seidel
+sweep, a genuinely different (but valid) solve, so exact invariance is
+gone; the constrained version asserts a bounded difference instead (both
+runs keep every constraint within the solver's error bound).
+
+### Dragging
+
+A grab is two temporary additions, a release removes them:
+
+1. **Grab** at a world point: pick the nearest dynamic particle within a
+   radius; add a **static anchor** particle at the point and a compliant
+   rod of **rest length 0** from anchor to particle.
+2. **Drag:** move the anchor (`Particles::set_static_position`, static
+   particles only, checked). The rod's compliance makes the pull soft, so
+   a fast flick doesn't yank the chain or (impulse) inject energy.
+3. **Release:** pop the rod and the anchor (`Constraints::pop`,
+   `Particles::pop`: the last-added only). That's not general removal, so
+   `ParticleId` stays a plain index: ids of everything else are unchanged.
+
+Rest length 0 makes the gradient undefined exactly when `C = 0` (anchor
+on the particle): `evaluate` returns `None` there and the solvers skip,
+which is the right answer (no pull needed).
+
+## Extending (not M4)
+
+- **M5 springs:** compliant `DistanceConstraint`s exist since M4; M5 adds
+  the force-based `SpringForce` baseline and decides on damping.
 - **M6 contacts:** inequality constraints, generated each step from
   collision detection rather than stored by the user. They get their own
   storage and λ (cleared when a contact disappears), and both solvers
@@ -248,5 +303,7 @@ Full entries in `references.md`.
 - Catto (2005), *Iterative Dynamics with Temporal Coherence*, and (2006),
   *Fast and Simple Physics using Sequential Impulses*: accumulated
   impulses, warm starting, Baumgarte.
+- Catto (2011), *Soft Constraints*: the soft form of the impulse update
+  (M4).
 - Catto (2024), *Solver2D*: the side-by-side comparison this milestone
   imitates.

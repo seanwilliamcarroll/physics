@@ -16,6 +16,11 @@ The derivation behind sequential impulses (PGS formulation).
 **Catto, E. (2009).** *Modeling and Solving Constraints.* GDC 2009.
 - PDF: https://box2d.org/files/ErinCatto_ModelingAndSolvingConstraints_GDC2009.pdf
 
+**Catto, E. (2011).** *Soft Constraints: Reinventing the Spring.* GDC 2011.
+Maps a spring (stiffness, damping) onto the impulse solver's update:
+the soft form both solvers share in M4 (`06-constraints.md`).
+- PDF: https://box2d.org/files/ErinCatto_SoftConstraints_GDC2011.pdf
+
 **Catto, E. (2014).** *Understanding Constraints.* GDC 2014.
 - PDF: https://box2d.org/files/ErinCatto_UnderstandingConstraints_GDC2014.pdf
 
