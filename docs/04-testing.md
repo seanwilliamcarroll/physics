@@ -277,6 +277,31 @@ Golden-hash tests running on both targets give the cross-platform check above.
   small on-page overlay (steps/s, ms per step).
 - Native vs wasm ratio per benchmark is itself a tracked number.
 
+**Measured (M2.3)**, `cargo bench -p engine --bench step` (criterion,
+release, aarch64-apple-darwin, Rust 1.99.1), mean per call, the
+`cluster` scenario:
+
+| | n = 16 | n = 128 | n = 1024 | 128 → 1024 |
+|---|---|---|---|---|
+| step, f32, symplectic Euler | 165 ns | 17.4 µs | 0.99 ms | ×57 |
+| step, f32, velocity Verlet | 326 ns | 35.0 µs | 1.99 ms | ×57 |
+| step, f64, symplectic Euler | 194 ns | 18.0 µs | 1.09 ms | ×61 |
+| step, f64, velocity Verlet | 378 ns | 36.1 µs | 2.20 ms | ×61 |
+| `PairwiseGravity` alone, f32 | 158 ns | 17.4 µs | 1.04 ms | ×60 |
+| per-call body `Vec`, f32 | 13 ns | 40 ns | 250 ns | |
+
+- **O(n²) confirmed:** 8× the bodies costs ×57–61 (ideal ×64): about
+  **2 ns per pair** in both scalars. A step is essentially its force: the
+  integrators are noise next to the pair loop.
+- **Velocity Verlet costs exactly 2.0×** symplectic Euler (two force
+  passes). M1 decision 2 (no cached acceleration) stands: M2's few hundred
+  bodies need ~90 µs (Verlet ~180 µs) of a 16.7 ms frame, so caching would
+  trade a staleness bug class for time that isn't scarce.
+- **The per-call body allocation is negligible:** 8% of the force at
+  n = 16, 0.2% at 128, 0.02% at 1024. No change.
+- **f32 is 5–10% faster than f64:** without SIMD the win is memory, not
+  arithmetic (as M0 found).
+
 ## The wasm shell
 
 - The accumulator (`FixedStep`) is plain Rust, unit-tested natively against
