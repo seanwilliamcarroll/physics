@@ -171,11 +171,11 @@ bodies) are M6.
 
 ## Live stiffness
 
-- **Force panel:** `clear_forces` and re-add the springs with the new `k`
-  (M2's softening pattern).
-- **Constraint panels:** `World::set_compliance(Compliance)` updates every
-  constraint in place, except a held drag rod, so the slider doesn't
-  reset the jelly.
+- **Force panel:** `SpringForce::with_stiffness`, then `clear_forces` and
+  re-add gravity and the springs (M2's softening pattern).
+- **Constraint panels:** `World::update_constraints(grab, f)` rewrites
+  every constraint in place (`with_compliance`, `with_damping`), except a
+  held drag rod, so the slider doesn't reset the jelly.
 
 **As built (M5.7, `site/demos/m5-jelly/`):** the slider is `log10 k` from
 1 to 7 in half decades, plus one stop past the top for rigid. The force
