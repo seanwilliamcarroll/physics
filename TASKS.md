@@ -159,11 +159,13 @@ reproduces. Known failures: `impulse_without_baumgarte_stretches`,
 `xpbd_f32_substeps_derive_noisy_velocities` (f32 XPBD at 100 substeps
 gains energy). Goldens for both solvers, native and wasm.
 
-## 5. Web layer (PR)
+## ✅ 5. Web layer (done)
 
-- [ ] `DEMO_PENDULUM`, `demo_set_solver`, `demo_set_beta`,
-      `demo_set_substeps`, `demo_set_iterations` (parsed at the boundary),
-      `demo_constraint_error`; ABI mirror; size row.
+`DEMO_PENDULUM` (5), `SOLVER_XPBD`/`SOLVER_IMPULSE`; `demo_set_solver`,
+`demo_set_beta` (`Baumgarte` parsed in f64, cast), `demo_set_substeps`,
+`demo_set_iterations` (`NonZeroU32`), `demo_constraint_error` (max |C|,
+NaN without constraints). The pendulum's energy readout uses its uniform
+gravity. `.wasm` 90,194 B (gzip 29,209).
 
 ## 6. Site: the M3 page (PR)
 
