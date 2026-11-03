@@ -15,6 +15,13 @@ pub enum ConfigError {
     /// A constraint names a particle this world doesn't have (e.g. it was
     /// built from another world's particles).
     UnknownParticle,
+    /// A spring stiffness must be positive and finite (force-based
+    /// springs), or positive (constraints, where ∞ means rigid); see
+    /// [`crate::Stiffness`].
+    InvalidStiffness,
+    /// A damping coefficient must be `≥ 0` and finite; see
+    /// [`crate::Damping`].
+    InvalidDamping,
 }
 
 impl fmt::Display for ConfigError {
@@ -25,6 +32,10 @@ impl fmt::Display for ConfigError {
                 f.write_str("mass must be positive and finite, with a finite inverse")
             }
             Self::UnknownParticle => f.write_str("constraint names a particle not in this world"),
+            Self::InvalidStiffness => {
+                f.write_str("stiffness must be positive (and finite for springs)")
+            }
+            Self::InvalidDamping => f.write_str("damping must be at least 0 and finite"),
         }
     }
 }

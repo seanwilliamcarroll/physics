@@ -86,6 +86,18 @@ impl<S: Scalar> SpringForce<S> {
         &self.springs
     }
 
+    /// The same springs, each with stiffness `k` (live stiffness).
+    #[must_use]
+    pub fn with_stiffness(&self, k: Stiffness<S>) -> Self {
+        Self::new(self.springs.iter().map(|s| s.with_stiffness(k)).collect())
+    }
+
+    /// The same springs, each with damper `c`.
+    #[must_use]
+    pub fn with_damping(&self, c: Damping<S>) -> Self {
+        Self::new(self.springs.iter().map(|s| Spring { c, ..*s }).collect())
+    }
+
     /// Elastic energy `Σ ½ k (|d| − rest)²`, J. Springs whose ends aren't
     /// in `p` are skipped.
     #[must_use]

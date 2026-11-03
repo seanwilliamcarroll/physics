@@ -26,6 +26,20 @@ impl Grab {
 }
 
 impl<S: Scalar> World<S> {
+    /// Replaces every constraint `c` with `f(c)`, except the rod of
+    /// `except` (a held grab: its stiffness is the drag's, not the
+    /// scene's). For live changes that keep the world running, e.g. a
+    /// stiffness slider (`docs/07-soft-bodies.md`, "Live stiffness"). `f`
+    /// must keep the constraint's bodies (it gets the constraint by value
+    /// and its result replaces it in place, so λ stays aligned).
+    pub fn update_constraints(
+        &mut self,
+        except: Option<&Grab>,
+        f: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
+    ) {
+        self.constraints.update(except.map(|g| g.rod), f);
+    }
+
     /// Grabs the dynamic particle nearest to `point` within `radius` (m):
     /// adds a static anchor at `point` and a rod of rest length 0 and
     /// compliance `softness` from it to the particle. `None`, changing
