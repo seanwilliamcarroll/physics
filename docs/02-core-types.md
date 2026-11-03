@@ -117,8 +117,8 @@ pub struct Particles<S> {
 }
 
 impl<S: Scalar> Particles<S> {
-    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: S);  // requires mass > 0
-    pub fn add_static(&mut self, pos: Vec2<S>);                  // inv_mass = 0, vel = 0
+    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: Mass<S>) -> ParticleId;  // M3: Mass
+    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId;    // inv_mass = 0, vel = 0
     pub fn len(&self) -> usize;
     pub fn pos(&self) -> &[Vec2<S>];          // slices: readable and mutable
     pub fn vel(&self) -> &[Vec2<S>];          // element-wise, but the length
@@ -138,9 +138,10 @@ not a type yet and when it should become one (M3).
 borrows `p` immutably and `acc` mutably at once; if `acc` were a field of
 `p`, the borrow checker would reject every call.
 
-**Deferred to M3: `ParticleId`.** Nothing in M0 refers to an individual
-particle. Constraints (M3) will, and that's when to settle plain index vs
-generational handle (open question in `00-scope.md`).
+**`ParticleId` (M3).** Nothing in M0 referred to an individual particle;
+constraints (M3) do. `add` and `add_static` return a `ParticleId`, a plain
+index: particles can't be removed, so it can't go stale. A generational
+handle waits for removal (`type-invariants.md`, item 5).
 
 Why `inv_mass`: every solver formula uses `w = 1/m`, and `w = 0` gives an
 immovable pin for free. That's needed for the pendulum in phase 2.

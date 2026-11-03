@@ -97,11 +97,28 @@ constant (not settable), so `Softening` (item 2) waits for M2's slider;
 mass is still constant per scenario, so item 1 waits for M3; no unit-mixing
 bug yet (item 7).
 
+## Adopted in M3
+
+- **`Mass<S>`** (item 1; trigger: M3's constraint solvers weight every
+  correction by `inv_mass`). `Mass::new(m) -> Option`: `None` for
+  `m ≤ 0`, NaN, ±∞, or an `m` so small that `1 / m` overflows (e.g.
+  `1e-39` in `f32`). `Scalar` has no `is_finite`, so finiteness is read
+  through the lossless `to_f64()` (a fixed-point scalar passes trivially);
+  `1 / m > 0` is also checked, which only fixed point can fail. The
+  inverse is computed once in `new`, the same `1 / m` `add` used to
+  compute, so every golden hash is unchanged. `Particles::add` takes a
+  `Mass`; `add_static` stays the only way to get `inv_mass = 0`. Scene
+  masses go through `Mass::new` once (`ConfigError::InvalidMass`, like
+  `InvalidSoftening`); storage is still a plain `Vec<S>` of inverses.
+- **`ParticleId`** (item 5, plain-index variant): `add` and `add_static`
+  return one; `index()` reads the slot. Only `Particles` creates ids.
+  No generation counter: nothing can be removed, so an id can't go
+  stale. Item 5's trigger for a generational handle still stands.
+
 ## Considered and not adopted
 
 | Where | Invariant | Decision | Why |
 |---|---|---|---|
-| `Particles::add(mass)` | `mass > 0` | Doc comment | Today every mass is the constant `S::ONE`. With `mass ≤ 0`, `inv_mass` becomes infinite or negative, but nothing in M0 consumes `inv_mass` except "is it zero" and diagnostics. See **Mass types** below for when this flips. |
 | `World::step(dt)` | `dt ≥ 0`? | No type | A negative `dt` is meaningful: it steps backward in time (velocity Verlet is time-reversible in exact arithmetic; symplectic Euler isn't time-symmetric, so it only approximately retraces). Zero is a tested no-op. NaN only comes from a caller bug and `Scalar` makes no NaN promises. No loop depends on the sign, so nothing hangs. |
 | `World::new(substeps)` | `substeps ≥ 1` | Keep `Result` | Decided in M0 (`docs/02-core-types.md`): `NonZeroU32` is the type-level alternative. See **`NonZeroU32` substeps** below. |
 | `demo_advance(elapsed_s)` | finite, `≥ 0` | Sanitize, no type | It arrives from JS across the C ABI as a raw `f64`; a type can't be imposed on the caller. `FixedStep::advance` is the parse step: NaN and negatives become 0, long frames are clamped. |
@@ -114,6 +131,7 @@ Each item says what would make it worth doing. When a condition is met,
 adopt it in that milestone's PR and move the row up.
 
 1. **Mass types: `Mass<S>` / `InvMass<S>` (positive, or zero meaning static).**
+   ✅ *`Mass<S>` adopted in M3 (above); no separate `InvMass` type.*
    *Adopt when* constraint solvers start dividing by or weighting with
    `inv_mass` (**M3**), or masses become user input (a slider). An infinite
    `inv_mass` then corrupts every constraint the particle touches, far from
@@ -144,8 +162,8 @@ adopt it in that milestone's PR and move the row up.
    call sites: `NonZeroU32::new(4)` returns an `Option`, so constants become
    `const` items like `PHYSICS_RATE`.
 
-5. **`ParticleId` as a checked handle.** Deferred to **M3** already
-   (`docs/02-core-types.md`). *Adopt a generational handle when* particles
+5. **`ParticleId` as a checked handle.** ✅ *Plain index adopted in M3
+   (above).* *Adopt a generational handle when* particles
    can be removed: a stale plain index would silently refer to a different
    particle.
 

@@ -5,7 +5,7 @@ use engine::{Integrator, Scalar, Softening, World};
 use proptest::prelude::*;
 use proptest::test_runner::Config as ProptestConfig;
 
-use crate::{s, v};
+use crate::{kg, s, v};
 
 /// Generated bodies sit in a ±10 m box: demo scale.
 pub const PROP_BOX_M: f64 = 10.0;
@@ -58,9 +58,9 @@ pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> Wo
     for b in bodies {
         let pos = v::<S>(b.pos.0, b.pos.1);
         match b.mass {
-            Some(m) => w.particles.add(pos, v(b.vel.0, b.vel.1), s(m)),
+            Some(m) => w.particles.add(pos, v(b.vel.0, b.vel.1), kg(m)),
             None => w.particles.add_static(pos),
-        }
+        };
     }
     w
 }

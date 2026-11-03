@@ -33,7 +33,7 @@ pub use orbit::{energy_errors, envelope, orbit_energy, separation, steps_for};
 pub use tol::{Tol, momentum_drift_bound};
 pub use worlds::*;
 
-use engine::{Scalar, Vec2};
+use engine::{Mass, Scalar, Vec2};
 
 /// Runs a generic test body `fn name<S: Tol>()` once per scalar type.
 #[macro_export]
@@ -61,6 +61,12 @@ pub fn s<S: Scalar>(v: f64) -> S {
 /// Shorthand for a `Vec2` from `f64` literals.
 pub fn v<S: Scalar>(x: f64, y: f64) -> Vec2<S> {
     Vec2::new(s(x), s(y))
+}
+
+/// A [`Mass`] from an `f64` literal known to be valid (panics otherwise).
+#[must_use]
+pub fn kg<S: Scalar>(m: f64) -> Mass<S> {
+    Mass::new(s(m)).unwrap()
 }
 
 /// Exact bit pattern of a vector, for bit-identity assertions.

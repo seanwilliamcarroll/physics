@@ -1,10 +1,11 @@
 use super::{Force, UniformGravity};
+use crate::mass::kg;
 use crate::{Particles, Vec2};
 
 #[test]
 fn uniform_gravity_accelerates_dynamic_particles_only() {
     let mut p = Particles::<f64>::new();
-    p.add(Vec2::ZERO, Vec2::ZERO, 2.0);
+    p.add(Vec2::ZERO, Vec2::ZERO, kg(2.0));
     p.add_static(Vec2::ZERO);
     let mut acc = vec![Vec2::ZERO; p.len()];
 
@@ -17,7 +18,7 @@ fn uniform_gravity_accelerates_dynamic_particles_only() {
 #[test]
 fn forces_add_into_acc_rather_than_overwrite() {
     let mut p = Particles::<f64>::new();
-    p.add(Vec2::ZERO, Vec2::ZERO, 1.0);
+    p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
     let mut acc = vec![Vec2::new(1.0, 0.0)];
 
     UniformGravity::new(Vec2::new(0.0, -2.0)).accumulate(&p, &mut acc);
@@ -27,6 +28,7 @@ fn forces_add_into_acc_rather_than_overwrite() {
 
 mod pairwise {
     use super::super::{Force, PairwiseGravity};
+    use crate::mass::kg;
     use crate::{Particles, Softening, Vec2};
 
     fn soft(e: f64) -> Softening<f64> {
@@ -45,8 +47,8 @@ mod pairwise {
     fn two_bodies_feel_equal_and_opposite_forces() {
         let (m1, m2, d, eps) = (1.0e10, 3.0e10, 2.0, 0.1);
         let mut p = Particles::new();
-        p.add(Vec2::ZERO, Vec2::ZERO, m1);
-        p.add(Vec2::new(d, 0.0), Vec2::ZERO, m2);
+        p.add(Vec2::ZERO, Vec2::ZERO, kg(m1));
+        p.add(Vec2::new(d, 0.0), Vec2::ZERO, kg(m2));
         let a = accel(&p, &PairwiseGravity::new(G, soft(eps)));
 
         // Newton's third law: m1 a1 = -m2 a2.
@@ -68,7 +70,7 @@ mod pairwise {
     #[test]
     fn static_particles_neither_pull_nor_are_pulled() {
         let mut p = Particles::new();
-        p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10);
+        p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0e10));
         p.add_static(Vec2::new(1.0, 0.0));
         assert_eq!(
             accel(&p, &PairwiseGravity::new(G, soft(0.1))),
@@ -81,8 +83,8 @@ mod pairwise {
         // eps = 0 (allowed: M2 demos it) and r = 0: no direction, so the
         // pair is skipped rather than producing 0/0 = NaN.
         let mut p = Particles::new();
-        p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, 1.0e10);
-        p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, 1.0e10);
+        p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, kg(1.0e10));
+        p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, kg(1.0e10));
         assert_eq!(
             accel(&p, &PairwiseGravity::new(G, soft(0.0))),
             [Vec2::ZERO, Vec2::ZERO]
@@ -95,7 +97,7 @@ mod pairwise {
         // that cancel; existing acc contents are kept (added to).
         let mut p = Particles::new();
         for x in [-1.0, 0.0, 1.0] {
-            p.add(Vec2::new(x, 0.0), Vec2::ZERO, 1.0e10);
+            p.add(Vec2::new(x, 0.0), Vec2::ZERO, kg(1.0e10));
         }
         let mut acc: Vec<Vec2<f64>> = vec![Vec2::new(0.0, 5.0); 3];
         PairwiseGravity::new(G, soft(0.0)).accumulate(&p, &mut acc);

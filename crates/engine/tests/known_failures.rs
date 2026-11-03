@@ -9,7 +9,7 @@ use engine::scenarios::{
 };
 use engine::{Integrator, Scalar, Softening, Vec2, World};
 use test_support::{
-    Tol, energy_errors, envelope, for_each_scalar, orbit_energy, s, separation, steps_for,
+    Tol, energy_errors, envelope, for_each_scalar, kg, orbit_energy, s, separation, steps_for,
 };
 
 /// One 60 Hz frame: the step the demo uses.
@@ -129,12 +129,12 @@ fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     w.particles.add(
         vec(-PASS_HALF_GAP_M, half_b),
         vec(PASS_SPEED, 0.0),
-        s(PASS_MASS_KG),
+        kg(PASS_MASS_KG),
     );
     w.particles.add(
         vec(PASS_HALF_GAP_M, -half_b),
         vec(-PASS_SPEED, 0.0),
-        s(PASS_MASS_KG),
+        kg(PASS_MASS_KG),
     );
     let mut peak = 0.0_f64;
     for _ in 0..PASS_STEPS {
