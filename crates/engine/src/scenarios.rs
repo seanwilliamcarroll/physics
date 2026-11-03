@@ -4,20 +4,26 @@
 //! One file per scene (`scenarios/<scene>.rs`), re-exported here, so
 //! callers write `scenarios::cluster` whatever file it lives in.
 
+mod chain;
 mod cluster;
 mod collapse;
 mod disk;
+mod double_pendulum;
 mod fountain;
 mod orbit;
 mod pendulum;
 mod shared;
 
+pub use chain::{CHAIN_LENGTH, CHAIN_LINK_MASS, CHAIN_LINKS, chain};
 pub use cluster::{
     CLUSTER_RADIUS, CLUSTER_SOFTENING, CLUSTER_SPEED, CLUSTER_SUBSTEPS, CLUSTER_TOTAL_MASS,
     CLUSTER_WEIGHT, cluster, cluster_gravity,
 };
 pub use collapse::{COLLAPSE_TOTAL_MASS, collapse};
 pub use disk::{DISK_CENTRAL_MASS, DISK_INNER_RADIUS, DISK_ORBITERS_TOTAL_MASS, DISK_RADIUS, disk};
+pub use double_pendulum::{
+    DOUBLE_PENDULUM_LENGTH, DOUBLE_PENDULUM_MASS, DoublePendulumStart, double_pendulum,
+};
 pub use fountain::{FOUNTAIN_SUBSTEPS, FOUNTAIN_VX, FOUNTAIN_VY, Fountain};
 pub use orbit::{
     ORBIT_CIRCULAR, ORBIT_MASS_RATIO, ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, ORBIT_SOFTENING,
