@@ -85,15 +85,13 @@ Recommendations in **bold**; reply on the PR to change any.
 
 ---
 
-## 1. Tooling: `cargo xtask serve`, TypeScript demo pages (PR)
+## ✅ 1. Tooling: `cargo xtask serve`, TypeScript demo pages (done)
 
-- [ ] `cargo xtask serve [--port N]`: build the site, then serve it
-      (python3 `http.server`) with `tsc --watch` alongside; one Ctrl-C
-      stops both. README: "build and serve" becomes one command.
-- [ ] Decision 7: `tsconfig.build.json` also emits `site/demos/**/*.ts`;
-      convert `m0-hello/main.js` and `m1-orbits/main.js` to `.ts`;
-      gitignore `site/demos/**/*.js` (+ maps). Smoke test unchanged in
-      what it checks.
+`cargo xtask serve [--port N]` builds, serves (default 8000), and runs
+`tsc --watch`; Ctrl-C stops all; a taken port is reported and leaves no
+orphaned watcher. The M0 and M1 pages are now `.ts`, so `site/` is all
+TypeScript and one `tsconfig.json` both checks (`--noEmit`) and builds;
+`tsconfig.build.json` is gone.
 
 ## 2. Dependencies and property tests (test first, PR)
 

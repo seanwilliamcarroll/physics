@@ -10,15 +10,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, ExitCode};
 
+mod serve;
 mod smoke;
 
 const USAGE: &str = "\
 usage: cargo xtask <command>
 
 commands:
-  site           compile site/js/*.ts, build crates/web for wasm32 -> site/pkg/engine.wasm
+  site           compile site TypeScript, build crates/web for wasm32 -> site/pkg/engine.wasm
   smoke          build the site, load the demo in headless Chrome, check it draws
   test-wasm      run the math and engine tests as wasm32-wasip1 under wasmtime
+  serve          build the site, then serve it (default port 8000) with
+                 `tsc --watch` alongside; Ctrl-C stops both. [--port N]
   install-hooks  point git at the tracked hooks in .githooks/
   help           show this message";
 
@@ -28,6 +31,7 @@ const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/web.wasm";
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
     Site,
+    Serve { port: u16 },
     Smoke,
     TestWasm,
     InstallHooks,
@@ -38,6 +42,7 @@ enum Command {
 fn parse(args: &[String]) -> Result<Command, String> {
     match args {
         [] => Ok(Command::Help),
+        [cmd, rest @ ..] if cmd == "serve" => parse_serve(rest),
         [cmd] => match cmd.as_str() {
             "site" => Ok(Command::Site),
             "smoke" => Ok(Command::Smoke),
@@ -47,6 +52,23 @@ fn parse(args: &[String]) -> Result<Command, String> {
             other => Err(format!("unknown command `{other}`")),
         },
         [cmd, extra, ..] => Err(format!("`{cmd}` takes no arguments (got `{extra}`)")),
+    }
+}
+
+/// `serve [--port N]`: N must be 1–65535.
+fn parse_serve(rest: &[String]) -> Result<Command, String> {
+    match rest {
+        [] => Ok(Command::Serve {
+            port: serve::DEFAULT_PORT,
+        }),
+        [flag, value] if flag == "--port" => match value.parse::<u16>() {
+            Ok(port) if port != 0 => Ok(Command::Serve { port }),
+            _ => Err(format!(
+                "`--port` needs a port number 1–65535, got `{value}`"
+            )),
+        },
+        [flag] if flag == "--port" => Err("`--port` needs a value".to_owned()),
+        [other, ..] => Err(format!("`serve` doesn't take `{other}`")),
     }
 }
 
@@ -68,6 +90,7 @@ fn run(cmd: Command) -> Result<(), String> {
     let root = workspace_root()?;
     match cmd {
         Command::Site => site(&root),
+        Command::Serve { port } => serve::serve(&root, port),
         Command::Smoke => smoke::smoke(&root),
         Command::TestWasm => test_wasm(&root),
         Command::InstallHooks => install_hooks(&root),
@@ -87,8 +110,8 @@ fn workspace_root() -> Result<PathBuf, String> {
         .ok_or_else(|| "xtask manifest has no parent directory".to_owned())
 }
 
-/// Compiles `site/js/*.ts` to `.js` (+ source maps) with the pinned
-/// TypeScript (`tsconfig.build.json`). The emitted files are gitignored, so
+/// Compiles `site/**/*.ts` to `.js` (+ source maps) with the pinned
+/// TypeScript (`tsconfig.json`). The emitted files are gitignored, so
 /// the site isn't servable until this runs.
 fn site_ts(root: &Path) -> Result<(), String> {
     let tsc = root.join("node_modules").join(".bin").join("tsc");
@@ -97,13 +120,13 @@ fn site_ts(root: &Path) -> Result<(), String> {
     }
     let status = process::Command::new(&tsc)
         .current_dir(root)
-        .args(["-p", "tsconfig.build.json"])
+        .args(["-p", "tsconfig.json"])
         .status()
         .map_err(|e| format!("failed to run tsc: {e}"))?;
     if !status.success() {
         return Err(format!("TypeScript build failed ({status})"));
     }
-    println!("compiled site/js/*.ts");
+    println!("compiled site/**/*.ts");
     Ok(())
 }
 
@@ -210,6 +233,22 @@ mod tests {
         assert_eq!(parse(&args(&["smoke"])), Ok(Command::Smoke));
         assert_eq!(parse(&args(&["test-wasm"])), Ok(Command::TestWasm));
         assert_eq!(parse(&args(&["install-hooks"])), Ok(Command::InstallHooks));
+    }
+
+    #[test]
+    fn serve_takes_an_optional_port() {
+        assert_eq!(parse(&args(&["serve"])), Ok(Command::Serve { port: 8000 }));
+        assert_eq!(
+            parse(&args(&["serve", "--port", "9001"])),
+            Ok(Command::Serve { port: 9001 })
+        );
+        assert!(parse(&args(&["serve", "--port"])).is_err(), "missing value");
+        assert!(parse(&args(&["serve", "--port", "0"])).is_err(), "port 0");
+        assert!(
+            parse(&args(&["serve", "--port", "http"])).is_err(),
+            "not a number"
+        );
+        assert!(parse(&args(&["serve", "--fast"])).is_err(), "unknown flag");
     }
 
     #[test]

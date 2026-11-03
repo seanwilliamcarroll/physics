@@ -42,17 +42,18 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-Build the site (compiles `site/js/*.ts` and the wasm module), then serve
-it (browsers won't instantiate wasm from `file://`):
+Build and serve the demo site in one command (browsers won't instantiate
+wasm from `file://`):
 
 ```sh
-cargo xtask site              # site/js/*.ts -> .js, and -> site/pkg/engine.wasm
-python3 -m http.server -d site
+cargo xtask serve             # http://127.0.0.1:8000/  (or --port N)
 ```
 
-While editing `site/js/*.ts`, keep `npm run watch` running in another
-terminal: it recompiles on save (well under a second), then reload the
-page. The generated `site/js/*.js` and `*.js.map` are gitignored.
+It compiles the TypeScript and the wasm, serves `site/`, and keeps
+`tsc --watch` running, so `.ts` edits only need a page reload. Rust
+edits need a rerun. Ctrl-C stops everything. The generated `.js` and
+`.js.map` files are gitignored; `cargo xtask site` builds without
+serving.
 
 `cargo xtask help` lists all commands.
 

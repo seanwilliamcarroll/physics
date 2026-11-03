@@ -107,11 +107,12 @@ Commands (`cargo xtask help` lists what exists):
 |---|---|---|
 | `cargo xtask site` | M0 | Build `web` for `wasm32-unknown-unknown` (release), copy to `site/pkg/engine.wasm` |
 | `cargo xtask install-hooks` | M0 | `git config core.hooksPath .githooks` |
+| `cargo xtask serve` | M2 | `site`, then serve `site/` with `tsc --watch` alongside (default port 8000) |
 | `cargo xtask smoke` | M0 | `site`, then load the demo in headless Chrome and check it draws (pre-push; `docs/04-testing.md`) |
 | `cargo xtask test-wasm` | M1 | `cargo test -p engine -p math --target wasm32-wasip1` under wasmtime (pre-push) |
 | `cargo xtask dist` | planned | `site` + produce a deployable `dist/` (see `hosting.md`) |
 
-Local serving stays `python3 -m http.server -d site`.
+Local serving: `cargo xtask serve`.
 
 ### Site structure
 

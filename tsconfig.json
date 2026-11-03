@@ -1,10 +1,8 @@
 {
-  // Type-checks site/: the TypeScript library (site/js/*.ts) and the demos'
-  // plain .js (JSDoc). Checks only; tsconfig.build.json emits.
+  // All of site/ is TypeScript: the library (site/js/*.ts) and the demo
+  // pages (site/demos/*/main.ts). `tsc` emits .js + source maps next to
+  // each .ts (gitignored); `tsc --noEmit` only checks (pre-commit).
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": true,
-    "noEmit": true,
     "strict": true,
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -14,10 +12,17 @@
     // parameter properties), so emitted .js mirrors the source and Node can
     // run the .ts directly in tests.
     "erasableSyntaxOnly": true,
-    // Library files import "./ring.ts" (what Node needs); emit rewrites
-    // those to "./ring.js" for the browser.
+    // Source imports "./ring.ts" (what Node needs); emit rewrites those to
+    // "./ring.js" for the browser.
     "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true
+    "rewriteRelativeImportExtensions": true,
+    "noEmitOnError": true,
+    "sourceMap": true,
+    // Embed the .ts text in each .map: static servers send .ts as
+    // video/mp2t (MPEG transport stream), so DevTools shouldn't have to
+    // fetch it.
+    "inlineSources": true
   },
-  "include": ["site/js/**/*.ts", "site/demos/**/*.js"]
+  "include": ["site/**/*.ts"],
+  "exclude": ["site/pkg"]
 }
