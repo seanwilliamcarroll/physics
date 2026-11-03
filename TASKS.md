@@ -205,10 +205,13 @@ building: the rod-error readout leaves out a held grab's rod, and
 1e-9 m apart as identical). Three smoke cases; gallery links. **Still to
 do: your manual check against Done when** (dragging needs a real pointer).
 
-## 8. M4 cleanup (PR, if needed)
+## ✅ 8. M4 cleanup (done)
 
-- [ ] Magic numbers, `type-invariants.md` triggers (`Compliance` adopted;
-      `UnitVec2`?), `docs/types.md` kept current, awkward bits.
+The two files that grow every milestone split: `smoke.rs` (case table to
+`smoke/cases.rs`, server to `smoke/server.rs`) and `barnes_hut.rs`
+(quadtree to `barnes_hut/tree.rs`). `docs/types.md` gains
+`DoublePendulumStart`; `type-invariants.md` triggers re-checked. No
+unnamed literals in M4's code.
 
 ---
 

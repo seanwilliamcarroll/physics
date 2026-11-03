@@ -61,6 +61,7 @@ and `Friction` go.
 | Type | Why it exists |
 |---|---|
 | [`Fountain`](../crates/engine/src/scenarios/fountain.rs) | The one scene with state between steps (respawning), so it owns its PRNG and the run is deterministic per seed. |
+| [`DoublePendulumStart`](../crates/engine/src/scenarios/double_pendulum.rs) | Fixed release positions (horizontal, raised) rather than an angle: arbitrary angles need `sin`/`cos`, whose last bits differ by platform, and the goldens must match on wasm. |
 | [`SplitMix64`](../crates/engine/src/rng.rs) | A tiny in-house seeded PRNG: integer-only, so scenes are bit-identical on every platform (`00-scope.md`, dependency policy). |
 
 Scenes without state are functions, not types, one file each under

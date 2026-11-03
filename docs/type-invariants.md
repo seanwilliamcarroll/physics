@@ -82,6 +82,14 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   `demo_set_theta` parses at the boundary in `f64` and `cast`s to the
   engine's scalar.
 
+**Triggers re-checked at the end of M4:** `Compliance` adopted (above),
+a milestone early. `UnitVec2` (item 3) still has one call site: the drag
+reuses `DistanceConstraint`'s gradient, so M6's contact normals remain the
+likely second. Mass types are in; the generational `ParticleId` still
+waits for general removal (M4's drag only pops the latest add). No new
+runtime-settable parameter is unchecked: order, start, and the drag's
+compliance are enums or constants.
+
 **Triggers re-checked at the end of M3:** item 3 (`UnitVec2`) is half
 met: `DistanceConstraint::evaluate` is the first `x / |x|` in a constraint
 gradient, and it returns `None` at `|x| = 0`. Its trigger asks for a second
