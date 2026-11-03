@@ -14,6 +14,15 @@ export const DEMO_PENDULUM = 5;
 export const SOLVER_XPBD = 0;
 export const SOLVER_IMPULSE = 1;
 
+/** demo_set_order codes (M4). */
+export const ORDER_FORWARD = 0;
+export const ORDER_REVERSE = 1;
+export const ORDER_ALTERNATING = 2;
+
+/** demo_new_double_pendulum start codes (M4). */
+export const START_HORIZONTAL = 0;
+export const START_RAISED = 1;
+
 /** demo_set_integrator codes. */
 export const INTEGRATOR_SYMPLECTIC_EULER = 0;
 export const INTEGRATOR_EXPLICIT_EULER = 1;

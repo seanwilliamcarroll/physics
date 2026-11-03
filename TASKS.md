@@ -183,10 +183,14 @@ On `World` (decided: the engine owns it, so it's tested natively):
 flicked 1:100 chain: XPBD 8.1 mm link error, impulse 18.3 cm with the bob
 42 cm behind the cursor.
 
-## 6. Web layer (PR)
+## ✅ 6. Web layer (done)
 
-- [ ] `DEMO_CHAIN`, `DEMO_DOUBLE_PENDULUM`; grab/drag/release exports;
-      `demo_links_ptr/len`; `demo_set_order`; ABI mirror; size row.
+`demo_new_chain(scalar, links, mass_ratio)` and
+`demo_new_double_pendulum(scalar, start, offset)` (dedicated constructors:
+`demo_new`'s `(n, seed)` can't carry them); `demo_grab` / `demo_drag` /
+`demo_release` (k = 1000 N/m drag rod); `demo_links_ptr/len`;
+`demo_set_order`; `ORDER_*`, `START_*` codes mirrored. `exports.rs` split
+into lifecycle/settings/readouts/drag. `.wasm` 102,099 B (gzip 34,099).
 
 ## 7. Site: the M4 pages (PR)
 

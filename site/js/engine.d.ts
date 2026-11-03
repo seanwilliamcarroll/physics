@@ -54,6 +54,22 @@ export interface EngineExports {
   demo_set_iterations(demo: DemoHandle, n: number): Status;
   /** Largest constraint error |C| in meters, or NaN without constraints. */
   demo_constraint_error(demo: DemoHandle): number;
+  /** The M4 chain: `links` links, bob `massRatio` × a link; null if invalid. */
+  demo_new_chain(scalar: number, links: number, massRatio: number): DemoHandle;
+  /** The M4 double pendulum (abi.ts START_*), tip nudged by `offset` m. */
+  demo_new_double_pendulum(scalar: number, start: number, offset: number): DemoHandle;
+  /** [a0, b0, a1, b1, ...] u32 particle indices joined by constraints. */
+  demo_links_ptr(demo: DemoHandle): Ptr;
+  /** Number of u32s at demo_links_ptr (two per constraint). */
+  demo_links_len(demo: DemoHandle): number;
+  /** Grabs the nearest dynamic particle within `radius` m; its index or -1. */
+  demo_grab(demo: DemoHandle, x: number, y: number, radius: number): number;
+  /** Moves the held grab's anchor; 0 if nothing is held. */
+  demo_drag(demo: DemoHandle, x: number, y: number): Status;
+  /** Releases the held grab; 0 if nothing was held. */
+  demo_release(demo: DemoHandle): Status;
+  /** Code: abi.ts ORDER_*; order of each solver pass over constraints. */
+  demo_set_order(demo: DemoHandle, code: number): Status;
   /** Total energy in joules, or NaN where undefined (the fountain). */
   demo_energy(demo: DemoHandle): number;
   /** Test hook: panics on purpose (smoke test only). */
