@@ -154,7 +154,9 @@ scenario code on `DEMO_CLUSTER`, so `demo_new` is unchanged; in Rust,
 `Softening` in `f64` at the boundary (`Softening::cast` carries it to f32),
 rejects negative/NaN and the fountain, and the energy readout follows ε.
 `.wasm` 58,544 B (gzip 19,926); the disk's sort was the surprise (~7–9 KB),
-now unstable and shared with Barnes–Hut.
+now unstable (~1.5 KB smaller). (An earlier note said it was shared with
+Barnes–Hut: wrong, since BH isn't in the `.wasm`, and generic sorts compile
+per element type anyway.)
 
 ## ✅ 6. Site: the M2 page (done; manual check pending)
 
