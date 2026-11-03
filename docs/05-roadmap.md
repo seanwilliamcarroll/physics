@@ -220,7 +220,7 @@ true overlapping pairs (proptest against brute force).
 **Done when:** a box of bouncing balls keeps a flat momentum plot, and the
 Newton's cradle panel behaves (or misbehaves) per solver.
 
-**Docs:** `07-collision.md`: shapes, broadphase, contact generation,
+**Docs:** `08-collision.md`: shapes, broadphase, contact generation,
 contact constraint form.
 
 ---
@@ -247,7 +247,7 @@ count for maximum break speed.
 **Done when:** you can play a break shot, balls settle believably, and the
 substep slider demonstrates tunneling.
 
-**Docs:** `08-billiards.md` (ball model, units, table dimensions).
+**Docs:** `09-billiards.md` (ball model, units, table dimensions).
 
 ---
 
@@ -273,7 +273,7 @@ range limits.
 
 **Done when:** M3/M4 demos run on `Fixed` and the lockstep hashes match.
 
-**Docs:** `09-fixed-point.md`.
+**Docs:** `10-fixed-point.md`.
 
 ---
 
@@ -298,7 +298,7 @@ centered pour).
 
 **Done when:** a full-screen grid runs at 60 Hz while painting.
 
-**Docs:** `10-falling-sand.md`.
+**Docs:** `11-falling-sand.md`.
 
 ---
 
@@ -345,7 +345,7 @@ keyboard (measured offline by autocorrelation); decay time matches setting.
 **Done when:** an on-screen keyboard plays in tune with the toggle making
 the tuning error audible.
 
-**Docs:** `11-acoustic-foundations.md` (audio threading, buffer sizes, sample rate).
+**Docs:** `12-acoustic-foundations.md` (audio threading, buffer sizes, sample rate).
 
 ### A2 — Waveguide string
 

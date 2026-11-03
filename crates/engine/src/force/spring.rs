@@ -128,12 +128,9 @@ impl<S: Scalar> Force<S> for SpringForce<S> {
             ) else {
                 continue;
             };
-            let d = xb - xa;
-            let len = d.length();
-            if len == S::ZERO {
+            let Some((len, n)) = (xb - xa).length_and_direction() else {
                 continue; // coincident: no direction
-            }
-            let n = d / len;
+            };
             let f = n * (s.k.get() * (len - s.rest) + s.c.get() * n.dot(vb - va));
             if let Ok([aa, ab]) = acc.get_disjoint_mut([a, b]) {
                 *aa += f * wa;

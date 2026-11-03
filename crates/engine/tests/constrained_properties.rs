@@ -35,13 +35,17 @@ const ITERATIONS: u32 = 4;
 /// 18 cm), which would bound chaos rather than ordering.
 const COMPARE_STEPS: u32 = 6;
 
-/// Bounds, ~10x the worst of 256 generated chains (M4.3): max rod error
-/// over 1 s (XPBD 3.9 mm, impulse 10.4 mm) and the gap between the two
-/// orders after 0.1 s (XPBD 52 µm, impulse 4.9 µm).
+/// Bounds: max rod error over 1 s, and the gap between the two orders
+/// after 0.1 s. Re-measured before M6 over 2,000 chains: XPBD 8.8 mm and
+/// 55 µm, impulse 14.8 mm and 58 µm. The impulse gap bound was 50 µm, set
+/// in M4.3 (worst 4.9 µm) under classic Baumgarte, and never re-measured
+/// after split impulses became the default (M4.9): a random chain found
+/// 56 µm (kept in `constrained_properties.proptest-regressions`). Split
+/// impulses order like XPBD now, so both get XPBD's ~10x bound.
 fn bounds(solver: Solver) -> (f64, f64) {
     match solver {
         Solver::Xpbd => (0.04, 5.0e-4),
-        Solver::Impulse => (0.1, 5.0e-5),
+        Solver::Impulse => (0.1, 5.0e-4),
     }
 }
 

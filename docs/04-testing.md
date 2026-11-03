@@ -411,6 +411,25 @@ DOM-touching code is covered by the browser smoke test
 instead. The tests live outside `site/`, so they're never served. Note:
 `node --test` needs a glob; a directory argument is treated as a module.
 
+## CI
+
+`.github/workflows/ci.yml` runs every check the hooks run (pre-commit's
+`tsc`, fmt and both clippy passes, then pre-push's tests, doc links,
+`node --test`, `test-wasm`, the wasm32 check and the browser smoke test)
+on every PR and every push to `main`, on `ubuntu-24.04`. Why both: the
+hooks give fast feedback before a push, while CI is the check nobody can
+skip with `--no-verify` or forget to install on a new machine, and it's
+the only thing branch protection can *require*.
+
+- **Same toolchain:** `rustup toolchain install` reads
+  `rust-toolchain.toml`, so CI uses the pinned 1.99.1 and the goldens
+  are checked against the same compiler. wasmtime is pinned too (50.0.1).
+- **Determinism across machines:** CI is a Linux x86-64 runner, while
+  local runs are on macOS arm64, so the golden hashes now get checked on
+  a second CPU architecture and OS on every PR.
+- **Screenshots on failure:** the smoke test's `target/smoke/` is
+  uploaded as an artifact when a step fails.
+
 ## Coverage
 
 ```sh

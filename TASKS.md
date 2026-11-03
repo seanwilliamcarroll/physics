@@ -233,7 +233,6 @@ instead of freezing the display; fewer panels at large N; or Web Workers,
 one per panel (the panels are independent, so that's real parallelism) and
 the main thread only draws. Leaning toward workers; revisit after M2.
 
-**No CI:** with no CI, nothing on GitHub's side checks fmt, clippy, or tests: a PR is
-only as clean as the hooks on the machine that pushed it, and `--no-verify`
-skips them. Branch protection can't require a status check that doesn't
-exist. Fine for a solo project; it's the main argument for adding CI later.
+**CI (added before M6):** `.github/workflows/ci.yml` runs both hooks'
+checks on every PR and push to `main`. Not yet a *required* check in
+`protect-main`; that's a ruleset change, made by hand once it's green.

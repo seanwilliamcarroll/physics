@@ -1,7 +1,7 @@
 //! Constraints: geometry only (`C`, `∇C`, compliance). How to enforce
 //! them is the solver's job (`docs/06-constraints.md`).
 
-use crate::{Compliance, Damping, ParticleId, Particles, Scalar, Vec2};
+use crate::{Compliance, Damping, ParticleId, Particles, Scalar, UnitVec2, Vec2};
 
 /// A two-body constraint `C(x_a, x_b) = 0`, described by its geometry.
 ///
@@ -17,7 +17,7 @@ pub trait Constraint<S: Scalar> {
     /// here). The gradient is `None` where no direction is defined, e.g.
     /// coincident bodies; `C` itself is always defined, so error readouts
     /// still see it.
-    fn evaluate(&self, xa: Vec2<S>, xb: Vec2<S>) -> (S, Option<Vec2<S>>);
+    fn evaluate(&self, xa: Vec2<S>, xb: Vec2<S>) -> (S, Option<UnitVec2<S>>);
 
     /// Compliance α = 1 / stiffness, m/N; 0 is rigid.
     fn compliance(&self) -> S;
@@ -98,14 +98,14 @@ impl<S: Scalar> Constraint<S> for DistanceConstraint<S> {
         self.bodies
     }
 
-    fn evaluate(&self, xa: Vec2<S>, xb: Vec2<S>) -> (S, Option<Vec2<S>>) {
+    fn evaluate(&self, xa: Vec2<S>, xb: Vec2<S>) -> (S, Option<UnitVec2<S>>) {
         let d = xb - xa;
-        let len = d.length();
-        // n = d / |d|: the first normalization in a constraint gradient
-        // (`type-invariants.md` item 3). No direction at |d| = 0.
-        // Divides each component (correctly rounded), not d * (1 / len).
-        let grad = (len != S::ZERO).then(|| d / len);
-        (len - self.length, grad)
+        // n = d / |d| (`type-invariants.md` item 3). No direction at
+        // |d| = 0; the error is still defined there (−length).
+        match d.length_and_direction() {
+            Some((len, n)) => (len - self.length, Some(n)),
+            None => (d.length() - self.length, None),
+        }
     }
 
     fn compliance(&self) -> S {
