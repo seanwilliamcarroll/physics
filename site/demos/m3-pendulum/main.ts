@@ -4,11 +4,12 @@
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
-import { setupCanvas, View, clear, drawPoints, drawSegment, drawCircle, cssColor } from "../../js/canvas.ts";
+import { View, clear, drawPoints, drawSegment, drawCircle, cssColor } from "../../js/canvas.ts";
 import {
   COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_PENDULUM, SOLVER_IMPULSE, SOLVER_XPBD,
 } from "../../js/abi.ts";
 import { SCALAR_CODES, isScalar, readScalar } from "../../js/scalars.ts";
+import { buildPanels, demoHandle } from "../../js/panels.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
 import { readInt, optionsTableHtml } from "../../js/options.ts";
@@ -93,27 +94,9 @@ const colors = {
   text: cssColor(css, "--muted"),
 };
 
-// All panels go into the grid before any canvas is sized (see M1's page).
-const panelsEl = byId("panels", HTMLElement);
-const panelEls = PANELS.map((cfg) => {
-  const color = cssColor(css, cfg.colorVar);
-  const el = document.createElement("div");
-  el.className = "panel";
-  const title = document.createElement("h3");
-  title.textContent = cfg.name;
-  title.style.color = color;
-  const canvas = document.createElement("canvas");
-  const readout = document.createElement("div");
-  readout.className = "readout";
-  el.append(title, canvas, readout);
-  return { cfg, color, canvas, readout, el };
-});
-panelsEl.append(...panelEls.map((p) => p.el));
-const panels = panelEls.map(({ cfg, color, canvas, readout }) => ({
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
   ...cfg,
-  color,
-  ctx: setupCanvas(canvas),
-  readout,
+  ...base,
   trail: new Trail(TRAIL_POINTS),
   demo: null as DemoHandle | null,
   /** Energy at release: the reference for "energy lost". */
@@ -142,16 +125,11 @@ try {
   /** Simulated seconds since the last (re)start. */
   let simTime = 0;
 
-  const handle = (p: Panel): DemoHandle => {
-    if (p.demo === null) throw new Error("demo not created");
-    return p.demo;
-  };
-
   /** Pushes the shared settings to both demos (each setter is checked:
    *  a 0 status means the page passed something the engine rejects). */
   const applySettings = () => {
     for (const p of panels) {
-      const d = handle(p);
+      const d = demoHandle(p);
       const statuses = [
         engine.demo_set_solver(d, p.code),
         engine.demo_set_beta(d, state.beta),
@@ -254,9 +232,9 @@ try {
     runSmoke(
       engine,
       panels.map((p) => ({
-        demo: handle(p),
+        demo: demoHandle(p),
         ctx: p.ctx,
-        draw: () => drawPanel(p, positionsView(engine, handle(p))),
+        draw: () => drawPanel(p, positionsView(engine, demoHandle(p))),
       })),
       colors.bob,
       { checkEnergy: true },
@@ -266,10 +244,10 @@ try {
     const sps = new RateMeter();
     runLoop((elapsed, now) => {
       let steps = 0;
-      for (const p of panels) steps = engine.demo_advance(handle(p), elapsed);
+      for (const p of panels) steps = engine.demo_advance(demoHandle(p), elapsed);
       // Views after all stepping (memory growth would detach earlier ones).
       const readings = panels.map((p) => {
-        const demo = handle(p);
+        const demo = demoHandle(p);
         const pos = positionsView(engine, demo);
         p.trail.push(pos);
         drawPanel(p, pos);

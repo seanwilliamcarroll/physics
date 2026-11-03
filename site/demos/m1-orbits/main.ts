@@ -4,13 +4,14 @@
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
-import { setupCanvas, View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
+import { View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
 import {
   COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
   INTEGRATOR_VELOCITY_VERLET,
 } from "../../js/abi.ts";
 import { SCALAR_CODES, isScalar, readScalar } from "../../js/scalars.ts";
 import type { ScalarName } from "../../js/scalars.ts";
+import { buildPanels, demoHandle } from "../../js/panels.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
@@ -75,37 +76,15 @@ const colors = {
   text: cssColor(css, "--muted"),
 };
 
-// Panel markup, generated from PANELS so the three stay identical. All
-// panels go into the grid *before* any canvas is sized: sizing each as it's
-// added measured it in a one- or two-column grid (1152 and 570 px wide
-// instead of 376), and the later correction cleared what had been drawn.
-const panelsEl = byId("panels", HTMLElement);
-const panelEls = PANELS.map((cfg) => {
-  const color = cssColor(css, cfg.colorVar);
-  const el = document.createElement("div");
-  el.className = "panel";
-  const title = document.createElement("h3");
-  title.textContent = cfg.name;
-  title.style.color = color;
-  const canvas = document.createElement("canvas");
-  const readout = document.createElement("div");
-  readout.className = "readout";
-  el.append(title, canvas, readout);
-  return { cfg, color, canvas, readout, el };
-});
-panelsEl.append(...panelEls.map((p) => p.el));
-const panels = panelEls.map(({ cfg, color, canvas, readout }) => {
-  return {
-    ...cfg,
-    color,
-    ctx: setupCanvas(canvas),
-    readout,
-    trail: new Trail(TRAIL_POINTS),
-    demo: null as DemoHandle | null,
-    /** Energy at the start: the reference for ΔE/E. */
-    e0: 0,
-  };
-});
+// Panel markup, generated from PANELS so the three stay identical.
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
+  ...cfg,
+  ...base,
+  trail: new Trail(TRAIL_POINTS),
+  demo: null as DemoHandle | null,
+  /** Energy at the start: the reference for ΔE/E. */
+  e0: 0,
+}));
 
 type Panel = (typeof panels)[number];
 
@@ -147,11 +126,6 @@ try {
     drawPoints(p.ctx, VIEW, pos.subarray(COORDS_PER_PARTICLE), PLANET_PX, colors.planet);
   };
 
-  const handle = (p: Panel): DemoHandle => {
-    if (p.demo === null) throw new Error("demo not created");
-    return p.demo;
-  };
-
   // Controls.
   const controls = byId("controls", HTMLElement);
   slider(controls, {
@@ -162,7 +136,7 @@ try {
     format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
     onInput: (hz) => {
       state.rate = hz;
-      for (const p of panels) engine.demo_set_rate(handle(p), hz);
+      for (const p of panels) engine.demo_set_rate(demoHandle(p), hz);
     },
   });
   select(controls, {
@@ -188,9 +162,9 @@ try {
     runSmoke(
       engine,
       panels.map((p) => ({
-        demo: handle(p),
+        demo: demoHandle(p),
         ctx: p.ctx,
-        draw: () => drawPanel(p, positionsView(engine, handle(p))),
+        draw: () => drawPanel(p, positionsView(engine, demoHandle(p))),
       })),
       colors.planet,
       { checkEnergy: true },
@@ -201,7 +175,7 @@ try {
     runLoop((elapsed, now) => {
       let steps = 0;
       const errors = panels.map((p) => {
-        const demo = handle(p);
+        const demo = demoHandle(p);
         // Same rate and elapsed time, so every panel takes the same steps.
         steps = engine.demo_advance(demo, elapsed);
         const pos = positionsView(engine, demo);

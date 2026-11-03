@@ -5,10 +5,11 @@
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { runLoop, RateMeter, Smoothed, MS_PER_SECOND } from "../../js/loop.ts";
-import { setupCanvas, View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
+import { View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
 import {
   DEFAULT_RATE_HZ, DEMO_CLUSTER, DEMO_COLLAPSE, DEMO_DISK, SCALAR_F32, SCALAR_F64,
 } from "../../js/abi.ts";
+import { buildPanels, demoHandle } from "../../js/panels.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
@@ -116,27 +117,9 @@ const colors = {
   text: cssColor(css, "--muted"),
 };
 
-// All panels go into the grid before any canvas is sized (see M1's page).
-const panelsEl = byId("panels", HTMLElement);
-const panelEls = PANELS.map((cfg) => {
-  const color = cssColor(css, cfg.colorVar);
-  const el = document.createElement("div");
-  el.className = "panel";
-  const title = document.createElement("h3");
-  title.textContent = cfg.name;
-  title.style.color = color;
-  const canvas = document.createElement("canvas");
-  const readout = document.createElement("div");
-  readout.className = "readout";
-  el.append(title, canvas, readout);
-  return { cfg, color, canvas, readout, el };
-});
-panelsEl.append(...panelEls.map((p) => p.el));
-const panels = panelEls.map(({ cfg, color, canvas, readout }) => ({
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
   ...cfg,
-  color,
-  ctx: setupCanvas(canvas),
-  readout,
+  ...base,
   demo: null as DemoHandle | null,
   /** Energy at the start (or the last softening change): ΔE/E's reference. */
   e0: 0,
@@ -167,13 +150,8 @@ try {
   /** Simulated seconds since the last (re)start. */
   let simTime = 0;
 
-  const handle = (p: Panel): DemoHandle => {
-    if (p.demo === null) throw new Error("demo not created");
-    return p.demo;
-  };
-
   const resetEnergy = () => {
-    for (const p of panels) p.e0 = engine.demo_energy(handle(p));
+    for (const p of panels) p.e0 = engine.demo_energy(demoHandle(p));
     energyPlot.clear();
   };
 
@@ -232,7 +210,7 @@ try {
     format: (m) => `ε ${m.toFixed(3)} m`,
     onInput: (m) => {
       state.softening = m;
-      for (const p of panels) engine.demo_set_softening(handle(p), m);
+      for (const p of panels) engine.demo_set_softening(demoHandle(p), m);
       resetEnergy();
     },
   });
@@ -245,7 +223,7 @@ try {
     format: (t) => `θ ${t.toFixed(2)}`,
     onInput: (t) => {
       state.theta = t;
-      for (const p of panels) if (p.barnesHut) engine.demo_set_theta(handle(p), t);
+      for (const p of panels) if (p.barnesHut) engine.demo_set_theta(demoHandle(p), t);
     },
   });
   slider(controls, {
@@ -256,7 +234,7 @@ try {
     format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
     onInput: (hz) => {
       state.rate = hz;
-      for (const p of panels) engine.demo_set_rate(handle(p), hz);
+      for (const p of panels) engine.demo_set_rate(demoHandle(p), hz);
     },
   });
   button(controls, { label: "reset", onClick: restart });
@@ -265,9 +243,9 @@ try {
     runSmoke(
       engine,
       panels.map((p) => ({
-        demo: handle(p),
+        demo: demoHandle(p),
         ctx: p.ctx,
-        draw: () => drawPanel(p, positionsView(engine, handle(p))),
+        draw: () => drawPanel(p, positionsView(engine, demoHandle(p))),
       })),
       colors.body,
       { checkEnergy: true },
@@ -283,14 +261,14 @@ try {
       let steps = 0;
       panels.forEach((p, i) => {
         // Same rate and elapsed time, so both panels take the same steps.
-        const ms = timeMs(() => { steps = engine.demo_advance(handle(p), elapsed); });
+        const ms = timeMs(() => { steps = engine.demo_advance(demoHandle(p), elapsed); });
         if (steps > 0) {
           p.msPerStep.add(ms / steps);
           cost.record(state.n, i, ms / steps);
         }
       });
       const views = panels.map((p) => {
-        const demo = handle(p);
+        const demo = demoHandle(p);
         const pos = positionsView(engine, demo);
         p.msPerDraw.add(timeMs(() => drawPanel(p, pos)));
         const err = Math.abs((engine.demo_energy(demo) - p.e0) / p.e0);
