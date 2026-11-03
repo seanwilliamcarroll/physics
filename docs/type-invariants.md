@@ -105,6 +105,13 @@ constant (not settable), so `Softening` (item 2) waits for M2's slider;
 mass is still constant per scenario, so item 1 waits for M3; no unit-mixing
 bug yet (item 7).
 
+## Adopted in M4
+
+- **`Compliance<S>`** (item 2; trigger: the drag's soft constraint, a
+  milestone before M5's spring slider). `new(α) -> Option`, α ≥ 0, NaN
+  rejected; `RIGID` is 0. Shares `checked_param!` with the other interval
+  types.
+
 ## Adopted in M3
 
 - **`Baumgarte<S>`** (item 2; trigger: the β slider). `new(β) -> Option`
