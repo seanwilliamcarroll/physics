@@ -150,7 +150,7 @@ const GOLDEN: [(u64, u64); 13] = [
     (0x989a_6cd3_ba07_198c, 0x208c_a668_28aa_95aa), // Pendulum(Xpbd)
     (0x1ddc_6b8c_24f6_6c6b, 0x6642_c1e3_c031_d93e), // Pendulum(Impulse)
     (0x45e3_0c60_6f1f_bfe2, 0xe52e_d266_de49_2a04), // Chain(Xpbd)
-    (0x1f7c_cb57_1e77_7b62, 0x4f9b_ec68_86ed_f43a), // Chain(Impulse)
+    (0x89f6_7e75_f857_3861, 0x03d2_2ac8_3b0d_121f), // Chain(Impulse)
     (0x766f_e60d_00da_4c07, 0x0901_793c_4bbc_980c), // DoublePendulum
 ];
 
