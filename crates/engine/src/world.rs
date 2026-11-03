@@ -11,7 +11,7 @@ pub use config_error::ConfigError;
 use constraints::Constraints;
 
 use crate::Baumgarte;
-use crate::{DistanceConstraint, Force, Integrator, Particles, Scalar, Solver, Vec2};
+use crate::{DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Vec2};
 
 /// A simulation: particles, the forces acting on them, and how to integrate.
 pub struct World<S: Scalar> {
@@ -103,6 +103,17 @@ impl<S: Scalar> World<S> {
 
     pub const fn set_iterations(&mut self, iterations: NonZeroU32) {
         self.constraints.iterations = iterations;
+    }
+
+    #[must_use]
+    pub const fn order(&self) -> Order {
+        self.constraints.order
+    }
+
+    /// The order each solver pass visits the constraints in, from the next
+    /// step.
+    pub const fn set_order(&mut self, order: Order) {
+        self.constraints.order = order;
     }
 
     /// The type makes 0 unrepresentable, so there's nothing to report.

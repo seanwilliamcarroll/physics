@@ -112,8 +112,9 @@ fn rotation_by_90_degrees_is_exact<S: Tol>(bodies: &[BodySpec]) -> Result<(), Te
 }
 
 /// Pairwise forces don't depend on body order, so reordering changes only
-/// summation order (rounding). M3's Gauss–Seidel solvers will break this on
-/// purpose: it's the canary for where order dependence enters.
+/// summation order (rounding). This holds for unconstrained worlds only:
+/// with constraints, Gauss–Seidel order is part of the method, and
+/// `constrained_properties.rs` checks the bounded version instead.
 fn permutation_changes_only_rounding<S: Tol>(
     bodies: &[BodySpec],
     shuffled: &[BodySpec],
