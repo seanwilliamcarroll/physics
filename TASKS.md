@@ -172,9 +172,13 @@ size); `collision::Wall` (`through(point, normal)`, signed `distance`);
 `World::add_wall/walls/restitution/set_restitution/collides`. Data only:
 nothing steps differently yet (goldens unchanged).
 
-## 3. Broadphase: uniform grid (PR)
+## ✅ 3. Broadphase: uniform grid (done)
 
-- [ ] Candidate pairs; proptest superset of brute force; cost measured.
+`collision::candidate_pairs(pos, radius, cell, out)` (`collision` is now a
+public module): a sorted cell list (memory per circle, not per area;
+deterministic order), each cell against itself and four neighbors. Proptest:
+a superset of brute force, sorted, each pair once. Bench: 12.6 µs / 158 µs
+/ 802 µs at 128 / 1,024 / 4,096 circles.
 
 ## 4. Narrowphase: contacts (PR)
 

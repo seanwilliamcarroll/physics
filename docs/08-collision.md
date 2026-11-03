@@ -81,6 +81,19 @@ correct choice; detecting once per step with a margin (Macklin et al.
 grid's pairs are a *superset* of the brute-force `O(n²)` overlapping
 pairs. Missing a pair is a bug; extra pairs only cost time.
 
+**As built (M6.3,** `collision::candidate_pairs`**):** a *sorted cell list*
+rather than a dense array of cells. Each circle's cell
+`(⌊x/cell⌋, ⌊y/cell⌋)` is sorted, runs of equal cells are the occupied
+cells, and a neighbor's run is found by binary search. Memory follows the
+number of circles, not the area they span (one runaway particle can't
+blow up a dense grid), and the sort makes the output order deterministic
+for free. Cost (`cargo bench -p engine --bench step -- broadphase`, f64,
+lattice of nearly touching 5 cm circles, Apple silicon): 12.6 µs at 128
+circles, 158 µs at 1,024, 802 µs at 4,096; about N log N (the sort). Once
+per substep, so a few hundred balls at 10 substeps stay well under a
+millisecond a frame. It allocates its key list per call; reusing a buffer
+is the first optimization if it ever shows up in a profile.
+
 ## The contact constraint
 
 The same distance function as a rod, but one-sided:
