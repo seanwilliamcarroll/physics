@@ -14,7 +14,7 @@ physics/
 ├── .gitignore              # target/, site/pkg/, dist/
 │
 ├── docs/
-│   ├── 00-scope.md … 05-roadmap.md
+│   ├── 00-scope.md … 06-constraints.md
 │   ├── repo-layout.md      # this file
 │   ├── hosting.md          # future work
 │   └── references.md
