@@ -3,13 +3,12 @@
 // cover the generic test bodies and `common` too (see docs/lint-policy.md).
 #![cfg(test)]
 
-#[macro_use]
-mod common;
-
-use common::{Tol, bits, energy_errors, envelope, momentum_drift_bound, s, steps_for, v};
 use engine::diagnostics::{center_of_mass, momentum};
 use engine::scenarios::{ORBIT_SEPARATION, cluster, orbit, orbit_period};
 use engine::{ConfigError, Integrator, Particles, Scalar, UniformGravity, Vec2, World};
+use test_support::{
+    Tol, bits, energy_errors, envelope, for_each_scalar, momentum_drift_bound, s, steps_for, v,
+};
 
 const G: f64 = -9.81;
 
