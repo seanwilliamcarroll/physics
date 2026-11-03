@@ -1,7 +1,7 @@
 // Unit tests for site/js/ring.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Ring } from "../../site/js/ring.js";
+import { Ring } from "../../site/js/ring.ts";
 
 test("fills up to capacity, oldest first", () => {
   const r = new Ring(3);

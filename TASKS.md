@@ -173,19 +173,16 @@ pass: `ORBIT_CIRCULAR`, `DEFAULT_RATE_HZ` (one owner in `abi.rs`, mirrored
 in JS, sync-tested), `MS_PER_SECOND` reused. `docs/type-invariants.md`
 updated with M1's adoptions and re-checked triggers.
 
-## After M1, before M2: TypeScript experiment
+## ✅ After M1: TypeScript experiment (done, adopted)
 
-Goal: decide whether to move `site/` from JSDoc-checked `.js` to `.ts`
-source (the long-term preference). Time-boxed, on a branch; merge only
-if it wins.
-
-- [ ] Convert a slice (e.g. `site/js/` + one demo) to `.ts`; `tsc` emits
-      `.js` for the browser, run by `cargo xtask site`.
-- [ ] Compare against the JSDoc version: type ergonomics, the edit →
-      reload loop, generated files kept out of git, hook and smoke-test
-      changes, and what the wasm `engine.d.ts` looks like in each.
-- [ ] Record the outcome in `docs/type-invariants.md` (item 8) and adopt
-      or drop it before M2's site work starts.
+The 11 shared modules in `site/js/` became `.ts` (`erasableSyntaxOnly`,
+`rewriteRelativeImportExtensions`, source maps with `inlineSources`);
+`tsc` emits gitignored `.js` (0.14 s; `npm run watch` while editing);
+`cargo xtask site` runs the build; Node runs the unit tests on the `.ts`
+directly. Finding: readability gain, no safety gain (zero new errors),
+for the cost of a build step. **Adopted:** new pages in `.ts`; the M0/M1
+demo pages convert when next touched. Details: `docs/type-invariants.md`
+item 8.
 
 ## Out of scope for M1
 

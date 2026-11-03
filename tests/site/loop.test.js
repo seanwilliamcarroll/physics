@@ -1,7 +1,7 @@
 // Unit tests for the pure parts of site/js/loop.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { RateMeter, Smoothed } from "../../site/js/loop.js";
+import { RateMeter, Smoothed } from "../../site/js/loop.ts";
 
 test("RateMeter counts events in the last second only", () => {
   const m = new RateMeter();

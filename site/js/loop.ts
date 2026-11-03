@@ -21,15 +21,14 @@ const DEFAULT_SMOOTHING = 0.05;
  *  can yield a negative first frame). The first frame reports 0 s.
  *
  *  `maxFps` (optional) skips display frames to emulate a slower monitor,
- *  for checking that simulation speed doesn't depend on refresh rate.
- *  @param {(elapsedSeconds: number, nowMs: number) => void} onFrame
- *  @param {{ maxFps?: number }} [options] */
-export function runLoop(onFrame, { maxFps = Infinity } = {}) {
+ *  for checking that simulation speed doesn't depend on refresh rate. */
+export function runLoop(
+  onFrame: (elapsedSeconds: number, nowMs: number) => void,
+  { maxFps = Infinity }: { maxFps?: number } = {},
+): void {
   const minIntervalMs = MS_PER_SECOND / maxFps;
-  /** @type {number | null} */
-  let last = null;
-  /** @param {DOMHighResTimeStamp} now */
-  function frame(now) {
+  let last: number | null = null;
+  function frame(now: DOMHighResTimeStamp): void {
     if (last === null || now - last >= minIntervalMs - FRAME_CAP_SLACK_MS) {
       const elapsed = last === null ? 0 : (now - last) / MS_PER_SECOND;
       last = now;
@@ -42,17 +41,17 @@ export function runLoop(onFrame, { maxFps = Infinity } = {}) {
 
 /** Counts events per second over a sliding one-second window. */
 export class RateMeter {
-  /** @type {number[]} */
-  #times = [];
-  /** Records `count` events at time `nowMs`.
-   *  @param {number} nowMs
-   *  @param {number} [count] */
-  add(nowMs, count = 1) {
+  #times: number[] = [];
+
+  /** Records `count` events at time `nowMs`. */
+  add(nowMs: number, count = 1): void {
     for (let i = 0; i < count; i++) this.#times.push(nowMs);
-    while (this.#times.length && nowMs - this.#times[0] > RATE_WINDOW_MS) this.#times.shift();
+    while (this.#times.length && nowMs - (this.#times[0] ?? nowMs) > RATE_WINDOW_MS) {
+      this.#times.shift();
+    }
   }
-  /** @returns {number} */
-  get perSecond() {
+
+  get perSecond(): number {
     return this.#times.length;
   }
 }
@@ -60,18 +59,21 @@ export class RateMeter {
 /** Exponential moving average, for steady HUD readouts of jittery timings.
  *  `alpha` is the weight of each new sample. */
 export class Smoothed {
-  /** @type {number | null} */
-  #value = null;
-  /** @param {number} [alpha] */
+  // Declared, not a constructor parameter property (`readonly alpha = ...`
+  // in the parameter list): that shorthand generates code, so
+  // `erasableSyntaxOnly` rejects it.
+  readonly alpha: number;
+  #value: number | null = null;
+
   constructor(alpha = DEFAULT_SMOOTHING) {
     this.alpha = alpha;
   }
-  /** @param {number} sample */
-  add(sample) {
+
+  add(sample: number): void {
     this.#value = this.#value === null ? sample : this.#value + this.alpha * (sample - this.#value);
   }
-  /** @returns {number} */
-  get value() {
+
+  get value(): number {
     return this.#value ?? 0;
   }
 }

@@ -14,10 +14,9 @@
 // the Rust panic hook delivered TEST_PANIC_MESSAGE through the wasm import:
 //   SMOKE ok panic_logged=1
 
-import { lastPanicMessage } from "./wasm.js";
-/** @typedef {import("./engine").EngineExports} EngineExports */
-/** @typedef {import("./engine").DemoHandle} DemoHandle */
-import { TEST_PANIC_MESSAGE } from "./abi.js";
+import { lastPanicMessage } from "./wasm.ts";
+import { TEST_PANIC_MESSAGE } from "./abi.ts";
+import type { DemoHandle, EngineExports } from "./engine";
 
 /** Frames of 1/60 s to advance before drawing: half a second of flight,
  *  so the fountain has spread out from the origin. */
@@ -37,24 +36,25 @@ if (smokeMode) {
   window.addEventListener("unhandledrejection", (e) => report(`error ${e.reason}`));
 }
 
-/** @param {string} text */
-function report(text) {
+function report(text: string): void {
   console.log(`SMOKE ${text}`);
 }
 
 /** One demo on its own canvas, as the smoke test sees it.
- *  @typedef {{ demo: DemoHandle, ctx: CanvasRenderingContext2D, draw: () => void }} SmokePanel */
+ */
+export type SmokePanel = { demo: DemoHandle; ctx: CanvasRenderingContext2D; draw: () => void };
 
 /** Runs the smoke sequence on every panel: advance, draw once, count pixels
  *  of `particleColor` ("#rrggbb"), report. Reports the *minimum* steps and
  *  pixel count across panels, so one blank or frozen panel fails the test
  *  even if the others are fine. With `checkEnergy`, every panel's
- *  `demo_energy` must also be finite.
- *  @param {EngineExports} engine
- *  @param {SmokePanel[]} panels
- *  @param {string} particleColor
- *  @param {{ checkEnergy?: boolean }} [options] */
-export function runSmoke(engine, panels, particleColor, { checkEnergy = false } = {}) {
+ *  `demo_energy` must also be finite. */
+export function runSmoke(
+  engine: EngineExports,
+  panels: SmokePanel[],
+  particleColor: string,
+  { checkEnergy = false }: { checkEnergy?: boolean } = {},
+): void {
   if (panicMode) {
     runPanicSmoke(engine);
     return;
@@ -78,9 +78,8 @@ export function runSmoke(engine, panels, particleColor, { checkEnergy = false } 
 
 /** Calls the deliberate-panic export. Expected: the call traps
  *  (WebAssembly.RuntimeError, "unreachable") and, before that, the panic
- *  hook passed the message to JS through the console_error import.
- *  @param {EngineExports} engine */
-function runPanicSmoke(engine) {
+ *  hook passed the message to JS through the console_error import. */
+function runPanicSmoke(engine: EngineExports): void {
   try {
     engine.demo_panic_for_test();
     report("error demo_panic_for_test returned instead of trapping");
@@ -97,23 +96,17 @@ function runPanicSmoke(engine) {
 }
 
 /** Reports a caught error (the page's own try/catch). Anything can be
- *  thrown in JS, not just Errors, hence `unknown`.
- *  @param {unknown} err */
-export function smokeError(err) {
+ *  thrown in JS, not just Errors, hence `unknown`. */
+export function smokeError(err: unknown): void {
   if (smokeMode) report(`error ${errorText(err)}`);
 }
 
-/** A thrown value's message: `.message` for Errors, else its string form.
- *  @param {unknown} err
- *  @returns {string} */
-export function errorText(err) {
+/** A thrown value's message: `.message` for Errors, else its string form. */
+export function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** @param {CanvasRenderingContext2D} ctx
- *  @param {[number, number, number]} rgb
- *  @returns {number} */
-function countPixels(ctx, [r, g, b]) {
+function countPixels(ctx: CanvasRenderingContext2D, [r, g, b]: [number, number, number]): number {
   const { data } = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   let count = 0;
   for (let i = 0; i < data.length; i += 4) {
@@ -124,10 +117,8 @@ function countPixels(ctx, [r, g, b]) {
   return count;
 }
 
-/** "#rrggbb" -> [r, g, b].
- *  @param {string} hex
- *  @returns {[number, number, number]} */
-function parseHexColor(hex) {
+/** "#rrggbb" -> [r, g, b]. */
+function parseHexColor(hex: string): [number, number, number] {
   const v = Number.parseInt(hex.replace("#", ""), 16);
   return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
 }

@@ -16,7 +16,7 @@ const USAGE: &str = "\
 usage: cargo xtask <command>
 
 commands:
-  site           build crates/web for wasm32 (release) -> site/pkg/engine.wasm
+  site           compile site/js/*.ts, build crates/web for wasm32 -> site/pkg/engine.wasm
   smoke          build the site, load the demo in headless Chrome, check it draws
   test-wasm      run the math and engine tests as wasm32-wasip1 under wasmtime
   install-hooks  point git at the tracked hooks in .githooks/
@@ -87,8 +87,30 @@ fn workspace_root() -> Result<PathBuf, String> {
         .ok_or_else(|| "xtask manifest has no parent directory".to_owned())
 }
 
-/// Release-builds `web` for wasm32 and copies it to `site/pkg/engine.wasm`.
+/// Compiles `site/js/*.ts` to `.js` (+ source maps) with the pinned
+/// TypeScript (`tsconfig.build.json`). The emitted files are gitignored, so
+/// the site isn't servable until this runs.
+fn site_ts(root: &Path) -> Result<(), String> {
+    let tsc = root.join("node_modules").join(".bin").join("tsc");
+    if !tsc.is_file() {
+        return Err("TypeScript not installed; run `npm ci` (see README)".to_owned());
+    }
+    let status = process::Command::new(&tsc)
+        .current_dir(root)
+        .args(["-p", "tsconfig.build.json"])
+        .status()
+        .map_err(|e| format!("failed to run tsc: {e}"))?;
+    if !status.success() {
+        return Err(format!("TypeScript build failed ({status})"));
+    }
+    println!("compiled site/js/*.ts");
+    Ok(())
+}
+
+/// Builds the site: the TypeScript library, then the release wasm, copied
+/// to `site/pkg/engine.wasm`.
 fn site(root: &Path) -> Result<(), String> {
+    site_ts(root)?;
     // `cargo run` sets CARGO to the cargo binary running us; reuse it so the
     // pinned toolchain builds the wasm too.
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));

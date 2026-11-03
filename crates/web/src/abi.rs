@@ -1,7 +1,7 @@
 //! The contract with JS: integer codes for `demo_new` (only numbers cross
 //! the wasm boundary) and the positions buffer layout.
 //!
-//! Mirrored in `site/js/abi.js`. The test below reads that file and fails
+//! Mirrored in `site/js/abi.ts`. The test below reads that file and fails
 //! if any value disagrees, so the two copies can't silently drift.
 
 /// `demo_new` kind codes: the M0 fountain, the M1 star–planet orbit.
@@ -38,7 +38,7 @@ mod tests {
         TEST_PANIC_MESSAGE,
     };
 
-    const ABI_JS: &str = include_str!("../../../site/js/abi.js");
+    const ABI_JS: &str = include_str!("../../../site/js/abi.ts");
 
     #[test]
     fn js_mirror_matches() {
@@ -64,10 +64,10 @@ mod tests {
         ];
         for (name, value) in expected {
             let line = format!("export const {name} = {value};");
-            assert!(ABI_JS.contains(&line), "site/js/abi.js is missing `{line}`");
+            assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
         }
         // Strings: Rust's Debug quoting matches a plain JS double-quoted literal.
         let line = format!("export const TEST_PANIC_MESSAGE = {TEST_PANIC_MESSAGE:?};");
-        assert!(ABI_JS.contains(&line), "site/js/abi.js is missing `{line}`");
+        assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
     }
 }

@@ -2,12 +2,27 @@
 // value, and calls back on change. Wiring to wasm (`demo_set_*`) stays in
 // the page, so these know nothing about the engine.
 
-/** A `<label>` wrapping `text` and `input`, appended to `parent`. Wrapping
- *  ties the text to the input for clicks and screen readers.
- *  @param {HTMLElement} parent
- *  @param {string} text
- *  @param {HTMLElement[]} children */
-function labeled(parent, text, children) {
+export type SliderSpec = {
+  label: string;
+  min: number;
+  max: number;
+  step?: number;
+  value: number;
+  format?: (v: number) => string;
+  onInput: (v: number) => void;
+};
+export type SelectSpec = {
+  label: string;
+  choices: [value: string, text: string][];
+  value: string;
+  onChange: (v: string) => void;
+};
+export type CheckboxSpec = { label: string; checked: boolean; onChange: (checked: boolean) => void };
+export type ButtonSpec = { label: string; onClick: () => void };
+
+/** A `<label>` wrapping `text` and `children`, appended to `parent`.
+ *  Wrapping ties the text to the input for clicks and screen readers. */
+function labeled(parent: HTMLElement, text: string, children: HTMLElement[]): void {
   const label = document.createElement("label");
   label.className = "control";
   const span = document.createElement("span");
@@ -16,12 +31,11 @@ function labeled(parent, text, children) {
   parent.append(label);
 }
 
-/** A range slider with a live readout.
- *  @param {HTMLElement} parent
- *  @param {{ label: string, min: number, max: number, step?: number, value: number,
- *            format?: (v: number) => string, onInput: (v: number) => void }} spec
- *  @returns {HTMLInputElement} */
-export function slider(parent, { label, min, max, step = 1, value, format = String, onInput }) {
+/** A range slider with a live readout. */
+export function slider(
+  parent: HTMLElement,
+  { label, min, max, step = 1, value, format = String, onInput }: SliderSpec,
+): HTMLInputElement {
   const input = document.createElement("input");
   Object.assign(input, { type: "range", min: String(min), max: String(max), step: String(step) });
   input.value = String(value);
@@ -37,12 +51,8 @@ export function slider(parent, { label, min, max, step = 1, value, format = Stri
   return input;
 }
 
-/** A dropdown of `[value, label]` choices.
- *  @param {HTMLElement} parent
- *  @param {{ label: string, choices: [string, string][], value: string,
- *            onChange: (v: string) => void }} spec
- *  @returns {HTMLSelectElement} */
-export function select(parent, { label, choices, value, onChange }) {
+/** A dropdown of `[value, text]` choices. */
+export function select(parent: HTMLElement, { label, choices, value, onChange }: SelectSpec): HTMLSelectElement {
   const sel = document.createElement("select");
   for (const [v, text] of choices) sel.append(new Option(text, v, false, v === value));
   sel.addEventListener("change", () => onChange(sel.value));
@@ -50,11 +60,8 @@ export function select(parent, { label, choices, value, onChange }) {
   return sel;
 }
 
-/** A checkbox.
- *  @param {HTMLElement} parent
- *  @param {{ label: string, checked: boolean, onChange: (checked: boolean) => void }} spec
- *  @returns {HTMLInputElement} */
-export function checkbox(parent, { label, checked, onChange }) {
+/** A checkbox. */
+export function checkbox(parent: HTMLElement, { label, checked, onChange }: CheckboxSpec): HTMLInputElement {
   const box = document.createElement("input");
   box.type = "checkbox";
   box.checked = checked;
@@ -63,11 +70,8 @@ export function checkbox(parent, { label, checked, onChange }) {
   return box;
 }
 
-/** A push button.
- *  @param {HTMLElement} parent
- *  @param {{ label: string, onClick: () => void }} spec
- *  @returns {HTMLButtonElement} */
-export function button(parent, { label, onClick }) {
+/** A push button. */
+export function button(parent: HTMLElement, { label, onClick }: ButtonSpec): HTMLButtonElement {
   const b = document.createElement("button");
   b.type = "button";
   b.textContent = label;

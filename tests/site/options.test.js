@@ -1,13 +1,13 @@
 // Unit tests for site/js/options.js (run by `node --test`, pre-push).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readChoice, readInt, optionsTableHtml } from "../../site/js/options.js";
+import { readChoice, readInt, optionsTableHtml } from "../../site/js/options.ts";
 
-/** @type {import("../../site/js/options.js").IntOption} */
+/** @type {import("../../site/js/options.ts").IntOption} */
 const N = { kind: "int", min: 1, max: 100, default: 10, help: "count" };
-/** @type {import("../../site/js/options.js").IntOption} */
+/** @type {import("../../site/js/options.ts").IntOption} */
 const FPS = { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap" };
-/** @type {import("../../site/js/options.js").ChoiceOption} */
+/** @type {import("../../site/js/options.ts").ChoiceOption} */
 const SCALAR = { kind: "choice", values: ["f32", "f64"], default: "f32", help: "type" };
 
 const q = (s) => new URLSearchParams(s);
