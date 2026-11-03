@@ -88,6 +88,8 @@ Scenes without state are functions, not types, one file each under
 | [`RateMeter`, `Smoothed`](../site/js/loop.ts) | Steady per-second counts and smoothed timings for HUDs. |
 | [`CostTable`](../site/js/perf.ts) | Measured ms/step per N (and ns/pair), so cost growth is visible on the page. |
 | [`ChoiceOption`, `IntOption`](../site/js/options.ts) | URL options as data: parsing and the on-page options table read the same definition, so documented ranges can't drift. |
+| [`ScalarName`](../site/js/scalars.ts) | The engine number types by URL/menu name; `isScalar` narrows a string, so `SCALAR_CODES[name]` can't miss. |
+| [`PanelConfig`, `PanelBase`](../site/js/panels.ts) | Side-by-side panels built one way on every page (all appended before any canvas is sized); pages spread their own fields onto `PanelBase`. |
 | [`SliderSpec`, `SelectSpec`, …](../site/js/controls.ts) | Control builders that know nothing of the engine; pages wire them to `demo_set_*`. |
 | [`SmokePanel`](../site/js/smoke.ts) | What `?smoke` mode checks per panel (steps taken, pixels drawn, finite energy). |
 

@@ -78,6 +78,8 @@ physics/
     │   ├── controls.ts     # sliders/dropdowns → demo_set_*
     │   ├── perf.ts         # timings, per-N cost table (ns/pair)
     │   ├── divergence.ts   # RMS distance between two runs
+    │   ├── panels.ts       # side-by-side panel markup, demo handle check
+    │   ├── scalars.ts      # f32/f64 names → scalar codes, URL parsing
     │   ├── …               # abi, dom, options, ring, smoke, trail
     │   └── engine.d.ts     # types for the wasm exports/imports
     ├── demos/

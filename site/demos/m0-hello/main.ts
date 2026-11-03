@@ -4,20 +4,12 @@
 import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { runLoop, RateMeter, Smoothed } from "../../js/loop.ts";
 import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.ts";
-import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.ts";
+import { DEMO_FOUNTAIN } from "../../js/abi.ts";
+import { SCALAR_CODES, readScalar } from "../../js/scalars.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
 import { readInt, optionsTableHtml } from "../../js/options.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
-
-/** Scalar names on the URL → abi.js codes. The source of truth for which
- *  scalars exist. */
-const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
-type ScalarName = keyof typeof SCALAR_CODES;
-
-function isScalar(s: string | null): s is ScalarName {
-  return s !== null && Object.hasOwn(SCALAR_CODES, s);
-}
 
 /** Particle squares and ground line, CSS pixels. */
 const POINT_SIZE_PX = 3;
@@ -54,8 +46,7 @@ const PRESETS: [string, string][] = [
 const VIEW = new View({ xMin: -6, xMax: 6, yMin: -0.5, yMax: 8 });
 
 const params = new URLSearchParams(location.search);
-const scalarParam = params.get("scalar");
-const scalar: ScalarName = isScalar(scalarParam) ? scalarParam : "f32";
+const scalar = readScalar(params, OPTIONS.scalar);
 const n = readInt(params, "n", OPTIONS.n);
 const seed = readInt(params, "seed", OPTIONS.seed);
 const maxFps = readInt(params, "fps", OPTIONS.fps);
