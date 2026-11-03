@@ -147,10 +147,15 @@ solver's soft branch (bias `C/h`, `α/h²`); the rigid branch untouched,
 so goldens are unchanged. Spring period `2π√(mα)`: 0.62857 s vs
 0.62832 s in both solvers.
 
-## 3. Iteration order and the permutation property (test first, PR)
+## ✅ 3. Iteration order and the permutation property (done)
 
-- [ ] `Order::{Forward, Reverse, Alternating}`, `World::set_order`.
-- [ ] Constrained-world permutation property (bounded difference).
+`Order::{Forward, Reverse, Alternating}` on `Constraints`,
+`World::set_order`; `solver.rs` split into a hub plus `xpbd.rs` and
+`impulse.rs`. Forward is M3's behavior (goldens unchanged); forward and
+reverse differ on a two-link chain in both solvers. New
+`tests/constrained_properties.rs`: random chains, reordered rods stay
+within the solver's error bound and within 52 µm (XPBD) / 4.9 µm
+(impulse) of each other after 0.1 s.
 
 ## 4. Chains and the double pendulum (test first, PR)
 

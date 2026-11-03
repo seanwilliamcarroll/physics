@@ -52,6 +52,7 @@ and `Friction` go.
 | [`Constraint<S>`](../crates/engine/src/constraint.rs) | Geometry only (C, ∇C, compliance), so both solvers read the same definition; solvers are generic over it (no `dyn` in the hot loop). |
 | [`DistanceConstraint<S>`](../crates/engine/src/constraint.rs) | A rod; to a static particle, a pin. Rest length from current positions, so no invalid length can be passed. |
 | [`Integrator`](../crates/engine/src/integrate.rs) | How an unconstrained substep turns acceleration into motion; an enum (closed set, exhaustive matches, a wire code). |
+| [`Order`](../crates/engine/src/solver.rs) | The order each Gauss–Seidel pass visits constraints (forward, reverse, alternating): part of the method along a chain. |
 | [`Solver`](../crates/engine/src/solver.rs) | How a constrained substep is taken (XPBD or impulses); owns the whole step when constraints exist. |
 
 ## `engine` — scenes and support

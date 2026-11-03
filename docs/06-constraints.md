@@ -264,6 +264,11 @@ property stays. *With* constraints, a shuffle reorders the Gauss–Seidel
 sweep, a genuinely different (but valid) solve, so exact invariance is
 gone; the constrained version asserts a bounded difference instead (both
 runs keep every constraint within the solver's error bound).
+**As built (M4.3,** `tests/constrained_properties.rs`**):** random 2–6 link
+chains, 8 substeps × 4 iterations: max rod error over 1 s 3.9 mm (XPBD) /
+10.4 mm (impulse); the two orders 52 µm / 4.9 µm apart after 0.1 s. Over a
+full second the gap grows to centimeters, which is the chain's sensitivity,
+not the ordering, so the comparison uses the short horizon.
 
 ### Dragging
 
