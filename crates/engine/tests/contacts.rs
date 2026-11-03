@@ -8,8 +8,8 @@ use engine::scenarios::pendulum_gravity;
 use engine::{Integrator, Radius, Restitution, Solver, UnitVec2, Vec2, Wall, World};
 use test_support::{kg, nonzero};
 
-/// Solvers with contacts so far (M6.5: XPBD; M6.6 adds impulse).
-const SOLVERS: [Solver; 1] = [Solver::Xpbd];
+/// Both solvers handle contacts (M6.5 XPBD, M6.6 impulse).
+const SOLVERS: [Solver; 2] = Solver::ALL;
 const DT: f64 = 1.0 / 60.0;
 const SUBSTEPS: u32 = 10;
 const R: f64 = 0.1;

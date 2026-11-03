@@ -2,7 +2,13 @@
 //! "The contact constraint").
 
 use crate::collision::{Body, Contact, find_contacts};
-use crate::{Particles, Scalar, UnitVec2, Vec2, Wall};
+use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2, Wall};
+
+/// Overlap the impulse solver leaves uncorrected, m: resting contacts sit
+/// this deep instead of flickering between touching and not
+/// (`docs/08-collision.md`, "Sequential impulses"). Half the contact
+/// margin, so a resting contact stays well inside it.
+pub(crate) const CONTACT_SLOP: f64 = 5e-4;
 
 /// This substep's contacts and what the solvers keep per contact, in
 /// matching order.
@@ -22,6 +28,12 @@ pub(crate) struct Contacts<S> {
     /// kick, before the solve): XPBD's velocity pass measures `v_n⁻` from
     /// these along the contact's *current* normal (Müller et al. 2020).
     pub(crate) vel_before: Vec<Vec2<S>>,
+    /// The impulse solver's split pseudo-impulse per contact, this
+    /// substep only (one-sided, like λ; never warm-started).
+    pub(crate) pseudo_lambda: Vec<S>,
+    /// Last substep's contacts and impulses, sorted by bodies: the impulse
+    /// solver's warm start.
+    warm: Vec<(ParticleId, Body, S)>,
     /// The broadphase's scratch.
     pairs: Vec<(usize, usize)>,
 }
@@ -34,6 +46,8 @@ impl<S: Scalar> Contacts<S> {
             approach: Vec::new(),
             rest_speed: Vec::new(),
             vel_before: Vec::new(),
+            pseudo_lambda: Vec::new(),
+            warm: Vec::new(),
             pairs: Vec::new(),
         }
     }
@@ -47,6 +61,8 @@ impl<S: Scalar> Contacts<S> {
         self.vel_before.extend_from_slice(p.vel());
         self.lambda.clear();
         self.lambda.resize(self.list.len(), S::ZERO);
+        self.pseudo_lambda.clear();
+        self.pseudo_lambda.resize(self.list.len(), S::ZERO);
         self.approach.clear();
         self.rest_speed.clear();
         let two = S::ONE + S::ONE;
@@ -55,6 +71,43 @@ impl<S: Scalar> Contacts<S> {
             let a_rel = body_acc(acc, c.b) - acc.get(c.a.index()).copied().unwrap_or(Vec2::ZERO);
             self.rest_speed.push(two * a_rel.length() * h);
         }
+    }
+}
+
+impl<S: Scalar> Contacts<S> {
+    /// Sets each contact's λ to its impulse from the previous substep, if
+    /// the same pair was in contact then (0 for new contacts): the impulse
+    /// solver's warm start, matched by bodies.
+    pub(crate) fn recall(&mut self) {
+        for (c, lambda) in self.list.iter().zip(self.lambda.iter_mut()) {
+            let key = (c.a, c.b);
+            *lambda = self
+                .warm
+                .binary_search_by(|&(a, b, _)| (a, b).cmp(&key))
+                .ok()
+                .and_then(|i| self.warm.get(i))
+                .map_or(S::ZERO, |&(_, _, l)| l);
+        }
+    }
+
+    /// Keeps this substep's impulses for the next substep's [`recall`](Self::recall).
+    pub(crate) fn remember(&mut self) {
+        self.warm.clear();
+        self.warm.extend(
+            self.list
+                .iter()
+                .zip(&self.lambda)
+                .map(|(c, &l)| (c.a, c.b, l)),
+        );
+        self.warm.sort_unstable_by_key(|&(a, b, _)| (a, b));
+    }
+
+    /// Forgets everything (a world that stopped colliding, or a solver
+    /// switch).
+    pub(crate) fn clear(&mut self) {
+        self.list.clear();
+        self.lambda.clear();
+        self.warm.clear();
     }
 }
 
