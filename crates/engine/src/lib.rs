@@ -17,7 +17,7 @@ mod world;
 
 pub use barnes_hut::BarnesHut;
 pub use constraint::{Constraint, DistanceConstraint};
-pub use force::{Force, PairwiseGravity, UniformGravity};
+pub use force::{Force, PairwiseGravity, Spring, SpringForce, UniformGravity};
 pub use integrate::Integrator;
 pub use math::{Scalar, Vec2};
 pub use params::{
