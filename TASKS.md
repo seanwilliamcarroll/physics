@@ -168,19 +168,17 @@ body out of view (total mass grew with N), so `cluster` now has a fixed
 total mass (golden updated). **Still to do: your manual check against
 Done when** (headless Chrome can't run the live loop).
 
-## 7. Code coverage (PR, raised during M2.2)
+## ✅ 7. Code coverage (done)
 
-Report coverage to see what's untested; gate on it later, if at all.
-
-- [ ] Rust: `cargo-llvm-cov` (LLVM source-based coverage; a tool install,
-      not a crate; policy entry in `docs/00-scope.md`), `llvm-tools`
-      component in `rust-toolchain.toml`, and `cargo xtask coverage`:
-      HTML report under `target/` plus a summary line per crate.
-- [ ] JS: Node's built-in `node --test --experimental-test-coverage` for
-      `tests/site` (no dependency). DOM code stays covered by the browser
-      smoke test.
-- [ ] First report: note anything important that no test executes; decide
-      whether to gate (e.g. "coverage can't drop") once we've seen the numbers.
+`cargo xtask coverage` (report only): `cargo-llvm-cov` (tool install;
+`llvm-tools` in `rust-toolchain.toml`) for the Rust crates, HTML under
+`target/llvm-cov/html` plus a line per crate; `node --test
+--experimental-test-coverage` for the site's pure modules. First report:
+Rust 98.51% lines (math 100, engine 98.4, web 98.3); site JS 61% (the rest
+is DOM code, covered by the smoke test). Every miss is explained in
+`docs/04-testing.md`. **No gate**: the misses are explained, there's no CI
+to hold a baseline, and a ratchet would trip on harmless changes. Built by
+a subagent off `main`, then rebased onto the stack.
 
 ## 8. Stretch: Barnes–Hut (PR, only if time)
 
@@ -189,6 +187,7 @@ Report coverage to see what's untested; gate on it later, if at all.
 
 ## 9. M2 cleanup (PR, if needed)
 
+- [ ] Test `ConfigError::ZeroSubsteps`'s `Display` text (coverage report).
 - [ ] Magic-number pass; `type-invariants.md` triggers re-checked.
 - [ ] Turn on `unreachable_pub` in `[workspace.lints]`: items marked
       `pub` that aren't exported become `pub(crate)`, so rustc's

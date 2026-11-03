@@ -98,6 +98,17 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   it. *Revisit when* the engine has several error enums that wrap one
   another (`source()` chains), e.g. scene loading or constraint setup.
 
+- `cargo-llvm-cov` (dev tool, M2.7): a cargo subcommand that runs the
+  tests with LLVM source-based coverage (`-C instrument-coverage`) and
+  turns the profiles into HTML and text reports, using rustc's own
+  `llvm-tools` component (pinned in `rust-toolchain.toml`). The standard
+  Rust coverage tool (`taiki-e`, active releases). A **tool install, not
+  a crate dependency**: nothing in `Cargo.toml` or `Cargo.lock`, like
+  `wasmtime` for `test-wasm` and Chrome for `smoke`. Only
+  `cargo xtask coverage` needs it (`cargo install cargo-llvm-cov`);
+  see `04-testing.md`, Coverage. JS coverage uses Node's built-in
+  `--experimental-test-coverage`, so it adds nothing.
+
 ## Non-goals (v1)
 
 - 3D, or abstracting over dimension.

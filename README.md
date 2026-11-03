@@ -20,6 +20,8 @@ Requirements:
   browser smoke test; set `CHROME` to its path if it isn't found).
 - `wasmtime`, to run the engine tests as wasm in pre-push:
   `cargo install wasmtime-cli` (or MacPorts: `sudo port install wasmtime`).
+- Optional: `cargo-llvm-cov`, for `cargo xtask coverage`:
+  `cargo install cargo-llvm-cov`.
 
 Once per clone:
 
@@ -54,6 +56,13 @@ It compiles the TypeScript and the wasm, serves `site/`, and keeps
 edits need a rerun. Ctrl-C stops everything. The generated `.js` and
 `.js.map` files are gitignored; `cargo xtask site` builds without
 serving.
+
+Test coverage (report only, no thresholds; see
+[`docs/04-testing.md`](docs/04-testing.md), Coverage):
+
+```sh
+cargo xtask coverage          # Rust per crate + HTML in target/llvm-cov/html; site JS
+```
 
 `cargo xtask help` lists all commands.
 

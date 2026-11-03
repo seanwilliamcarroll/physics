@@ -15,6 +15,7 @@ use std::process::{self, ExitCode};
 use clap::{Parser, Subcommand};
 
 mod bench_wasm;
+mod coverage;
 mod serve;
 mod smoke;
 
@@ -57,6 +58,14 @@ enum Command {
         #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(u32).range(10..))]
         budget_ms: u32,
     },
+    /// Measure test coverage of the Rust crates and the site JS; report only, no thresholds
+    ///
+    /// Rust: cargo-llvm-cov runs the workspace tests (except xtask) instrumented,
+    /// writes an HTML report to target/llvm-cov/html, and prints a line per crate
+    /// (test-support is left out of the report). Site JS: node --test with
+    /// --experimental-test-coverage over tests/site. Needs cargo-llvm-cov:
+    /// cargo install cargo-llvm-cov
+    Coverage,
     /// Point git at the tracked hooks in .githooks/
     InstallHooks,
 }
@@ -81,6 +90,7 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Smoke => smoke::smoke(&root),
         Command::TestWasm => test_wasm(&root),
         Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
+        Command::Coverage => coverage::coverage(&root),
         Command::InstallHooks => install_hooks(&root),
     }
 }
@@ -92,6 +102,12 @@ fn workspace_root() -> Result<PathBuf, String> {
         .parent()
         .map(Path::to_path_buf)
         .ok_or_else(|| "xtask manifest has no parent directory".to_owned())
+}
+
+/// Cargo's target directory: `CARGO_TARGET_DIR` if set (relative to the
+/// root, or absolute), else `<root>/target`.
+fn target_dir(root: &Path) -> PathBuf {
+    env::var_os("CARGO_TARGET_DIR").map_or_else(|| root.join("target"), |d| root.join(d))
 }
 
 /// Compiles `site/**/*.ts` to `.js` (+ source maps) with the pinned
@@ -137,9 +153,7 @@ fn site(root: &Path) -> Result<(), String> {
         return Err(format!("wasm build failed ({status})"));
     }
 
-    let target_dir =
-        env::var_os("CARGO_TARGET_DIR").map_or_else(|| root.join("target"), |d| root.join(d));
-    let src = target_dir.join(WASM_ARTIFACT);
+    let src = target_dir(root).join(WASM_ARTIFACT);
     let dest_dir = root.join("site").join("pkg");
     let dest = dest_dir.join("engine.wasm");
     fs::create_dir_all(&dest_dir).map_err(|e| format!("creating {}: {e}", dest_dir.display()))?;
