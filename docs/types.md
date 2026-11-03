@@ -38,6 +38,7 @@ and `Friction` go.
 | [`Mass<S>`](../crates/engine/src/params/mass.rs) | Positive, finite, with a finite inverse: a bad mass would corrupt every constraint it touches; static particles come only from `add_static`. |
 | [`Softening<S>`](../crates/engine/src/params/softening.rs) | ε ≥ 0 (0 allowed: M2 demos it). A negative ε from a slider is reported, not silently squared away. |
 | [`OpeningAngle<S>`](../crates/engine/src/params/opening_angle.rs) | Barnes–Hut θ ≥ 0; became a type when θ got a slider. |
+| [`Compliance<S>`](../crates/engine/src/params/compliance.rs) | α = 1/stiffness ≥ 0 (0 rigid): both solvers read it as the same spring, so the drag's soft pull means the same thing in either panel. |
 | [`Baumgarte<S>`](../crates/engine/src/params/baumgarte.rs) | Impulse solver's β in `[0, 1]`: above 1 the bias overshoots. A world setting, so `Solver` stays a plain enum. |
 
 ## `engine` — forces, constraints, stepping
