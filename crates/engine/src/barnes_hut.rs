@@ -12,6 +12,34 @@ use crate::{Force, Particles, Scalar, Softening, Vec2};
 /// bounds the build's recursion depth.
 const MAX_DEPTH: u32 = u64::BITS / 2;
 
+/// Barnes–Hut opening angle θ: a value known to be `≥ 0`, checked once
+/// like [`Softening`] (`docs/type-invariants.md`: θ became a slider).
+/// θ = 0 is valid (exact direct summation through the tree).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct OpeningAngle<S>(S);
+
+impl<S: Scalar> OpeningAngle<S> {
+    /// `Some` if `theta ≥ 0`; NaN fails the comparison, so it's rejected
+    /// too.
+    #[must_use]
+    pub fn new(theta: S) -> Option<Self> {
+        (theta >= S::ZERO).then_some(Self(theta))
+    }
+
+    /// θ.
+    #[must_use]
+    pub const fn get(self) -> S {
+        self.0
+    }
+
+    /// The same θ in another scalar type, unchecked: rounding a
+    /// non-negative, non-NaN value can't make it negative or NaN.
+    #[must_use]
+    pub fn cast<T: Scalar>(self) -> OpeningAngle<T> {
+        OpeningAngle(T::from_f64(self.0.to_f64()))
+    }
+}
+
 /// Same physics as [`PairwiseGravity`](crate::PairwiseGravity) (softened
 /// Newtonian gravity between dynamic particles), but a group of bodies far
 /// enough away is felt as one point mass at its center of mass.
@@ -34,15 +62,15 @@ pub struct BarnesHut<S> {
 
 impl<S: Scalar> BarnesHut<S> {
     /// `g_const` and `softening` as for `PairwiseGravity::new`. `theta`:
-    /// the opening angle, `None` unless θ ≥ 0 (a NaN is rejected too).
-    /// 0 is exact direct summation; Barnes & Hut used about 1.
+    /// the opening angle; 0 is exact direct summation, Barnes & Hut used
+    /// about 1.
     #[must_use]
-    pub fn new(g_const: S, softening: Softening<S>, theta: S) -> Option<Self> {
-        (theta >= S::ZERO).then(|| Self {
+    pub fn new(g_const: S, softening: Softening<S>, theta: OpeningAngle<S>) -> Self {
+        Self {
             g_const,
             softening_sq: softening.squared(),
-            theta_sq: theta * theta,
-        })
+            theta_sq: theta.0 * theta.0,
+        }
     }
 
     #[must_use]

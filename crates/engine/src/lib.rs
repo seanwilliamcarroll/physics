@@ -13,7 +13,7 @@ pub mod scenarios;
 mod softening;
 mod world;
 
-pub use barnes_hut::BarnesHut;
+pub use barnes_hut::{BarnesHut, OpeningAngle};
 pub use force::{Force, PairwiseGravity, UniformGravity};
 pub use integrate::Integrator;
 pub use math::{Scalar, Vec2};

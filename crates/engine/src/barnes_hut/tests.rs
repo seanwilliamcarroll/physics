@@ -1,4 +1,4 @@
-use super::BarnesHut;
+use super::{BarnesHut, OpeningAngle};
 use crate::rng::SplitMix64;
 use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
@@ -16,7 +16,11 @@ fn eps<S: Scalar>(eps: f64) -> Softening<S> {
 }
 
 fn bh<S: Scalar>(eps_m: f64, theta: f64) -> BarnesHut<S> {
-    BarnesHut::new(S::from_f64(G), eps(eps_m), S::from_f64(theta)).unwrap()
+    BarnesHut::new(
+        S::from_f64(G),
+        eps(eps_m),
+        OpeningAngle::new(S::from_f64(theta)).unwrap(),
+    )
 }
 
 fn v<S: Scalar>(x: f64, y: f64) -> Vec2<S> {
@@ -49,10 +53,11 @@ fn max_rel_diff<S: Scalar>(a: &[Vec2<S>], b: &[Vec2<S>]) -> f64 {
 
 #[test]
 fn negative_or_nan_theta_is_rejected() {
-    let new = |t: f64| BarnesHut::new(G, eps(EPS), t);
+    let new = OpeningAngle::<f64>::new;
     assert!(new(-0.1).is_none());
     assert!(new(f64::NAN).is_none());
     assert!(new(0.0).is_some());
+    assert_eq!(new(0.5).map(|t| t.cast::<f32>().get()), Some(0.5_f32));
     assert!(new(0.5).is_some());
 }
 

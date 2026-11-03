@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use engine::scenarios::{CLUSTER_SOFTENING, GRAVITATIONAL_CONSTANT, cluster, cluster_gravity};
-use engine::{BarnesHut, Force, Integrator, Scalar, Softening, Vec2};
+use engine::{BarnesHut, Force, Integrator, OpeningAngle, Scalar, Softening, Vec2};
 
 /// Body counts: O(n²) makes each ~8x step in N cost ~64x.
 const SIZES: [usize; 3] = [16, 128, 1024];
@@ -73,8 +73,8 @@ fn barnes_hut<S: Scalar>(c: &mut Criterion, scalar: &str) {
     let mut group = c.benchmark_group(format!("barnes_hut_{scalar}"));
     let eps = Softening::new(S::from_f64(CLUSTER_SOFTENING)).unwrap();
     for theta in THETAS {
-        let force =
-            BarnesHut::new(S::from_f64(GRAVITATIONAL_CONSTANT), eps, S::from_f64(theta)).unwrap();
+        let angle = OpeningAngle::new(S::from_f64(theta)).unwrap();
+        let force = BarnesHut::new(S::from_f64(GRAVITATIONAL_CONSTANT), eps, angle);
         for n in TREE_SIZES {
             let w = cluster::<S>(n, SEED).unwrap();
             let mut acc = vec![Vec2::ZERO; n];
