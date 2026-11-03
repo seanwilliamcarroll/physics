@@ -66,6 +66,10 @@ cargo xtask coverage          # Rust per crate + HTML in target/llvm-cov/html; s
 
 `cargo xtask help` lists all commands.
 
+## License
+
+MIT; see [`LICENSE`](LICENSE).
+
 ## Contributing
 
 `main` is protected: all changes land through a pull request (squash merge).

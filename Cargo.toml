@@ -6,6 +6,7 @@ resolver = "3"
 edition = "2024"
 rust-version = "1.99"
 publish = false
+license = "MIT"
 
 # Third-party crates, one pinned version for the whole workspace; crates
 # opt in with `name.workspace = true`. Each needs a justification
