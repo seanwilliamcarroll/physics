@@ -37,7 +37,7 @@ crates/engine/
     known_failures.rs     // methods that must misbehave
     determinism.rs        // repeatability + golden hashes
     properties.rs         // proptest
-    barnes_hut.rs         // vs direct summation: accuracy, momentum, cost
+    barnes_hut.rs         // vs direct summation: accuracy, momentum
     properties.proptest-regressions  // committed: shrunk failures replay forever
   benches/
     step.rs               // criterion
@@ -275,7 +275,8 @@ Golden-hash tests running on both targets give the cross-platform check above.
 ## Benchmarks
 
 - `criterion` natively: `World::step` for N ∈ {16, 128, 1024} per scalar;
-  pairwise gravity in isolation; SoA vs fully split SoA later.
+  pairwise gravity and Barnes–Hut in isolation; SoA vs fully split SoA
+  later.
 - In the browser: `performance.now()` around `demo_advance`, shown in a
   small on-page overlay (steps/s, ms per step).
 - Native vs wasm ratio per benchmark is itself a tracked number.
@@ -304,6 +305,22 @@ release, aarch64-apple-darwin, Rust 1.99.1), mean per call, the
   n = 16, 0.2% at 128, 0.02% at 1024. No change.
 - **f32 is 5–10% faster than f64:** without SIMD the win is memory, not
   arithmetic (as M0 found).
+
+**Barnes–Hut (M2.8)**, groups `barnes_hut_{f32,f64}` (θ = 0.5 and 1.0)
+beside `pairwise_*`, at n ∈ {128, 1024, 4096} (pairwise gains n = 4096
+for the comparison). Force alone, mean per call:
+
+| | n = 128 | n = 1024 | n = 4096 |
+|---|---|---|---|
+| `PairwiseGravity`, f32 | 17.4 µs | 1.01 ms | 9.92 ms |
+| `BarnesHut` θ = 0.5, f32 | 25.1 µs | 419 µs | 3.54 ms |
+| `BarnesHut` θ = 1.0, f32 | 15.3 µs | 193 µs | 1.36 ms |
+| `PairwiseGravity`, f64 | 18.0 µs | 1.09 ms | 13.3 ms |
+| `BarnesHut` θ = 0.5, f64 | 24.7 µs | 412 µs | 3.80 ms |
+| `BarnesHut` θ = 1.0, f64 | 21.9 µs | 173 µs | 1.48 ms |
+
+Crossover ~200–256 bodies at θ = 0.5, ~128–256 at θ = 1.0; analysis in
+`barnes-hut.md` (Measurements, Cost).
 
 **Native vs wasm (M2.3)**, `cargo xtask bench-wasm` (the same cluster
 cases through `engine.wasm` in Node 22, vs criterion's native means):

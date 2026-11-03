@@ -92,7 +92,7 @@ about the center of mass), so the force error should grow roughly like θ².
 Cost: a body visits O(1/θ²) cells per tree level, O(log n) levels: O(n log
 n / θ²) per step, plus O(n log n) to build the tree (a sort).
 Direct summation is O(n²) with a smaller constant, so it wins below some
-crossover n: about 200 bodies at θ = 0.5 (**Measurements** below).
+crossover n: about 200–256 bodies at θ = 0.5 (**Measurements** below).
 
 ## What it gives up: momentum
 
@@ -255,32 +255,38 @@ runs diverge, and so do their drifts.
 
 ### Cost
 
-Seconds per force evaluation (f64, release, best of 5 batches) and the
-speedup over `PairwiseGravity`. From the `#[ignore]`d printout
-`cost_vs_direct_summation`: criterion isn't in the workspace yet, so this
-is a timing loop, not a statistical benchmark. Repeat runs varied by up
-to ~30% at n ≥ 1024 (direct summation is the noisier side). The
-crossovers for θ ≥ 0.5 were the same in every run; at θ = 0.3 the margin
-is thin, and an earlier run with fewer repetitions showed break-even at
-n = 1024.
+`cargo bench -p engine --bench step -- 'barnes_hut|pairwise'`
+(criterion, release, aarch64-apple-darwin, Rust 1.99.1): mean per
+`accumulate` call on `scenarios::cluster` (seed 1), and the speedup over
+`PairwiseGravity` on the same bodies:
 
-| n | direct | θ = 0.3 | θ = 0.5 | θ = 0.8 | θ = 1.0 |
-|---|---|---|---|---|---|
-| 16 | 2.7e-7 | 0.17x | 0.18x | 0.19x | 0.20x |
-| 64 | 3.7e-6 | 0.33x | 0.42x | 0.53x | 0.57x |
-| 128 | 1.75e-5 | 0.56x | 0.79x | **1.08x** | **1.23x** |
-| 256 | 8.2e-5 | 0.89x | **1.44x** | 2.0x | 2.4x |
-| 512 | 3.3e-4 | **1.37x** | 2.3x | 3.5x | 4.3x |
-| 1024 | 9.9e-4 | 1.5x | 2.7x | 4.5x | 5.0x |
-| 2048 | 3.0e-3 | 1.35x | 2.6x | 4.1x | 6.5x |
-| 4096 | 1.25e-2 | 1.8x | 3.8x | 6.7x | 7.8x |
+| n | pairwise f32 | θ = 0.5 f32 | θ = 1.0 f32 | pairwise f64 | θ = 0.5 f64 | θ = 1.0 f64 |
+|---|---|---|---|---|---|---|
+| 128 | 17.4 µs | 25.1 µs (0.69x) | 15.3 µs (**1.13x**) | 18.0 µs | 24.7 µs (0.73x) | 21.9 µs (0.82x) |
+| 1024 | 1.01 ms | 419 µs (2.4x) | 193 µs (5.3x) | 1.09 ms | 412 µs (2.6x) | 173 µs (6.3x) |
+| 4096 | 9.92 ms | 3.54 ms (2.8x) | 1.36 ms (7.3x) | 13.3 ms | 3.80 ms (3.5x) | 1.48 ms (9.0x) |
 
-**Crossover** (bold: first n where Barnes–Hut wins): ~100–128 bodies at
-θ ≥ 0.8, ~200 at θ = 0.5, ~300–500 at θ = 0.3. Below that, building the
-tree (two allocations, a sort, 32-level keys) costs more than it saves.
-For the M2 demo's "a few hundred bodies", θ = 0.5 is only ~1.4–2.3x
-faster, for a median force error of ~1.2–1.5%; the payoff is at
-thousands of bodies. Growth from
-n = 1024 to 4096 (4x bodies) is ~9x for Barnes–Hut at θ = 0.5 and ~13x
-for direct summation; n log n alone predicts 4.8x, which suggests memory
-effects (the walk's scattered reads) at this size; not profiled.
+The bench covers 128, 1024 and 4096 only. To place the crossover, a
+one-off run of the same groups at n = 256 and 512 (not kept in the
+bench):
+
+| n | pairwise f32 | θ = 0.5 f32 | θ = 1.0 f32 | pairwise f64 | θ = 0.5 f64 | θ = 1.0 f64 |
+|---|---|---|---|---|---|---|
+| 256 | 84.2 µs | 65.6 µs (**1.28x**) | 37.4 µs (2.3x) | 84.8 µs | 89.3 µs (0.95x) | 33.7 µs (**2.5x**) |
+| 512 | 347 µs | 164 µs (2.1x) | 82.6 µs (4.2x) | 353 µs | 145 µs (**2.4x**) | 75.1 µs (4.7x) |
+
+The f64 θ = 0.5 time at 256 is the noisiest number here (criterion's 95%
+interval 82–97 µs, so break-even is within it); f64 θ = 1.0 at 128 is
+likewise wide (20–24 µs).
+
+**Crossover** (bold: first measured n where Barnes–Hut wins): at θ = 0.5,
+~200–256 bodies in f32 and ~256 in f64 (break-even there, a clear win by
+512); at θ = 1.0, ~128 in f32 and between 128 and 256 in f64. Below that,
+building the tree (two allocations, a sort, 32-level keys) costs more
+than it saves. For the M2 demo's "a few hundred bodies", θ = 0.5 is at
+best ~1.3–2.4x faster, for a median force error of ~1.2–1.5%; the payoff
+is at thousands of bodies. Growth from n = 1024 to 4096 (4x bodies) is
+8.4x (f32) and 9.2x (f64) for Barnes–Hut at θ = 0.5, against 9.8x and
+12.2x for direct summation (ideal 16x); n log n alone predicts 4.8x,
+which suggests memory effects (the walk's scattered reads) at this size;
+not profiled.
