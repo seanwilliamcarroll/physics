@@ -1,20 +1,19 @@
-# TASKS — M3: Pendulum, the solver duel
+# TASKS — M4: Chains and the double pendulum
 
-Source: `docs/05-roadmap.md` (M3), `docs/01-solvers.md` (the two families
-and the measured table), `docs/type-invariants.md` (the mass-type and
-`ParticleId` triggers both fire in M3).
+Source: `docs/05-roadmap.md` (M4), `docs/06-constraints.md` ("Extending"),
+`docs/01-solvers.md` (mass ratios, the side-by-side demo table).
 
-**Goal:** `01-solvers.md` made interactive. An impulse-based solver and
-XPBD on a single pendulum, side by side: rod stretch with β = 0,
-Baumgarte tuning, XPBD's energy loss, and substeps as the great equalizer.
+**Goal:** where the two solver families really diverge. A heavy bob on a
+light chain (1:100) stays solid under one solver and goes rubbery under
+the other; a double pendulum shows chaos (copies 1e-9 apart, and f32 vs
+f64); any particle can be grabbed and dragged with the mouse.
 
-**Done when:** two pendulums swing side by side with live rod-error and
-energy plots, and every row of the `01` table can be reproduced with the
-controls.
+**Done when:** dragging a chain feels solid in one panel and stretchy in
+the other at the same cost; the double pendulum divergence is visible.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m3/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`m4/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -53,147 +52,141 @@ Barnes–Hut (design doc, Morton-key quadtree, crossover ~200–256 bodies at
 θ = 0.5). `.wasm` 75.9 KB. Lesson recorded: generic sorts compile per
 type (~7 KB each).
 
+## ✅ M3: Pendulum, the solver duel (done, PRs #32–#41)
+
+`docs/06-constraints.md`; `ParticleId`, `Mass`; `Constraint` (geometry
+only) and `DistanceConstraint`; XPBD and sequential impulses with
+`Baumgarte`; `01`'s table reproduced row for row as regression tests,
+plus a finding (f32 XPBD at 100 substeps gains energy: noisy derived
+velocities); the pendulum page; `xtask serve` sends `no-store`.
+**Audit before M4 (#42–#50):** `docs/types.md`; scenarios, params, demo
+and world split into small files with re-exports; shared site modules;
+`World::new(NonZeroU32)` can't fail; `cargo doc -D warnings` in pre-push.
+
 ---
 
 ## Decisions to review before starting
 
-1. **Constraints describe geometry only** (`01-solvers.md`): a
-   `Constraint<S>` trait evaluates `C(x)` and `∇C(x)` for the particles it
-   touches, plus its compliance α. First and only one in M3:
-   `DistanceConstraint { a, b, length, compliance }`. **No
-   `PinConstraint`:** a pin is a distance constraint to a static particle
-   (`add_static`, `inv_mass = 0`), which both solvers handle for free.
-2. **Solver: an enum, not a trait object**, like `Integrator`:
-   `Solver::{Xpbd, Impulse}`, with β a separate `Baumgarte<S>` setting
-   (revised in `06-constraints.md`: keeps `Solver` non-generic). Two known solvers; the closed set
-   gives exhaustive matches, no `dyn`, and an easy `demo_set_solver` code.
-   The `01` sketch (`trait Solver`) predates the `Integrator` precedent;
-   revisit if a third solver appears.
-3. **How a solver relates to the integrator.** Each solver *is* a way
-   of stepping, so with constraints present the solver owns the step:
-   - XPBD: predict `x* = x + h v + h² a`, project constraints (λ per
-     substep), then `v = (x − x_prev) / h`.
-   - Impulse: `v += h a`, solve velocity constraints (with Baumgarte bias
-     β·C/h, accumulated λ, warm-started), then `x += h v`.
-
-   Proposal: `World` gets `constraints` and a `Solver`. With no
-   constraints, the integrator steps exactly as today, so every M0–M2
-   golden is unchanged. With constraints, the solver steps and the
-   integrator setting is ignored (documented, and tested so it can't
-   silently half-apply).
-4. **Per-solver state lives in the world, next to the constraints:** one
-   λ per constraint (`Vec<S>`, same order), reset per substep by XPBD and
-   kept across steps by the impulse solver for warm starting. Switching
-   solvers resets it.
-5. **`ParticleId` (deferred since M0): a plain index newtype, no
-   generation.** Constraints need to name particles; `Particles::add`
-   returns a `ParticleId`. Nothing can be removed in M3, so a stale id
-   can't exist yet. The generational handle waits for removal
-   (`type-invariants.md` item 5 keeps that trigger).
-6. **Mass types (`type-invariants.md` item 1): the trigger fires.** Both
-   solvers weight corrections by `inv_mass`, so a bad mass corrupts every
-   constraint it touches. Proposal: `Mass<S>` (positive, finite) taken by
-   `Particles::add`; `add_static` stays the only way to get `inv_mass = 0`.
-   Cost: every `add` call site (scenarios, tests, proptest) changes; done
-   as its own section so the churn is reviewable apart from the solvers.
-7. **Iterations and substeps are both controls.** Substeps already exist
-   (`World::new`); iterations (Gauss–Seidel passes per substep) are new and
-   matter only from M4 (one constraint converges in one pass), but the
-   control is cheap and the `01` table needs neither more nor less.
-8. **The `01` table as a regression test**, one test per row, with
-   tolerances set from our measured values (the `01` numbers came from a
-   standalone script, so ours may differ in the second digit; any
-   difference is recorded, not hidden). Known failures:
-   `impulse_without_baumgarte_stretches`,
-   `xpbd_single_substep_loses_energy`.
-9. **The page is f64 by default with an f32 option** (as M1). Two panels,
-   one per solver, plus plots of rod-length error (log) and energy.
-10. **Out of scope, unchanged:** the 4096-body known gap (Web Workers) stays
-    parked; it doesn't block M3.
-
----
-
-## ✅ 1. `docs/06-constraints.md` (done)
-
-Two-body `Constraint<S>` trait (C, ∇C, compliance), solvers generic over
-it with concrete storage (`Vec<DistanceConstraint>`, no `dyn`);
-`DistanceConstraint::between` takes its rest length from current positions
-(no invalid length) and is rigid-only until M5's `Compliance`;
-`add_constraint` checks ids (`UnknownParticle`). `Solver::{Xpbd, Impulse}`
-plus `Baumgarte<S>` (0 ≤ β ≤ 1), `set_iterations`/`set_substeps` take
-`NonZeroU32`. With constraints the solver owns the step (XPBD with no
-constraints wouldn't even match symplectic Euler bit for bit). λ per
-constraint, reset per substep (XPBD) or warm-started (impulse).
-
-## ✅ 2. `ParticleId` and `Mass<S>` (done)
-
-`ParticleId`: a plain index newtype that only the engine constructs;
-`add`/`add_static` return it (not `#[must_use]`: most callers ignore it).
-`Mass<S>`: `new(m) -> Option`, requiring `m > 0`, finite, and `1/m`
-finite and `> 0` (the last can only fail on fixed point, where it would
-silently make a particle static). It stores the exact `1/m`, so goldens
-are unchanged. `ConfigError::InvalidMass` for scene masses; `kg()` test
-shorthands (one for unit tests, one in `test-support`). Built by a
-subagent.
-
-## ✅ 3. Constraints and XPBD (done)
-
-`Constraint<S>` (`evaluate -> (C, Option<∇C>)`: C stays readable for
-coincident bodies) and `DistanceConstraint::between`; `World` constraints,
-λ, `Solver::Xpbd`, `set_iterations`/`set_substeps` (`NonZeroU32`),
-`add_constraint` rejecting foreign ids (`UnknownParticle`). With
-constraints the solver owns the step (integrator ignored, tested);
-without, goldens are unchanged. Diagnostics: `constraint_error`,
-`uniform_gravity_potential`. `scenarios::pendulum`. XPBD holds the rod to
-8 ulps, and energy lost over 10 s matches `01`: 8.791 / 1.454 / 0.312 J at
-1 / 20 / 100 substeps (table 8.8 / 1.46 / 0.31). Golden for the XPBD
-pendulum, native and wasm.
-
-## ✅ 4. Impulse solver (done)
-
-`Solver::Impulse`: kick, warm start, velocity solve with bias `(β/h) C`,
-drift; `Baumgarte<S>` in `[0, 1]`, default 0.2 (Box2D v2). `01`'s table
-is a regression suite (`tests/solver_table.rs`) and every row
-reproduces. Known failures: `impulse_without_baumgarte_stretches`,
-`xpbd_single_substep_loses_energy`, and a new one,
-`xpbd_f32_substeps_derive_noisy_velocities` (f32 XPBD at 100 substeps
-gains energy). Goldens for both solvers, native and wasm.
-
-## ✅ 5. Web layer (done)
-
-`DEMO_PENDULUM` (5), `SOLVER_XPBD`/`SOLVER_IMPULSE`; `demo_set_solver`,
-`demo_set_beta` (`Baumgarte` parsed in f64, cast), `demo_set_substeps`,
-`demo_set_iterations` (`NonZeroU32`), `demo_constraint_error` (max |C|,
-NaN without constraints). The pendulum's energy readout uses its uniform
-gravity. `.wasm` 90,194 B (gzip 29,209).
-
-## ✅ 6. Site: the M3 page (done; manual check pending)
-
-`site/demos/m3-pendulum/`: XPBD and impulse panels under shared settings
-(β, substeps, iterations, rate, scalar), so each row of `01`'s table is one
-preset (plus "f32, 100 substeps" for the M3.4 finding). Each panel draws
-the pin, rod, bob with a trail, and a faint rest-length circle, so stretch
-is visible. Rod-error (log) and energy-lost (linear, J) plots.
-`drawSegment`/`drawCircle` in `canvas.ts`. Two smoke cases; gallery link.
-**Still to do: your manual check against Done when.**
-
-## ✅ 7. M3 cleanup (done)
-
-The web demo's `Sim` keeps its force as one enum (`SceneForce`:
-`Unmeasured | Pairwise { exact, theta } | Uniform`) instead of three
-`Option`s, so a θ can only exist next to the gravity it approximates.
-Literals named on the M3 page. `type-invariants.md` triggers re-checked
-(`UnitVec2` half met; `Compliance` waits for M5).
-Found in review: `cargo xtask serve` now sends `Cache-Control: no-store`
-(`xtask/serve.py`); a cached pre-M3 `engine.wasm` made `demo_new` return
-null on the new page.
+1. **Dragging needs compliance now, a milestone early.** The roadmap's
+   drag is a *soft* constraint from the grabbed particle to the cursor;
+   a rigid one would yank the chain and, with the impulse solver, inject
+   energy. So M4 adopts **`Compliance<S>`** (α ≥ 0, m/N; a `params/`
+   type via `checked_param!`) and a compliant `DistanceConstraint`. M5
+   then reuses both for springs instead of introducing them.
+2. **The impulse solver gets the soft form too** (the question `06` left
+   for M5). Catto's soft constraints (GDC 2011) map a spring onto the
+   impulse update in the same shape as XPBD:
+   `Δλ = −(J v + b + α̃ λ) / (w + α̃)`, `α̃ = α / h²`. The bias `b` differs
+   by kind: a **rigid** rod (α = 0) keeps today's Baumgarte `b = (β/h) C`
+   with the β setting (so goldens are unchanged); a **compliant** one uses
+   its spring's own bias, `b = C / h` (Catto's mapping with no damper:
+   `γ = α/h²`, bias factor 1). Both solvers then mean the same physical
+   stiffness `k = 1/α`. The alternative, "impulse is rigid-only", would
+   make the drag panel impossible to compare. (Damping: none in M4; M5's
+   springs decide.)
+3. **The drag anchor is a static particle the page moves.** Grab: the
+   world adds a static particle at the cursor and a compliant rod of rest
+   length 0 to the nearest particle (within a pick radius). Drag: the
+   anchor's position is set each frame. Release: both are removed. Needs
+   `Particles::set_static_position(id, pos)` (static only, checked), a
+   way to remove the last constraint and particle (a small `pop`, not
+   general removal, so `ParticleId` stays a plain index), and a rest
+   length of 0, whose gradient is undefined exactly when C = 0 (already
+   handled: `evaluate` returns `None`, the solvers skip).
+4. **Picking happens in Rust**, nearest particle to the cursor within a
+   radius: `demo_grab(d, x, y, radius) -> i32` (index or −1),
+   `demo_drag(d, x, y)`, `demo_release(d)`. Rust has the positions in its
+   own scalar; JS only converts the pointer to world coordinates
+   (`View.toWorld`, pure and unit-tested).
+5. **Constraint rendering:** the page needs to know which particles are
+   joined. `demo_links_ptr/len` exposes `[a0, b0, a1, b1, …]` as `u32`
+   (rebuilt only when constraints change), so the renderer draws lines
+   without knowing scene topology.
+6. **Iteration order: `Order::{Forward, Reverse, Alternating}`** on
+   `Constraints` (where the audit put solver settings), default Forward
+   (goldens unchanged). Alternating flips every iteration, a cheap way to
+   cancel Gauss–Seidel's directional bias along a chain.
+7. **The permutation canary.** `properties.rs` checks that shuffling
+   bodies changes results only by rounding. With constraints, Gauss–Seidel
+   order is part of the method, so a shuffled chain gives a genuinely
+   different (but valid) answer. The existing property stays for
+   unconstrained worlds; a new one for constrained worlds asserts a
+   *bounded* difference (both runs keep the chain within the solver's
+   error bound) and the doc says why exact invariance is gone.
+8. **Scenes:** `chain(links, mass_ratio)` (pinned at one end, links of
+   equal length, light links and a bob `mass_ratio` times heavier;
+   1:100 is the roadmap's case) and `double_pendulum(offset)` (two rods,
+   released horizontal; `offset` nudges the tip, 1e-9 m for the chaos
+   demo). Both take a solver and substeps like `pendulum`.
+9. **Two pages:** `m4-chain` (XPBD vs impulse panels on the same chain,
+   drag in either, mass-ratio and iteration controls, length-error plot)
+   and `m4-double-pendulum` (two copies 1e-9 apart, or f32 vs f64, tip
+   trails, log divergence plot). Default solver for the double pendulum:
+   impulse with 20 substeps, the one `01` measured nearly energy-
+   conserving (chaos needs the energy to stay put).
+10. **Shared pointer module** (`site/js/pointer.ts`): pointer events →
+    world coordinates through `View`, with pointer capture so a drag
+    survives leaving the canvas. Touch works through pointer events too.
 
 ---
 
-## Out of scope for M3
+## 1. `docs/06-constraints.md` update (PR)
 
-- Chains, mass ratios, mouse dragging, double pendulum (M4).
-- Springs and soft bodies (M5), contacts (M6+).
+- [ ] Compliance in both solvers (decisions 1–2), iteration order (6),
+      the drag design (3–5), the permutation property (7).
+
+## 2. Compliance (test first, PR)
+
+- [ ] `Compliance<S>` in `params/`; compliant `DistanceConstraint`
+      (`with_length` for rest length 0, compliance argument).
+- [ ] Impulse soft form; α = 0 bit-identical to today (goldens).
+- [ ] Tests: a compliant rod's small-oscillation period matches
+      `2π √(m α)` in both solvers (within a measured tolerance).
+
+## 3. Iteration order and the permutation property (test first, PR)
+
+- [ ] `Order::{Forward, Reverse, Alternating}`, `World::set_order`.
+- [ ] Constrained-world permutation property (bounded difference).
+
+## 4. Chains and the double pendulum (test first, PR)
+
+- [ ] `scenarios::chain`, `scenarios::double_pendulum`.
+- [ ] Chain length error under 1:100, per solver (the roadmap test),
+      recorded against substeps and iterations.
+- [ ] Double pendulum: copies 1e-9 apart separate (to > 1 cm) within a
+      few seconds; f32 vs f64 likewise. Golden hashes.
+
+## 5. Dragging (test first, PR)
+
+- [ ] `Particles::set_static_position`, the pop operations, grab / drag /
+      release on `World` or `Demo` (decide in code review).
+- [ ] Tests: grab picks the nearest within radius; release restores the
+      world's constraint and particle counts exactly; a dragged chain
+      follows the anchor.
+
+## 6. Web layer (PR)
+
+- [ ] `DEMO_CHAIN`, `DEMO_DOUBLE_PENDULUM`; grab/drag/release exports;
+      `demo_links_ptr/len`; `demo_set_order`; ABI mirror; size row.
+
+## 7. Site: the M4 pages (PR)
+
+- [ ] `pointer.ts` (+ `View.toWorld`, unit-tested), constraint lines and
+      tip trails, `m4-chain` and `m4-double-pendulum`, smoke cases,
+      gallery links.
+- [ ] Manual check against **Done when** (yours).
+
+## 8. M4 cleanup (PR, if needed)
+
+- [ ] Magic numbers, `type-invariants.md` triggers (`Compliance` adopted;
+      `UnitVec2`?), `docs/types.md` kept current, awkward bits.
+
+---
+
+## Out of scope for M4
+
+- Force-based springs and soft bodies (M5); M4 only adds compliance.
+- Contacts (M6+). General particle removal (generational `ParticleId`).
 - Web Workers for the M2 page (known gap below).
 
 ## Known gaps
