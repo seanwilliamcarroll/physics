@@ -43,6 +43,8 @@ and `Friction` go.
 | [`Compliance<S>`](../crates/engine/src/params/compliance.rs) | α = 1/stiffness ≥ 0 (0 rigid): both solvers read it as the same spring, so the drag's soft pull means the same thing in either panel. |
 | [`Stiffness<S>`](../crates/engine/src/params/stiffness.rs) | A force-based spring's k > 0 and finite (rigid has no force law); `cast` is fallible because narrowing can overflow. |
 | [`Damping<S>`](../crates/engine/src/params/damping.rs) | A damper's c ≥ 0 and finite, the same physical damping in every stepper. |
+| [`Radius<S>`](../crates/engine/src/params/radius.rs) | A circle's r > 0 and finite; particles without one are points that never collide (radius 0 in `Particles`). |
+| [`Restitution<S>`](../crates/engine/src/params/restitution.rs) | e ∈ [0, 1]: 0 inelastic, 1 elastic; above 1 a collision would add energy. |
 | [`Baumgarte<S>`](../crates/engine/src/params/baumgarte.rs) | Impulse solver's β in `[0, 1]`: above 1 the bias overshoots. A world setting, so `Solver` stays a plain enum. |
 
 ## `engine` — forces, constraints, stepping
@@ -54,6 +56,7 @@ and `Friction` go.
 | [`PairwiseGravity<S>`](../crates/engine/src/force.rs) | Exact softened N-body gravity, O(n²), equal and opposite by construction (momentum to rounding). |
 | [`BarnesHut<S>`](../crates/engine/src/barnes_hut.rs) | The same gravity in O(n log n) via a quadtree; trades accuracy (θ) and exact momentum for speed past ~200 bodies. |
 | [`Spring<S>`, `SpringForce<S>`](../crates/engine/src/force/spring.rs) | Force-based springs with dampers, the M5 baseline: stepped by the integrator, so they explode past `k_crit = 4m/h²`. |
+| [`Wall<S>`](../crates/engine/src/collision/wall.rs) | A static half-plane (`UnitVec2` normal into the free side, offset); `distance` is signed meters. Not a particle: no mass or position. |
 | [`SpringNetwork`, `JellyBody`, `Jelly<S>`](../crates/engine/src/scenarios/jelly.rs) | One grid of pairs realized as force springs or compliant constraints, so the M5 panels differ only in how springs are enforced. |
 | [`Constraint<S>`](../crates/engine/src/constraint.rs) | Geometry only (C, ∇C, compliance), so both solvers read the same definition; solvers are generic over it (no `dyn` in the hot loop). |
 | [`DistanceConstraint<S>`](../crates/engine/src/constraint.rs) | A rod; to a static particle, a pin. Rest length from current positions, so no invalid length can be passed. |

@@ -133,3 +133,25 @@ fn stabilization_defaults_to_split_and_the_pendulum_scenes_choose_classic() {
         (Stabilization::Baumgarte, Stabilization::Baumgarte)
     );
 }
+
+#[test]
+fn a_world_collides_once_it_has_a_wall_or_a_circle() {
+    use crate::params::kg;
+    use crate::{Radius, Restitution, Vec2, Wall};
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    w.particles.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
+    assert!(!w.collides(), "points never collide");
+    let mut walled = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    walled.add_wall(Wall::through(
+        Vec2::ZERO,
+        Vec2::new(0.0, 1.0).normalized().unwrap(),
+    ));
+    assert!(walled.collides());
+    assert_eq!(walled.walls().len(), 1);
+    w.particles
+        .add_circle(Vec2::ZERO, Vec2::ZERO, kg(1.0), Radius::new(0.1).unwrap());
+    assert!(w.collides());
+    assert_eq!(w.restitution(), Restitution::INELASTIC);
+    w.set_restitution(Restitution::ELASTIC);
+    assert_eq!(w.restitution().get(), 1.0);
+}
