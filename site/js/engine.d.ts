@@ -38,6 +38,9 @@ export interface EngineExports {
   demo_set_integrator(demo: DemoHandle, code: number): Status;
   /** Physics steps per second; 0 is rejected. */
   demo_set_rate(demo: DemoHandle, hz: number): Status;
+  /** Softening length ε, m (gravity scenes); negative, NaN, or the
+   *  fountain is rejected (0). ε = 0 is allowed. */
+  demo_set_softening(demo: DemoHandle, eps: number): Status;
   /** Total energy in joules, or NaN where undefined (the fountain). */
   demo_energy(demo: DemoHandle): number;
   /** Test hook: panics on purpose (smoke test only). */

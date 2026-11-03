@@ -146,13 +146,15 @@ center, enclosed-mass circular orbits, zero-momentum boost; approximate in
 both with fixed total mass so time scales don't depend on N. Seven golden
 runs; native and wasm agree.
 
-## 5. Web layer (PR)
+## ✅ 5. Web layer (done)
 
-- [ ] `DEMO_CLUSTER` with a scenario code (`cluster`, `disk`, `collapse`),
-      using `n` and `seed`; ABI mirror and sync test.
-- [ ] `demo_set_softening(d, eps) -> u32` (parses `Softening` at the
-      boundary), `demo_energy` for the cluster scenes.
-- [ ] Native tests; `.wasm` size row in `docs/03`.
+`DEMO_DISK` (3) and `DEMO_COLLAPSE` (4) are their own kinds rather than a
+scenario code on `DEMO_CLUSTER`, so `demo_new` is unchanged; in Rust,
+`DemoKind::Gravity(GravityScene)`. `demo_set_softening(d, eps)` parses
+`Softening` in `f64` at the boundary (`Softening::cast` carries it to f32),
+rejects negative/NaN and the fountain, and the energy readout follows ε.
+`.wasm` 58,544 B (gzip 19,926); the disk's sort was the surprise (~7–9 KB),
+now unstable and shared with Barnes–Hut.
 
 ## 6. Site: the M2 page (PR)
 

@@ -1,10 +1,10 @@
 use core::num::NonZeroU32;
 
-use engine::Integrator;
 use engine::diagnostics::total_energy;
 use engine::scenarios::{orbit, orbit_gravity};
+use engine::{Integrator, Softening};
 
-use super::{Demo, DemoKind, ScalarKind, integrator_from_code};
+use super::{Demo, DemoKind, GravityScene, ScalarKind, integrator_from_code};
 
 /// One physics step at the 60 Hz `PHYSICS_RATE`.
 const PHYSICS_DT: f64 = 1.0 / 60.0;
@@ -20,8 +20,19 @@ fn codes_map_to_kinds() {
     assert_eq!(ScalarKind::from_code(2), None);
     assert_eq!(DemoKind::from_code(0), Some(DemoKind::Fountain));
     assert_eq!(DemoKind::from_code(1), Some(DemoKind::Orbit));
-    assert_eq!(DemoKind::from_code(2), Some(DemoKind::Cluster));
-    assert_eq!(DemoKind::from_code(3), None);
+    assert_eq!(
+        DemoKind::from_code(2),
+        Some(DemoKind::Gravity(GravityScene::Cluster))
+    );
+    assert_eq!(
+        DemoKind::from_code(3),
+        Some(DemoKind::Gravity(GravityScene::Disk))
+    );
+    assert_eq!(
+        DemoKind::from_code(4),
+        Some(DemoKind::Gravity(GravityScene::Collapse))
+    );
+    assert_eq!(DemoKind::from_code(5), None);
     assert_eq!(integrator_from_code(0), Some(Integrator::SymplecticEuler));
     assert_eq!(integrator_from_code(1), Some(Integrator::ExplicitEuler));
     assert_eq!(integrator_from_code(2), Some(Integrator::VelocityVerlet));
@@ -123,7 +134,13 @@ fn fountain_keeps_running() {
 #[test]
 fn cluster_demo_has_n_bodies_and_a_matching_energy() {
     use engine::scenarios::{cluster, cluster_gravity};
-    let mut d = Demo::new(DemoKind::Cluster, ScalarKind::F64, 40, 5).unwrap();
+    let mut d = Demo::new(
+        DemoKind::Gravity(GravityScene::Cluster),
+        ScalarKind::F64,
+        40,
+        5,
+    )
+    .unwrap();
     assert_eq!(d.positions().len(), 2 * 40);
     let mut w = cluster::<f64>(40, 5).unwrap();
     for _ in 0..30 {
@@ -132,4 +149,77 @@ fn cluster_demo_has_n_bodies_and_a_matching_energy() {
     }
     let expect = total_energy(&w.particles, &cluster_gravity().unwrap());
     assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));
+}
+
+#[test]
+fn gravity_scenes_have_n_bodies_and_an_energy() {
+    for kind in [
+        GravityScene::Cluster,
+        GravityScene::Disk,
+        GravityScene::Collapse,
+    ] {
+        for scalar in [ScalarKind::F32, ScalarKind::F64] {
+            let d = Demo::new(DemoKind::Gravity(kind), scalar, 40, 3).unwrap();
+            assert_eq!(d.positions().len(), 80, "{kind:?} {scalar:?}");
+            let e = d.energy().unwrap();
+            assert!(e.is_finite() && e < 0.0, "{kind:?} {scalar:?}: {e}");
+        }
+    }
+}
+
+#[test]
+fn set_softening_rebuilds_the_force_and_the_energy_readout() {
+    use engine::scenarios::{collapse, gravity};
+    let mut d = Demo::new(
+        DemoKind::Gravity(GravityScene::Collapse),
+        ScalarKind::F64,
+        40,
+        3,
+    )
+    .unwrap();
+    let eps = Softening::new(0.5).unwrap();
+    assert!(d.set_softening(eps));
+    // Readout under the new force: same as diagnostics on an identical
+    // world with gravity(0.5).
+    let w = collapse::<f64>(40, 3).unwrap();
+    assert_eq!(d.energy(), Some(total_energy(&w.particles, &gravity(eps))));
+
+    // And the world steps under it: a softer force pulls less, so after
+    // one step the cloud has fallen less than with the default.
+    let mut soft = d;
+    let mut stiff = Demo::new(
+        DemoKind::Gravity(GravityScene::Collapse),
+        ScalarKind::F64,
+        40,
+        3,
+    )
+    .unwrap();
+    soft.advance(PHYSICS_DT);
+    stiff.advance(PHYSICS_DT);
+    let spread = |d: &Demo| d.positions().iter().map(|x| x.abs()).sum::<f32>();
+    assert!(spread(&soft) > spread(&stiff));
+}
+
+#[test]
+fn set_softening_zero_is_allowed_and_f32_takes_the_cast() {
+    let mut d = Demo::new(
+        DemoKind::Gravity(GravityScene::Cluster),
+        ScalarKind::F32,
+        16,
+        1,
+    )
+    .unwrap();
+    assert!(d.set_softening(Softening::ZERO));
+    assert!(d.energy().is_some());
+}
+
+#[test]
+fn set_softening_has_no_effect_on_the_fountain() {
+    let mut d = demo(ScalarKind::F64);
+    let before = d.positions().to_vec();
+    assert!(!d.set_softening(Softening::new(0.5).unwrap()));
+    // Its uniform gravity survives: particles still rise then fall.
+    d.advance(PHYSICS_DT);
+    assert_ne!(d.positions(), before.as_slice());
+    assert_eq!(d.energy(), None);
 }

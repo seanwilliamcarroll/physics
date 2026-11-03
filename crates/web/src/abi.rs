@@ -4,11 +4,13 @@
 //! Mirrored in `site/js/abi.ts`. The test below reads that file and fails
 //! if any value disagrees, so the two copies can't silently drift.
 
-/// `demo_new` kind codes: the M0 fountain, the M1 star–planet orbit, the
-/// M2 cluster.
+/// `demo_new` kind codes: the M0 fountain, the M1 star–planet orbit, and
+/// the M2 gravity scenes (cluster, disk, collapse).
 pub const DEMO_FOUNTAIN: u32 = 0;
 pub const DEMO_ORBIT: u32 = 1;
 pub const DEMO_CLUSTER: u32 = 2;
+pub const DEMO_DISK: u32 = 3;
+pub const DEMO_COLLAPSE: u32 = 4;
 
 /// `demo_set_integrator` codes.
 pub const INTEGRATOR_SYMPLECTIC_EULER: u32 = 0;

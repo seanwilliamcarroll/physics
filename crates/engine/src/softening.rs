@@ -30,6 +30,15 @@ impl<S: Scalar> Softening<S> {
         self.0
     }
 
+    /// The same ε in another scalar type, without re-checking: converting
+    /// a non-negative, non-NaN value rounds it to a non-negative value
+    /// (possibly 0 or +∞), never a negative or NaN one. Lets a boundary
+    /// parse once in `f64` and hand the result to an engine in any `S`.
+    #[must_use]
+    pub fn cast<T: Scalar>(self) -> Softening<T> {
+        Softening(T::from_f64(self.0.to_f64()))
+    }
+
     /// ε², m²: the only form the force uses.
     #[must_use]
     pub fn squared(self) -> S {
