@@ -1,7 +1,7 @@
 // Unit tests for site/js/stiffness.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { RIGID_STOP, kCrit, sliderToStiffness, stiffnessLabel } from "../../site/js/stiffness.ts";
+import { RIGID_STOP, allWithin, kCrit, sliderToStiffness, stiffnessLabel } from "../../site/js/stiffness.ts";
 
 test("the slider is log10 k, with a rigid stop at the top", () => {
   assert.equal(sliderToStiffness(3), 1000);
@@ -13,4 +13,12 @@ test("the slider is log10 k, with a rigid stop at the top", () => {
 test("kCrit is 4 m / h² for one spring", () => {
   // 64 particles of 1 kg total, 60 Hz × 10 substeps: 22 500 N/m.
   assert.equal(Math.round(kCrit(1 / 64, 1 / 600)), 22500);
+});
+
+test("allWithin rejects far, infinite and NaN coordinates", () => {
+  assert.equal(allWithin([0, 1.5, -2], 10), true);
+  assert.equal(allWithin([0, 1e10], 10), false);
+  assert.equal(allWithin([Infinity], 10), false);
+  assert.equal(allWithin([NaN], 10), false);
+  assert.equal(allWithin([], 10), true);
 });

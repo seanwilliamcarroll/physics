@@ -205,9 +205,14 @@ tests; the links buffer now includes force springs. Smoke `m5`,
 
 - [ ] Manual check against **Done when** (yours).
 
-## 8. M5 cleanup (PR, if needed)
+## ✅ 8. M5 cleanup (done)
 
-- [ ] Magic numbers, triggers, `docs/types.md`, small files.
+One `reinstall` helper for the force jelly's live settings; exact damping
+tenths on the page; 07's live-stiffness section corrected
+(`update_constraints`, not a `set_compliance` that never existed).
+`types.md` already listed M5's types; no file over ~300 lines. Triggers
+re-checked (`type-invariants.md`): **`UnitVec2`'s trigger is met**
+(`SpringForce` is the second `d / |d|`), left for your decision before M6.
 
 ---
 

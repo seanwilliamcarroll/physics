@@ -26,3 +26,15 @@ export function kCrit(m: number, h: number): number {
  *  (measured, engine tests/jelly.rs: its fastest mode is ~3× one
  *  spring's). */
 export const JELLY_BLOWUP_FRACTION: [number, number] = [0.1, 0.15];
+
+/** True when every coordinate is finite and within `limit` meters of the
+ *  origin: the M5 page's test for a frame worth freezing on, since an
+ *  exploding jelly is already at ~10¹⁰ m by the frame that trips the
+ *  energy check. */
+export function allWithin(coords: ArrayLike<number>, limit: number): boolean {
+  for (let i = 0; i < coords.length; i++) {
+    // `!(<=)` also catches NaN.
+    if (!(Math.abs(coords[i]) <= limit)) return false;
+  }
+  return true;
+}

@@ -82,6 +82,16 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   `demo_set_theta` parses at the boundary in `f64` and `cast`s to the
   engine's scalar.
 
+**Triggers re-checked at the end of M5:** `Stiffness` and `Damping`
+adopted (item 2, trigger: the stiffness and damping sliders); both reject
+NaN and infinity, and rigid lives only in `Compliance` (α = 0), since a
+force spring has no rigid form. **Item 3's trigger is now met:**
+`SpringForce::accumulate` is the second `d / |d|` call site after
+`DistanceConstraint::evaluate`, both skipping `|d| = 0` by hand. Not
+adopted in M5 (a cross-cutting change); up for decision before M6, whose
+contact normals would make three. Item 5's generational `ParticleId` still
+waits for general removal.
+
 **Triggers re-checked at the end of M4:** `Compliance` adopted (above),
 a milestone early. `UnitVec2` (item 3) still has one call site: the drag
 reuses `DistanceConstraint`'s gradient, so M6's contact normals remain the

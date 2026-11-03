@@ -4,7 +4,7 @@
 
 import { loadEngine, positionsView, linksView } from "../../js/wasm.ts";
 import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
-import { View, clear, drawPoints, drawLinks, drawHorizon, cssColor } from "../../js/canvas.ts";
+import { View, clear, devicePx, drawPoints, drawLinks, drawHorizon, cssColor } from "../../js/canvas.ts";
 import { DEFAULT_RATE_HZ, JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, SCALAR_F64 } from "../../js/abi.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
@@ -14,7 +14,7 @@ import { slider, button } from "../../js/controls.ts";
 import { buildPanels, demoHandle } from "../../js/panels.ts";
 import { enableDrag } from "../../js/drag.ts";
 import {
-  JELLY_BLOWUP_FRACTION, RIGID_STOP, SLIDER_MAX, SLIDER_MIN, kCrit, sliderToStiffness, stiffnessLabel,
+  JELLY_BLOWUP_FRACTION, RIGID_STOP, allWithin, SLIDER_MAX, SLIDER_MIN, kCrit, sliderToStiffness, stiffnessLabel,
 } from "../../js/stiffness.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
 import type { DemoHandle } from "../../js/engine";
@@ -35,11 +35,13 @@ const LOG_K_VALUES = Array.from(
 ).concat(RIGID);
 const logKFromParam = (s: string): number => (s === RIGID ? RIGID_STOP : Number(s));
 
-/** Damping c in N·s/m: 0 to 2 in tenths. */
-const DAMPING_STEP = 0.1;
+/** Damping c in N·s/m: 0 to 2 in tenths. Values are `i / 10`, not
+ *  `i * 0.1`, so they print as "0.3", not "0.30000000000000004". */
+const DAMPING_PER_UNIT = 10;
+const DAMPING_STEP = 1 / DAMPING_PER_UNIT;
 const DAMPING_MAX = 2;
-const DAMPING_VALUES = Array.from({ length: DAMPING_MAX / DAMPING_STEP + 1 }, (_, i) =>
-  String(Math.round(i * DAMPING_STEP * 10) / 10));
+const DAMPING_VALUES = Array.from({ length: DAMPING_MAX * DAMPING_PER_UNIT + 1 }, (_, i) =>
+  String(i / DAMPING_PER_UNIT));
 
 const OPTIONS: {
   logk: ChoiceOption; damping: ChoiceOption; grid: IntOption; substeps: IntOption; rate: IntOption; fps: IntOption;
@@ -77,6 +79,12 @@ const JELLY_MASS_KG = 1;
 /** Kinetic energy past which a panel counts as exploded and freezes, J:
  *  20× the drop's ~5 J peak, which no throw reaches. */
 const EXPLODED_J = 100;
+/** A frame counts as sane (worth freezing on) while every particle is
+ *  within this many meters of the origin: a few views across. */
+const SANE_LIMIT_M = 10;
+/** The "exploded" label over a frozen panel, CSS pixels. */
+const LABEL_FONT_PX = 16;
+const LABEL_MARGIN_PX = 12;
 /** Plot history in frames: 30 s at 60 fps. */
 const PLOT_SAMPLES = 1800;
 
@@ -117,6 +125,9 @@ const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg,
   /** Frozen once its kinetic energy passes EXPLODED_J. */
   exploded: false,
   ke: 0,
+  /** Positions from the last sane frame; drawn once the panel explodes,
+   *  since by then the live particles are off at ~10¹⁰ m or NaN. */
+  sane: new Float32Array(0),
 }));
 type Panel = (typeof panels)[number];
 
@@ -177,7 +188,9 @@ try {
       const k = p.body === JELLY_SPRINGS && !Number.isFinite(wantedK()) ? (p.k || firstFiniteK) : wantedK();
       const demo = engine.demo_new_jelly(SCALAR_F64, p.body, state.grid, state.grid, k, state.damping);
       if (demo === 0) throw new Error("demo_new_jelly returned null");
-      Object.assign(p, { demo, k, exploded: false, ke: 0 });
+      // The start is sane: at k ≥ 10⁴ the first step already explodes.
+      const sane = positionsView(engine, demo).slice();
+      Object.assign(p, { demo, k, exploded: false, ke: 0, sane });
     }
     applySettings();
     energyPlot.clear();
@@ -187,12 +200,22 @@ try {
 
   const drawPanel = (p: Panel): void => {
     const demo = demoHandle(p);
-    const pos = positionsView(engine, demo);
+    const pos = p.exploded ? p.sane : positionsView(engine, demo);
     clear(p.ctx, colors.background);
     VIEW.apply(p.ctx);
     drawHorizon(p.ctx, VIEW, GROUND_Y, GROUND_WIDTH_PX, colors.ground);
     drawLinks(p.ctx, VIEW, pos, linksView(engine, demo), SPRING_WIDTH_PX, p.color);
     drawPoints(p.ctx, VIEW, pos, PARTICLE_PX, colors.body);
+    if (p.exploded) drawLabel(p.ctx, "exploded: the last frame before it left the view");
+  };
+
+  /** Text in the panel's top-left corner, in device pixels. */
+  const drawLabel = (ctx: CanvasRenderingContext2D, text: string): void => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = colors.text;
+    ctx.font = `${devicePx(LABEL_FONT_PX)}px sans-serif`;
+    ctx.textBaseline = "top";
+    ctx.fillText(text, devicePx(LABEL_MARGIN_PX), devicePx(LABEL_MARGIN_PX));
   };
 
   const readout = (p: Panel): string => {
@@ -278,10 +301,13 @@ try {
         if (p.exploded) continue;
         steps = engine.demo_advance(demoHandle(p), elapsed);
         p.ke = engine.demo_kinetic_energy(demoHandle(p));
+        const pos = positionsView(engine, demoHandle(p));
         // `!(<=)` also catches NaN.
-        if (!(p.ke <= EXPLODED_J)) {
+        if (!(p.ke <= EXPLODED_J) || !allWithin(pos, SANE_LIMIT_M)) {
           p.exploded = true;
-          p.ke = EXPLODED_J;
+          p.ke = Math.min(p.ke, EXPLODED_J) || EXPLODED_J;
+        } else {
+          p.sane = pos.slice();
         }
       }
       for (const p of panels) {
