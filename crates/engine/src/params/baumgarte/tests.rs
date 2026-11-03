@@ -22,3 +22,12 @@ fn baumgarte_casts_without_rechecking() {
     let b = Baumgarte::new(0.2_f64).unwrap().cast::<f32>();
     assert_eq!(b.get(), 0.2_f32);
 }
+
+#[test]
+fn default_is_the_checked_box2d_value() {
+    assert_eq!(
+        Baumgarte::<f64>::default(),
+        Baumgarte::new(DEFAULT_BAUMGARTE).unwrap()
+    );
+    assert_eq!(Baumgarte::<f32>::default().get(), 0.2_f32);
+}

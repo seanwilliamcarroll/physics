@@ -1,5 +1,7 @@
 //! [`orbit`]: a star and a planet on a softened Kepler orbit (M1).
 
+use core::num::NonZeroU32;
+
 use super::shared::{GRAVITATIONAL_CONSTANT, gravity, mass, softening};
 use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, Vec2, World};
 
@@ -27,7 +29,7 @@ pub const ORBIT_CIRCULAR: f64 = 1.0;
 
 /// Substeps for [`orbit`]: one, so `dt` is exactly what the integrators
 /// are compared at.
-pub const ORBIT_SUBSTEPS: u32 = 1;
+pub const ORBIT_SUBSTEPS: NonZeroU32 = NonZeroU32::MIN;
 
 /// Total mass, kg, from Kepler's third law for the nominal period:
 /// `G M = 4π² d³ / T²` (about 5.3 × 10¹¹ kg). Evaluated at compile time.
@@ -78,10 +80,10 @@ pub fn orbit_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`ORBIT_SUBSTEPS`] is nonzero, [`ORBIT_SOFTENING`] positive, and
-/// the masses positive and far from `S`'s range limits).
+/// [`ORBIT_SOFTENING`] positive, and the masses positive and far from `S`'s
+/// range limits).
 pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(integrator, ORBIT_SUBSTEPS)?;
+    let mut w = World::new(integrator, ORBIT_SUBSTEPS);
     w.add_force(orbit_gravity()?);
     // Split the separation and the relative velocity by mass, so the
     // center of mass sits at the origin with zero momentum.

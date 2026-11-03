@@ -4,7 +4,7 @@
 
 use engine::scenarios::{Fountain, cluster, collapse, disk, orbit, pendulum};
 use engine::{Integrator, Scalar, Solver};
-use test_support::{Tol, cluster_barnes_hut, for_each_scalar, s, state_hash};
+use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, s, state_hash};
 
 /// One step: a 60 Hz frame, as the demos use.
 const DT: f64 = 1.0 / 60.0;
@@ -50,7 +50,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
     match r {
         Run::Fountain => {
             let mut scene = Fountain::new(1);
-            let mut w = scene.world::<S>(100).unwrap();
+            let mut w = scene.world::<S>(100);
             for _ in 0..600 {
                 w.step(s(DT));
                 scene.respawn_fallen(&mut w);
@@ -70,7 +70,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
             state_hash(&w.particles)
         }
         Run::Pendulum(solver) => {
-            let mut w = pendulum::<S>(solver, 4).unwrap();
+            let mut w = pendulum::<S>(solver, nonzero(4)).unwrap();
             for _ in 0..600 {
                 w.step(s(DT));
             }

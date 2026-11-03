@@ -1,5 +1,7 @@
 //! [`pendulum`]: `01-solvers.md`'s pendulum, a pin and a bob on a rod (M3).
 
+use core::num::NonZeroU32;
+
 use super::shared::{STANDARD_GRAVITY, mass};
 use crate::{
     ConfigError, DistanceConstraint, Integrator, Scalar, Solver, UniformGravity, Vec2, World,
@@ -26,10 +28,9 @@ pub fn pendulum_gravity<S: Scalar>() -> UniformGravity<S> {
 /// `solver` with `substeps` per step.
 ///
 /// # Errors
-/// [`ConfigError::ZeroSubsteps`] for `substeps = 0`; otherwise only if
-/// the fixed configuration were invalid (it isn't).
-pub fn pendulum<S: Scalar>(solver: Solver, substeps: u32) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(Integrator::SymplecticEuler, substeps)?;
+/// Only if the fixed configuration were invalid (it isn't).
+pub fn pendulum<S: Scalar>(solver: Solver, substeps: NonZeroU32) -> Result<World<S>, ConfigError> {
+    let mut w = World::new(Integrator::SymplecticEuler, substeps);
     w.add_force(pendulum_gravity());
     let pin = w.particles.add_static(Vec2::ZERO);
     let bob = w.particles.add(

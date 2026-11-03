@@ -1,3 +1,5 @@
+use core::num::NonZeroU32;
+
 use super::World;
 use crate::Integrator;
 use crate::scenarios::orbit;
@@ -21,7 +23,7 @@ fn set_integrator_switches_how_later_steps_integrate() {
 #[test]
 fn integrator_reports_what_new_was_given() {
     for integrator in Integrator::ALL {
-        let w = World::<f32>::new(integrator, 1).unwrap();
+        let w = World::<f32>::new(integrator, NonZeroU32::MIN);
         assert_eq!(w.integrator(), integrator);
     }
 }
@@ -58,16 +60,9 @@ fn forces_re_added_after_clear_apply_again() {
 #[test]
 fn config_errors_explain_themselves() {
     use super::ConfigError;
-    assert!(ConfigError::ZeroSubsteps.to_string().contains("substeps"));
     assert!(ConfigError::InvalidMass.to_string().contains("mass"));
     assert_eq!(
-        World::<f64>::new(Integrator::SymplecticEuler, 0).err(),
-        Some(ConfigError::ZeroSubsteps)
-    );
-    assert_eq!(
-        World::<f64>::new(Integrator::SymplecticEuler, 3)
-            .unwrap()
-            .substeps(),
+        World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::new(3).unwrap()).substeps(),
         3
     );
 }
@@ -77,13 +72,13 @@ fn add_constraint_rejects_bodies_from_another_world() {
     use super::ConfigError;
     use crate::params::kg;
     use crate::{DistanceConstraint, Vec2};
-    let mut big = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let mut big = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
     let a = big.particles.add_static(Vec2::ZERO);
     let _ = big.particles.add_static(Vec2::new(1.0, 0.0));
     let c = big.particles.add(Vec2::new(2.0, 0.0), Vec2::ZERO, kg(1.0));
     let rod = DistanceConstraint::between(&big.particles, a, c).unwrap();
 
-    let mut small = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let mut small = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
     let _ = small.particles.add_static(Vec2::ZERO);
     assert_eq!(small.add_constraint(rod), Err(ConfigError::UnknownParticle));
     assert_eq!(small.constraints(), []);
@@ -98,8 +93,7 @@ fn add_constraint_rejects_bodies_from_another_world() {
 
 #[test]
 fn substeps_and_iterations_are_settable() {
-    use core::num::NonZeroU32;
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
     assert_eq!(w.iterations().get(), 1);
     w.set_substeps(NonZeroU32::new(20).unwrap());
     w.set_iterations(NonZeroU32::new(3).unwrap());
@@ -109,15 +103,10 @@ fn substeps_and_iterations_are_settable() {
 #[test]
 fn baumgarte_defaults_to_box2d_and_survives_solver_switches() {
     use crate::{Baumgarte, DEFAULT_BAUMGARTE, Solver};
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
     assert_eq!(w.baumgarte().get(), DEFAULT_BAUMGARTE);
     w.set_baumgarte(Baumgarte::new(0.5).unwrap());
     w.set_solver(Solver::Impulse);
     w.set_solver(Solver::Xpbd);
     assert_eq!(w.baumgarte().get(), 0.5);
-    assert!(
-        super::ConfigError::InvalidBaumgarte
-            .to_string()
-            .contains("Baumgarte")
-    );
 }

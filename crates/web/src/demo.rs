@@ -66,7 +66,7 @@ impl Demo {
         let (world, between_steps) = match kind {
             DemoKind::Fountain => {
                 let mut fountain = Fountain::new(seed);
-                let world = build_any!(scalar, Sim::plain(fountain.world(n)?));
+                let world = build_any!(scalar, Sim::plain(fountain.world(n)));
                 (world, BetweenSteps::Respawn(fountain))
             }
             DemoKind::Orbit => {
@@ -84,7 +84,7 @@ impl Demo {
             DemoKind::Pendulum => {
                 let world = build_any!(
                     scalar,
-                    Sim::with_uniform(pendulum(Solver::Xpbd, 1)?, pendulum_gravity())
+                    Sim::with_uniform(pendulum(Solver::Xpbd, NonZeroU32::MIN)?, pendulum_gravity())
                 );
                 (world, BetweenSteps::Nothing)
             }

@@ -13,5 +13,14 @@ checked_param! {
     Baumgarte, |beta| beta >= S::ZERO && beta <= S::ONE
 }
 
+impl<S: crate::Scalar> Default for Baumgarte<S> {
+    /// [`DEFAULT_BAUMGARTE`], unchecked: 0.2 is in `[0, 1]`, and rounding
+    /// to any scalar keeps it there (the same reasoning as `cast`). So a
+    /// new world can't fail on its built-in β.
+    fn default() -> Self {
+        Self(S::from_f64(DEFAULT_BAUMGARTE))
+    }
+}
+
 #[cfg(test)]
 mod tests;

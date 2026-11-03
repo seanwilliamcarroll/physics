@@ -5,9 +5,10 @@
 
 use engine::diagnostics::{center_of_mass, momentum};
 use engine::scenarios::{ORBIT_SEPARATION, cluster, orbit, orbit_period};
-use engine::{ConfigError, Integrator, Mass, Particles, Scalar, UniformGravity, Vec2, World};
+use engine::{Integrator, Mass, Particles, Scalar, UniformGravity, Vec2, World};
 use test_support::{
-    Tol, bits, energy_errors, envelope, for_each_scalar, momentum_drift_bound, s, steps_for, v,
+    Tol, bits, energy_errors, envelope, for_each_scalar, momentum_drift_bound, nonzero, s,
+    steps_for, v,
 };
 
 const G: f64 = -9.81;
@@ -19,7 +20,7 @@ fn falling_world<S: Tol>(
     x0: Vec2<S>,
     v0: Vec2<S>,
 ) -> World<S> {
-    let mut w = World::new(integrator, substeps).unwrap();
+    let mut w = World::new(integrator, nonzero(substeps));
     w.add_force(UniformGravity::new(v(0.0, G)));
     w.particles.add(x0, v0, Mass::ONE);
     w
@@ -155,12 +156,6 @@ fn substeps_equal_repeated_smaller_steps<S: Tol>() {
     }
 }
 for_each_scalar!(substeps_equal_repeated_smaller_steps);
-
-fn zero_substeps_is_rejected<S: Tol>() {
-    let w = World::<S>::new(Integrator::SymplecticEuler, 0);
-    assert!(matches!(w, Err(ConfigError::ZeroSubsteps)));
-}
-for_each_scalar!(zero_substeps_is_rejected);
 
 const CLUSTER_N: usize = 16;
 const CLUSTER_STEPS: u32 = 1000;
