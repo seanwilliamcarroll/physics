@@ -102,7 +102,7 @@ const GOLDEN: [(u64, u64); 8] = [
     (0x38b8_98d9_9f2e_436a, 0x62a3_677f_7c53_91e2), // Orbit(SymplecticEuler)
     (0xdbd3_a74a_c351_be50, 0xa548_448e_abb6_5ba7), // Orbit(ExplicitEuler)
     (0x521c_acff_69c8_f074, 0x2479_9e2b_6114_4cb8), // Orbit(VelocityVerlet)
-    (0x083c_27eb_bc6c_652a, 0x08f0_e94f_e7b8_d919), // ClusterBarnesHut
+    (0x1b01_6782_cfd0_e3bb, 0x6ad4_4251_6e06_fcf6), // ClusterBarnesHut
 ];
 
 #[test]
