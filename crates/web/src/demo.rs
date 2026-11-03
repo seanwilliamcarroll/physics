@@ -107,88 +107,104 @@ pub(crate) const fn solver_from_code(code: u32) -> Option<Solver> {
     }
 }
 
-/// A world and, for the gravity scenes, a copy of its exact force:
-/// energy readouts need it, and `World` owns its forces as `dyn Force`,
-/// so it can't hand a `PairwiseGravity` back. With `theta` set, the world
-/// runs Barnes–Hut approximating `gravity` instead; energy is still read
-/// out exactly, so the readout shows what the approximation costs.
+/// The force a scene runs under, as far as the demo needs to know it:
+/// energy readouts need the exact force, and `World` owns its forces as
+/// `dyn Force`, so it can't hand one back. One enum rather than optional
+/// fields, so a θ can only exist next to the pairwise gravity it
+/// approximates.
+enum SceneForce<S> {
+    /// No energy readout (the fountain: no uniform-gravity potential for a
+    /// scene that teleports particles anyway).
+    Unmeasured,
+    /// Pairwise gravity (orbit, M2 scenes). With `theta`, the world runs
+    /// Barnes–Hut approximating `exact`; energy is still read out exactly,
+    /// so the readout shows what the approximation costs.
+    Pairwise {
+        exact: PairwiseGravity<S>,
+        theta: Option<OpeningAngle<S>>,
+    },
+    /// Uniform gravity (the pendulum).
+    Uniform(UniformGravity<S>),
+}
+
+/// A world and its [`SceneForce`].
 struct Sim<S: Scalar> {
     world: World<S>,
-    gravity: Option<PairwiseGravity<S>>,
-    theta: Option<OpeningAngle<S>>,
-    /// The pendulum's uniform gravity, for its energy readout.
-    uniform: Option<UniformGravity<S>>,
+    force: SceneForce<S>,
 }
 
 impl<S: Scalar> Sim<S> {
     const fn plain(world: World<S>) -> Self {
         Self {
             world,
-            gravity: None,
-            theta: None,
-            uniform: None,
+            force: SceneForce::Unmeasured,
         }
     }
 
     const fn with_uniform(world: World<S>, uniform: UniformGravity<S>) -> Self {
         Self {
             world,
-            gravity: None,
-            theta: None,
-            uniform: Some(uniform),
+            force: SceneForce::Uniform(uniform),
         }
     }
 
-    const fn with_gravity(world: World<S>, gravity: PairwiseGravity<S>) -> Self {
+    const fn with_gravity(world: World<S>, exact: PairwiseGravity<S>) -> Self {
         Self {
             world,
-            gravity: Some(gravity),
-            theta: None,
-            uniform: None,
+            force: SceneForce::Pairwise { exact, theta: None },
         }
     }
 
-    /// Makes the world's force match `gravity` and `theta`. A scene with
-    /// gravity has no other force, so clearing loses nothing.
-    fn install(&mut self) {
-        let Some(g) = self.gravity else { return };
-        self.world.clear_forces();
-        match self.theta {
-            None => self.world.add_force(g),
-            Some(t) => self.world.add_force(BarnesHut::approximating(&g, t)),
+    /// Makes the world's force match a pairwise scene's `exact` and
+    /// `theta`. Such a scene has no other force, so clearing loses nothing.
+    fn install(world: &mut World<S>, exact: PairwiseGravity<S>, theta: Option<OpeningAngle<S>>) {
+        world.clear_forces();
+        match theta {
+            None => world.add_force(exact),
+            Some(t) => world.add_force(BarnesHut::approximating(&exact, t)),
         }
     }
 
-    /// Runs the gravity as Barnes–Hut with opening angle `theta`. `false`,
-    /// changing nothing, for a scene without gravity.
+    /// Runs a pairwise scene as Barnes–Hut with opening angle `theta`.
+    /// `false`, changing nothing, for any other scene.
     fn set_theta(&mut self, theta: OpeningAngle<S>) -> bool {
-        if self.gravity.is_none() {
+        let SceneForce::Pairwise { exact, theta: t } = &mut self.force else {
             return false;
-        }
-        self.theta = Some(theta);
-        self.install();
+        };
+        *t = Some(theta);
+        Self::install(&mut self.world, *exact, *t);
         true
     }
 
-    /// Replaces the gravity (and only it: a scene with gravity has no
-    /// other force) with one of softening `eps`. `false`, changing
-    /// nothing, for a scene without gravity.
+    /// Replaces a pairwise scene's gravity with one of softening `eps`,
+    /// keeping θ. `false`, changing nothing, for any other scene.
     fn set_softening(&mut self, eps: Softening<S>) -> bool {
-        if self.gravity.is_none() {
+        let SceneForce::Pairwise { exact, theta } = &mut self.force else {
             return false;
-        }
-        self.gravity = Some(gravity(eps));
-        self.install();
+        };
+        *exact = gravity(eps);
+        Self::install(&mut self.world, *exact, *theta);
         true
     }
 
-    /// Total energy under the stored force, or `None` without one.
+    /// Total energy under the scene's exact force, or `None`.
     fn energy(&self) -> Option<f64> {
         let p = &self.world.particles;
-        match (&self.gravity, &self.uniform) {
-            (Some(g), _) => Some(total_energy(p, g).to_f64()),
-            (None, Some(u)) => Some((kinetic_energy(p) + uniform_gravity_potential(p, u)).to_f64()),
-            (None, None) => None,
+        match &self.force {
+            SceneForce::Unmeasured => None,
+            SceneForce::Pairwise { exact, .. } => Some(total_energy(p, exact).to_f64()),
+            SceneForce::Uniform(u) => {
+                Some((kinetic_energy(p) + uniform_gravity_potential(p, u)).to_f64())
+            }
+        }
+    }
+
+    /// θ if Barnes–Hut is on.
+    #[cfg(test)]
+    const fn theta(&self) -> Option<OpeningAngle<S>> {
+        match self.force {
+            SceneForce::Pairwise { theta, .. } => theta,
+            SceneForce::Unmeasured | SceneForce::Uniform(_) => None,
         }
     }
 
@@ -399,8 +415,8 @@ impl Demo {
     #[cfg(test)]
     pub(crate) fn theta(&self) -> Option<f64> {
         match &self.world {
-            AnyWorld::F32(s) => s.theta.map(|t| t.get().to_f64()),
-            AnyWorld::F64(s) => s.theta.map(OpeningAngle::get),
+            AnyWorld::F32(s) => s.theta().map(|t| t.get().to_f64()),
+            AnyWorld::F64(s) => s.theta().map(OpeningAngle::get),
         }
     }
 
