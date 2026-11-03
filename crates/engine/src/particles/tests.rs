@@ -1,6 +1,6 @@
 use super::{ParticleId, Particles};
-use crate::Vec2;
 use crate::params::kg;
+use crate::{Radius, Vec2};
 
 #[test]
 fn starts_empty() {
@@ -54,4 +54,28 @@ fn ids_compare_by_slot() {
     let b = p.add_static(Vec2::ZERO);
     assert_ne!(a, b);
     assert_eq!(a, ParticleId(0));
+}
+
+#[test]
+fn circles_have_a_radius_and_points_have_none() {
+    let mut p = Particles::<f64>::new();
+    p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
+    p.add_static(Vec2::ZERO);
+    assert_eq!((p.radius(), p.max_radius()), (&[0.0, 0.0][..], 0.0));
+    let r = |v| Radius::new(v).unwrap();
+    p.add_circle(Vec2::ZERO, Vec2::ZERO, kg(1.0), r(0.1));
+    p.add_circle(Vec2::ZERO, Vec2::ZERO, kg(1.0), r(0.3));
+    p.add_circle(Vec2::ZERO, Vec2::ZERO, kg(1.0), r(0.2));
+    assert_eq!(p.radius(), &[0.0, 0.0, 0.1, 0.3, 0.2]);
+    assert_eq!(p.max_radius(), 0.3);
+}
+
+#[test]
+fn popping_the_largest_circle_recomputes_the_max() {
+    let mut p = Particles::<f64>::new();
+    let r = |v| Radius::new(v).unwrap();
+    p.add_circle(Vec2::ZERO, Vec2::ZERO, kg(1.0), r(0.1));
+    let big = p.add_circle(Vec2::ZERO, Vec2::ZERO, kg(1.0), r(0.5));
+    assert!(p.pop_if_last(big));
+    assert_eq!((p.radius(), p.max_radius()), (&[0.1][..], 0.1));
 }

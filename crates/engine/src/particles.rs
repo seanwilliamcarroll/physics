@@ -1,7 +1,7 @@
 //! [`Particles<S>`]: struct-of-arrays storage for point masses, and
 //! [`ParticleId`], the handle `add` returns.
 
-use crate::{Mass, Scalar, Vec2};
+use crate::{Mass, Radius, Scalar, Vec2};
 
 /// Names one particle: its slot in [`Particles`].
 ///
@@ -33,6 +33,12 @@ pub struct Particles<S> {
     pub(crate) vel: Vec<Vec2<S>>,
     /// `1 / mass`; `0` means static (immovable).
     pub(crate) inv_mass: Vec<S>,
+    /// Circle radius, m; `0` means a point that never collides
+    /// (`docs/08-collision.md`, "Shapes").
+    pub(crate) radius: Vec<S>,
+    /// The largest radius: the broadphase's cell size, and whether
+    /// anything collides at all. Kept on every add and pop.
+    max_radius: S,
 }
 
 impl<S: Scalar> Particles<S> {
@@ -42,6 +48,8 @@ impl<S: Scalar> Particles<S> {
             pos: Vec::new(),
             vel: Vec::new(),
             inv_mass: Vec::new(),
+            radius: Vec::new(),
+            max_radius: S::ZERO,
         }
     }
 
@@ -49,20 +57,36 @@ impl<S: Scalar> Particles<S> {
     /// positive by [`Mass::new`]). Use [`add_static`](Self::add_static) for
     /// immovable particles.
     pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: Mass<S>) -> ParticleId {
-        self.push(pos, vel, mass.inv())
+        self.push(pos, vel, mass.inv(), S::ZERO)
+    }
+
+    /// Adds a dynamic circle: a particle with a radius, which collides
+    /// with other circles and with walls (M6).
+    pub fn add_circle(
+        &mut self,
+        pos: Vec2<S>,
+        vel: Vec2<S>,
+        mass: Mass<S>,
+        radius: Radius<S>,
+    ) -> ParticleId {
+        self.push(pos, vel, mass.inv(), radius.get())
     }
 
     /// Adds an immovable particle (`inv_mass = 0`, zero velocity).
     pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId {
-        self.push(pos, Vec2::ZERO, S::ZERO)
+        self.push(pos, Vec2::ZERO, S::ZERO, S::ZERO)
     }
 
     /// Appends to every field; the new slot is the old length.
-    fn push(&mut self, pos: Vec2<S>, vel: Vec2<S>, inv_mass: S) -> ParticleId {
+    fn push(&mut self, pos: Vec2<S>, vel: Vec2<S>, inv_mass: S, radius: S) -> ParticleId {
         let id = ParticleId(self.pos.len());
         self.pos.push(pos);
         self.vel.push(vel);
         self.inv_mass.push(inv_mass);
+        self.radius.push(radius);
+        if radius > self.max_radius {
+            self.max_radius = radius;
+        }
         id
     }
 
@@ -94,6 +118,18 @@ impl<S: Scalar> Particles<S> {
     #[must_use]
     pub fn inv_mass(&self) -> &[S] {
         &self.inv_mass
+    }
+
+    /// Radii, m; `0` for points.
+    #[must_use]
+    pub fn radius(&self) -> &[S] {
+        &self.radius
+    }
+
+    /// The largest radius, m; `0` when nothing is a circle.
+    #[must_use]
+    pub const fn max_radius(&self) -> S {
+        self.max_radius
     }
 
     /// Moves a **static** particle to `pos` (a drag anchor, a moving pin).
@@ -134,6 +170,14 @@ impl<S: Scalar> Particles<S> {
         self.pos.pop();
         self.vel.pop();
         self.inv_mass.pop();
+        // Popping is rare (a drag anchor), so recompute rather than track
+        // a second-largest.
+        if self.radius.pop().is_some_and(|r| r == self.max_radius) {
+            self.max_radius = self
+                .radius
+                .iter()
+                .fold(S::ZERO, |m, &r| if r > m { r } else { m });
+        }
         true
     }
 }
