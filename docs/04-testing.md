@@ -413,7 +413,9 @@ instead. The tests live outside `site/`, so they're never served. Note:
 
 ## CI
 
-`.github/workflows/ci.yml` runs every check the hooks run (pre-commit's
+**Disabled** (after #73: `gh workflow disable CI`; `gh workflow enable
+CI` restores it). The workflow stays in the repo, as written. When
+enabled, `.github/workflows/ci.yml` runs every check the hooks run (pre-commit's
 `tsc`, fmt and both clippy passes, then pre-push's tests, doc links,
 `node --test`, `test-wasm`, the wasm32 check and the browser smoke test)
 on every PR and every push to `main`, on `ubuntu-24.04`. Why both: the
