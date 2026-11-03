@@ -9,7 +9,7 @@
 #![cfg(test)]
 
 use engine::diagnostics::constraint_error;
-use engine::scenarios::{CHAIN_LENGTH, CHAIN_LINKS, chain, double_pendulum};
+use engine::scenarios::{CHAIN_LENGTH, CHAIN_LINKS, DoublePendulumStart, chain, double_pendulum};
 use engine::{Constraint, Scalar, Solver, World};
 use test_support::{nonzero, pendulum_energy, s};
 
@@ -187,8 +187,20 @@ fn time_to_separate<A: Scalar, B: Scalar>(
 /// trajectory); with a 1e-6 m offset, 15.8 s. Bounds: after 10 s, by 30 s.
 #[test]
 fn copies_1e_9_apart_separate() {
-    let mut a = double_pendulum::<f64>(Solver::Impulse, nonzero(CHAOS_SUBSTEPS), 0.0).unwrap();
-    let mut b = double_pendulum::<f64>(Solver::Impulse, nonzero(CHAOS_SUBSTEPS), 1e-9).unwrap();
+    let mut a = double_pendulum::<f64>(
+        Solver::Impulse,
+        nonzero(CHAOS_SUBSTEPS),
+        DoublePendulumStart::Horizontal,
+        0.0,
+    )
+    .unwrap();
+    let mut b = double_pendulum::<f64>(
+        Solver::Impulse,
+        nonzero(CHAOS_SUBSTEPS),
+        DoublePendulumStart::Horizontal,
+        1e-9,
+    )
+    .unwrap();
     let t = time_to_separate(&mut a, &mut b, 30);
     assert!(t.is_some_and(|t| t > 10.0), "{t:?}");
 }
@@ -197,8 +209,20 @@ fn copies_1e_9_apart_separate() {
 /// > 1 cm. Measured: 14.9 s (10.8 s at 100 substeps). Bounds: after 5 s, by 25 s.
 #[test]
 fn f32_and_f64_of_the_same_start_separate() {
-    let mut a = double_pendulum::<f64>(Solver::Impulse, nonzero(CHAOS_SUBSTEPS), 0.0).unwrap();
-    let mut b = double_pendulum::<f32>(Solver::Impulse, nonzero(CHAOS_SUBSTEPS), 0.0).unwrap();
+    let mut a = double_pendulum::<f64>(
+        Solver::Impulse,
+        nonzero(CHAOS_SUBSTEPS),
+        DoublePendulumStart::Horizontal,
+        0.0,
+    )
+    .unwrap();
+    let mut b = double_pendulum::<f32>(
+        Solver::Impulse,
+        nonzero(CHAOS_SUBSTEPS),
+        DoublePendulumStart::Horizontal,
+        0.0,
+    )
+    .unwrap();
     let t = time_to_separate(&mut a, &mut b, 25);
     assert!(t.is_some_and(|t| t > 5.0), "{t:?}");
 }
@@ -210,7 +234,13 @@ fn f32_and_f64_of_the_same_start_separate() {
 /// reach 1 cm in 120 s: the damping kills the chaos.
 #[test]
 fn impulse_keeps_the_double_pendulums_energy() {
-    let mut w = double_pendulum::<f64>(Solver::Impulse, nonzero(CHAOS_SUBSTEPS), 0.0).unwrap();
+    let mut w = double_pendulum::<f64>(
+        Solver::Impulse,
+        nonzero(CHAOS_SUBSTEPS),
+        DoublePendulumStart::Horizontal,
+        0.0,
+    )
+    .unwrap();
     let e0 = pendulum_energy(&w);
     let mut worst = 0.0_f64;
     for _ in 0..30 * 60 {
@@ -218,4 +248,22 @@ fn impulse_keeps_the_double_pendulums_energy() {
         worst = worst.max((pendulum_energy(&w) - e0).abs());
     }
     assert!(worst < 0.4, "{worst} J");
+}
+
+/// The raised start (both rods at 135°) has more energy, so the same 1e-9
+/// m separates sooner: measured 11.1 s against the horizontal start's
+/// 23.8 s (M4.4, the start the M4 page defaults to). Divergence is
+/// exponential, so 1e-9 → 1e-2 m is ~16 e-foldings whatever the start;
+/// the page shows the growth on a log plot from t = 0. Bounds: after 5 s
+/// (catches a bug that separates them at once), by 15 s, and sooner than
+/// the horizontal start.
+#[test]
+fn raised_start_separates_sooner() {
+    let start = DoublePendulumStart::Raised;
+    let mut a =
+        double_pendulum::<f64>(Solver::Impulse, nonzero(CHAOS_SUBSTEPS), start, 0.0).unwrap();
+    let mut b =
+        double_pendulum::<f64>(Solver::Impulse, nonzero(CHAOS_SUBSTEPS), start, 1e-9).unwrap();
+    let t = time_to_separate(&mut a, &mut b, 15);
+    assert!(t.is_some_and(|t| t > 5.0), "{t:?}");
 }
