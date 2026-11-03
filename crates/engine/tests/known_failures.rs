@@ -5,7 +5,7 @@
 #![cfg(test)]
 
 use engine::scenarios::{
-    GRAVITATIONAL_CONSTANT, ORBIT_SEPARATION, ORBIT_TOTAL_MASS, gravity, orbit,
+    GRAVITATIONAL_CONSTANT, ORBIT_SEPARATION, ORBIT_TOTAL_MASS, newtonian, orbit,
 };
 use engine::{Integrator, Scalar, Softening, Vec2, World};
 use test_support::{
@@ -124,7 +124,7 @@ const SOFTENED_PEAK_MAX: f64 = 10.0;
 /// Fastest speed reached by either body during the close pass.
 fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     let mut w = World::<S>::new(Integrator::SymplecticEuler, nonzero(1));
-    w.add_force(gravity(Softening::new(s::<S>(softening)).unwrap()));
+    w.add_force(newtonian(Softening::new(s::<S>(softening)).unwrap()));
     let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
     let half_b = PASS_IMPACT_M / 2.0;
     w.particles.add(

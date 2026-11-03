@@ -3,7 +3,7 @@
 use engine::diagnostics::{
     constraint_error, kinetic_energy, total_energy, uniform_gravity_potential,
 };
-use engine::scenarios::{cluster, cluster_gravity, collapse, disk, gravity};
+use engine::scenarios::{cluster, cluster_gravity, collapse, disk, newtonian};
 use engine::{
     BarnesHut, ConfigError, OpeningAngle, PairwiseGravity, Scalar, Softening, UniformGravity, World,
 };
@@ -85,7 +85,7 @@ impl<S: Scalar> Sim<S> {
         let SceneForce::Pairwise { exact, theta } = &mut self.force else {
             return false;
         };
-        *exact = gravity(eps);
+        *exact = newtonian(eps);
         Self::install(&mut self.world, *exact, *theta);
         true
     }

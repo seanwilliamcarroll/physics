@@ -1,6 +1,6 @@
 //! `proptest` generators: random worlds for the property tests.
 
-use engine::scenarios::gravity;
+use engine::scenarios::newtonian;
 use engine::{Integrator, Scalar, Softening, World};
 use proptest::prelude::*;
 use proptest::test_runner::Config as ProptestConfig;
@@ -54,7 +54,7 @@ pub fn world_spec() -> impl Strategy<Value = Vec<BodySpec>> {
 #[must_use]
 pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> World<S> {
     let mut w = World::new(integrator, core::num::NonZeroU32::MIN);
-    w.add_force(gravity(Softening::new(s::<S>(PROP_SOFTENING_M)).unwrap()));
+    w.add_force(newtonian(Softening::new(s::<S>(PROP_SOFTENING_M)).unwrap()));
     for b in bodies {
         let pos = v::<S>(b.pos.0, b.pos.1);
         match b.mass {

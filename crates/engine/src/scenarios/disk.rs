@@ -2,9 +2,9 @@
 //! (M2).
 
 use super::cluster::{CLUSTER_SOFTENING, CLUSTER_SUBSTEPS, cluster_gravity};
-use super::shared::{BodyF64, GRAVITATIONAL_CONSTANT, mass, point_in_annulus};
+use super::shared::{BodyF64, GRAVITATIONAL_CONSTANT, add_bodies, point_in_annulus};
 use crate::rng::SplitMix64;
-use crate::{ConfigError, Integrator, Scalar, Vec2, World};
+use crate::{ConfigError, Integrator, Scalar, World};
 
 /// Outer radius of [`disk`], m: the same as the cluster's, so the scenes
 /// share a view.
@@ -46,14 +46,12 @@ pub const DISK_ORBITERS_TOTAL_MASS: f64 = 1.0e10;
 pub fn disk<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
     w.add_force(cluster_gravity()?);
-    let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
-    for (pos, vel, m) in disk_bodies(n, seed) {
-        w.particles.add(vec(pos), vec(vel), mass(m)?);
-    }
+    add_bodies(&mut w, disk_bodies(n, seed))?;
     Ok(w)
 }
 
-/// [`disk`]'s bodies in `f64`, center first. Not generic, so the setup (including its sort) is compiled once
+/// [`disk`]'s bodies in `f64`, center first. Not generic, so the setup
+/// (including its sort) is compiled once
 /// rather than once per scalar type in the `.wasm`.
 pub(super) fn disk_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
     let Some(orbiters) = n.checked_sub(1) else {
@@ -101,13 +99,17 @@ pub(super) fn disk_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
         .fold((0.0, 0.0), |(px, py), &(vx, vy)| (px + m * vx, py + m * vy));
     let total = DISK_CENTRAL_MASS + DISK_ORBITERS_TOTAL_MASS;
     let (bx, by) = (-px / total, -py / total);
-    core::iter::once(((0.0, 0.0), (bx, by), DISK_CENTRAL_MASS))
-        .chain(
-            pos.into_iter()
-                .zip(vel)
-                .map(|(p, (vx, vy))| (p, (vx + bx, vy + by), m)),
-        )
-        .collect()
+    let center = BodyF64 {
+        pos: (0.0, 0.0),
+        vel: (bx, by),
+        mass: DISK_CENTRAL_MASS,
+    };
+    let orbiters = pos.into_iter().zip(vel).map(|(p, (vx, vy))| BodyF64 {
+        pos: p,
+        vel: (vx + bx, vy + by),
+        mass: m,
+    });
+    core::iter::once(center).chain(orbiters).collect()
 }
 
 #[cfg(test)]

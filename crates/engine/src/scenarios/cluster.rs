@@ -2,9 +2,9 @@
 
 use core::num::NonZeroU32;
 
-use super::shared::{BodyF64, gravity, mass, point_in_annulus, softening};
+use super::shared::{BodyF64, add_bodies, newtonian, point_in_annulus, softening};
 use crate::rng::SplitMix64;
-use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, Vec2, World};
+use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, World};
 
 /// Radius of the disk [`cluster`] fills, m.
 pub const CLUSTER_RADIUS: f64 = 2.0;
@@ -35,14 +35,14 @@ pub const CLUSTER_SOFTENING: f64 = 0.1;
 /// Substeps for [`cluster`]: one; tests probe conservation, not accuracy.
 pub const CLUSTER_SUBSTEPS: NonZeroU32 = NonZeroU32::MIN;
 
-/// The force [`cluster`] adds: [`gravity`] with [`CLUSTER_SOFTENING`].
+/// The force [`cluster`] adds: [`newtonian`] with [`CLUSTER_SOFTENING`].
 /// Public so energy readouts use exactly the scene's force (like
 /// [`orbit_gravity`](super::orbit_gravity)).
 ///
 /// # Errors
 /// Only if [`CLUSTER_SOFTENING`] were invalid (it isn't: it's positive).
 pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
-    softening(CLUSTER_SOFTENING).map(gravity)
+    softening(CLUSTER_SOFTENING).map(newtonian)
 }
 
 /// `n` bodies under mutual softened gravity: positions uniform in a disk
@@ -62,10 +62,7 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
     w.add_force(cluster_gravity()?);
-    let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
-    for (pos, vel, m) in cluster_bodies(n, seed) {
-        w.particles.add(vec(pos), vec(vel), mass(m)?);
-    }
+    add_bodies(&mut w, cluster_bodies(n, seed))?;
     Ok(w)
 }
 
@@ -80,12 +77,16 @@ pub(super) fn cluster_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
             let vx = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
             let vy = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
             let weight = rng.range(CLUSTER_WEIGHT.0, CLUSTER_WEIGHT.1);
-            (pos, (vx, vy), weight)
+            BodyF64 {
+                pos,
+                vel: (vx, vy),
+                mass: weight,
+            }
         })
         .collect();
-    let total_weight: f64 = bodies.iter().map(|b| b.2).sum();
+    let total_weight: f64 = bodies.iter().map(|b| b.mass).sum();
     for b in &mut bodies {
-        b.2 *= CLUSTER_TOTAL_MASS / total_weight;
+        b.mass *= CLUSTER_TOTAL_MASS / total_weight;
     }
     bodies
 }
