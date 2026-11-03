@@ -73,6 +73,14 @@ export interface EngineExports {
   demo_particle_y(demo: DemoHandle, i: number): number;
   /** Code: abi.ts STABILIZATION_*; the impulse solver's position correction. */
   demo_set_stabilization(demo: DemoHandle, code: number): Status;
+  /** The M5 jelly (abi.ts JELLY_*): cols × rows, stiffness k N/m, damping c; null if invalid. */
+  demo_new_jelly(scalar: number, body: number, cols: number, rows: number, k: number, c: number): DemoHandle;
+  /** A jelly's stiffness, live; 0 for a value its body can't take (springs can't be rigid). */
+  demo_set_stiffness(demo: DemoHandle, k: number): Status;
+  /** A jelly's damping, live; 0 for negative/NaN/infinite. */
+  demo_set_damping(demo: DemoHandle, c: number): Status;
+  /** Kinetic energy in joules (NaN for null): the explosion indicator. */
+  demo_kinetic_energy(demo: DemoHandle): number;
   /** Code: abi.ts ORDER_*; order of each solver pass over constraints. */
   demo_set_order(demo: DemoHandle, code: number): Status;
   /** Total energy in joules, or NaN where undefined (the fountain). */

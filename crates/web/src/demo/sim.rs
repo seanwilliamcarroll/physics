@@ -1,11 +1,12 @@
 //! [`Sim`]: a world plus what the demo must remember about its force.
 
 use engine::diagnostics::{
-    constraint_error, kinetic_energy, total_energy, uniform_gravity_potential,
+    constraint_error, constraint_potential, kinetic_energy, total_energy, uniform_gravity_potential,
 };
-use engine::scenarios::{cluster, cluster_gravity, collapse, disk, newtonian};
+use engine::scenarios::{cluster, cluster_gravity, collapse, compliance_for, disk, newtonian};
 use engine::{
-    BarnesHut, ConfigError, OpeningAngle, PairwiseGravity, Scalar, Softening, UniformGravity, World,
+    BarnesHut, ConfigError, Damping, Grab, OpeningAngle, PairwiseGravity, Scalar, Softening,
+    SpringForce, Stiffness, UniformGravity, World,
 };
 
 use super::codes::GravityScene;
@@ -28,6 +29,13 @@ pub(super) enum SceneForce<S> {
     },
     /// Uniform gravity (the pendulum).
     Uniform(UniformGravity<S>),
+    /// A jelly: uniform gravity, and for the force-based realization a
+    /// copy of its springs (for readouts and live stiffness; the
+    /// constraint realization keeps its springs as constraints).
+    Jelly {
+        gravity: UniformGravity<S>,
+        springs: Option<SpringForce<S>>,
+    },
 }
 
 /// A world and its [`SceneForce`].
@@ -90,11 +98,76 @@ impl<S: Scalar> Sim<S> {
         true
     }
 
+    pub(super) const fn with_jelly(
+        world: World<S>,
+        gravity: UniformGravity<S>,
+        springs: Option<SpringForce<S>>,
+    ) -> Self {
+        Self {
+            world,
+            force: SceneForce::Jelly { gravity, springs },
+        }
+    }
+
+    /// A jelly's spring stiffness `k` (N/m), live: the force realization
+    /// rebuilds its springs (`0 < k < ∞`); the constraint realization
+    /// updates every rod but `grab`'s (`k > 0`, ∞ is rigid). `false`,
+    /// changing nothing, for a value the realization can't take or a
+    /// scene that isn't a jelly.
+    pub(super) fn set_stiffness(&mut self, k: f64, grab: Option<&Grab>) -> bool {
+        let SceneForce::Jelly { gravity, springs } = &mut self.force else {
+            return false;
+        };
+        if let Some(force) = springs {
+            let Some(stiffness) = Stiffness::new(S::from_f64(k)) else {
+                return false;
+            };
+            *force = force.with_stiffness(stiffness);
+            self.world.clear_forces();
+            self.world.add_force(*gravity);
+            self.world.add_force(force.clone());
+        } else {
+            let Ok(alpha) = compliance_for::<S>(k) else {
+                return false;
+            };
+            self.world
+                .update_constraints(grab, |c| c.with_compliance(alpha));
+        }
+        true
+    }
+
+    /// A jelly's damping `c` (N·s/m), live, as [`Sim::set_stiffness`].
+    pub(super) fn set_damping(&mut self, c: f64, grab: Option<&Grab>) -> bool {
+        let SceneForce::Jelly { gravity, springs } = &mut self.force else {
+            return false;
+        };
+        let Some(damping) = Damping::new(S::from_f64(c)) else {
+            return false;
+        };
+        if let Some(force) = springs {
+            *force = force.with_damping(damping);
+            self.world.clear_forces();
+            self.world.add_force(*gravity);
+            self.world.add_force(force.clone());
+        } else {
+            self.world
+                .update_constraints(grab, |rod| rod.with_damping(damping));
+        }
+        true
+    }
+
     /// Total energy under the scene's exact force, or `None`.
     pub(super) fn energy(&self) -> Option<f64> {
         let p = &self.world.particles;
         match &self.force {
             SceneForce::Unmeasured => None,
+            SceneForce::Jelly { gravity, springs } => {
+                let elastic = springs.as_ref().map_or_else(
+                    || constraint_potential(p, self.world.constraints()),
+                    |s| s.potential(p),
+                );
+                Some((kinetic_energy(p) + uniform_gravity_potential(p, gravity) + elastic).to_f64())
+            }
             SceneForce::Pairwise { exact, .. } => Some(total_energy(p, exact).to_f64()),
             SceneForce::Uniform(u) => {
                 Some((kinetic_energy(p) + uniform_gravity_potential(p, u)).to_f64())
@@ -107,7 +180,7 @@ impl<S: Scalar> Sim<S> {
     pub(super) const fn theta(&self) -> Option<OpeningAngle<S>> {
         match self.force {
             SceneForce::Pairwise { theta, .. } => theta,
-            SceneForce::Unmeasured | SceneForce::Uniform(_) => None,
+            SceneForce::Unmeasured | SceneForce::Uniform(_) | SceneForce::Jelly { .. } => None,
         }
     }
 

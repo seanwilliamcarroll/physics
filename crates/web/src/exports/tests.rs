@@ -1,12 +1,15 @@
 use super::drag::{demo_drag, demo_grab, demo_release};
 use super::lifecycle::{
     demo_advance, demo_free, demo_links_len, demo_links_ptr, demo_new, demo_new_chain,
-    demo_new_double_pendulum, demo_positions_len, demo_positions_ptr,
+    demo_new_double_pendulum, demo_new_jelly, demo_positions_len, demo_positions_ptr,
 };
-use super::readouts::{demo_constraint_error, demo_energy, demo_particle_x, demo_particle_y};
+use super::readouts::{
+    demo_constraint_error, demo_energy, demo_kinetic_energy, demo_particle_x, demo_particle_y,
+};
 use super::settings::{
-    demo_set_beta, demo_set_integrator, demo_set_iterations, demo_set_order, demo_set_rate,
-    demo_set_softening, demo_set_solver, demo_set_stabilization, demo_set_substeps, demo_set_theta,
+    demo_set_beta, demo_set_damping, demo_set_integrator, demo_set_iterations, demo_set_order,
+    demo_set_rate, demo_set_softening, demo_set_solver, demo_set_stabilization, demo_set_stiffness,
+    demo_set_substeps, demo_set_theta,
 };
 use crate::abi;
 use core::ptr;
@@ -228,5 +231,72 @@ fn exact_positions_resolve_what_the_f32_buffer_cannot() {
         assert!(demo_particle_y(ptr::null(), 0).is_nan());
         demo_free(a);
         demo_free(b);
+    }
+}
+
+#[test]
+fn jelly_constructor_and_live_stiffness_check_their_input() {
+    // Force springs can't be rigid; constraints can.
+    assert!(
+        demo_new_jelly(
+            abi::SCALAR_F64,
+            abi::JELLY_SPRINGS,
+            4,
+            4,
+            f64::INFINITY,
+            0.0
+        )
+        .is_null()
+    );
+    let rods = demo_new_jelly(
+        abi::SCALAR_F64,
+        abi::JELLY_IMPULSE,
+        4,
+        4,
+        f64::INFINITY,
+        0.0,
+    );
+    assert!(!rods.is_null());
+    assert!(
+        demo_new_jelly(abi::SCALAR_F64, 9, 4, 4, 100.0, 0.0).is_null(),
+        "unknown body"
+    );
+    assert!(
+        demo_new_jelly(abi::SCALAR_F64, abi::JELLY_XPBD, 0, 4, 100.0, 0.0).is_null(),
+        "empty grid"
+    );
+    let springs = demo_new_jelly(abi::SCALAR_F32, abi::JELLY_SPRINGS, 4, 4, 500.0, 0.5);
+    assert!(!springs.is_null());
+    // SAFETY: both from the constructor, freed once, last; null allowed.
+    unsafe {
+        assert_eq!(demo_set_stiffness(springs, 1000.0), 1);
+        assert_eq!(
+            demo_set_stiffness(springs, f64::INFINITY),
+            0,
+            "springs can't be rigid"
+        );
+        assert_eq!(demo_set_stiffness(springs, -1.0), 0);
+        assert_eq!(demo_set_damping(springs, 0.2), 1);
+        assert_eq!(demo_set_damping(springs, f64::NAN), 0);
+        assert_eq!(demo_set_stiffness(rods, 1e5), 1);
+        assert_eq!(demo_set_stiffness(rods, f64::INFINITY), 1, "rigid rods");
+        assert_eq!(demo_set_damping(rods, 0.5), 1);
+        // It falls: kinetic energy rises from 0.
+        assert_eq!(demo_kinetic_energy(springs), 0.0);
+        assert_eq!(demo_advance(springs, 0.25), 15);
+        assert!(demo_kinetic_energy(springs) > 0.0);
+        assert!(demo_energy(springs).is_finite());
+        demo_free(springs);
+        demo_free(rods);
+        assert!(demo_kinetic_energy(ptr::null()).is_nan());
+        assert_eq!(demo_set_stiffness(ptr::null_mut(), 1.0), 0);
+    }
+    // Not a jelly: stiffness and damping are refused.
+    let chain = demo_new_chain(abi::SCALAR_F64, 4, 10.0);
+    // SAFETY: as above.
+    unsafe {
+        assert_eq!(demo_set_stiffness(chain, 100.0), 0);
+        assert_eq!(demo_set_damping(chain, 0.1), 0);
+        demo_free(chain);
     }
 }

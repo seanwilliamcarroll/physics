@@ -1,7 +1,7 @@
 //! Wire codes from JS, decoded once at the boundary into enums: an unknown
 //! code becomes `None`, never a wrong scene.
 
-use engine::scenarios::DoublePendulumStart;
+use engine::scenarios::{DoublePendulumStart, JellyBody};
 use engine::{Integrator, Order, Solver, Stabilization};
 
 use crate::abi;
@@ -102,6 +102,17 @@ pub(crate) const fn stabilization_from_code(code: u32) -> Option<Stabilization> 
     match code {
         abi::STABILIZATION_BAUMGARTE => Some(Stabilization::Baumgarte),
         abi::STABILIZATION_SPLIT => Some(Stabilization::Split),
+        _ => None,
+    }
+}
+
+/// Decodes a `demo_new_jelly` body code ([`abi`]).
+#[must_use]
+pub(crate) const fn jelly_body_from_code(code: u32) -> Option<JellyBody> {
+    match code {
+        abi::JELLY_SPRINGS => Some(JellyBody::Springs),
+        abi::JELLY_XPBD => Some(JellyBody::Constraints(Solver::Xpbd)),
+        abi::JELLY_IMPULSE => Some(JellyBody::Constraints(Solver::Impulse)),
         _ => None,
     }
 }

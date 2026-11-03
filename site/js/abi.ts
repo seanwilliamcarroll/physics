@@ -23,6 +23,11 @@ export const ORDER_ALTERNATING = 2;
 export const STABILIZATION_BAUMGARTE = 0;
 export const STABILIZATION_SPLIT = 1;
 
+/** demo_new_jelly body codes (M5). */
+export const JELLY_SPRINGS = 0;
+export const JELLY_XPBD = 1;
+export const JELLY_IMPULSE = 2;
+
 /** demo_new_double_pendulum start codes (M4). */
 export const START_HORIZONTAL = 0;
 export const START_RAISED = 1;
