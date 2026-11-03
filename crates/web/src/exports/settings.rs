@@ -5,7 +5,9 @@ use core::num::NonZeroU32;
 
 use engine::{Baumgarte, OpeningAngle, Softening};
 
-use crate::demo::{Demo, integrator_from_code, order_from_code, solver_from_code};
+use crate::demo::{
+    Demo, integrator_from_code, order_from_code, solver_from_code, stabilization_from_code,
+};
 
 /// Switches integrator (`code` from [`crate::abi`]); takes effect next
 /// step. Returns 1 on success, 0 for an unknown code or a null handle.
@@ -143,5 +145,22 @@ pub(crate) unsafe extern "C" fn demo_set_order(d: *mut Demo, code: u32) -> u32 {
         return 0;
     };
     d.set_order(order);
+    1
+}
+
+/// Sets how the impulse solver corrects rigid rods' position error
+/// (`STABILIZATION_*` in [`crate::abi`]). Returns 1, or 0 for an unknown
+/// code or a null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from a `demo_new*` export.
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_stabilization(d: *mut Demo, code: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(stabilization)) = (unsafe { d.as_mut() }, stabilization_from_code(code))
+    else {
+        return 0;
+    };
+    d.set_stabilization(stabilization);
     1
 }

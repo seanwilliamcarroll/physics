@@ -10,7 +10,7 @@
 
 use engine::diagnostics::constraint_error;
 use engine::scenarios::{CHAIN_LENGTH, CHAIN_LINKS, DoublePendulumStart, chain, double_pendulum};
-use engine::{Constraint, Scalar, Solver, World};
+use engine::{Constraint, Scalar, Solver, Stabilization, World};
 use test_support::{nonzero, pendulum_energy, s};
 
 /// 10 s at a 60 Hz frame rate, as `01`'s pendulum table.
@@ -20,14 +20,20 @@ const CHAIN_STEPS: u32 = 600;
 /// The roadmap's case: a bob 100 times a link particle's mass.
 const RATIO: f64 = 100.0;
 
-/// What one chain run reports, m.
+/// What one chain run reports: each field is the largest value seen
+/// after any step.
 #[derive(Copy, Clone, Debug)]
 struct ChainRun {
-    /// Largest |C| of any link after any step.
-    max_link_error: f64,
-    /// Largest |Σ link lengths − [`CHAIN_LENGTH`]| after any step: how
+    /// Largest |C| of any link after any step, m.
+    link_error: f64,
+    /// Largest |Σ link lengths − [`CHAIN_LENGTH`]| after any step, m: how
     /// much longer (or shorter) the whole chain got.
-    max_stretch: f64,
+    stretch: f64,
+    /// Largest energy *gain* over the start, J. A frictionless chain can
+    /// only lose energy to the solver, never gain it: a gain means the
+    /// solver is pumping energy in (how the classic-Baumgarte blow-up was
+    /// missed in M4.4: no test checked energy).
+    energy_gain: f64,
 }
 
 /// Total length of the chain's links, m.
@@ -43,19 +49,29 @@ fn chain_length<S: Scalar>(w: &World<S>) -> f64 {
 }
 
 /// The [`CHAIN_LINKS`]-link chain at `ratio`, 10 s.
-fn chain_run(solver: Solver, substeps: u32, iterations: u32, ratio: f64) -> ChainRun {
+fn chain_run(
+    solver: Solver,
+    stab: Stabilization,
+    substeps: u32,
+    iterations: u32,
+    ratio: f64,
+) -> ChainRun {
     let mut w = chain::<f64>(solver, nonzero(substeps), CHAIN_LINKS, ratio).unwrap();
     w.set_iterations(nonzero(iterations));
-    let (mut max_link_error, mut max_stretch) = (0.0_f64, 0.0_f64);
+    w.set_stabilization(stab);
+    let e0 = pendulum_energy(&w);
+    let (mut link_error, mut stretch, mut energy_gain) = (0.0_f64, 0.0_f64, 0.0_f64);
     for _ in 0..CHAIN_STEPS {
         w.step(DT);
         let (max, _) = constraint_error(&w.particles, w.constraints()).unwrap();
-        max_link_error = max_link_error.max(max);
-        max_stretch = max_stretch.max((chain_length(&w) - CHAIN_LENGTH).abs());
+        link_error = link_error.max(max);
+        stretch = stretch.max((chain_length(&w) - CHAIN_LENGTH).abs());
+        energy_gain = energy_gain.max(pendulum_energy(&w) - e0);
     }
     ChainRun {
-        max_link_error,
-        max_stretch,
+        link_error,
+        stretch,
+        energy_gain,
     }
 }
 
@@ -68,24 +84,39 @@ fn assert_order_of(what: &str, got: f64, measured: f64) {
     );
 }
 
+/// Largest energy gain a stable run may show, J: measured 0.0 for every
+/// XPBD and split-impulse run (energy only decreases); the bound leaves
+/// rounding room, far below the classic blow-up's +15 J and up.
+const MAX_STABLE_GAIN: f64 = 0.01;
+
 fn assert_chain(solver: Solver, substeps: u32, iterations: u32, link: f64, stretch: f64) {
-    let r = chain_run(solver, substeps, iterations, RATIO);
-    assert_order_of("max link error, m", r.max_link_error, link);
-    assert_order_of("max stretch, m", r.max_stretch, stretch);
+    let r = chain_run(solver, Stabilization::Split, substeps, iterations, RATIO);
+    assert_order_of("max link error, m", r.link_error, link);
+    assert_order_of("max stretch, m", r.stretch, stretch);
+    assert!(
+        r.energy_gain <= MAX_STABLE_GAIN,
+        "gained {} J",
+        r.energy_gain
+    );
 }
 
-// The table, 1:100, 10 links, iterations 1 (the default) unless named.
-// Measured max link error / max stretch (f32 within ~30% of each):
+// The table, 1:100, 10 links, iterations 1 unless named, split impulses
+// (the default stabilization). Measured max link error / max stretch;
+// energy gain 0.0 in every run (M4.9, re-measured after the classic
+// Baumgarte blow-up was found):
 //
-// | Solver  | Substeps | It. 1               | It. 10              |
-// |---------|----------|---------------------|---------------------|
-// | XPBD    | 1        | 65 cm / 5.7 m       | 8.1 cm / 71 cm      |
-// | XPBD    | 20       | 3.2 mm / 2.8 cm     | 0.46 mm / 4.0 mm    |
-// | Impulse | 1        | 1.19 m / 5.6 m      | 1.10 m / 5.4 m      |
-// | Impulse | 20       | 42 cm / 1.65 m      | 3.7 cm / 14 cm      |
+// | Solver           | Substeps | It. 1           | It. 10           |
+// |------------------|----------|-----------------|------------------|
+// | XPBD             | 1        | 65 cm / 5.7 m   |                  |
+// | XPBD             | 20       | 3.2 mm / 2.8 cm | 0.46 mm / 4.0 mm |
+// | Impulse (split)  | 1        | 1.30 m / 10.5 m |                  |
+// | Impulse (split)  | 20       | 4.3 mm / 3.7 cm | 0.61 mm / 5.3 mm |
 //
-// At 1 substep both solvers fail (the chain ends up several times its
-// length); at 20, XPBD's chain is ~130x tighter than impulse's.
+// At 1 substep both fail; at 20 both hold, about equally: once position
+// error is corrected positionally (split impulses), the impulse solver
+// behaves like XPBD on the chain. The M4.4 numbers (impulse 42 cm, "130x
+// worse") were classic Baumgarte's blow-up, not softness; see
+// `known_failures.rs`.
 
 #[test]
 fn xpbd_substeps_1() {
@@ -104,49 +135,58 @@ fn xpbd_substeps_20_iterations_10() {
 
 #[test]
 fn impulse_substeps_1() {
-    assert_chain(Solver::Impulse, 1, 1, 1.187, 5.573);
+    assert_chain(Solver::Impulse, 1, 1, 1.297, 10.47);
 }
 
 #[test]
 fn impulse_substeps_20() {
-    assert_chain(Solver::Impulse, 20, 1, 0.4250, 1.652);
+    assert_chain(Solver::Impulse, 20, 1, 4.251e-3, 3.717e-2);
 }
 
 #[test]
 fn impulse_substeps_20_iterations_10() {
-    assert_chain(Solver::Impulse, 20, 10, 3.724e-2, 0.1366);
+    assert_chain(Solver::Impulse, 20, 10, 6.137e-4, 5.274e-3);
 }
 
-/// The roadmap's showcase as one claim: at 20 substeps XPBD's chain is
-/// solid and the impulse solver's goes rubbery, by far more than the
-/// ±10x slack above (measured: 133x on link error, 59x on stretch).
+/// With split impulses the two solvers hold the heavy chain about equally
+/// (4.3 mm vs 3.2 mm at 20 substeps): within 2x of each other.
 #[test]
-fn xpbd_holds_the_heavy_chain_far_tighter_than_impulse() {
-    let xpbd = chain_run(Solver::Xpbd, 20, 1, RATIO);
-    let impulse = chain_run(Solver::Impulse, 20, 1, RATIO);
-    assert!(
-        impulse.max_link_error > 20.0 * xpbd.max_link_error,
-        "{xpbd:?} vs {impulse:?}"
-    );
-    assert!(
-        impulse.max_stretch > 10.0 * xpbd.max_stretch,
-        "{xpbd:?} vs {impulse:?}"
-    );
+fn split_impulses_hold_the_chain_like_xpbd() {
+    let xpbd = chain_run(Solver::Xpbd, Stabilization::Split, 20, 1, RATIO);
+    let impulse = chain_run(Solver::Impulse, Stabilization::Split, 20, 1, RATIO);
+    let ratio = impulse.link_error / xpbd.link_error;
+    assert!((0.5..=2.0).contains(&ratio), "{xpbd:?} vs {impulse:?}");
 }
 
-/// The mass ratio is what hurts: with equal masses (1:1) the same chain
-/// holds ~100x better under impulse (4.1 mm against 42 cm) and ~6x
-/// better under XPBD (0.51 mm against 3.2 mm), 20 substeps.
+/// The mass ratio is what hurts: with equal masses (1:1) the chain holds
+/// ~6x better under XPBD (0.51 mm vs 3.2 mm) and ~5x under impulse
+/// (0.92 mm vs 4.3 mm), 20 substeps.
 #[test]
 fn equal_masses_hold_far_better_than_1_to_100() {
-    for (solver, factor) in [(Solver::Impulse, 20.0), (Solver::Xpbd, 2.0)] {
-        let light = chain_run(solver, 20, 1, 1.0);
-        let heavy = chain_run(solver, 20, 1, RATIO);
+    for solver in Solver::ALL {
+        let light = chain_run(solver, Stabilization::Split, 20, 1, 1.0);
+        let heavy = chain_run(solver, Stabilization::Split, 20, 1, RATIO);
         assert!(
-            heavy.max_link_error > factor * light.max_link_error,
+            heavy.link_error > 2.0 * light.link_error,
             "{solver:?}: {light:?} vs {heavy:?}"
         );
     }
+}
+
+/// `classic_baumgarte_blows_up_on_heavy_chains` (`known_failures.rs`)
+/// needs `chain_run`; it lives here to share it. With warm starting and
+/// one pass, classic Baumgarte pumps energy into the 1:100 chain, and
+/// *more substeps make it worse* (a smaller `h` turns the same error into
+/// a larger bias velocity `β C / h`). Measured max gain over 10 s: 0 J at 1
+/// substep, +15 J at 2, +186 J at 5, +3398 J at 20, from a chain holding
+/// ~10 J. Bounds: > 100 J at 20 substeps, and growing with substeps.
+#[test]
+fn classic_baumgarte_blows_up_on_heavy_chains() {
+    let gain =
+        |sub| chain_run(Solver::Impulse, Stabilization::Baumgarte, sub, 1, RATIO).energy_gain;
+    let (two, twenty) = (gain(2), gain(20));
+    assert!(twenty > 100.0, "only {twenty} J at 20 substeps");
+    assert!(twenty > two, "{two} J at 2 substeps vs {twenty} J at 20");
 }
 
 // The double pendulum: `TASKS.md` decision 9's default, impulse with 20

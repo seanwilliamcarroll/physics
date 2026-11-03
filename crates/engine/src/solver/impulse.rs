@@ -1,8 +1,8 @@
 //! The sequential-impulse substep (Catto 2005, 2006; soft form 2011).
 
-use super::Step;
+use super::{Stabilization, Step};
 use crate::integrate::{drift, evaluate, kick};
-use crate::{Constraint, Particles, Scalar};
+use crate::{Constraint, Particles, Scalar, Vec2};
 
 impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// One sequential-impulse substep of length `h`:
@@ -20,6 +20,9 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// iterations and kept for the next substep's warm start. One
     /// constraint is solved exactly in one pass, so for a single pendulum
     /// warm starting only changes rounding; chains (M4) need it.
+    ///
+    /// With [`Stabilization::Split`], a rigid rod's bias goes to a separate
+    /// pseudo-velocity instead (`solve_split`), and `x += h (v + v_pseudo)`.
     pub(crate) fn impulse(self, h: S) {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
@@ -32,13 +35,33 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
             soft_bias: S::ONE / h,
             alpha_scale: S::ONE / (h * h),
         };
-        for pass in 0..self.iterations.get() {
-            self.order
-                .sweep(pass, self.constraints, self.lambda, |c, lambda| {
-                    solve_velocity(p, c, lambda, gains);
-                });
+        match self.stabilization {
+            Stabilization::Baumgarte => {
+                for pass in 0..self.iterations.get() {
+                    self.order
+                        .sweep(pass, self.constraints, self.lambda, |c, lambda| {
+                            solve_velocity(p, c, lambda, gains);
+                        });
+                }
+                drift(&mut p.pos, &p.vel, h);
+            }
+            Stabilization::Split => {
+                let pseudo = self.scratch;
+                pseudo.clear();
+                pseudo.resize(p.pos.len(), Vec2::ZERO);
+                for pass in 0..self.iterations.get() {
+                    self.order
+                        .sweep(pass, self.constraints, self.lambda, |c, lambda| {
+                            solve_split(p, pseudo, c, lambda, gains);
+                        });
+                }
+                // Positions move by the real and the pseudo-velocity; only
+                // the real one is kept.
+                for ((x, &v), &pv) in p.pos.iter_mut().zip(&p.vel).zip(pseudo.iter()) {
+                    *x += (v + pv) * h;
+                }
+            }
         }
-        drift(&mut p.pos, &p.vel, h);
     }
 }
 
@@ -118,4 +141,49 @@ fn solve_velocity<S: Scalar, C: Constraint<S>>(
     *lambda += d_lambda;
     *va -= n * (wa * d_lambda);
     *vb += n * (wb * d_lambda);
+}
+
+/// One split-impulse solve of `c`: the real velocity gets the impulse that
+/// zeroes `Jv` (accumulated in `lambda`, warm-started next substep); a
+/// rigid rod's Baumgarte bias goes to `pseudo` instead, which moves
+/// positions this substep only. Compliant rods have no stabilization to
+/// split (their `C/h` term is the spring itself), so they take the normal
+/// soft solve.
+fn solve_split<S: Scalar, C: Constraint<S>>(
+    p: &mut Particles<S>,
+    pseudo: &mut [Vec2<S>],
+    c: &C,
+    lambda: &mut S,
+    gains: Gains<S>,
+) {
+    if c.compliance() != S::ZERO {
+        solve_velocity(p, c, lambda, gains);
+        return;
+    }
+    let Some((a, b, wa, wb)) = masses(p, c) else {
+        return;
+    };
+    let w = wa + wb;
+    let (Some(&xa), Some(&xb)) = (p.pos.get(a), p.pos.get(b)) else {
+        return;
+    };
+    let (value, Some(n)) = c.evaluate(xa, xb) else {
+        return;
+    };
+    if w == S::ZERO {
+        return;
+    }
+    let (Ok([va, vb]), Ok([pa, pb])) = (
+        p.vel.get_disjoint_mut([a, b]),
+        pseudo.get_disjoint_mut([a, b]),
+    ) else {
+        return;
+    };
+    let d_lambda = -n.dot(*vb - *va) / w;
+    *lambda += d_lambda;
+    *va -= n * (wa * d_lambda);
+    *vb += n * (wb * d_lambda);
+    let d_pseudo = -(n.dot(*pb - *pa) + gains.rigid_bias * value) / w;
+    *pa -= n * (wa * d_pseudo);
+    *pb += n * (wb * d_pseudo);
 }

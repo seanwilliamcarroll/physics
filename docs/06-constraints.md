@@ -204,21 +204,23 @@ equalizer". The impulse solver integrates velocities directly and doesn't
 have this problem. A known failure now
 (`xpbd_f32_substeps_derive_noisy_velocities`); worth showing on the page.
 
-**As built (M4.4), the 1:100 chain** (`scenarios::chain`: 10 links,
+**As built (M4.9), the 1:100 chain** (`scenarios::chain`: 10 links,
 1 m, 10 g link particles, 1 kg bob, released level with the pin; 10 s
-at 60 Hz, f64, `tests/chains.rs`). Max link error / max total stretch:
+at 60 Hz, f64, `tests/chains.rs`). Max link error / max total stretch,
+impulse with split impulses (the default; see "Stabilization" below):
 
 | Solver | Substeps | Iterations 1 | Iterations 10 |
 |---|---|---|---|
-| XPBD | 1 | 65 cm / 5.7 m | 8.1 cm / 71 cm |
+| XPBD | 1 | 65 cm / 5.7 m | |
 | XPBD | 20 | 3.2 mm / 2.8 cm | 0.46 mm / 4.0 mm |
-| Impulse (β = 0.2) | 1 | 1.19 m / 5.6 m | 1.10 m / 5.4 m |
-| Impulse (β = 0.2) | 20 | 42 cm / 1.65 m | 3.7 cm / 14 cm |
+| Impulse (split) | 1 | 1.30 m / 10.5 m | |
+| Impulse (split) | 20 | 4.3 mm / 3.7 cm | 0.61 mm / 5.3 mm |
 
-At one substep both fail; at 20, XPBD's chain is ~130x tighter than the
-impulse solver's, and iterations help both (~7x XPBD, ~11x impulse). The
-mass ratio is the cause: at 1:1 the same 20-substep chain holds to 0.51
-mm (XPBD) and 4.1 mm (impulse). f32 is within ~30% of each.
+No run gains energy. At one substep both fail; at 20 both hold, about
+equally. The mass ratio still matters: at 1:1, 0.51 mm (XPBD) and 0.92 mm
+(impulse). **Correction:** M4.4 reported the impulse chain at 42 cm, "130x
+worse than XPBD". That was classic Baumgarte's energy blow-up, not
+softness, and no test checked energy; see "Stabilization".
 
 **As built (M4.4), the double pendulum** (`scenarios::double_pendulum`:
 two 1 m rods, 1 kg bobs, released horizontal; impulse, 20 substeps).
@@ -317,9 +319,54 @@ which is the right answer (no pull needed).
 `drag(&Grab, point)`, `release(Grab) -> Result<(), Grab>` (the token comes
 back if something was added after the grab, so the caller can retry).
 Flicking the 1:100 chain's bob 1.1 m in 0.2 s and holding (k = 1000 N/m,
-20 substeps, `tests/drag.rs`): XPBD's links stretch at most 8.1 mm, the
-impulse solver's 18.3 cm, with its bob 42 cm behind the cursor. A slow
-drag hides most of it: the chain has to accelerate.
+20 substeps, `tests/drag.rs`): XPBD's links stretch at most 8.1 mm,
+impulse's (split) 10.0 mm; both bobs end ~7.8 cm from the anchor (the
+drag spring's sag). **Correction:** M4.5 reported 18.3 cm for impulse
+(classic Baumgarte's blow-up again), and its test asserted no bounds.
+
+### Stabilization: classic Baumgarte vs split impulses (M4.9)
+
+**Found in review:** on the 1:100 chain page the impulse solver gained
+energy without bound. Classic Baumgarte adds its bias `(β/h) C` to the
+real velocity solve. A converged solve would remove that velocity again
+next substep; one Gauss–Seidel pass on a 1:100 chain doesn't converge, and
+warm starting carries the unconverged impulses (already reacting to the
+bias velocity) into the next substep, where a new bias adds more. The
+light links amplify every push. Evidence (a standalone replica plus the
+engine, 1:100, 10 s):
+
+| Impulse variant | Energy | Max link error |
+|---|---|---|
+| classic + warm start (M3/M4 as built) | **+4461 J** | 48 cm |
+| classic, no warm start | −3.6 J | 1.4 cm |
+| classic + warm start, 100 iterations | −2.4 J | 0.6 mm |
+| **split impulses + warm start** | −1.8 J | **4.5 mm** |
+| β = 0 (no stabilization) + warm start | 0 J | 1.5 cm, drifting |
+
+Ruled out on the way: keeping the bias term out of the stored λ (the bias
+*velocity* still reaches neighboring rods, whose λ absorb it), a 5 mm
+slop, and warm starting along the old direction. **Worse with more
+substeps:** classic gains +15 J at 2, +186 J at 5, +3398 J at 20 (a
+smaller `h` turns the same error into a larger bias velocity), the
+reverse of M3's "substeps are the great equalizer". At 1:1 it stays
+tame (+0.4 J), which is why M3 never saw it.
+
+**Split impulses** (`Stabilization::Split`, the default) send the bias to
+a pseudo-velocity used only to move positions this substep and then
+discarded, so real velocities and the warm-started λ carry only physical
+impulses. Compliant rods keep the soft solve (their `C/h` is the spring,
+not stabilization).
+
+**The cost: split impulses dissipate like XPBD.** Correcting positions
+directly is a projection: the single pendulum at one substep loses 5.3 J
+in 10 s (classic 0.99 J), the double pendulum 8.2 J in 30 s (classic
+0.03 J), which fades its chaos. So the **pendulum and double-pendulum
+scenes opt into `Stabilization::Baumgarte`** (stable at equal masses,
+energy-faithful, and what `01` measured), and the chain uses split. With
+split impulses the two solvers behave alike on the chain; the chain page
+shows the classic blow-up as a stabilization choice. (`01`'s side-by-side
+table and the roadmap's "solid vs rubbery" chain both describe classic
+Baumgarte.)
 
 ## Extending (not M4)
 

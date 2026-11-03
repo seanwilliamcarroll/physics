@@ -4,7 +4,9 @@ use core::num::NonZeroU32;
 
 use super::pendulum::pendulum_gravity;
 use super::shared::mass;
-use crate::{ConfigError, DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
+use crate::{
+    ConfigError, DistanceConstraint, Integrator, Scalar, Solver, Stabilization, Vec2, World,
+};
 
 /// Length of each rod of [`double_pendulum`], m: the
 /// [`PENDULUM_LENGTH`](super::PENDULUM_LENGTH) of the single pendulum,
@@ -82,6 +84,10 @@ pub fn double_pendulum<S: Scalar>(
         w.add_constraint(rod)?;
     }
     w.set_solver(solver);
+    // Classic Baumgarte: energy-faithful at equal masses (within 0.04 J
+    // over 30 s), where split impulses drain 8 J and fade the chaos
+    // (`docs/06-constraints.md`, "Stabilization").
+    w.set_stabilization(Stabilization::Baumgarte);
     Ok(w)
 }
 

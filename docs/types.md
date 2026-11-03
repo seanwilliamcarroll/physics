@@ -54,6 +54,7 @@ and `Friction` go.
 | [`DistanceConstraint<S>`](../crates/engine/src/constraint.rs) | A rod; to a static particle, a pin. Rest length from current positions, so no invalid length can be passed. |
 | [`Integrator`](../crates/engine/src/integrate.rs) | How an unconstrained substep turns acceleration into motion; an enum (closed set, exhaustive matches, a wire code). |
 | [`Order`](../crates/engine/src/solver.rs) | The order each Gauss–Seidel pass visits constraints (forward, reverse, alternating): part of the method along a chain. |
+| [`Stabilization`](../crates/engine/src/solver.rs) | How the impulse solver corrects rigid rods' position error: classic Baumgarte (energy-faithful; blows up on heavy chains with warm starting) or split impulses (robust; dissipates like XPBD). |
 | [`Solver`](../crates/engine/src/solver.rs) | How a constrained substep is taken (XPBD or impulses); owns the whole step when constraints exist. |
 
 ## `engine` — scenes and support

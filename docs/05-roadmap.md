@@ -168,6 +168,10 @@ per-solver state (λ, warm starting) is stored.
 permutation-invariance canary now fails for Gauss–Seidel. Replace it with
 a bounded-difference property and document why.
 
+*(M4 found the "stretchy" panel was classic Baumgarte blowing up; with
+split impulses both solvers hold the chain. See `06-constraints.md`,
+"Stabilization", and `TASKS.md` M4.)*
+
 **Done when:** dragging a chain feels solid in one panel and stretchy in
 the other at the same cost; the double pendulum divergence is visible.
 

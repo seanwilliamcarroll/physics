@@ -110,3 +110,26 @@ fn baumgarte_defaults_to_box2d_and_survives_solver_switches() {
     w.set_solver(Solver::Xpbd);
     assert_eq!(w.baumgarte().get(), 0.5);
 }
+
+#[test]
+fn stabilization_defaults_to_split_and_the_pendulum_scenes_choose_classic() {
+    use crate::scenarios::{DoublePendulumStart, double_pendulum, pendulum};
+    use crate::{Solver, Stabilization};
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    assert_eq!(w.stabilization(), Stabilization::Split);
+    w.set_stabilization(Stabilization::Baumgarte);
+    assert_eq!(w.stabilization(), Stabilization::Baumgarte);
+    // 01's measurements and the double pendulum's energy need classic.
+    let p = pendulum::<f64>(Solver::Impulse, NonZeroU32::MIN).unwrap();
+    let d = double_pendulum::<f64>(
+        Solver::Impulse,
+        NonZeroU32::MIN,
+        DoublePendulumStart::Raised,
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(
+        (p.stabilization(), d.stabilization()),
+        (Stabilization::Baumgarte, Stabilization::Baumgarte)
+    );
+}

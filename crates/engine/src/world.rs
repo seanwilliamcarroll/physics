@@ -13,7 +13,9 @@ use constraints::Constraints;
 pub use drag::Grab;
 
 use crate::Baumgarte;
-use crate::{DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Vec2};
+use crate::{
+    DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Stabilization, Vec2,
+};
 
 /// A simulation: particles, the forces acting on them, and how to integrate.
 pub struct World<S: Scalar> {
@@ -116,6 +118,17 @@ impl<S: Scalar> World<S> {
     /// step.
     pub const fn set_order(&mut self, order: Order) {
         self.constraints.order = order;
+    }
+
+    #[must_use]
+    pub const fn stabilization(&self) -> Stabilization {
+        self.constraints.stabilization
+    }
+
+    /// How the impulse solver corrects rigid rods' position error, from the
+    /// next step (XPBD projects positions directly and ignores it).
+    pub const fn set_stabilization(&mut self, stabilization: Stabilization) {
+        self.constraints.stabilization = stabilization;
     }
 
     /// The type makes 0 unrepresentable, so there's nothing to report.

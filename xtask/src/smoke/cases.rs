@@ -34,7 +34,7 @@ const M4_DP: &str = "demos/m4-double-pendulum/";
 /// a heavier cluster. M3: both solver panels, default and the f32 stress
 /// case (100 substeps). M4: the chain (both solver panels) and the double
 /// pendulum in both comparison modes.
-pub(super) const CASES: [Case; 14] = [
+pub(super) const CASES: [Case; 15] = [
     Case {
         name: "default",
         page: M0,
@@ -105,6 +105,12 @@ pub(super) const CASES: [Case; 14] = [
         name: "m4chain",
         page: M4_CHAIN,
         query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m4classic",
+        page: M4_CHAIN,
+        query: "?smoke&stab=classic",
         check: Check::Draws,
     },
     Case {

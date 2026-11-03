@@ -4,7 +4,8 @@ use core::num::NonZeroU32;
 
 use super::shared::{STANDARD_GRAVITY, mass};
 use crate::{
-    ConfigError, DistanceConstraint, Integrator, Scalar, Solver, UniformGravity, Vec2, World,
+    ConfigError, DistanceConstraint, Integrator, Scalar, Solver, Stabilization, UniformGravity,
+    Vec2, World,
 };
 
 /// Rod length for [`pendulum`], m: `01-solvers.md`'s measured setup.
@@ -42,5 +43,9 @@ pub fn pendulum<S: Scalar>(solver: Solver, substeps: NonZeroU32) -> Result<World
         DistanceConstraint::between(&w.particles, pin, bob).ok_or(ConfigError::UnknownParticle)?;
     w.add_constraint(rod)?;
     w.set_solver(solver);
+    // Classic Baumgarte: what `01-solvers.md` measured, so M3 reproduces
+    // its table. Stable here (one rod); split impulses would add XPBD-like
+    // damping (`docs/06-constraints.md`, "Stabilization").
+    w.set_stabilization(Stabilization::Baumgarte);
     Ok(w)
 }

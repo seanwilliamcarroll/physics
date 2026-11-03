@@ -33,6 +33,24 @@ impl Solver {
     pub const ALL: [Self; 2] = [Self::Xpbd, Self::Impulse];
 }
 
+/// How the impulse solver corrects a rigid rod's position error
+/// (`docs/06-constraints.md`, "Stabilization").
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum Stabilization {
+    /// Classic Baumgarte: the bias `(β/h) C` is added to the real velocity
+    /// solve. What `01-solvers.md` measured, and M3 reproduces. With warm
+    /// starting and one pass on a 1:100 chain it **gains energy without
+    /// bound** (M4): the unconverged solve can't remove the bias velocity,
+    /// and warm starting carries it into the next substep.
+    Baumgarte,
+    /// Split impulses: the bias drives a separate pseudo-velocity that only
+    /// moves positions this substep and is then discarded, so real
+    /// velocities and the warm-started λ carry only physical impulses.
+    /// Stable on the 1:100 chain with warm starting kept.
+    #[default]
+    Split,
+}
+
 /// The order a Gauss–Seidel pass visits the constraints in. Each
 /// correction is used immediately by the next, so order is part of the
 /// method: along a chain, `Forward` carries a correction down the chain in
@@ -90,11 +108,14 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     /// One λ per constraint, same order.
     pub(crate) lambda: &'a mut [S],
     pub(crate) acc: &'a mut Vec<Vec2<S>>,
-    /// Positions at the start of the substep (XPBD's `x_prev`).
-    pub(crate) prev: &'a mut Vec<Vec2<S>>,
+    /// Scratch, one entry per particle: XPBD's positions at the start of
+    /// the substep, or the impulse solver's pseudo-velocities (split
+    /// stabilization). A substep uses one or the other.
+    pub(crate) scratch: &'a mut Vec<Vec2<S>>,
     pub(crate) iterations: NonZeroU32,
     pub(crate) order: Order,
     pub(crate) baumgarte: Baumgarte<S>,
+    pub(crate) stabilization: Stabilization,
 }
 
 #[cfg(test)]

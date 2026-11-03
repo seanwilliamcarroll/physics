@@ -2,7 +2,7 @@
 //! code becomes `None`, never a wrong scene.
 
 use engine::scenarios::DoublePendulumStart;
-use engine::{Integrator, Order, Solver};
+use engine::{Integrator, Order, Solver, Stabilization};
 
 use crate::abi;
 
@@ -92,6 +92,16 @@ pub(crate) const fn order_from_code(code: u32) -> Option<Order> {
         abi::ORDER_FORWARD => Some(Order::Forward),
         abi::ORDER_REVERSE => Some(Order::Reverse),
         abi::ORDER_ALTERNATING => Some(Order::Alternating),
+        _ => None,
+    }
+}
+
+/// Decodes a `demo_set_stabilization` code ([`abi`]).
+#[must_use]
+pub(crate) const fn stabilization_from_code(code: u32) -> Option<Stabilization> {
+    match code {
+        abi::STABILIZATION_BAUMGARTE => Some(Stabilization::Baumgarte),
+        abi::STABILIZATION_SPLIT => Some(Stabilization::Split),
         _ => None,
     }
 }

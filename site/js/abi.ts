@@ -19,6 +19,10 @@ export const ORDER_FORWARD = 0;
 export const ORDER_REVERSE = 1;
 export const ORDER_ALTERNATING = 2;
 
+/** demo_set_stabilization codes (M4): classic Baumgarte or split impulses. */
+export const STABILIZATION_BAUMGARTE = 0;
+export const STABILIZATION_SPLIT = 1;
+
 /** demo_new_double_pendulum start codes (M4). */
 export const START_HORIZONTAL = 0;
 export const START_RAISED = 1;

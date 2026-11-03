@@ -145,6 +145,7 @@ These guarantee the demos remain demonstrations.
 | Large `dt` orbit | Symplectic Euler at a coarse step visibly precesses (stays bounded) |
 | Impulse pendulum, β = 0 (M3) | Rod stretches > 40 cm in 10 s (measured 47 cm) |
 | XPBD pendulum, 1 substep (M3) | Loses > 8 of 9.81 J in 10 s (measured 8.79 J) |
+| Classic Baumgarte on the 1:100 chain (M4.9, `chains.rs`) | Gains > 100 J in 10 s at 20 substeps, more than at 2 (measured +3398 J vs +15 J) |
 | XPBD pendulum in f32, 100 substeps (M3) | Energy differs from f64 by > 0.2 J (f32 *gains* 0.11 J where f64 loses 0.31 J) |
 
 Name them for what they demonstrate, e.g.
