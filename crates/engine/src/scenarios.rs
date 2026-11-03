@@ -4,6 +4,7 @@
 //! One file per scene (`scenarios/<scene>.rs`), re-exported here, so
 //! callers write `scenarios::cluster` whatever file it lives in.
 
+mod chain;
 mod cluster;
 mod collapse;
 mod disk;
@@ -12,6 +13,7 @@ mod orbit;
 mod pendulum;
 mod shared;
 
+pub use chain::{CHAIN_LENGTH, CHAIN_LINK_MASS, CHAIN_LINKS, chain};
 pub use cluster::{
     CLUSTER_RADIUS, CLUSTER_SOFTENING, CLUSTER_SPEED, CLUSTER_SUBSTEPS, CLUSTER_TOTAL_MASS,
     CLUSTER_WEIGHT, cluster, cluster_gravity,
