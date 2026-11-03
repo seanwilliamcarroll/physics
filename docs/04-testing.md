@@ -408,14 +408,17 @@ cargo xtask coverage          # needs: cargo install cargo-llvm-cov
 Only the native `cargo test` run counts. The wasm run (`test-wasm`) and
 the browser smoke test execute code too, but aren't measured.
 
-**First report (M2.7):**
+**First report (M2.7, measured after M2.6 on the stack):**
 
 | Crate | Lines | Functions |
 |---|---|---|
 | `math` | 100.00% (65/65) | 100.00% (21/21) |
-| `engine` | 97.01% (324/334) | 94.92% (56/59) |
-| `web` | 97.27% (178/183) | 97.14% (34/35) |
-| Rust total | 97.42% (567/582) | 96.52% (111/115) |
+| `engine` | 98.38% (426/433) | 97.53% (79/81) |
+| `web` | 98.33% (236/240) | 97.62% (41/42) |
+| Rust total | 98.51% (727/738) | 97.92% (141/144) |
+
+(On `main` before M2.3–M2.6: 97.42% lines, 96.52% functions. The new
+code came with its tests, and those tests covered two earlier gaps.)
 
 | Site JS (imported modules only) | Lines | Branches | Functions |
 |---|---|---|---|
@@ -425,26 +428,28 @@ the browser smoke test execute code too, but aren't measured.
 | `plot.ts` | 43.93% | 87.50% | 75.00% |
 | `trail.ts` | 42.47% | 85.71% | 50.00% |
 | `canvas.ts` | 27.46% | 50.00% | 0.00% |
-| All listed files | 57.02% | 92.00% | 71.43% |
+| `divergence.ts` | 100% | 100% | 100% |
+| `perf.ts` | 80.82% | 100% | 81.82% |
+| All listed files | 61.01% | 94.29% | 75.00% |
 
 **What no test executes, and whether it matters:**
 
 - `web` `demo_panic_for_test` (`exports.rs`): can't run natively, since
   a panic can't unwind out of an `extern "C"` fn. Its Rust-ABI helper is
   tested, and the smoke test's panic case runs the export in Chrome. Fine.
-- `web` `Demo::energy` for an **f32** orbit (`demo.rs`): the native tests
-  only read energy from f64 orbits. The smoke test's f32 orbit case runs
-  it in the browser, but a native test would be cheap. Worth adding.
-- `engine` `ConfigError`'s `Display` (`world.rs`): no test formats the
-  error. Small, but it's the message a user would see; one assertion
-  would cover it.
+- `engine` `ConfigError::ZeroSubsteps`'s `Display` text (`world.rs`):
+  `InvalidSoftening`'s message is tested (M2.4), this one isn't. One
+  assertion; left for the cleanup PR. (The f32 energy gap the first run
+  found on `main` closed when M2.5 tested every gravity scene in both
+  scalars.)
 - `engine` `World::substeps()` getter and `Particles::default()`: unused
   accessors. Harmless.
 - `engine` scenarios: the `?` after `World::new(.., *_SUBSTEPS)` never
   takes the error branch (the constants are nonzero). Region-only misses;
   unreachable by construction.
 - Site JS: the uncovered lines are drawing code (`canvas.ts`, the
-  drawing halves of `plot.ts` and `trail.ts`) and `runLoop` (rAF). They
+  drawing halves of `plot.ts` and `trail.ts`, `perf.ts`'s HTML and
+  `performance.now()` helpers) and `runLoop` (rAF). They
   touch the DOM, so by design they're covered by the browser smoke test,
   not unit tests. The pure halves of those modules are covered.
 
