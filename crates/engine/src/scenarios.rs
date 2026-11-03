@@ -90,10 +90,19 @@ impl Fountain {
 /// Radius of the disk [`cluster`] fills, m.
 pub const CLUSTER_RADIUS: f64 = 2.0;
 
-/// Body mass range for [`cluster`], kg: `(min, max)`. With G ≈ 6.7 × 10⁻¹¹,
-/// `G m` is 0.3–1.3 m³/s², so bodies a meter apart accelerate at about
-/// 1 m/s²: visible motion within seconds at demo scale, in SI units.
-pub const CLUSTER_MASS: (f64, f64) = (0.5e10, 2.0e10);
+/// Total mass of [`cluster`], kg, whatever N: `G M` ≈ 13 m³/s². Fixed so
+/// the time scale doesn't change with N. Per-body mass ranges (as before
+/// M2.6) made N = 1024 collapse and fling every body out of view within
+/// 0.5 s, while N = 256 kept most. The value is the 16-body golden run's
+/// former mean total (16 × 1.25 × 10¹⁰), so small clusters behave as
+/// before.
+pub const CLUSTER_TOTAL_MASS: f64 = 2.0e11;
+
+/// Relative body weight range for [`cluster`], `(min, max)`: each body draws
+/// a weight, then masses are scaled so they sum to [`CLUSTER_TOTAL_MASS`].
+/// Unequal masses keep momentum tests honest (equal masses can hide a
+/// mass-weighting bug).
+pub const CLUSTER_WEIGHT: (f64, f64) = (0.5, 2.0);
 
 /// Largest initial speed per axis for [`cluster`], m/s. Random drift gives
 /// the cluster a nonzero net momentum, so conservation tests have a value
@@ -131,7 +140,8 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 }
 
 /// `n` bodies under mutual softened gravity: positions uniform in a disk
-/// of [`CLUSTER_RADIUS`], masses in [`CLUSTER_MASS`], small random
+/// of [`CLUSTER_RADIUS`], masses in proportion to weights drawn from
+/// [`CLUSTER_WEIGHT`] and summing to [`CLUSTER_TOTAL_MASS`], small random
 /// velocities. Deterministic per seed.
 ///
 /// Positions use rejection sampling ([`point_in_annulus`]) rather than
@@ -145,19 +155,32 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
     w.add_force(cluster_gravity()?);
-    let mut rng = SplitMix64::new(seed);
-    for _ in 0..n {
-        let (x, y) = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
-        let vx = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
-        let vy = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
-        let mass = rng.range(CLUSTER_MASS.0, CLUSTER_MASS.1);
-        w.particles.add(
-            Vec2::new(S::from_f64(x), S::from_f64(y)),
-            Vec2::new(S::from_f64(vx), S::from_f64(vy)),
-            S::from_f64(mass),
-        );
+    let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
+    for (pos, vel, mass) in cluster_bodies(n, seed) {
+        w.particles.add(vec(pos), vec(vel), S::from_f64(mass));
     }
     Ok(w)
+}
+
+/// [`cluster`]'s bodies in `f64` (not generic: compiled once). Weights
+/// are drawn per body in the same pass as position and velocity, then
+/// scaled to the total.
+fn cluster_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
+    let mut rng = SplitMix64::new(seed);
+    let mut bodies: Vec<BodyF64> = (0..n)
+        .map(|_| {
+            let pos = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
+            let vx = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
+            let vy = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
+            let weight = rng.range(CLUSTER_WEIGHT.0, CLUSTER_WEIGHT.1);
+            (pos, (vx, vy), weight)
+        })
+        .collect();
+    let total_weight: f64 = bodies.iter().map(|b| b.2).sum();
+    for b in &mut bodies {
+        b.2 *= CLUSTER_TOTAL_MASS / total_weight;
+    }
+    bodies
 }
 
 /// A point uniform in the annulus `inner ≤ r ≤ outer` around the origin

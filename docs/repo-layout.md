@@ -69,12 +69,14 @@ physics/
     │   ├── canvas.ts       # world→screen, high-DPI, batched drawing
     │   ├── plot.ts         # ring-buffer line plots
     │   ├── controls.ts     # sliders/dropdowns → demo_set_*
+    │   ├── perf.ts         # timings, per-N cost table (ns/pair)
+    │   ├── divergence.ts   # RMS distance between two runs
     │   ├── …               # abi, dom, options, ring, smoke, trail
     │   └── engine.d.ts     # types for the wasm exports/imports
     ├── demos/
-    │   └── m0-hello/
-    │       ├── index.html
-    │       └── main.js
+    │   ├── m0-hello/       # each: index.html + main.ts (emits main.js)
+    │   ├── m1-orbits/
+    │   └── m2-cluster/
     └── pkg/                # build output (gitignored): engine.wasm
 ```
 

@@ -84,7 +84,7 @@ for_each_scalar!(every_run_is_repeatable);
 /// same values under wasm32-wasip1 are TASKS.md M1 decision 7.
 const GOLDEN: [(u64, u64); 7] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
-    (0xfd76_1b94_7897_ef95, 0x187f_c50c_b7bf_522b), // Cluster
+    (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster
     (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
     (0x4243_55a9_2d1b_b9d3, 0x2ec5_fcc0_29c0_1f7b), // Collapse
     (0x38b8_98d9_9f2e_436a, 0x62a3_677f_7c53_91e2), // Orbit(SymplecticEuler)

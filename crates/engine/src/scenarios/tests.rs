@@ -1,5 +1,6 @@
 use super::{
-    CLUSTER_MASS, CLUSTER_RADIUS, CLUSTER_SPEED, FOUNTAIN_VX, FOUNTAIN_VY, Fountain, cluster,
+    CLUSTER_RADIUS, CLUSTER_SPEED, CLUSTER_TOTAL_MASS, CLUSTER_WEIGHT, FOUNTAIN_VX, FOUNTAIN_VY,
+    Fountain, cluster,
 };
 use super::{
     ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, orbit, orbit_gravity, orbit_period,
@@ -10,6 +11,14 @@ use crate::{Force, Integrator, Vec2, World};
 
 fn in_launch_range(v: Vec2<f64>) -> bool {
     (FOUNTAIN_VX.0..FOUNTAIN_VX.1).contains(&v.x) && (FOUNTAIN_VY.0..FOUNTAIN_VY.1).contains(&v.y)
+}
+
+/// `got` equals `want` up to the rounding of `v0 + want` then `- v0`: a
+/// few ulps of the larger magnitude. A different force (other ε or G)
+/// would differ by far more.
+fn assert_same_up_to_rounding(got: Vec2<f64>, want: Vec2<f64>, v0: Vec2<f64>) {
+    let tol = 4.0 * f64::EPSILON * (want.length() + v0.length());
+    assert!((got - want).length() <= tol, "{got:?} vs {want:?}");
 }
 
 fn run(w: &mut World<f64>, steps: u32) {
@@ -96,13 +105,16 @@ fn cluster_places_n_bodies_in_the_disk_with_bounded_mass_and_speed() {
             .iter()
             .all(|v| v.x.abs() <= CLUSTER_SPEED && v.y.abs() <= CLUSTER_SPEED)
     );
-    let (lo, hi) = CLUSTER_MASS;
-    assert!(
-        w.particles
-            .inv_mass()
-            .iter()
-            .all(|&iw| (lo..=hi).contains(&(1.0 / iw)))
-    );
+    // Fixed total, whatever N; relative weights keep their spread.
+    let masses: Vec<f64> = w.particles.inv_mass().iter().map(|iw| 1.0 / iw).collect();
+    let total: f64 = masses.iter().sum();
+    assert!((total - CLUSTER_TOTAL_MASS).abs() <= 1e-12 * CLUSTER_TOTAL_MASS);
+    let (lo, hi) = masses
+        .iter()
+        .fold((f64::INFINITY, 0.0_f64), |(lo, hi), &m| {
+            (lo.min(m), hi.max(m))
+        });
+    assert!(hi / lo <= CLUSTER_WEIGHT.1 / CLUSTER_WEIGHT.0);
 }
 
 #[test]
@@ -174,7 +186,7 @@ fn orbit_gravity_is_the_force_the_scene_uses() {
     let v0 = stepped.particles.vel().to_vec();
     stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
     for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
-        assert_eq!(*v1 - *v0, *a);
+        assert_same_up_to_rounding(*v1 - *v0, *a, *v0);
     }
 }
 
@@ -191,7 +203,7 @@ fn cluster_gravity_is_the_force_the_cluster_uses() {
     let v0 = stepped.particles.vel().to_vec();
     stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
     for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
-        assert_eq!(*v1 - *v0, *a);
+        assert_same_up_to_rounding(*v1 - *v0, *a, *v0);
     }
 }
 

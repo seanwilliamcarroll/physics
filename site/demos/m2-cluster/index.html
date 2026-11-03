@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M2 · N-body gravity, f32 vs f64</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>N-body gravity: f32 vs f64</h1>
+    <p class="muted">
+      The same seeded scene twice, one in 32-bit floats and one in 64-bit. At
+      the start they differ only by f32's rounding of the initial state, far
+      too small to see. Gravity between many bodies is chaotic, so that
+      difference grows exponentially until the two runs look unrelated. Set
+      softening to 0 to watch close passes fling bodies apart.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="panels" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Divergence</h2>
+    <p class="muted">
+      Root-mean-square distance between matching bodies in the two panels, in
+      meters (log scale). Roughly a straight line while it grows: exponential
+      growth, the signature of chaos.
+    </p>
+    <div class="plot"><canvas id="divergence"></canvas></div>
+    <h2>Energy error</h2>
+    <p class="muted">
+      <code>|ΔE / E₀|</code> per panel. Changing softening changes the
+      potential itself, so it restarts this plot from the new energy.
+    </p>
+    <div class="plot"><canvas id="energy"></canvas></div>
+    <h2>Cost</h2>
+    <p class="muted">
+      Measured time per physics step at each N tried (smoothed). Direct
+      summation does N(N−1)/2 pair interactions, so a flat ns/pair column means
+      cost grows as N²: double N, four times the cost.
+    </p>
+    <div id="cost"></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
