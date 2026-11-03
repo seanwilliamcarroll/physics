@@ -17,6 +17,6 @@ pub use barnes_hut::{BarnesHut, OpeningAngle};
 pub use force::{Force, PairwiseGravity, UniformGravity};
 pub use integrate::Integrator;
 pub use math::{Scalar, Vec2};
-pub use particles::Particles;
+pub use particles::{ParticleId, Particles};
 pub use softening::Softening;
 pub use world::{ConfigError, World};

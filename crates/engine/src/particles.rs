@@ -1,6 +1,25 @@
-//! [`Particles<S>`]: struct-of-arrays storage for point masses.
+//! [`Particles<S>`]: struct-of-arrays storage for point masses, and
+//! [`ParticleId`], the handle `add` returns.
 
 use crate::{Scalar, Vec2};
+
+/// Names one particle: its slot in [`Particles`].
+///
+/// A plain index, no generation counter: particles can't be removed, so an
+/// id can never go stale (`docs/type-invariants.md`, item 5, keeps the
+/// trigger for a generational handle). Only [`Particles`] creates ids, so
+/// every id is a slot that exists in the `Particles` it came from.
+/// Not `#[must_use]`: most scenes add particles without naming them.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ParticleId(pub(crate) usize);
+
+impl ParticleId {
+    /// The slot, for indexing the slices [`Particles`] hands out.
+    #[must_use]
+    pub const fn index(self) -> usize {
+        self.0
+    }
+}
 
 /// Point masses stored as a struct of arrays (one `Vec` per field).
 ///
@@ -29,19 +48,22 @@ impl<S: Scalar> Particles<S> {
     /// Adds a dynamic particle. `mass` must be positive: it's inverted here,
     /// and `1 / 0` has no fixed-point representation. Use
     /// [`add_static`](Self::add_static) for immovable particles.
-    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: S) {
-        self.push(pos, vel, S::ONE / mass);
+    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: S) -> ParticleId {
+        self.push(pos, vel, S::ONE / mass)
     }
 
     /// Adds an immovable particle (`inv_mass = 0`, zero velocity).
-    pub fn add_static(&mut self, pos: Vec2<S>) {
-        self.push(pos, Vec2::ZERO, S::ZERO);
+    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId {
+        self.push(pos, Vec2::ZERO, S::ZERO)
     }
 
-    fn push(&mut self, pos: Vec2<S>, vel: Vec2<S>, inv_mass: S) {
+    /// Appends to every field; the new slot is the old length.
+    fn push(&mut self, pos: Vec2<S>, vel: Vec2<S>, inv_mass: S) -> ParticleId {
+        let id = ParticleId(self.pos.len());
         self.pos.push(pos);
         self.vel.push(vel);
         self.inv_mass.push(inv_mass);
+        id
     }
 
     #[must_use]

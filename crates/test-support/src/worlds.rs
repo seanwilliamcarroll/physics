@@ -60,7 +60,7 @@ pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> Wo
         match b.mass {
             Some(m) => w.particles.add(pos, v(b.vel.0, b.vel.1), s(m)),
             None => w.particles.add_static(pos),
-        }
+        };
     }
     w
 }
