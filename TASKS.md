@@ -213,9 +213,18 @@ fixed.
 - WebGL rendering (`docs/05-roadmap.md` web track): only if a few hundred
   bodies can't hold 60 Hz on Canvas 2D (M0 measured 100k+ is fine)
 
-## Known gap
+## Known gaps
 
-With no CI, nothing on GitHub's side checks fmt, clippy, or tests: a PR is
+**M2 page at N = 4096 (found in review):** about 1 fps. One step of all
+three panels costs ~27 ms (f32 and f64 direct, plus Barnes–Hut), so 60 Hz
+needs ~1.6 s of compute per second. Every frame then runs the 15 steps
+`FixedStep`'s 0.25 s clamp allows (~400 ms). 2048 keeps up (~7 ms per
+step). Options: a per-frame step budget, so the sim runs in slow motion
+instead of freezing the display; fewer panels at large N; or Web Workers,
+one per panel (the panels are independent, so that's real parallelism) and
+the main thread only draws. Leaning toward workers; revisit after M2.
+
+**No CI:** with no CI, nothing on GitHub's side checks fmt, clippy, or tests: a PR is
 only as clean as the hooks on the machine that pushed it, and `--no-verify`
 skips them. Branch protection can't require a status check that doesn't
 exist. Fine for a solo project; it's the main argument for adding CI later.
