@@ -3,7 +3,8 @@
 #![cfg(test)]
 
 use engine::scenarios::{
-    CHAIN_LINKS, Fountain, chain, cluster, collapse, disk, double_pendulum, orbit, pendulum,
+    CHAIN_LINKS, DoublePendulumStart, Fountain, chain, cluster, collapse, disk, double_pendulum,
+    orbit, pendulum,
 };
 use engine::{Integrator, Scalar, Solver};
 use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, s, state_hash};
@@ -95,7 +96,13 @@ fn run<S: Scalar>(r: Run) -> u64 {
             state_hash(&w.particles)
         }
         Run::DoublePendulum => {
-            let mut w = double_pendulum::<S>(Solver::Impulse, nonzero(20), 1e-9).unwrap();
+            let mut w = double_pendulum::<S>(
+                Solver::Impulse,
+                nonzero(20),
+                DoublePendulumStart::Horizontal,
+                1e-9,
+            )
+            .unwrap();
             for _ in 0..600 {
                 w.step(s(DT));
             }

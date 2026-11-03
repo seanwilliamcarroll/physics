@@ -1,11 +1,17 @@
 use core::num::NonZeroU32;
 
-use super::{DOUBLE_PENDULUM_LENGTH, DOUBLE_PENDULUM_MASS, double_pendulum};
+use super::{DOUBLE_PENDULUM_LENGTH, DOUBLE_PENDULUM_MASS, DoublePendulumStart, double_pendulum};
 use crate::{Constraint, Solver, Vec2};
 
 #[test]
 fn pin_and_two_rods_level_with_it() {
-    let w = double_pendulum::<f64>(Solver::Impulse, NonZeroU32::MIN, 0.0).unwrap();
+    let w = double_pendulum::<f64>(
+        Solver::Impulse,
+        NonZeroU32::MIN,
+        DoublePendulumStart::Horizontal,
+        0.0,
+    )
+    .unwrap();
     let p = &w.particles;
     let l = DOUBLE_PENDULUM_LENGTH;
     assert_eq!(
@@ -27,8 +33,20 @@ fn pin_and_two_rods_level_with_it() {
 
 #[test]
 fn offset_moves_only_the_tip_and_only_in_y() {
-    let base = double_pendulum::<f64>(Solver::Xpbd, NonZeroU32::MIN, 0.0).unwrap();
-    let nudged = double_pendulum::<f64>(Solver::Xpbd, NonZeroU32::MIN, 1e-9).unwrap();
+    let base = double_pendulum::<f64>(
+        Solver::Xpbd,
+        NonZeroU32::MIN,
+        DoublePendulumStart::Horizontal,
+        0.0,
+    )
+    .unwrap();
+    let nudged = double_pendulum::<f64>(
+        Solver::Xpbd,
+        NonZeroU32::MIN,
+        DoublePendulumStart::Horizontal,
+        1e-9,
+    )
+    .unwrap();
     let (a, b) = (base.particles.pos(), nudged.particles.pos());
     assert_eq!(a[..2], b[..2]);
     assert_eq!(b[2], a[2] + Vec2::new(0.0, 1e-9));
@@ -36,6 +54,31 @@ fn offset_moves_only_the_tip_and_only_in_y() {
 
 #[test]
 fn substeps_are_the_ones_given() {
-    let w = double_pendulum::<f32>(Solver::Xpbd, NonZeroU32::new(20).unwrap(), 0.0).unwrap();
+    let w = double_pendulum::<f32>(
+        Solver::Xpbd,
+        NonZeroU32::new(20).unwrap(),
+        DoublePendulumStart::Horizontal,
+        0.0,
+    )
+    .unwrap();
     assert_eq!(w.substeps(), 20);
+}
+
+#[test]
+fn raised_start_puts_both_rods_at_135_degrees() {
+    let w = double_pendulum::<f64>(
+        Solver::Impulse,
+        NonZeroU32::MIN,
+        DoublePendulumStart::Raised,
+        0.0,
+    )
+    .unwrap();
+    let h = 0.5_f64.sqrt();
+    let p = w.particles.pos();
+    assert_eq!(p[1], crate::Vec2::new(h, h));
+    assert_eq!(p[2], crate::Vec2::new(2.0 * h, 2.0 * h));
+    // Rods keep their 1 m length.
+    for c in w.constraints() {
+        assert!((c.length() - DOUBLE_PENDULUM_LENGTH).abs() < 1e-15);
+    }
 }
