@@ -191,6 +191,14 @@ fn grab_drag_release_through_the_c_abi() {
         // Anchor added: 12 particles, 11 rods.
         assert_eq!((demo_positions_len(d), demo_links_len(d)), (24, 22));
         assert_eq!(demo_drag(d, 1.0, 1.0), 1);
+        // Dragging far off stretches the drag rod, not the chain: the
+        // readout leaves the drag rod out (a fresh grab: the chain is intact).
+        assert_eq!(demo_drag(d, 50.0, 50.0), 1);
+        assert!(
+            demo_constraint_error(d) < 1e-9,
+            "chain untouched before stepping"
+        );
+        assert_eq!(demo_drag(d, 1.0, 1.0), 1);
         assert_eq!(demo_drag(d, f64::NAN, 1.0), 0);
         assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
         assert_eq!(demo_release(d), 1);

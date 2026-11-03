@@ -170,7 +170,10 @@ impl Demo {
     /// constraints.
     #[must_use]
     pub(crate) fn constraint_error(&self) -> Option<f64> {
-        each_scalar!(&self.world, s => s.constraint_error())
+        // A held grab's rod is the last constraint; its stretch is the
+        // pull, not error, so the readout leaves it out.
+        let skip = usize::from(self.grab.is_some());
+        each_scalar!(&self.world, s => s.constraint_error(skip))
     }
 
     /// Physics steps per simulated second (`dt = 1 / rate`). Drops owed
