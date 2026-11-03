@@ -3,21 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>M4 · Chains: solid vs rubbery</title>
+  <title>M4 · Chains: heavy bob, light links</title>
   <link rel="stylesheet" href="../../css/site.css">
   <script type="module" src="./main.js"></script>
 </head>
 <body>
   <main class="wide">
     <p><a href="../../">← all demos</a></p>
-    <h1>Chains: solid vs rubbery</h1>
+    <h1>Chains: heavy bob, light links</h1>
     <p class="muted">
       A heavy bob on a chain of light links, 100 times lighter, solved two
-      ways. <b>Grab any link or the bob and fling it.</b> XPBD keeps every link
-      at its length; the impulse solver lets the chain stretch and lag behind
-      your hand. Same chain, same settings, same cost. Lower the mass ratio
-      and the difference shrinks: it's the heavy bob the light links can't
-      hold. More iterations help both.
+      ways. <b>Grab any link or the bob and fling it.</b> Both hold: XPBD
+      corrects positions directly, and the impulse solver does too, through
+      <i>split impulses</i>. Now switch the impulse panel to <b>classic
+      Baumgarte</b>, the textbook method from the pendulum page: it feeds
+      position error back as real velocity, and on a heavy chain that velocity
+      piles up until the chain explodes. More substeps make it <i>worse</i>,
+      the opposite of the pendulum page's lesson. Lower the mass ratio and it
+      calms down.
     </p>
     <div class="controls" id="controls"></div>
     <div class="panels" id="panels"></div>
@@ -28,6 +31,13 @@
       from its true length. The drag's own pull isn't counted.
     </p>
     <div class="plot"><canvas id="error"></canvas></div>
+    <h2>Energy</h2>
+    <p class="muted">
+      Energy gained since the start, in joules (the swing holds about 10 J). A
+      frictionless chain can only <i>lose</i> energy to a solver; a rising line
+      is the solver pumping it in.
+    </p>
+    <div class="plot"><canvas id="energy"></canvas></div>
     <section id="options"></section>
   </main>
 </body>

@@ -7,7 +7,7 @@ import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
 import { View, clear, drawPoints, drawLinks, cssColor } from "../../js/canvas.ts";
 import {
   COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, ORDER_ALTERNATING, ORDER_FORWARD, ORDER_REVERSE, SCALAR_F64,
-  SOLVER_IMPULSE, SOLVER_XPBD,
+  SOLVER_IMPULSE, SOLVER_XPBD, STABILIZATION_BAUMGARTE, STABILIZATION_SPLIT,
 } from "../../js/abi.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
@@ -24,6 +24,11 @@ const PANELS = [
   { code: SOLVER_IMPULSE, name: "impulse", colorVar: "--series-3" },
 ];
 
+/** The impulse panel's position correction (XPBD ignores it). */
+const STABILIZATIONS = { split: STABILIZATION_SPLIT, classic: STABILIZATION_BAUMGARTE };
+type StabName = keyof typeof STABILIZATIONS;
+const isStab = (s: string): s is StabName => Object.hasOwn(STABILIZATIONS, s);
+
 const ORDERS = { forward: ORDER_FORWARD, reverse: ORDER_REVERSE, alternating: ORDER_ALTERNATING };
 type OrderName = keyof typeof ORDERS;
 function isOrder(s: string): s is OrderName {
@@ -34,10 +39,11 @@ function isOrder(s: string): s is OrderName {
 const MASS_RATIOS = ["1", "10", "100", "1000"];
 
 const OPTIONS: {
-  ratio: ChoiceOption; links: IntOption; substeps: IntOption; iterations: IntOption; order: ChoiceOption;
-  rate: IntOption; fps: IntOption;
+  ratio: ChoiceOption; stab: ChoiceOption; links: IntOption; substeps: IntOption; iterations: IntOption;
+  order: ChoiceOption; rate: IntOption; fps: IntOption;
 } = {
   ratio: { kind: "choice", values: MASS_RATIOS, default: "100", help: "bob mass / link mass" },
+  stab: { kind: "choice", values: Object.keys(STABILIZATIONS), default: "split", help: "impulse panel: split impulses, or classic Baumgarte (blows up on heavy chains)" },
   // 10: engine::scenarios::CHAIN_LINKS.
   links: { kind: "int", min: 1, max: 40, default: 10, help: "links in the chain (1 m total)" },
   // 20: the substeps M4.4 measured the chain at (and both demos start with).
@@ -50,6 +56,8 @@ const OPTIONS: {
 
 const PRESETS: [string, string][] = [
   ["1:100 (default)", ""],
+  ["classic Baumgarte blows up", "?stab=classic"],
+  ["classic, 2 substeps (milder)", "?stab=classic&substeps=2"],
   ["equal masses", "?ratio=1"],
   ["1:1000", "?ratio=1000"],
   ["1 substep", "?substeps=1"],
@@ -78,6 +86,7 @@ const state = {
   substeps: readInt(params, "substeps", OPTIONS.substeps),
   iterations: readInt(params, "iterations", OPTIONS.iterations),
   order: (isOrder(orderParam) ? orderParam : "forward") as OrderName,
+  stab: ((s) => (isStab(s) ? s : "split"))(readChoice(params, "stab", OPTIONS.stab)) as StabName,
   rate: readInt(params, "rate", OPTIONS.rate),
 };
 const maxFps = readInt(params, "fps", OPTIONS.fps);
@@ -97,9 +106,17 @@ const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg,
   ...cfg,
   ...base,
   demo: null as DemoHandle | null,
+  /** Energy at the start: the reference for "energy gained". */
+  e0: 0,
 }));
 type Panel = (typeof panels)[number];
 
+const energyPlot = new LinePlot(byId("energy", HTMLCanvasElement), {
+  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  capacity: PLOT_SAMPLES,
+  scale: "linear",
+  colors: { background: colors.background, grid: colors.grid, text: colors.text },
+});
 const errorPlot = new LinePlot(byId("error", HTMLCanvasElement), {
   series: panels.map((p) => ({ label: p.name, color: p.color })),
   capacity: PLOT_SAMPLES,
@@ -119,6 +136,7 @@ try {
         engine.demo_set_substeps(d, state.substeps),
         engine.demo_set_iterations(d, state.iterations),
         engine.demo_set_order(d, ORDERS[state.order]),
+        engine.demo_set_stabilization(d, STABILIZATIONS[state.stab]),
         engine.demo_set_rate(d, state.rate),
       ];
       if (!statuses.every((s) => s === 1)) throw new Error("a setting was rejected");
@@ -132,9 +150,11 @@ try {
       const demo = engine.demo_new_chain(SCALAR_F64, state.links, state.ratio);
       if (demo === 0) throw new Error("demo_new_chain returned null");
       p.demo = demo;
+      p.e0 = engine.demo_energy(demo);
     }
     applySettings();
     errorPlot.clear();
+    energyPlot.clear();
     simTime = 0;
   };
   restart();
@@ -196,6 +216,15 @@ try {
     },
   });
   select(controls, {
+    label: "impulse uses",
+    choices: [["split", "split impulses"], ["classic", "classic Baumgarte"]],
+    value: state.stab,
+    onChange: (v) => {
+      if (isStab(v)) state.stab = v;
+      restart();
+    },
+  });
+  select(controls, {
     label: "order",
     choices: Object.keys(ORDERS).map((o) => [o, o]),
     value: state.order,
@@ -230,15 +259,20 @@ try {
     runLoop((elapsed, now) => {
       let steps = 0;
       for (const p of panels) steps = engine.demo_advance(demoHandle(p), elapsed);
-      const errors = panels.map((p) => {
+      const readings = panels.map((p) => {
         drawPanel(p);
-        const err = engine.demo_constraint_error(demoHandle(p));
-        p.readout.textContent = `worst link off by ${(err * MM_PER_M).toFixed(2)} mm`;
-        return err;
+        const demo = demoHandle(p);
+        const err = engine.demo_constraint_error(demo);
+        const gained = engine.demo_energy(demo) - p.e0;
+        p.readout.textContent =
+          `worst link off by ${(err * MM_PER_M).toFixed(2)} mm · energy ${gained >= 0 ? "+" : ""}${gained.toFixed(2)} J`;
+        return { err, gained };
       });
       simTime += steps / state.rate;
-      errorPlot.push(simTime, errors);
+      errorPlot.push(simTime, readings.map((r) => r.err));
+      energyPlot.push(simTime, readings.map((r) => r.gained));
       errorPlot.draw();
+      energyPlot.draw();
       fps.add(now);
       sps.add(now, steps);
       hud.textContent =
