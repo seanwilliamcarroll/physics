@@ -185,7 +185,7 @@ Accelerations, not forces: storing `a = F/m` means static particles
 **As built (M2.4):** `PairwiseGravity::new(g_const, softening: Softening<S>)`.
 `Softening` is checked once (`≥ 0`, not NaN; `docs/type-invariants.md`), so
 the force stores ε² and trusts it. Changing ε on a running world is
-`World::clear_forces` + `add_force(scenarios::gravity(ε))`, rather than a
+`World::clear_forces` + `add_force(scenarios::newtonian(ε))`, rather than a
 setter on `Box<dyn Force>` (which would need downcasting).
 
 **As built (M1.2):** each pair computes one force vector and applies it

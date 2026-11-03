@@ -2,7 +2,7 @@
 //! every scene constant goes through, and the rejection sampler.
 
 use crate::rng::SplitMix64;
-use crate::{ConfigError, Mass, PairwiseGravity, Scalar, Softening};
+use crate::{ConfigError, Mass, PairwiseGravity, Scalar, Softening, Vec2, World};
 
 /// Standard gravity g₀, m/s²: a magnitude, applied downward (y is up) as
 /// `(0, -g₀)`. Exact by definition (3rd CGPM, 1901), not a measurement.
@@ -15,9 +15,9 @@ pub const GRAVITATIONAL_CONSTANT: f64 = 6.674_30e-11;
 
 /// Newtonian gravity in SI units ([`GRAVITATIONAL_CONSTANT`]) with the
 /// given softening: the only force the gravity scenes use. Rebuilding a
-/// scene's force with a new ε is `clear_forces` + `add_force(gravity(ε))`.
+/// scene's force with a new ε is `clear_forces` + `add_force(newtonian(ε))`.
 #[must_use]
-pub fn gravity<S: Scalar>(softening: Softening<S>) -> PairwiseGravity<S> {
+pub fn newtonian<S: Scalar>(softening: Softening<S>) -> PairwiseGravity<S> {
     PairwiseGravity::new(S::from_f64(GRAVITATIONAL_CONSTANT), softening)
 }
 
@@ -46,8 +46,27 @@ pub(super) fn point_in_annulus(rng: &mut SplitMix64, inner: f64, outer: f64) -> 
     }
 }
 
-/// One body in `f64` before conversion: `(position, velocity, mass)`.
-pub(super) type BodyF64 = ((f64, f64), (f64, f64), f64);
+/// One body as a scene computes it, in `f64`, before conversion to the
+/// engine's scalar: setup math runs in `f64` once, not once per scalar
+/// type (`.wasm` size; see `docs/03-wasm-shell.md`).
+pub(super) struct BodyF64 {
+    pub(super) pos: (f64, f64),
+    pub(super) vel: (f64, f64),
+    /// kg.
+    pub(super) mass: f64,
+}
+
+/// Converts `bodies` to `S` and adds them to `w`, each mass checked once.
+pub(super) fn add_bodies<S: Scalar>(
+    w: &mut World<S>,
+    bodies: impl IntoIterator<Item = BodyF64>,
+) -> Result<(), ConfigError> {
+    let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
+    for b in bodies {
+        w.particles.add(vec(b.pos), vec(b.vel), mass(b.mass)?);
+    }
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests;

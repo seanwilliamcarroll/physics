@@ -24,7 +24,7 @@ pub use orbit::{
     ORBIT_SUBSTEPS, ORBIT_TOTAL_MASS, orbit, orbit_gravity, orbit_period, orbit_relative_speed,
 };
 pub use pendulum::{PENDULUM_LENGTH, PENDULUM_MASS, pendulum, pendulum_gravity};
-pub use shared::{GRAVITATIONAL_CONSTANT, STANDARD_GRAVITY, gravity};
+pub use shared::{GRAVITATIONAL_CONSTANT, STANDARD_GRAVITY, newtonian};
 
 #[cfg(test)]
 mod test_util;

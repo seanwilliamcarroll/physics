@@ -2,7 +2,7 @@
 
 use core::num::NonZeroU32;
 
-use super::shared::{GRAVITATIONAL_CONSTANT, gravity, mass, softening};
+use super::shared::{GRAVITATIONAL_CONSTANT, mass, newtonian, softening};
 use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, Vec2, World};
 
 /// Star–planet separation for [`orbit`], m.
@@ -60,14 +60,14 @@ pub fn orbit_period() -> f64 {
     2.0 * core::f64::consts::PI * ORBIT_SEPARATION / orbit_relative_speed()
 }
 
-/// The force [`orbit`] adds: [`gravity`] with [`ORBIT_SOFTENING`]. Public
+/// The force [`orbit`] adds: [`newtonian`] with [`ORBIT_SOFTENING`]. Public
 /// so energy readouts (`diagnostics::total_energy`) use exactly the scene's
 /// force.
 ///
 /// # Errors
 /// Only if [`ORBIT_SOFTENING`] were invalid (it isn't: it's positive).
 pub fn orbit_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
-    softening(ORBIT_SOFTENING).map(gravity)
+    softening(ORBIT_SOFTENING).map(newtonian)
 }
 
 /// A star and a planet [`ORBIT_SEPARATION`] apart, center of mass at the

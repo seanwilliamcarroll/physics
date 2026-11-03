@@ -42,7 +42,7 @@ fn gravity_scenes_have_n_bodies_and_an_energy() {
 
 #[test]
 fn set_softening_rebuilds_the_force_and_the_energy_readout() {
-    use engine::scenarios::{collapse, gravity};
+    use engine::scenarios::{collapse, newtonian};
     let mut d = Demo::new(
         DemoKind::Gravity(GravityScene::Collapse),
         ScalarKind::F64,
@@ -53,9 +53,12 @@ fn set_softening_rebuilds_the_force_and_the_energy_readout() {
     let eps = Softening::new(0.5).unwrap();
     assert!(d.set_softening(eps));
     // Readout under the new force: same as diagnostics on an identical
-    // world with gravity(0.5).
+    // world with newtonian(0.5).
     let w = collapse::<f64>(40, 3).unwrap();
-    assert_eq!(d.energy(), Some(total_energy(&w.particles, &gravity(eps))));
+    assert_eq!(
+        d.energy(),
+        Some(total_energy(&w.particles, &newtonian(eps)))
+    );
 
     // And the world steps under it: a softer force pulls less, so after
     // one step the cloud has fallen less than with the default.
