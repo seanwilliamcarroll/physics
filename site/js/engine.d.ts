@@ -68,6 +68,9 @@ export interface EngineExports {
   demo_drag(demo: DemoHandle, x: number, y: number): Status;
   /** Releases the held grab; 0 if nothing was held. */
   demo_release(demo: DemoHandle): Status;
+  /** Particle i's exact x / y in meters (the engine's scalar as f64); NaN past the end. */
+  demo_particle_x(demo: DemoHandle, i: number): number;
+  demo_particle_y(demo: DemoHandle, i: number): number;
   /** Code: abi.ts ORDER_*; order of each solver pass over constraints. */
   demo_set_order(demo: DemoHandle, code: number): Status;
   /** Total energy in joules, or NaN where undefined (the fountain). */

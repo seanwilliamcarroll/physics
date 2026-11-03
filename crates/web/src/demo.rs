@@ -130,6 +130,15 @@ impl Demo {
         steps
     }
 
+    /// Particle `i`'s position in the engine's own scalar, widened to
+    /// `f64` (lossless): for readouts the `f32` render buffer can't resolve,
+    /// e.g. two tips 1e-9 m apart near 2 m, where `f32`'s spacing is
+    /// ~2.4e-7 m. `None` past the last particle.
+    #[must_use]
+    pub(crate) fn particle_position(&self, i: usize) -> Option<(f64, f64)> {
+        each_scalar!(&self.world, s => s.world.particles.pos().get(i).map(|p| (p.x.to_f64(), p.y.to_f64())))
+    }
+
     /// Interleaved particle positions, `f32`, in meters.
     #[must_use]
     pub(crate) fn positions(&self) -> &[f32] {
