@@ -4,131 +4,14 @@
 
 use std::env;
 use std::fs;
-use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::process::{self, Child, Stdio};
-use std::thread;
-use std::time::Duration;
+use std::process::{self};
 
-/// What a case must show.
-#[derive(Copy, Clone)]
-enum Check {
-    /// Physics stepped and particles were drawn ([`judge`]).
-    Draws,
-    /// A deliberate Rust panic reached the console via the hook ([`judge_panic`]).
-    PanicReported,
-}
+mod cases;
+mod server;
 
-/// One page load to check: a name (for the screenshot), the page (relative
-/// to `site/`), a URL query, and what it must show.
-struct Case {
-    name: &'static str,
-    page: &'static str,
-    query: &'static str,
-    check: Check,
-}
-
-const M0: &str = "demos/m0-hello/";
-const M1: &str = "demos/m1-orbits/";
-const M2: &str = "demos/m2-cluster/";
-const M3: &str = "demos/m3-pendulum/";
-const M4_CHAIN: &str = "demos/m4-chain/";
-const M4_DP: &str = "demos/m4-double-pendulum/";
-
-/// M0: default settings, the other scalar, the size that once rendered a
-/// blank canvas (one path over Chrome's ~16 MiB draw-command limit), and
-/// the panic hook. M1: all three orbit panels must draw and report finite
-/// energy, in both scalars. M2: both panels on the default disk, the
-/// unsoftened collapse (energy must stay finite through the blow-up), and
-/// a heavier cluster. M3: both solver panels, default and the f32 stress
-/// case (100 substeps). M4: the chain (both solver panels) and the double
-/// pendulum in both comparison modes.
-const CASES: [Case; 14] = [
-    Case {
-        name: "default",
-        page: M0,
-        query: "?smoke",
-        check: Check::Draws,
-    },
-    Case {
-        name: "f64",
-        page: M0,
-        query: "?smoke&scalar=f64&n=1000",
-        check: Check::Draws,
-    },
-    Case {
-        name: "500k",
-        page: M0,
-        query: "?smoke&n=500000",
-        check: Check::Draws,
-    },
-    Case {
-        name: "panic",
-        page: M0,
-        query: "?smoke&panic",
-        check: Check::PanicReported,
-    },
-    Case {
-        name: "orbits",
-        page: M1,
-        query: "?smoke",
-        check: Check::Draws,
-    },
-    Case {
-        name: "orbits32",
-        page: M1,
-        query: "?smoke&scalar=f32",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m2",
-        page: M2,
-        query: "?smoke",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m2eps0",
-        page: M2,
-        query: "?smoke&scene=collapse&eps_mm=0",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m2n1024",
-        page: M2,
-        query: "?smoke&scene=cluster&n=1024",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m3",
-        page: M3,
-        query: "?smoke",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m3f32",
-        page: M3,
-        query: "?smoke&scalar=f32&substeps=100&beta_pct=0",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m4chain",
-        page: M4_CHAIN,
-        query: "?smoke",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m4dp",
-        page: M4_DP,
-        query: "?smoke",
-        check: Check::Draws,
-    },
-    Case {
-        name: "m4dp32",
-        page: M4_DP,
-        query: "?smoke&mode=scalar",
-        check: Check::Draws,
-    },
-];
+use cases::{CASES, Check};
+use server::Server;
 
 /// How long Chrome waits before its screenshot (and exit). Smoke mode is
 /// synchronous, so this only has to cover loading: about 1 s at 500k.
@@ -136,10 +19,6 @@ const CHROME_TIMEOUT_MS: u32 = 3000;
 
 /// Window size for screenshots, CSS pixels.
 const WINDOW_SIZE: &str = "1000,900";
-
-/// Server startup: poll this often, this many times (5 s total).
-const SERVER_POLL: Duration = Duration::from_millis(100);
-const SERVER_POLL_ATTEMPTS: u32 = 50;
 
 /// Chrome's log line when it drops a draw command that's too large.
 const SERIALIZE_FAILURE: &str = "Failed to serialize";
@@ -302,54 +181,6 @@ fn find_chrome() -> Result<PathBuf, String> {
     installed.or_else(on_path).ok_or_else(|| {
         "Chrome/Chromium not found; install it or set CHROME=/path/to/chrome".to_owned()
     })
-}
-
-/// `python3 -m http.server` on a free local port, killed on drop (including
-/// when a check fails partway).
-struct Server {
-    child: Child,
-    port: u16,
-}
-
-impl Server {
-    fn start(dir: &Path) -> Result<Self, String> {
-        // Ask the OS for a free port, then release it for the server. Another
-        // process could grab it in between; unlikely on a dev machine.
-        let port = TcpListener::bind(("127.0.0.1", 0))
-            .and_then(|l| l.local_addr())
-            .map_err(|e| format!("finding a free port: {e}"))?
-            .port();
-        let child = process::Command::new("python3")
-            .args([
-                "-m",
-                "http.server",
-                &port.to_string(),
-                "--bind",
-                "127.0.0.1",
-                "-d",
-            ])
-            .arg(dir)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(|e| format!("failed to start python3 http.server: {e}"))?;
-        let server = Self { child, port };
-        for _ in 0..SERVER_POLL_ATTEMPTS {
-            if TcpStream::connect(("127.0.0.1", port)).is_ok() {
-                return Ok(server);
-            }
-            thread::sleep(SERVER_POLL);
-        }
-        Err(format!("http.server didn't start on port {port}"))
-    }
-}
-
-impl Drop for Server {
-    fn drop(&mut self) {
-        // Best effort: the process may already have exited.
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
 }
 
 #[cfg(test)]
