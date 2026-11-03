@@ -12,6 +12,8 @@ physics/
 ├── rust-toolchain.toml     # pin toolchain + targets (wasm32-unknown-unknown, wasm32-wasip1)
 ├── .cargo/config.toml      # [target.wasm32-wasip1] runner = "wasmtime"
 ├── .gitignore              # target/, site/pkg/, dist/
+├── .githooks/              # pre-commit (lint), pre-push (tests, smoke)
+├── .github/workflows/ci.yml  # the same checks on every PR (04-testing.md, "CI")
 │
 ├── docs/
 │   ├── 00-scope.md … 07-soft-bodies.md
@@ -26,6 +28,7 @@ physics/
 │   │       ├── lib.rs
 │   │       ├── scalar.rs   # Scalar trait, f32/f64 impls
 │   │       ├── vec2.rs
+│   │       ├── unit_vec2.rs # UnitVec2: a direction, length 1 by construction
 │   │       └── fixed.rs    # M8
 │   │
 │   ├── engine/
