@@ -4,7 +4,7 @@
 //! Design: `docs/02-core-types.md`. Units are SI (m, kg, s).
 
 mod barnes_hut;
-mod collision;
+pub mod collision;
 mod constraint;
 pub mod diagnostics;
 mod force;
