@@ -1,9 +1,10 @@
-// Unit tests for site/js/canvas.ts's pure view math (the inverse that
-// View.toWorld uses for pointer input). The DOM wrappers (View.apply,
-// View.toWorld) are covered by `cargo xtask smoke` and the pages.
+// Unit tests for site/js/canvas.ts: the pure view math (the inverse that
+// View.toWorld uses for pointer input) and drawLinks against a recording
+// context. The DOM wrappers (View.apply, View.toWorld) are covered by
+// `cargo xtask smoke` and the pages.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { viewTransform, worldToDevice, deviceToWorld } from "../../site/js/canvas.ts";
+import { View, drawLinks, viewTransform, worldToDevice, deviceToWorld } from "../../site/js/canvas.ts";
 
 /** 4 m x 2 m, aspect 2:1. */
 const BOX = { xMin: -2, xMax: 2, yMin: -1, yMax: 1 };
@@ -53,4 +54,32 @@ test("tall canvas letterboxes in y: width fits, extra world above and below", ()
 test("off-center box: its center maps to the canvas center", () => {
   const t = viewTransform({ xMin: 3, xMax: 5, yMin: -10, yMax: -6 }, 600, 600);
   close(worldToDevice(t, 4, -8), [300, 300], "center");
+});
+
+/** A 2D context stand-in that records path calls. */
+function recordingCtx() {
+  const calls = [];
+  return {
+    calls,
+    canvas: { width: 400, height: 400 },
+    beginPath: () => calls.push(["begin"]),
+    moveTo: (x, y) => calls.push(["move", x, y]),
+    lineTo: (x, y) => calls.push(["line", x, y]),
+    stroke: () => calls.push(["stroke"]),
+  };
+}
+
+test("drawLinks: one path, a segment per index pair, bad indices skipped", () => {
+  globalThis.window ??= { devicePixelRatio: 1 }; // devicePx reads it
+  const ctx = recordingCtx();
+  const pos = new Float32Array([0, 0, 1, 2, 3, 4]); // 3 particles
+  // [0-1], [1-2], an out-of-range link, then a dangling index.
+  const links = new Uint32Array([0, 1, 1, 2, 2, 3, 0]);
+  drawLinks(/** @type {any} */ (ctx), new View(BOX), pos, links, 2, "#fff");
+  assert.deepEqual(ctx.calls, [
+    ["begin"],
+    ["move", 0, 0], ["line", 1, 2],
+    ["move", 1, 2], ["line", 3, 4],
+    ["stroke"],
+  ]);
 });

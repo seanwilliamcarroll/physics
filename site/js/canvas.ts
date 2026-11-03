@@ -197,6 +197,37 @@ export function drawSegment(
   ctx.stroke();
 }
 
+/** Particle indices per link in `drawLinks`'s index buffer. */
+const INDICES_PER_LINK = 2;
+
+/** One line per link between particles: `links` is `[a0, b0, a1, b1, …]`
+ *  (as `demo_links_ptr/len` will expose) into interleaved positions `pos`.
+ *  One path and one stroke for all links. Links naming a particle past the
+ *  end of `pos` are skipped (a stale index buffer mustn't draw to NaN or
+ *  throw), as is a dangling last index. Assumes `view.apply(ctx)` was
+ *  called. */
+export function drawLinks(
+  ctx: CanvasRenderingContext2D,
+  view: View,
+  pos: Float32Array,
+  links: Uint32Array,
+  widthPx: number,
+  color: string,
+): void {
+  const count = Math.floor(pos.length / COORDS_PER_PARTICLE);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = devicePx(widthPx) / view.scale(ctx.canvas);
+  ctx.beginPath();
+  for (let k = 0; k + INDICES_PER_LINK <= links.length; k += INDICES_PER_LINK) {
+    const a = links[k];
+    const b = links[k + 1];
+    if (a >= count || b >= count) continue;
+    ctx.moveTo(pos[a * COORDS_PER_PARTICLE], pos[a * COORDS_PER_PARTICLE + 1]);
+    ctx.lineTo(pos[b * COORDS_PER_PARTICLE], pos[b * COORDS_PER_PARTICLE + 1]);
+  }
+  ctx.stroke();
+}
+
 /** A circle outline of world radius `r` around `center`, `widthPx` CSS
  *  pixels thick. Assumes `view.apply(ctx)` was called. */
 export function drawCircle(
