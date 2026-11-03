@@ -20,11 +20,12 @@ the same three things.
 pub trait Constraint<S: Scalar> {
     /// The two particles it joins.
     fn bodies(&self) -> [ParticleId; 2];
-    /// C and ∇C at positions `xa`, `xb`: the value, and the gradient
-    /// with respect to `xb` (with respect to `xa` it is the negation,
-    /// for every two-body constraint here). `None` where the gradient is
-    /// undefined (coincident bodies: no direction).
-    fn evaluate(&self, xa: Vec2<S>, xb: Vec2<S>) -> Option<(S, Vec2<S>)>;
+    /// C at positions `xa`, `xb`, and ∇C with respect to `xb` (with
+    /// respect to `xa` it is the negation, for every two-body constraint
+    /// here). The gradient is `None` where it's undefined (coincident
+    /// bodies: no direction); C is always defined, so error readouts
+    /// still see it (M3.3: first sketched as `Option<(C, ∇C)>`).
+    fn evaluate(&self, xa: Vec2<S>, xb: Vec2<S>) -> (S, Option<Vec2<S>>);
     /// Compliance α = 1 / stiffness, in m/N; 0 is rigid.
     fn compliance(&self) -> S;
 }
@@ -53,6 +54,8 @@ d = xb − xa,   C = |d| − L,   ∇_b C = d / |d| = n,   ∇_a C = −n
   which is half of `type-invariants.md` item 3's trigger (`UnitVec2`).
   `evaluate` returns `None` for `|d| = 0`, so the degenerate case is
   handled where it arises; the type waits for a second call site.
+  `n = d / |d|` divides each component (correctly rounded), not
+  `d · (1/|d|)`: a 3-4-5 test caught the extra rounding.
 
 **No `PinConstraint`.** A pin is a distance constraint to a static particle
 (`add_static`, `inv_mass = 0`). Both solvers weight every correction by
@@ -171,6 +174,12 @@ constraint doesn't need them (one pass solves it exactly, so the warm
 start only changes rounding). They are what make M4's chains converge,
 and M6's contacts need the accumulated value to clamp (`λ ≥ 0`); getting
 the storage right now is the point.
+
+**As built (M3.3), XPBD against `01`'s table** (energy lost over 10 s,
+60 Hz, f64, `tests/constraints.rs`): 8.791 / 1.454 / 0.312 J at 1 / 20 /
+100 substeps, against `01`'s 8.8 / 1.46 / 0.31 J (its script used
+g = 9.81, ours 9.80665). The rod error stays within 8 ulps of 1 m in
+both scalars.
 
 ## Per-solver state: λ next to the constraints
 
