@@ -302,6 +302,27 @@ release, aarch64-apple-darwin, Rust 1.99.1), mean per call, the
 - **f32 is 5–10% faster than f64:** without SIMD the win is memory, not
   arithmetic (as M0 found).
 
+**Native vs wasm (M2.3)**, `cargo xtask bench-wasm` (the same cluster
+cases through `engine.wasm` in Node 22, vs criterion's native means):
+
+| | n = 16 | n = 128 | n = 1024 |
+|---|---|---|---|
+| f32 symplectic, wasm/native | 1.85 | 1.00 | 1.21 |
+| f32 Verlet | 1.68 | 1.00 | 1.18 |
+| f64 symplectic | 1.60 | 0.91 | 0.91 |
+| f64 Verlet | 1.51 | 0.88 | 0.87 |
+
+- **From n = 128 up, wasm runs at native speed** (0.87–1.21×). Physics in
+  the browser costs no more than physics natively.
+- **At n = 16, wasm is 1.5–1.85× slower:** each `demo_advance` pays fixed
+  costs native `World::step` doesn't (the JS→wasm call, the fixed-step
+  clock, the render-buffer fill), and with 120 pairs they dominate.
+- **f64 wasm beats native by ~10% at large n: unexplained.** Tested and
+  refuted: "V8 compiles for this CPU while `cargo bench` targets generic
+  aarch64" (`-C target-cpu=native` made native no faster: 1.09 → 1.25 ms
+  for f64 symplectic, within noise). Remaining candidates (instruction
+  selection, alignment) need hardware counters; noted, not chased.
+
 ## The wasm shell
 
 - The accumulator (`FixedStep`) is plain Rust, unit-tested natively against

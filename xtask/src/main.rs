@@ -14,6 +14,7 @@ use std::process::{self, ExitCode};
 
 use clap::{Parser, Subcommand};
 
+mod bench_wasm;
 mod serve;
 mod smoke;
 
@@ -49,6 +50,13 @@ enum Command {
     Smoke,
     /// Run the math and engine tests as wasm32-wasip1 under wasmtime
     TestWasm,
+    /// Time the cluster through engine.wasm in Node and compare with the
+    /// native criterion results (run cargo bench -p engine --bench step first)
+    BenchWasm {
+        /// Measuring time per case, in milliseconds (at least 10)
+        #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(u32).range(10..))]
+        budget_ms: u32,
+    },
     /// Point git at the tracked hooks in .githooks/
     InstallHooks,
 }
@@ -72,6 +80,7 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Serve { port } => serve::serve(&root, port),
         Command::Smoke => smoke::smoke(&root),
         Command::TestWasm => test_wasm(&root),
+        Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
         Command::InstallHooks => install_hooks(&root),
     }
 }

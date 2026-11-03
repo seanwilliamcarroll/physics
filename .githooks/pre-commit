@@ -16,8 +16,8 @@ node_modules/.bin/tsc -p tsconfig.json --noEmit
 # The JS unit tests (tests/site) are plain .js: syntax-check them. Piped
 # with --input-type=module: `node --check file.js` silently passes
 # ES-module syntax errors in .js files (Node 22).
-echo "pre-commit: node --check (site unit tests)"
-find tests/site -name '*.js' | while IFS= read -r f; do
+echo "pre-commit: node --check (site unit tests, xtask scripts)"
+find tests/site xtask -name '*.js' -o -name '*.mjs' -not -path '*/target/*' | while IFS= read -r f; do
   if ! node --input-type=module --check < "$f"; then
     echo "pre-commit: JS syntax error in $f" >&2
     exit 1
