@@ -30,7 +30,7 @@ const DT: f64 = 1.0 / 60.0;
 /// to 1.7e-15 of RMS |a| (θ = 0.5), so these are the method's errors.
 const THETA_BOUNDS: [(f64, f64); 4] = [(0.3, 0.13), (0.5, 0.5), (0.8, 2.0), (1.0, 3.0)];
 
-/// Cluster sizes for the accuracy test: past the crossover (~200 bodies
+/// Cluster sizes for the accuracy test: past the crossover (~200–256 bodies
 /// at θ = 0.5), and deep enough for trees of several levels.
 const SIZES: [usize; 3] = [64, 256, 1024];
 const SEEDS: [u64; 3] = [1, 2, 3];
