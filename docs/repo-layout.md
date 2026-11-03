@@ -32,6 +32,7 @@ physics/
 │   │   │   ├── lib.rs
 │   │   │   ├── particles.rs
 │   │   │   ├── force.rs
+│   │   │   ├── barnes_hut.rs       # M2 stretch: docs/barnes-hut.md
 │   │   │   ├── integrate.rs
 │   │   │   ├── world.rs
 │   │   │   ├── diagnostics.rs

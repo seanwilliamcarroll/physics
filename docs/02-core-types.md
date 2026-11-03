@@ -22,6 +22,7 @@ crates/engine/       // depends on math
     lib.rs
     particles.rs     // Particles<S> storage
     force.rs         // Force<S> trait + UniformGravity, PairwiseGravity
+    barnes_hut.rs    // BarnesHut: O(n log n) gravity (docs/barnes-hut.md)
     integrate.rs     // integrators
     world.rs         // World<S>, stepping, substeps
 ```

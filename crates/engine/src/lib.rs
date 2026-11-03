@@ -3,6 +3,7 @@
 //! Generic over [`Scalar`]; std only, no rendering or browser code.
 //! Design: `docs/02-core-types.md`. Units are SI (m, kg, s).
 
+mod barnes_hut;
 pub mod diagnostics;
 mod force;
 mod integrate;
@@ -12,6 +13,7 @@ pub mod scenarios;
 mod softening;
 mod world;
 
+pub use barnes_hut::BarnesHut;
 pub use force::{Force, PairwiseGravity, UniformGravity};
 pub use integrate::Integrator;
 pub use math::{Scalar, Vec2};

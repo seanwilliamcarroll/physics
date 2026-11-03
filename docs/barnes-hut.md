@@ -64,7 +64,9 @@ so "contains the target" is `key_lo ≤ key ≤ key_hi`.
 
 θ is validated at construction: `BarnesHut::new` returns `None` for θ < 0
 (or NaN). It's the parameter a slider will set, so this is the boundary
-`type-invariants.md` asks to parse at. θ is stored squared, like ε.
+`type-invariants.md` asks to parse at. θ is stored squared, like ε. ε
+arrives already checked, as a `Softening<S>`, the same as for
+`PairwiseGravity::new`.
 
 ## Softening for cells
 
