@@ -18,6 +18,15 @@ pub(crate) const DEMO_PENDULUM: u32 = 5;
 pub(crate) const SOLVER_XPBD: u32 = 0;
 pub(crate) const SOLVER_IMPULSE: u32 = 1;
 
+/// `demo_set_order` codes (M4).
+pub(crate) const ORDER_FORWARD: u32 = 0;
+pub(crate) const ORDER_REVERSE: u32 = 1;
+pub(crate) const ORDER_ALTERNATING: u32 = 2;
+
+/// `demo_new_double_pendulum` start codes (M4).
+pub(crate) const START_HORIZONTAL: u32 = 0;
+pub(crate) const START_RAISED: u32 = 1;
+
 /// `demo_set_integrator` codes.
 pub(crate) const INTEGRATOR_SYMPLECTIC_EULER: u32 = 0;
 pub(crate) const INTEGRATOR_EXPLICIT_EULER: u32 = 1;

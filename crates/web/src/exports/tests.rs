@@ -1,6 +1,12 @@
-use super::{
-    demo_advance, demo_energy, demo_free, demo_new, demo_positions_len, demo_positions_ptr,
-    demo_set_integrator, demo_set_rate, demo_set_softening,
+use super::drag::{demo_drag, demo_grab, demo_release};
+use super::lifecycle::{
+    demo_advance, demo_free, demo_links_len, demo_links_ptr, demo_new, demo_new_chain,
+    demo_new_double_pendulum, demo_positions_len, demo_positions_ptr,
+};
+use super::readouts::{demo_constraint_error, demo_energy};
+use super::settings::{
+    demo_set_beta, demo_set_integrator, demo_set_iterations, demo_set_order, demo_set_rate,
+    demo_set_softening, demo_set_solver, demo_set_substeps, demo_set_theta,
 };
 use crate::abi;
 use core::ptr;
@@ -22,7 +28,7 @@ fn round_trip_through_the_c_abi() {
 #[test]
 #[should_panic(expected = "deliberate test panic")]
 fn test_hook_panics_with_the_shared_message() {
-    super::deliberate_panic();
+    super::lifecycle::deliberate_panic();
 }
 
 #[test]
@@ -104,22 +110,18 @@ fn theta_is_parsed_at_the_boundary() {
     let d = demo_new(abi::DEMO_CLUSTER, abi::SCALAR_F64, 32, 1);
     // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
     unsafe {
-        assert_eq!(super::demo_set_theta(d, -0.5), 0, "negative rejected");
-        assert_eq!(super::demo_set_theta(d, f64::NAN), 0, "NaN rejected");
-        assert_eq!(super::demo_set_theta(d, 0.5), 1);
+        assert_eq!(demo_set_theta(d, -0.5), 0, "negative rejected");
+        assert_eq!(demo_set_theta(d, f64::NAN), 0, "NaN rejected");
+        assert_eq!(demo_set_theta(d, 0.5), 1);
         assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
         assert!(demo_energy(d).is_finite());
         demo_free(d);
-        assert_eq!(super::demo_set_theta(ptr::null_mut(), 0.5), 0);
+        assert_eq!(demo_set_theta(ptr::null_mut(), 0.5), 0);
     }
 }
 
 #[test]
 fn pendulum_controls_are_parsed_at_the_boundary() {
-    use super::{
-        demo_constraint_error, demo_set_beta, demo_set_iterations, demo_set_solver,
-        demo_set_substeps,
-    };
     let d = demo_new(abi::DEMO_PENDULUM, abi::SCALAR_F32, 0, 0);
     assert!(!d.is_null());
     // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
@@ -145,5 +147,57 @@ fn pendulum_controls_are_parsed_at_the_boundary() {
     unsafe {
         assert!(demo_constraint_error(f).is_nan(), "no constraints");
         demo_free(f);
+    }
+}
+
+#[test]
+fn chain_and_double_pendulum_constructors_check_their_input() {
+    let c = demo_new_chain(abi::SCALAR_F64, 10, 100.0);
+    assert!(!c.is_null());
+    assert!(
+        demo_new_chain(abi::SCALAR_F64, 10, -1.0).is_null(),
+        "no negative mass"
+    );
+    assert!(demo_new_chain(9, 10, 100.0).is_null(), "unknown scalar");
+    let p = demo_new_double_pendulum(abi::SCALAR_F32, abi::START_RAISED, 1e-9);
+    assert!(!p.is_null());
+    assert!(
+        demo_new_double_pendulum(abi::SCALAR_F32, 7, 0.0).is_null(),
+        "unknown start"
+    );
+    assert!(demo_new_double_pendulum(abi::SCALAR_F32, abi::START_RAISED, f64::NAN).is_null());
+    // SAFETY: both from constructors above, freed once, last.
+    unsafe {
+        // 10 rods: 20 link indices, the first rod from the pin (0) to 1.
+        assert_eq!(demo_links_len(c), 20);
+        let links = core::slice::from_raw_parts(demo_links_ptr(c), 20);
+        assert_eq!(&links[..2], &[0, 1]);
+        assert_eq!(demo_set_order(c, abi::ORDER_ALTERNATING), 1);
+        assert_eq!(demo_set_order(c, 9), 0);
+        demo_free(c);
+        demo_free(p);
+    }
+}
+
+#[test]
+fn grab_drag_release_through_the_c_abi() {
+    let d = demo_new_chain(abi::SCALAR_F64, 10, 100.0);
+    // SAFETY: from `demo_new_chain`, freed once, last; null is allowed.
+    unsafe {
+        // The bob is at (1, 0); the pin (0, 0) is static and can't be grabbed.
+        assert_eq!(demo_grab(d, 0.0, 0.0, 0.05), -1, "static pin");
+        assert_eq!(demo_grab(d, 1.0, 0.02, -1.0), -1, "negative radius");
+        assert_eq!(demo_grab(d, 1.0, 0.02, 0.1), 10);
+        // Anchor added: 12 particles, 11 rods.
+        assert_eq!((demo_positions_len(d), demo_links_len(d)), (24, 22));
+        assert_eq!(demo_drag(d, 1.0, 1.0), 1);
+        assert_eq!(demo_drag(d, f64::NAN, 1.0), 0);
+        assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
+        assert_eq!(demo_release(d), 1);
+        assert_eq!(demo_release(d), 0, "nothing held");
+        assert_eq!(demo_drag(d, 1.0, 1.0), 0, "nothing held");
+        assert_eq!((demo_positions_len(d), demo_links_len(d)), (22, 20));
+        demo_free(d);
+        assert_eq!(demo_grab(core::ptr::null_mut(), 0.0, 0.0, 1.0), -1);
     }
 }

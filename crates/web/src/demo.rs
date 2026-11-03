@@ -8,6 +8,8 @@
 
 mod any_world;
 mod codes;
+mod constraint_scenes;
+mod drag;
 mod sim;
 
 use core::num::NonZeroU32;
@@ -15,14 +17,18 @@ use core::num::NonZeroU32;
 use engine::scenarios::{
     Fountain, ORBIT_CIRCULAR, orbit, orbit_gravity, pendulum, pendulum_gravity,
 };
-use engine::{Baumgarte, ConfigError, Integrator, OpeningAngle, Scalar, Softening, Solver, World};
+use engine::{
+    Baumgarte, ConfigError, Grab, Integrator, OpeningAngle, Scalar, Softening, Solver, World,
+};
 
 use crate::abi;
 use crate::fixed_step::FixedStep;
 use any_world::{AnyWorld, build_any, each_scalar, fill_positions};
 #[cfg(test)]
 pub(crate) use codes::GravityScene;
-pub(crate) use codes::{DemoKind, ScalarKind, integrator_from_code, solver_from_code};
+pub(crate) use codes::{
+    DemoKind, ScalarKind, integrator_from_code, order_from_code, solver_from_code, start_from_code,
+};
 use sim::{Sim, gravity_scene};
 
 /// Physics steps per simulated second a demo starts with ([`abi::DEFAULT_RATE_HZ`]).
@@ -48,6 +54,11 @@ pub(crate) struct Demo {
     /// `[x0, y0, x1, y1, ...]` in world units (m), always `f32`, so the
     /// renderer is independent of the engine's scalar type.
     render_buf: Vec<f32>,
+    /// The grab in progress, if any (`demo/drag.rs`).
+    grab: Option<Grab>,
+    /// `[a0, b0, a1, b1, ...]`: the particles each constraint joins, for
+    /// drawing rods. Rebuilt when constraints change (new, grab, release).
+    links: Vec<u32>,
 }
 
 impl Demo {
@@ -89,14 +100,23 @@ impl Demo {
                 (world, BetweenSteps::Nothing)
             }
         };
+        Ok(Self::assemble(world, between_steps, n))
+    }
+
+    /// A demo around `world`, its buffers filled. `n` sizes the render
+    /// buffer up front (a hint: it grows if needed).
+    fn assemble(world: AnyWorld, between_steps: BetweenSteps, n: usize) -> Self {
         let mut demo = Self {
             world,
             between_steps,
             clock: FixedStep::new(PHYSICS_RATE),
             render_buf: Vec::with_capacity(abi::COORDS_PER_PARTICLE * n),
+            grab: None,
+            links: Vec::new(),
         };
         demo.fill_render_buf();
-        Ok(demo)
+        demo.refresh_links();
+        demo
     }
 
     /// Adds `elapsed` seconds of real time, runs the resulting fixed steps,

@@ -1,7 +1,8 @@
 //! Wire codes from JS, decoded once at the boundary into enums: an unknown
 //! code becomes `None`, never a wrong scene.
 
-use engine::{Integrator, Solver};
+use engine::scenarios::DoublePendulumStart;
+use engine::{Integrator, Order, Solver};
 
 use crate::abi;
 
@@ -80,6 +81,27 @@ pub(crate) const fn solver_from_code(code: u32) -> Option<Solver> {
     match code {
         abi::SOLVER_XPBD => Some(Solver::Xpbd),
         abi::SOLVER_IMPULSE => Some(Solver::Impulse),
+        _ => None,
+    }
+}
+
+/// Decodes a `demo_set_order` code ([`abi`]).
+#[must_use]
+pub(crate) const fn order_from_code(code: u32) -> Option<Order> {
+    match code {
+        abi::ORDER_FORWARD => Some(Order::Forward),
+        abi::ORDER_REVERSE => Some(Order::Reverse),
+        abi::ORDER_ALTERNATING => Some(Order::Alternating),
+        _ => None,
+    }
+}
+
+/// Decodes a `demo_new_double_pendulum` start code ([`abi`]).
+#[must_use]
+pub(crate) const fn start_from_code(code: u32) -> Option<DoublePendulumStart> {
+    match code {
+        abi::START_HORIZONTAL => Some(DoublePendulumStart::Horizontal),
+        abi::START_RAISED => Some(DoublePendulumStart::Raised),
         _ => None,
     }
 }
