@@ -140,3 +140,38 @@ export function drawHorizon(
 export function cssColor(el: Element, name: string): string {
   return getComputedStyle(el).getPropertyValue(name).trim();
 }
+
+/** A line from world point `a` to `b`, `widthPx` CSS pixels thick.
+ *  Assumes `view.apply(ctx)` was called. */
+export function drawSegment(
+  ctx: CanvasRenderingContext2D,
+  view: View,
+  a: [number, number],
+  b: [number, number],
+  widthPx: number,
+  color: string,
+): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = devicePx(widthPx) / view.scale(ctx.canvas);
+  ctx.beginPath();
+  ctx.moveTo(a[0], a[1]);
+  ctx.lineTo(b[0], b[1]);
+  ctx.stroke();
+}
+
+/** A circle outline of world radius `r` around `center`, `widthPx` CSS
+ *  pixels thick. Assumes `view.apply(ctx)` was called. */
+export function drawCircle(
+  ctx: CanvasRenderingContext2D,
+  view: View,
+  center: [number, number],
+  r: number,
+  widthPx: number,
+  color: string,
+): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = devicePx(widthPx) / view.scale(ctx.canvas);
+  ctx.beginPath();
+  ctx.arc(center[0], center[1], r, 0, 2 * Math.PI);
+  ctx.stroke();
+}
