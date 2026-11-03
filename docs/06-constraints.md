@@ -313,6 +313,14 @@ Rest length 0 makes the gradient undefined exactly when `C = 0` (anchor
 on the particle): `evaluate` returns `None` there and the solvers skip,
 which is the right answer (no pull needed).
 
+**As built (M4.5):** `World::grab(point, radius, softness) -> Option<Grab>`,
+`drag(&Grab, point)`, `release(Grab) -> Result<(), Grab>` (the token comes
+back if something was added after the grab, so the caller can retry).
+Flicking the 1:100 chain's bob 1.1 m in 0.2 s and holding (k = 1000 N/m,
+20 substeps, `tests/drag.rs`): XPBD's links stretch at most 8.1 mm, the
+impulse solver's 18.3 cm, with its bob 42 cm behind the cursor. A slow
+drag hides most of it: the chain has to accelerate.
+
 ## Extending (not M4)
 
 - **M5 springs:** compliant `DistanceConstraint`s exist since M4; M5 adds
