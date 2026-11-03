@@ -185,14 +185,14 @@ a subagent off `main`, then rebased onto the stack.
 - [ ] `docs/barnes-hut.md` first: quadtree, θ, accuracy vs cost.
 - [ ] A third panel with θ as a slider.
 
-## 9. M2 cleanup (PR, if needed)
+## ✅ 9. M2 cleanup (done)
 
-- [ ] Test `ConfigError::ZeroSubsteps`'s `Display` text (coverage report).
-- [ ] Magic-number pass; `type-invariants.md` triggers re-checked.
-- [ ] Turn on `unreachable_pub` in `[workspace.lints]`: items marked
-      `pub` that aren't exported become `pub(crate)`, so rustc's
-      `dead_code` can see them (dead `pub` code is otherwise invisible).
-- [ ] Anything that grew awkward.
+`unreachable_pub` on (`cargo fix`, native and wasm32; it found no dead
+code; the web exports stay exported via `#[no_mangle]`, checked against
+the `.wasm`). The coverage gap is tested (`ZeroSubsteps`' message,
+`substeps()`). Magic-number review of M2's code found nothing unnamed.
+`type-invariants.md` triggers re-checked for M2. Stale golden-hash comment
+fixed.
 
 ---
 

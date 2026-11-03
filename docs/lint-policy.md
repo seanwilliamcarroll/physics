@@ -14,6 +14,11 @@ per crate.
   `print_stdout`, …)
 - tests exempted via `clippy.toml`'s `allow-*-in-tests` settings
 - `f32::mul_add` / `f64::mul_add` disallowed (determinism)
+- rustc's `unreachable_pub` (M2): `pub` only on what a crate actually
+  exports. `dead_code` ignores `pub` items, so a stray `pub` in a private
+  module hid unused code. Enabling it found none. In `web`, the
+  `#[no_mangle]` exports are `pub(crate)`: in a `cdylib`, `#[no_mangle]`
+  is what makes the `.wasm` export them, not Rust visibility.
 
 ## Why not per-crate attributes
 
