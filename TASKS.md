@@ -156,16 +156,17 @@ rejects negative/NaN and the fountain, and the energy readout follows ε.
 `.wasm` 58,544 B (gzip 19,926); the disk's sort was the surprise (~7–9 KB),
 now unstable and shared with Barnes–Hut.
 
-## 6. Site: the M2 page (PR)
+## ✅ 6. Site: the M2 page (done; manual check pending)
 
-- [ ] `site/demos/m2-cluster/` (`.ts`): f32 and f64 panels of the same
-      seeded scene; a divergence plot (decision 6) and an energy plot;
-      controls for N (rebuilds), softening (live), scenario, rate, reset.
-- [ ] Performance overlay as a shared module: steps/s, ms per step, ms
-      per draw, and a small table of measured cost at each N tried, so cost
-      growth with N is visible.
-- [ ] Smoke cases for the new page; gallery link.
-- [ ] Manual check against **Done when**.
+`site/demos/m2-cluster/` (`.ts`): f32 and f64 panels of the same seeded
+scene, an RMS-divergence plot and a `|ΔE/E|` plot (log), and controls for
+scene, N (powers of two, 16–4096), softening (0–0.5 m, live; resets the
+energy baseline), rate, and reset. `site/js/perf.ts`: per-N cost table with
+ns/pair; `site/js/divergence.ts`. Both node-tested. Three smoke cases;
+gallery link. The N = 1024 smoke case caught the cluster flinging every
+body out of view (total mass grew with N), so `cluster` now has a fixed
+total mass (golden updated). **Still to do: your manual check against
+Done when** (headless Chrome can't run the live loop).
 
 ## 7. Code coverage (PR, raised during M2.2)
 
