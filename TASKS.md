@@ -37,8 +37,7 @@ other" was classic Baumgarte's blow-up mistaken for softness.)
 
 Panic hook, pairwise gravity, explicit Euler and velocity Verlet with
 error-law tests, energy, the orbit scene, golden hashes (bit-identical on
-wasm), and the M1 page with shared TypeScript modules. Open follow-up:
-choose a license.
+wasm), and the M1 page with shared TypeScript modules.
 
 ## ✅ M2: N-body cluster (done, PRs #18–#31)
 
