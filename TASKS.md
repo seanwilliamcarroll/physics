@@ -157,13 +157,22 @@ reverse differ on a two-link chain in both solvers. New
 within the solver's error bound and within 52 µm (XPBD) / 4.9 µm
 (impulse) of each other after 0.1 s.
 
-## 4. Chains and the double pendulum (test first, PR)
+## ✅ 4. Chains and the double pendulum (done)
 
-- [ ] `scenarios::chain`, `scenarios::double_pendulum`.
-- [ ] Chain length error under 1:100, per solver (the roadmap test),
-      recorded against substeps and iterations.
-- [ ] Double pendulum: copies 1e-9 apart separate (to > 1 cm) within a
-      few seconds; f32 vs f64 likewise. Golden hashes.
+`scenarios::chain(solver, substeps, links, mass_ratio)` and
+`double_pendulum(solver, substeps, start, offset)` (built by a subagent).
+**1:100 chain, 10 links, 10 s:** at 20 substeps XPBD holds links to
+3.2 mm, impulse 42 cm (133× apart), 10 iterations tighten both; at 1
+substep both fail; 1:1 holds in both, so the mass ratio is the cause.
+**Double pendulum (impulse, 20 substeps):** energy within 0.039 J over 30 s;
+copies 1e-9 m apart separate (1 cm) at **23.8 s**, not "a few seconds"
+(decision 8's horizontal start stays nearly regular for ~10 s), f32 vs
+f64 at 14.9 s. **Deviation from decision 8:** added
+`DoublePendulumStart::{Horizontal, Raised}`; raised (both rods at 135°,
+`sqrt`-only so wasm stays bit-identical) separates at 11.1 s and is the
+page's default; the log divergence plot shows the growth from t = 0.
+XPBD's damping kills the chaos (no separation in 120 s). Goldens for
+both chains and the double pendulum, native and wasm.
 
 ## 5. Dragging (test first, PR)
 
