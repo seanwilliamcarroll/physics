@@ -37,6 +37,7 @@ crates/engine/
     known_failures.rs     // methods that must misbehave
     determinism.rs        // repeatability + golden hashes
     properties.rs         // proptest
+    barnes_hut.rs         // vs direct summation: accuracy, momentum, cost
     properties.proptest-regressions  // committed: shrunk failures replay forever
   benches/
     step.rs               // criterion

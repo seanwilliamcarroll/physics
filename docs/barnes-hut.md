@@ -92,7 +92,7 @@ about the center of mass), so the force error should grow roughly like θ².
 Cost: a body visits O(1/θ²) cells per tree level, O(log n) levels: O(n log
 n / θ²) per step, plus O(n log n) to build the tree (a sort).
 Direct summation is O(n²) with a smaller constant, so it wins below some
-crossover n. Measured numbers: **Measurements** below.
+crossover n: about 200 bodies at θ = 0.5 (**Measurements** below).
 
 ## What it gives up: momentum
 
@@ -167,7 +167,8 @@ every hop, each with a "can't happen" branch. Instead:
   of its subtree. Read backwards, that array is a preorder walk: from a
   node at `i`, "open" is `i − 1` (its last child) and "accept" is
   `i − size` (skip the subtree). The walk is one loop,
-  `while let Some(node) = nodes.get(cursor)`, and running off the front is
+  `while let Some(node) = cursor.checked_sub(1).and_then(|i| nodes.get(i))`
+  (the cursor is one past the next node), and running off the front is
   how it ends: the `None` case is the loop exit, not an unreachable
   error branch. No stack, no recursion in the walk, and memory is read
   in one direction.
@@ -193,5 +194,93 @@ if a profile shows allocation mattering next to the O(n log n) work.
 
 ## Measurements
 
-Filled in from the tests (`crates/engine/tests/barnes_hut.rs`):
-accuracy vs θ, momentum drift, and cost vs `PairwiseGravity`.
+From `crates/engine/tests/barnes_hut.rs` (2026-11-02, aarch64-apple-darwin,
+Rust 1.99.1). Scene: `scenarios::cluster` (uniform disk of radius 2 m,
+ε = 0.1 m), with `PairwiseGravity` as the exact reference.
+
+### Accuracy vs θ
+
+Force error after one evaluation, worst over seeds 1–3. Two measures:
+
+- **max / RMS**: `max |a_tree − a_direct|` over bodies, divided by the
+  RMS of `|a_direct|`. This is what the tests bound.
+- **per-body relative**: `|a_tree − a_direct| / |a_direct|` for each
+  body; median and max. The max is dominated by bodies near the center,
+  whose pulls almost cancel (small `|a_direct|`), so it reflects
+  cancellation more than the approximation, and grows with n.
+
+| θ | max / RMS, n = 64 | 256 | 1024 | median rel., n = 1024 | max rel., n = 1024 | test bound (max / RMS) |
+|---|---|---|---|---|---|---|
+| 0.3 | 0.0087 | 0.0127 | 0.0100 | 0.42% | 0.65 | 0.13 |
+| 0.5 | 0.0487 | 0.0415 | 0.0360 | 1.5% | 1.46 | 0.5 |
+| 0.8 | 0.198 | 0.154 | 0.098 | 4.0% | 3.76 | 2.0 |
+| 1.0 | 0.302 | 0.292 | 0.183 | 6.4% | 7.67 | 3.0 |
+
+f32 matches f64 to three digits: the approximation error is far above
+f32 rounding, as expected. The error rises faster than θ² over this
+range (×3.3–5.6 from θ = 0.3 to 0.5 across the three sizes, against
+2.8 for θ²). θ = 0 matches
+`PairwiseGravity` to 2.7e-16 (f64) and 2.1e-7 (f32) of the largest
+acceleration (unit test).
+
+These errors are larger than a quadrupole-corrected code would give, so
+before trusting them we checked against an independent implementation:
+a plain recursive Python quadtree with the same criterion, on the same
+256 bodies, agreed with this one to 1.7e-15 of RMS `|a|` at θ = 0.5. They
+are the monopole method's errors with `s` the full cell side and `d`
+measured to the center of mass.
+
+### Momentum
+
+64 bodies, 1000 steps of 1/60 s (seed 1); drift `|p(t) − p(0)|` as a
+fraction of `Σ m|v|`:
+
+| θ | f64 | f32 |
+|---|---|---|
+| 0 | 4.1e-16 | 3.2e-7 |
+| 0.3 | 4.7e-3 | 3.8e-3 |
+| 0.5 | 1.0e-2 | 5.3e-3 |
+| 0.8 | 4.0e-2 | 5.0e-2 |
+| 1.0 | 7.1e-2 | 2.8e-2 |
+
+For scale, the cluster's initial momentum is about 4e-3 of `Σ m|v|`:
+from θ = 0.5 up, Barnes–Hut changes the total momentum by more than the
+cluster started with, so the center of mass visibly wanders off its
+straight line. The drift is 0.4–1.6% of the bound `Σ h Σ mᵢ|aᵢ − aᵢ*|`
+(force errors mostly cancel in the sum), and θ = 0 stays ~400x inside the
+property tests' rounding law. The tests assert the bound at θ = 0.5, a
+measured cap of 0.1 there, and the rounding law at θ = 0. f32 and f64
+differ by up to ~2.5x above θ = 0 because the cluster is chaotic: the two
+runs diverge, and so do their drifts.
+
+### Cost
+
+Seconds per force evaluation (f64, release, best of 5 batches) and the
+speedup over `PairwiseGravity`. From the `#[ignore]`d printout
+`cost_vs_direct_summation`: criterion isn't in the workspace yet, so this
+is a timing loop, not a statistical benchmark. Repeat runs varied by up
+to ~30% at n ≥ 1024 (direct summation is the noisier side). The
+crossovers for θ ≥ 0.5 were the same in every run; at θ = 0.3 the margin
+is thin, and an earlier run with fewer repetitions showed break-even at
+n = 1024.
+
+| n | direct | θ = 0.3 | θ = 0.5 | θ = 0.8 | θ = 1.0 |
+|---|---|---|---|---|---|
+| 16 | 2.7e-7 | 0.17x | 0.18x | 0.19x | 0.20x |
+| 64 | 3.7e-6 | 0.33x | 0.42x | 0.53x | 0.57x |
+| 128 | 1.75e-5 | 0.56x | 0.79x | **1.08x** | **1.23x** |
+| 256 | 8.2e-5 | 0.89x | **1.44x** | 2.0x | 2.4x |
+| 512 | 3.3e-4 | **1.37x** | 2.3x | 3.5x | 4.3x |
+| 1024 | 9.9e-4 | 1.5x | 2.7x | 4.5x | 5.0x |
+| 2048 | 3.0e-3 | 1.35x | 2.6x | 4.1x | 6.5x |
+| 4096 | 1.25e-2 | 1.8x | 3.8x | 6.7x | 7.8x |
+
+**Crossover** (bold: first n where Barnes–Hut wins): ~100–128 bodies at
+θ ≥ 0.8, ~200 at θ = 0.5, ~300–500 at θ = 0.3. Below that, building the
+tree (two allocations, a sort, 32-level keys) costs more than it saves.
+For the M2 demo's "a few hundred bodies", θ = 0.5 is only ~1.4–2.3x
+faster, for a median force error of ~1.2–1.5%; the payoff is at
+thousands of bodies. Growth from
+n = 1024 to 4096 (4x bodies) is ~9x for Barnes–Hut at θ = 0.5 and ~13x
+for direct summation; n log n alone predicts 4.8x, which suggests memory
+effects (the walk's scattered reads) at this size; not profiled.

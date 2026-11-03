@@ -43,6 +43,7 @@ physics/
 │   │   │   ├── known_failures.rs
 │   │   │   ├── determinism.rs
 │   │   │   ├── properties.rs
+│   │   │   ├── barnes_hut.rs       # accuracy vs θ, momentum, cost
 │   │   │   └── properties.proptest-regressions  # committed
 │   │   └── benches/step.rs
 │   │
