@@ -27,7 +27,9 @@ and the cradle behaves (or misbehaves) per solver.
 - Hooks gate every commit and push: JS syntax, `tsc`, fmt, clippy (native
   and wasm32); tests, `node --test`, `test-wasm`, wasm32 check, browser
   smoke test.
-- CI (`.github/workflows/ci.yml`) runs the same checks on every PR.
+- CI (`.github/workflows/ci.yml`) exists but is **disabled** (your call,
+  after #73): the hooks are the only gate. `gh workflow enable CI` turns
+  it back on.
 - When a section is done, collapse it here to a one-paragraph summary,
   then list the headings to check nothing else moved.
 
@@ -220,6 +222,8 @@ instead of freezing the display; fewer panels at large N; or Web Workers,
 one per panel (the panels are independent, so that's real parallelism) and
 the main thread only draws. Leaning toward workers; revisit after M2.
 
-**CI (added before M6):** `.github/workflows/ci.yml` runs both hooks'
-checks on every PR and push to `main`. Not yet a *required* check in
-`protect-main`; that's a ruleset change, made by hand once it's green.
+**CI is disabled:** `.github/workflows/ci.yml` (added in #73, green on
+its runs) is turned off with `gh workflow disable CI`, so nothing on
+GitHub's side checks a PR: it's only as clean as the hooks on the machine
+that pushed it, and `--no-verify` skips them. `gh workflow enable CI` to
+restore it.
