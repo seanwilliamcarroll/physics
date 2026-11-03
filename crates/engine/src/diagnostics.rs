@@ -124,5 +124,29 @@ pub fn constraint_error<S: Scalar, C: Constraint<S>>(
     (count > S::ZERO).then(|| (max, (sum_sq / count).sqrt()))
 }
 
+/// Elastic energy stored in compliant constraints, `Σ ½ C² / α` over those
+/// with `α > 0`, J (a spring of stiffness `1/α` stretched by `C`). Rigid
+/// constraints store none: `C` is held at 0. Constraints whose bodies
+/// aren't in `p` are skipped.
+#[must_use]
+pub fn constraint_potential<S: Scalar, C: Constraint<S>>(p: &Particles<S>, constraints: &[C]) -> S {
+    let half = S::ONE / (S::ONE + S::ONE);
+    constraints.iter().fold(S::ZERO, |acc, c| {
+        let alpha = c.compliance();
+        let [a, b] = c.bodies();
+        match (
+            alpha > S::ZERO,
+            p.pos().get(a.index()),
+            p.pos().get(b.index()),
+        ) {
+            (true, Some(&xa), Some(&xb)) => {
+                let (value, _) = c.evaluate(xa, xb);
+                acc + half * value * value / alpha
+            }
+            _ => acc,
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests;

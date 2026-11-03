@@ -10,6 +10,7 @@ mod collapse;
 mod disk;
 mod double_pendulum;
 mod fountain;
+mod jelly;
 mod orbit;
 mod pendulum;
 mod shared;
@@ -25,6 +26,10 @@ pub use double_pendulum::{
     DOUBLE_PENDULUM_LENGTH, DOUBLE_PENDULUM_MASS, DoublePendulumStart, double_pendulum,
 };
 pub use fountain::{FOUNTAIN_SUBSTEPS, FOUNTAIN_VX, FOUNTAIN_VY, Fountain};
+pub use jelly::{
+    JELLY_COLS, JELLY_DROP, JELLY_GROUND, JELLY_MASS, JELLY_ROWS, JELLY_SPACING, Jelly, JellyBody,
+    SpringKind, SpringNetwork, compliance_for, jelly,
+};
 pub use orbit::{
     ORBIT_CIRCULAR, ORBIT_MASS_RATIO, ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, ORBIT_SOFTENING,
     ORBIT_SUBSTEPS, ORBIT_TOTAL_MASS, orbit, orbit_gravity, orbit_period, orbit_relative_speed,

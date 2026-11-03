@@ -74,6 +74,19 @@ impl<S: Scalar> Constraints<S> {
         true
     }
 
+    /// Replaces every constraint but the one at `skip` with `f` of itself.
+    pub(super) fn update(
+        &mut self,
+        skip: Option<usize>,
+        f: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
+    ) {
+        for (i, c) in self.list.iter_mut().enumerate() {
+            if Some(i) != skip {
+                *c = f(*c);
+            }
+        }
+    }
+
     pub(super) fn list(&self) -> &[DistanceConstraint<S>] {
         &self.list
     }

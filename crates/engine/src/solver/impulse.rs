@@ -27,8 +27,19 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
         kick(&mut p.vel, self.acc, h);
-        for (c, &lambda) in self.constraints.iter().zip(self.lambda.iter()) {
-            apply_impulse(p, c, lambda);
+        // Warm start rigid constraints only. A soft constraint's λ feeds
+        // back into its own update (the `α̃ λ` term), so carrying it across
+        // substeps re-injects the previous substep's bias each time: on an
+        // unconverged network (the jelly, one pass) that pumps energy in
+        // without bound, the M4 Baumgarte mechanism through the soft form.
+        // Soft λ restarts at 0 each substep instead (M5.5,
+        // `docs/07-soft-bodies.md`, "Soft constraints aren't warm-started").
+        for (c, lambda) in self.constraints.iter().zip(self.lambda.iter_mut()) {
+            if c.compliance() == S::ZERO {
+                apply_impulse(p, c, *lambda);
+            } else {
+                *lambda = S::ZERO;
+            }
         }
         let gains = Gains {
             rigid_bias: self.baumgarte.get() / h,

@@ -171,11 +171,19 @@ untouched. Built by a subagent. Open question it raised: a multi-particle
 body lifted by the clamp could in principle pass energy on through its
 rods; the jelly (section 5) is the real check.
 
-## 5. The jelly (test first, PR)
+## ✅ 5. The jelly (done)
 
-- [ ] `SpringNetwork`, `scenarios::jelly` in both realizations;
-      `World::set_compliance`; the grid's measured blow-up stiffness vs
-      `k_crit`; energy checks; goldens.
+`SpringNetwork::grid`, `scenarios::jelly(body, …, k, c)` (k parsed per
+realization; constraints take ∞ = rigid), `World::update_constraints`
+(skips a held grab's rod), `SpringForce::with_stiffness/with_damping`,
+`diagnostics::constraint_potential`. Force springs blow up at 0.1–0.15
+`k_crit`; both constraint solvers stable to rigid at one iteration.
+**Found:** the impulse solver's soft constraints exploded from 10⁴ N/m
+(the M4 mechanism through the soft form); your call was to fix the soft
+form first: remedies measured, and **soft constraints are no longer
+warm-started** (stable, period and damping unchanged). Decision 8 holds
+as written. Stability judged by kinetic energy (elastic energy of stiff,
+unconverged constraints is meaningless). Goldens for all three.
 
 ## 6. Web layer (PR)
 
