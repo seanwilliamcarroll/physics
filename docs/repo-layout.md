@@ -35,15 +35,18 @@ physics/
 │   │   │   ├── integrate.rs
 │   │   │   ├── world.rs
 │   │   │   ├── diagnostics.rs
-│   │   │   └── scenarios.rs        # shared by tests AND demos
+│   │   │   ├── scenarios.rs        # shared by tests AND demos
+│   │   │   └── <module>/tests.rs   # each module's unit tests (no mod.rs)
 │   │   ├── tests/
-│   │   │   ├── common/mod.rs       # for_each_scalar!, Tol, FNV-1a hash
 │   │   │   ├── invariants.rs
 │   │   │   ├── known_failures.rs
 │   │   │   ├── determinism.rs
-│   │   │   └── properties.rs
-│   │   ├── benches/step.rs
-│   │   └── proptest-regressions/   # committed
+│   │   │   ├── properties.rs
+│   │   │   └── properties.proptest-regressions  # committed
+│   │   └── benches/step.rs
+│   │
+│   ├── test-support/       # dev-dep: shared integration-test helpers
+│   │   └── src/            # tol, orbit, hash, worlds (proptest)
 │   │
 │   ├── web/                # cdylib → engine.wasm
 │   │   └── src/

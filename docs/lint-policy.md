@@ -26,10 +26,15 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
 - **Integration tests:** every `tests/*.rs` starts with `#![cfg(test)]`.
   Clippy only exempts code inside `#[test]` fns or `#[cfg(test)]` scopes,
   and generic test bodies (`fn free_fall<S>()`, called by macro-generated
-  `#[test]` fns) and `tests/common/` helpers are neither. A crate-level
-  `#![cfg(test)]` puts the whole file, `mod common` included, in scope
-  (tested both ways). Unit tests in `src/` already sit in
-  `#[cfg(test)] mod tests`.
+  `#[test]` fns) are neither; a crate-level `#![cfg(test)]` puts the whole
+  file in scope (tested both ways).
+- **Unit tests** live in their own file: `src/foo.rs` declares
+  `#[cfg(test)] mod tests;` and the tests are in `src/foo/tests.rs`
+  (crate roots: `src/tests.rs`). No `mod.rs` files anywhere.
+- **`crates/test-support`** (shared integration-test helpers) is library
+  code to clippy, so it follows the library lints, with one crate-level
+  `#![expect(unwrap_used, indexing_slicing, missing_panics_doc)]`: test
+  helpers fail tests by panicking.
 - **`xtask`** is a CLI: `#![allow(clippy::print_stdout, clippy::print_stderr)]`
   at the top of `main.rs`. Cargo can't mix `workspace = true` with per-crate
   overrides, so the override goes in source.
@@ -46,10 +51,6 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
   `must_use_candidate` makes us annotate the function itself (tested:
   without it, `v.dot(w);` compiles silently).
 - **Local exceptions** use `#[expect(lint, reason = "...")]`, not `#[allow]`.
-  The one justified `allow`: `tests/common/mod.rs` has
-  `#![allow(dead_code, reason = ...)]`, because each `tests/*.rs` compiles
-  it separately and uses a different subset, so an `expect` would be
-  unfulfilled in whichever file uses everything.
   `expect` fails if the lint stops firing, so stale exceptions don't build up.
 
 ## Magic numbers (convention, enforced in review)
