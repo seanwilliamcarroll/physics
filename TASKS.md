@@ -1,18 +1,20 @@
-# TASKS — M2: N-body cluster
+# TASKS — M3: Pendulum, the solver duel
 
-Source: `docs/05-roadmap.md` (M2), `docs/04-testing.md` (phase 1 steps 6–7:
-property tests, benchmarks), `docs/type-invariants.md` (the `Softening`
-trigger), `docs/03-wasm-shell.md` (rendering cost).
+Source: `docs/05-roadmap.md` (M3), `docs/01-solvers.md` (the two families
+and the measured table), `docs/type-invariants.md` (the mass-type and
+`ParticleId` triggers both fire in M3).
 
-**Goal:** O(n²) cost made visible, softening, and the first **scalar
-comparison**: the same cluster in `f32` and `f64` drifting apart over time.
+**Goal:** `01-solvers.md` made interactive. An impulse-based solver and
+XPBD on a single pendulum, side by side: rod stretch with β = 0,
+Baumgarte tuning, XPBD's energy loss, and substeps as the great equalizer.
 
-**Done when:** a few hundred bodies run at 60 Hz; f32/f64 panels visibly
-diverge; the overlay reports cost growth with N.
+**Done when:** two pendulums swing side by side with live rod-error and
+energy plots, and every row of the `01` table can be reproduced with the
+controls.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m2/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`m3/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -31,187 +33,139 @@ diverge; the overlay reports cost growth with N.
 
 ## ✅ M1: Orbits and integrators (done, PRs #8–#17)
 
-Wasm panic hook; `PairwiseGravity`, center of mass, `cluster`; explicit
-Euler and velocity Verlet with closed-form and error-law tests ((ωh)²,
-(ωh)⁴/4); Plummer potential and energy; the orbit scene; determinism and
-FNV-1a golden hashes, confirmed bit-identical on wasm (`cargo xtask
-test-wasm`); the M1 page (three panels, log energy plot, rate slider) on
-shared `plot`/`trail`/`controls`/`options` modules with `node --test`
-unit tests; checked JS, then TypeScript for `site/js` (new pages in
-`.ts`). Proposed tracks recorded: controls (PID) and web ideas.
-Open follow-up: choose a license.
+Panic hook, pairwise gravity, explicit Euler and velocity Verlet with
+error-law tests, energy, the orbit scene, golden hashes (bit-identical on
+wasm), and the M1 page with shared TypeScript modules. Open follow-up:
+choose a license.
+
+## ✅ M2: N-body cluster (done, PRs #18–#31)
+
+`cargo xtask serve`; TypeScript everywhere; proptest suite (six
+properties, two real bugs found); test layout (`foo/tests.rs`,
+`test-support`); `clap` for xtask; criterion + `bench-wasm` (~2 ns/pair,
+wasm ≈ native from N = 128); `Softening` and `OpeningAngle` types;
+`clear_forces`; disk and collapse scenes (fixed total masses; the cluster
+too, after the smoke test caught it flinging bodies away at N = 1024);
+`demo_set_softening`/`demo_set_theta`; the M2 page (f32 / f64 / f64
+Barnes–Hut panels, divergence, energy, per-N cost with ns/pair);
+`cargo xtask coverage` (98.5% Rust lines, no gate); `unreachable_pub`;
+Barnes–Hut (design doc, Morton-key quadtree, crossover ~200–256 bodies at
+θ = 0.5). `.wasm` 75.9 KB. Lesson recorded: generic sorts compile per
+type (~7 KB each).
 
 ---
 
 ## Decisions to review before starting
 
-Recommendations in **bold**; reply on the PR to change any.
+1. **Constraints describe geometry only** (`01-solvers.md`): a
+   `Constraint<S>` trait evaluates `C(x)` and `∇C(x)` for the particles it
+   touches, plus its compliance α. First and only one in M3:
+   `DistanceConstraint { a, b, length, compliance }`. **No
+   `PinConstraint`:** a pin is a distance constraint to a static particle
+   (`add_static`, `inv_mass = 0`), which both solvers handle for free.
+2. **Solver: an enum, not a trait object**, like `Integrator`:
+   `Solver::{Xpbd, Impulse { beta }}`. Two known solvers; the closed set
+   gives exhaustive matches, no `dyn`, and an easy `demo_set_solver` code.
+   The `01` sketch (`trait Solver`) predates the `Integrator` precedent;
+   revisit if a third solver appears.
+3. **How a solver relates to the integrator.** Each solver *is* a way
+   of stepping, so with constraints present the solver owns the step:
+   - XPBD: predict `x* = x + h v + h² a`, project constraints (λ per
+     substep), then `v = (x − x_prev) / h`.
+   - Impulse: `v += h a`, solve velocity constraints (with Baumgarte bias
+     β·C/h, accumulated λ, warm-started), then `x += h v`.
 
-1. **Dev dependencies: `proptest` 1.12.0 and `criterion` 0.8.2**, through
-   **`[workspace.dependencies]`** (one pinned version for the workspace;
-   the open question in `repo-layout.md`). Both are re-checked: active,
-   widely used, under `proptest-rs` / `criterion-rs`.
-2. **`proptest` with `default-features = false, features = ["std"]`.** Its
-   default `fork`/`timeout` features run each case in a subprocess, which
-   WASI doesn't have, and `cargo xtask test-wasm` runs the engine tests on
-   WASI. Check in section 2 that the property tests build and pass there.
-3. **Native-vs-wasm benchmark ratio: `criterion` natively, plus a small
-   Node harness timing the same scenarios through `engine.wasm`** (the M0
-   approach, as `cargo xtask bench-wasm`). That's closer to what the
-   browser runs than `criterion` under wasmtime, and avoids getting
-   `criterion` itself working on WASI.
-4. **Changing ε live: `World::clear_forces` + re-add.** The demo's
-   softening slider rebuilds the scene's force list rather than mutating a
-   `Box<dyn Force>` in place (which would need downcasting or a
-   parameter-setting method on every force).
-5. **`Softening<S>` becomes a type** (`type-invariants.md` item 2: the
-   slider is its trigger). Non-negative, ε = 0 allowed, since M2's demo
-   sets it on purpose. `demo_set_softening(d, eps)` parses at the C
-   boundary and rejects negative or NaN.
-6. **f32-vs-f64 divergence metric: RMS distance between matching bodies**,
-   plotted on a log scale. Both panels build the same seeded scene, so the
-   only difference at t = 0 is f32's rounding of the initial state, and
-   the plot shows that difference growing roughly exponentially (chaos).
-7. **The M2 page is `.ts`, and M0/M1 pages convert in the same PR.** Adding
-   demo pages to the TypeScript build means gitignoring their emitted
-   `main.js`. A pattern that covers some demos but not others gets
-   fragile, so convert all three at once (they're already JSDoc-typed).
-8. **Scenarios:** keep `cluster`; add **`disk`** (a central heavy body
-   with lighter bodies on circular orbits for the enclosed mass, so it
-   looks stable before chaos sets in) and **`collapse`** (a cold cloud, all
-   at rest, that falls in on itself).
-9. **Barnes–Hut stays a stretch:** only if everything else lands, and it
-   needs its own design doc first (`docs/barnes-hut.md`).
-
----
-
-## ✅ 1. Tooling: `cargo xtask serve`, TypeScript demo pages (done)
-
-`cargo xtask serve [--port N]` builds, serves (default 8000), and runs
-`tsc --watch`; Ctrl-C stops all; a taken port is reported and leaves no
-orphaned watcher. The M0 and M1 pages are now `.ts`, so `site/` is all
-TypeScript and one `tsconfig.json` both checks (`--noEmit`) and builds;
-`tsconfig.build.json` is gone.
-
-## ✅ 2. Dependencies and property tests (done)
-
-`proptest` 1.12.0 via `[workspace.dependencies]`, default features off
-(no subprocesses on WASI). Six properties in `tests/properties.rs`, f32
-and f64 on the same generated worlds: momentum, finiteness, translation,
-exact 90° rotation, permutation, determinism. Proptest found two real
-issues: rotation is exact in value, not bits (signed zero), and the f32
-momentum tolerance (a constant from one cluster run) was too tight; it's
-now an error law, `steps · ε · Σm|v|` (worst seen: 0.26 of it). Both
-shrunk cases are committed and replay. Known failure
-`unsoftened_close_pass_spikes` (1024 vs 2.8 m/s). `test-wasm` passes
-`--nocapture`, so wasm failures print their message.
-
-## ✅ 2⅓. Test layout (done, raised during M2.2)
-
-Every inline `mod tests { … }` moved to `src/<module>/tests.rs` (14
-modules; crate roots use `src/tests.rs`). `tests/common/mod.rs` became
-`crates/test-support` (tol, orbit, hash, worlds), a dev-dependency, so
-the repo has no `mod.rs` and no `dead_code` allowance. Edition 2024
-reserves `gen`, so the generators module is `worlds`.
-
-## ✅ 2½. `clap` for xtask (done)
-
-`clap` 4.6.7 (`derive`) via `[workspace.dependencies]`, `xtask` only. The
-hand-written parser is gone; gains are typo suggestions, range-checked
-`--port`, per-subcommand help, and `debug_assert` of the definition in
-tests. `xtask` allows `doc_markdown` (doc comments are `--help` text).
-Cost: clean build 0.38 s → 2.35 s, incremental 0.16 s.
-
-## ✅ 3. Benchmarks (done)
-
-`criterion` 0.8.2 (no plotters/rayon) in `benches/step.rs`: O(n²) at
-~2 ns/pair; Verlet exactly 2× (M1 decision 2 stands); the per-call body
-`Vec` is negligible (no change); f32 only 5–10% faster. `cargo xtask
-bench-wasm` (Node, codes from `abi.ts`): wasm matches native from n = 128
-(0.87–1.21×), pays fixed per-call costs at n = 16; f64 wasm ~10% faster
-than native is unexplained (target-cpu=native hypothesis tested and
-refuted). A minimal `DEMO_CLUSTER` + `cluster_gravity` moved up from
-section 5 for the wasm side. Also: `thiserror` considered, not adopted.
-
-## ✅ 4. Scenarios and softening (done)
-
-`Softening<S>`: `new(eps) -> Option`, rejecting negative and NaN with one
-`>= 0`; ε = 0 is valid. `PairwiseGravity::new` takes it. Scene constants
-are checked once (`cluster_gravity`/`orbit_gravity` → `Result`,
-`ConfigError::InvalidSoftening`), and `scenarios::gravity(ε)` plus
-`World::clear_forces` rebuild a scene's force. The web demo stores the
-scene's gravity next to the world for energy readouts. New `disk` (heavy
-center, enclosed-mass circular orbits, zero-momentum boost; approximate in
-2D, since there's no shell theorem) and `collapse` (cold equal-mass cloud),
-both with fixed total mass so time scales don't depend on N. Seven golden
-runs; native and wasm agree.
-
-## ✅ 5. Web layer (done)
-
-`DEMO_DISK` (3) and `DEMO_COLLAPSE` (4) are their own kinds rather than a
-scenario code on `DEMO_CLUSTER`, so `demo_new` is unchanged; in Rust,
-`DemoKind::Gravity(GravityScene)`. `demo_set_softening(d, eps)` parses
-`Softening` in `f64` at the boundary (`Softening::cast` carries it to f32),
-rejects negative/NaN and the fountain, and the energy readout follows ε.
-`.wasm` 58,544 B (gzip 19,926); the disk's sort was the surprise (~7–9 KB),
-now unstable (~1.5 KB smaller). (An earlier note said it was shared with
-Barnes–Hut: wrong, since BH isn't in the `.wasm`, and generic sorts compile
-per element type anyway.)
-
-## ✅ 6. Site: the M2 page (done; manual check pending)
-
-`site/demos/m2-cluster/` (`.ts`): f32 and f64 panels of the same seeded
-scene, an RMS-divergence plot and a `|ΔE/E|` plot (log), and controls for
-scene, N (powers of two, 16–4096), softening (0–0.5 m, live; resets the
-energy baseline), rate, and reset. `site/js/perf.ts`: per-N cost table with
-ns/pair; `site/js/divergence.ts`. Both node-tested. Three smoke cases;
-gallery link. The N = 1024 smoke case caught the cluster flinging every
-body out of view (total mass grew with N), so `cluster` now has a fixed
-total mass (golden updated). **Still to do: your manual check against
-Done when** (headless Chrome can't run the live loop).
-
-## ✅ 7. Code coverage (done)
-
-`cargo xtask coverage` (report only): `cargo-llvm-cov` (tool install;
-`llvm-tools` in `rust-toolchain.toml`) for the Rust crates, HTML under
-`target/llvm-cov/html` plus a line per crate; `node --test
---experimental-test-coverage` for the site's pure modules. First report:
-Rust 98.51% lines (math 100, engine 98.4, web 98.3); site JS 61% (the rest
-is DOM code, covered by the smoke test). Every miss is explained in
-`docs/04-testing.md`. **No gate**: the misses are explained, there's no CI
-to hold a baseline, and a ratchet would trip on harmless changes. Built by
-a subagent off `main`, then rebased onto the stack.
-
-## ✅ 8. Stretch: Barnes–Hut (done)
-
-`docs/barnes-hut.md` (quadtree with Morton keys and no float-to-int casts,
-a postorder walk, θ, accuracy vs cost, momentum given up). `BarnesHut<S>`:
-θ = 0 matches direct summation to 1e-16; max error / RMS |a| ≤ 0.05 at
-θ = 0.5. Criterion: crossover around 200–256 bodies at θ = 0.5 and about
-128 at θ = 1; 3.5× faster at 4096 (f64, θ = 0.5). `OpeningAngle<S>`
-(the θ slider triggered it); `BarnesHut::approximating` keeps the exact
-force for energy readouts. The M2 page has a third panel, f64 Barnes–Hut,
-with a θ slider. `.wasm` 75,872 B: its sort runs on non-generic
-`(key, index)` pairs (−7 KB). Built by subagents off `main`, ported onto
-the stack.
-
-## ✅ 9. M2 cleanup (done)
-
-`unreachable_pub` on (`cargo fix`, native and wasm32; it found no dead
-code; the web exports stay exported via `#[no_mangle]`, checked against
-the `.wasm`). The coverage gap is tested (`ZeroSubsteps`' message,
-`substeps()`). Magic-number review of M2's code found nothing unnamed.
-`type-invariants.md` triggers re-checked for M2. Stale golden-hash comment
-fixed.
+   Proposal: `World` gets `constraints` and a `Solver`. With no
+   constraints, the integrator steps exactly as today, so every M0–M2
+   golden is unchanged. With constraints, the solver steps and the
+   integrator setting is ignored (documented, and tested so it can't
+   silently half-apply).
+4. **Per-solver state lives in the world, next to the constraints:** one
+   λ per constraint (`Vec<S>`, same order), reset per substep by XPBD and
+   kept across steps by the impulse solver for warm starting. Switching
+   solvers resets it.
+5. **`ParticleId` (deferred since M0): a plain index newtype, no
+   generation.** Constraints need to name particles; `Particles::add`
+   returns a `ParticleId`. Nothing can be removed in M3, so a stale id
+   can't exist yet. The generational handle waits for removal
+   (`type-invariants.md` item 5 keeps that trigger).
+6. **Mass types (`type-invariants.md` item 1): the trigger fires.** Both
+   solvers weight corrections by `inv_mass`, so a bad mass corrupts every
+   constraint it touches. Proposal: `Mass<S>` (positive, finite) taken by
+   `Particles::add`; `add_static` stays the only way to get `inv_mass = 0`.
+   Cost: every `add` call site (scenarios, tests, proptest) changes; done
+   as its own section so the churn is reviewable apart from the solvers.
+7. **Iterations and substeps are both controls.** Substeps already exist
+   (`World::new`); iterations (Gauss–Seidel passes per substep) are new and
+   matter only from M4 (one constraint converges in one pass), but the
+   control is cheap and the `01` table needs neither more nor less.
+8. **The `01` table as a regression test**, one test per row, with
+   tolerances set from our measured values (the `01` numbers came from a
+   standalone script, so ours may differ in the second digit; any
+   difference is recorded, not hidden). Known failures:
+   `impulse_without_baumgarte_stretches`,
+   `xpbd_single_substep_loses_energy`.
+9. **The page is f64 by default with an f32 option** (as M1). Two panels,
+   one per solver, plus plots of rod-length error (log) and energy.
+10. **Out of scope, unchanged:** the 4096-body known gap (Web Workers) stays
+    parked; it doesn't block M3.
 
 ---
 
-## Out of scope for M2
+## 1. `docs/06-constraints.md` (PR)
 
-- Constraints, solvers, and the pendulum duel: M3
-- Fixed point: M8
-- WebGL rendering (`docs/05-roadmap.md` web track): only if a few hundred
-  bodies can't hold 60 Hz on Canvas 2D (M0 measured 100k+ is fine)
+- [ ] Constraint trait, solver enum, how the step is split, where λ
+      lives, and how this extends to M4 chains and M6 contacts.
+      Decisions 1–4 written up properly, with the XPBD and impulse update
+      equations and references (Macklin et al. 2016; Catto, Solver2D).
+
+## 2. `ParticleId` and `Mass<S>` (test first, PR)
+
+- [ ] `ParticleId` (decision 5); `Particles::add` returns it.
+- [ ] `Mass<S>` (decision 6): `new(m) -> Option`, positive and finite;
+      `add` takes it. All call sites updated; goldens unchanged.
+
+## 3. Constraints and XPBD (test first, PR)
+
+- [ ] `Constraint<S>`, `DistanceConstraint`; `World::add_constraint`.
+- [ ] `Solver::Xpbd`, substeps and iterations; XPBD keeps the rod at
+      rounding level; energy loss shrinks with substeps.
+- [ ] Diagnostics: constraint error (max, RMS).
+- [ ] `scenarios::pendulum` (L = 1 m, m = 1 kg, released horizontal, the
+      `01` setup).
+
+## 4. Impulse solver (test first, PR)
+
+- [ ] `Solver::Impulse { beta }`: accumulated λ, warm starting, Baumgarte.
+- [ ] Known failures and the `01` table as regression tests (decision 8).
+- [ ] Golden hashes for both solvers.
+
+## 5. Web layer (PR)
+
+- [ ] `DEMO_PENDULUM`, `demo_set_solver`, `demo_set_beta`,
+      `demo_set_substeps`, `demo_set_iterations` (parsed at the boundary),
+      `demo_constraint_error`; ABI mirror; size row.
+
+## 6. Site: the M3 page (PR)
+
+- [ ] `site/demos/m3-pendulum/`: XPBD and impulse panels, rod drawn,
+      rod-error and energy plots, controls (β, substeps, iterations,
+      scalar, rate, reset), presets for each row of the `01` table, smoke
+      cases, gallery link.
+- [ ] Manual check against **Done when** (yours).
+
+## 7. M3 cleanup (PR, if needed)
+
+- [ ] Magic numbers, `type-invariants.md` triggers (`UnitVec2`: M3 adds
+      the first `x / |x|` in a constraint gradient), awkward bits.
+
+---
+
+## Out of scope for M3
+
+- Chains, mass ratios, mouse dragging, double pendulum (M4).
+- Springs and soft bodies (M5), contacts (M6+).
+- Web Workers for the M2 page (known gap below).
 
 ## Known gaps
 
