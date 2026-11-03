@@ -23,4 +23,4 @@ pub use math::{Scalar, Vec2};
 pub use params::{Baumgarte, Compliance, DEFAULT_BAUMGARTE, Mass, OpeningAngle, Softening};
 pub use particles::{ParticleId, Particles};
 pub use solver::{Order, Solver};
-pub use world::{ConfigError, World};
+pub use world::{ConfigError, Grab, World};

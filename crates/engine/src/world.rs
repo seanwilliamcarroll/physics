@@ -4,11 +4,13 @@
 
 mod config_error;
 mod constraints;
+mod drag;
 
 use core::num::NonZeroU32;
 
 pub use config_error::ConfigError;
 use constraints::Constraints;
+pub use drag::Grab;
 
 use crate::Baumgarte;
 use crate::{DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Vec2};
