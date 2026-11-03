@@ -185,10 +185,13 @@ warm-started** (stable, period and damping unchanged). Decision 8 holds
 as written. Stability judged by kinetic energy (elastic energy of stiff,
 unconverged constraints is meaningless). Goldens for all three.
 
-## 6. Web layer (PR)
+## ✅ 6. Web layer (done)
 
-- [ ] `demo_new_jelly`, `demo_set_stiffness` (live, both kinds),
-      `demo_set_damping`, ground; ABI mirror; size row.
+`demo_new_jelly(scalar, body, cols, rows, k, c)` (`JELLY_SPRINGS/XPBD/
+IMPULSE`, 10 substeps to start), live `demo_set_stiffness` and
+`demo_set_damping` (refused for non-jelly scenes and values the body can't
+take; a held drag rod keeps its stiffness), `demo_kinetic_energy`.
+`.wasm` 127,655 B (gzip 42,813).
 
 ## 7. Site: the M5 page (PR)
 

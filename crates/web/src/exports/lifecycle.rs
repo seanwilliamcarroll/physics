@@ -3,7 +3,7 @@
 
 use core::ptr;
 
-use crate::demo::{Demo, DemoKind, ScalarKind, start_from_code};
+use crate::demo::{Demo, DemoKind, ScalarKind, jelly_body_from_code, start_from_code};
 
 /// Creates a demo of `n` particles. `kind` and `scalar` are codes from
 /// [`crate::abi`]. Returns null for an unknown code or invalid scene.
@@ -106,6 +106,33 @@ pub(crate) extern "C" fn demo_new_double_pendulum(
         return ptr::null_mut();
     }
     Demo::new_double_pendulum(scalar, start, offset)
+        .map_or(ptr::null_mut(), |d| Box::into_raw(Box::new(d)))
+}
+
+/// Creates the M5 jelly: a `cols` × `rows` grid (`JELLY_*` body code from
+/// [`crate::abi`]) with springs of stiffness `k` (N/m) and damping `c`
+/// (N·s/m), dropped onto a ground; 10 substeps to start. Returns null for
+/// an unknown code, an empty grid, or a stiffness or damping the body
+/// can't take (force springs can't be rigid: `k = ∞` is null for them).
+#[unsafe(no_mangle)]
+pub(crate) extern "C" fn demo_new_jelly(
+    scalar: u32,
+    body: u32,
+    cols: u32,
+    rows: u32,
+    k: f64,
+    c: f64,
+) -> *mut Demo {
+    crate::imports::install_panic_hook();
+    let (Some(scalar), Some(body), Ok(cols), Ok(rows)) = (
+        ScalarKind::from_code(scalar),
+        jelly_body_from_code(body),
+        usize::try_from(cols),
+        usize::try_from(rows),
+    ) else {
+        return ptr::null_mut();
+    };
+    Demo::new_jelly(scalar, body, cols, rows, k, c)
         .map_or(ptr::null_mut(), |d| Box::into_raw(Box::new(d)))
 }
 

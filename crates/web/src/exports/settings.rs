@@ -164,3 +164,28 @@ pub(crate) unsafe extern "C" fn demo_set_stabilization(d: *mut Demo, code: u32) 
     d.set_stabilization(stabilization);
     1
 }
+
+/// Sets a jelly's spring stiffness `k` (N/m), live (the jelly keeps moving).
+/// Returns 1, or 0 for a value the jelly's body can't take (≤ 0, NaN; ∞
+/// for force springs, which can't be rigid), a scene that isn't a jelly,
+/// or a null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from a `demo_new*` export.
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_stiffness(d: *mut Demo, k: f64) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    unsafe { d.as_mut() }.map_or(0, |d| u32::from(d.set_stiffness(k)))
+}
+
+/// Sets a jelly's damping `c` (N·s/m), live. Returns 1, or 0 for a
+/// negative, NaN or infinite `c`, a scene that isn't a jelly, or a null
+/// handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from a `demo_new*` export.
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_damping(d: *mut Demo, c: f64) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    unsafe { d.as_mut() }.map_or(0, |d| u32::from(d.set_damping(c)))
+}

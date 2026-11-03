@@ -126,6 +126,7 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M2.8 | `F32`, `F64` | 75,872 B | 25,902 B | + Barnes–Hut and `demo_set_theta`. Its sort first compiled once per scalar (82,908 B); sorting non-generic `(key, index)` pairs keeps one copy. The disk's f64 sort could share it too (non-negative floats sort like their bit patterns), at the cost of coupling the two for size alone |
 | M3.5 | `F32`, `F64` | 90,194 B | 29,209 B | + constraints, XPBD and impulse solvers, pendulum, solver controls (each ×2 scalars) |
 | M4.6 | `F32`, `F64` | 102,099 B | 34,099 B | + compliance, iteration order, chain and double-pendulum scenes, drag, links buffer |
+| M5.6 | `F32`, `F64` | 127,655 B | 42,813 B | + springs and damping, ground, the jelly, live stiffness (+25.6 KB over M4.6: springs, the jelly builder and damped forms of both solvers, ×2 scalars) |
 
 ### The render buffer
 

@@ -28,6 +28,17 @@ pub(crate) unsafe extern "C" fn demo_energy(d: *const Demo) -> f64 {
         .unwrap_or(f64::NAN)
 }
 
+/// Kinetic energy in joules (NaN for a null handle): the M5 page's
+/// explosion indicator.
+///
+/// # Safety
+/// `d` must be null or a live handle from a `demo_new*` export.
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_kinetic_energy(d: *const Demo) -> f64 {
+    // SAFETY: per the contract, null (-> None) or a live Demo.
+    unsafe { d.as_ref() }.map_or(f64::NAN, Demo::kinetic_energy)
+}
+
 /// Particle `i`'s x in meters, exact (the engine's scalar as `f64`), or
 /// NaN past the last particle or for a null handle. The render buffer is
 /// `f32` and can't resolve differences like 1e-9 m at 2 m.

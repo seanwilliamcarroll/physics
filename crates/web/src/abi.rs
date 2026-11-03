@@ -28,6 +28,12 @@ pub(crate) const ORDER_ALTERNATING: u32 = 2;
 pub(crate) const STABILIZATION_BAUMGARTE: u32 = 0;
 pub(crate) const STABILIZATION_SPLIT: u32 = 1;
 
+/// `demo_new_jelly` body codes (M5): force springs, or compliant
+/// constraints under XPBD or the impulse solver.
+pub(crate) const JELLY_SPRINGS: u32 = 0;
+pub(crate) const JELLY_XPBD: u32 = 1;
+pub(crate) const JELLY_IMPULSE: u32 = 2;
+
 /// `demo_new_double_pendulum` start codes (M4).
 pub(crate) const START_HORIZONTAL: u32 = 0;
 pub(crate) const START_RAISED: u32 = 1;
