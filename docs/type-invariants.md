@@ -123,6 +123,18 @@ constant (not settable), so `Softening` (item 2) waits for M2's slider;
 mass is still constant per scenario, so item 1 waits for M3; no unit-mixing
 bug yet (item 7).
 
+## Adopted before M6
+
+- **`UnitVec2<S>`** (item 3; trigger met in M5: `SpringForce` became the
+  second `d / |d|`, after `DistanceConstraint`). In `math`, a private
+  field; made only by `Vec2::normalized` or `Vec2::length_and_direction`,
+  `None` unless `|x| > 0` (so NaN too). `Constraint::evaluate` returns
+  `Option<UnitVec2>`, so the solvers can't receive an unnormalized
+  gradient; scaling returns a plain `Vec2`. Still `x / |x|` per
+  component, so every golden hash is unchanged (native and wasm). Adopted
+  now so M6's contact normals start with it rather than adding a third
+  hand-written check.
+
 ## Adopted in M4
 
 - **`Compliance<S>`** (item 2; trigger: the drag's soft constraint, a
@@ -187,7 +199,8 @@ adopt it in that milestone's PR and move the row up.
 3. **`UnitVec2<S>` (normalized direction).** Constraint gradients
    (`n = x / |x|`, `docs/01-solvers.md`) assume unit length, and normalizing
    a zero vector divides by zero. `Vec2::normalized() -> Option<UnitVec2>`
-   forces handling the degenerate case. *Adopt when* M3 adds a second call
+   forces handling the degenerate case. ✅ *Adopted before M6* (below).
+   *Adopt when* M3 adds a second call
    site that normalizes, or a bug traces to an unnormalized or zero-length
    direction. It matters more on fixed point (**M8**), where `x / |x|` near
    zero loses all precision.

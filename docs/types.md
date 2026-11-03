@@ -14,6 +14,7 @@ local tuples) are left out.
 |---|---|
 | [`Scalar`](../crates/math/src/scalar.rs) | The engine is generic over its number type, so f32, f64, and (M8) fixed point run the same code and can be compared side by side. |
 | [`Vec2<S>`](../crates/math/src/vec2.rs) | The 2D vector everything is written in; `#[must_use]`, so a discarded result (`v.perp();`) is a compiler warning. |
+| [`UnitVec2<S>`](../crates/math/src/unit_vec2.rs) | A direction of length 1, only from `Vec2::normalized`/`length_and_direction` (`None` at zero or NaN), so every `x / \|x\|` handles the degenerate case: constraint gradients, spring axes, M6's contact normals. |
 
 ## `engine` — storage and identity
 

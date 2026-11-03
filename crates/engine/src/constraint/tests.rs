@@ -1,6 +1,6 @@
 use super::{Constraint, DistanceConstraint};
 use crate::params::kg;
-use crate::{Particles, Vec2};
+use crate::{Particles, UnitVec2, Vec2};
 
 fn two_bodies() -> (Particles<f64>, crate::ParticleId, crate::ParticleId) {
     let mut p = Particles::new();
@@ -34,7 +34,7 @@ fn evaluate_gives_stretch_and_the_direction_from_a_to_b() {
     // Stretched to 10 along the same 3-4-5 direction.
     let (value, grad) = c.evaluate(Vec2::new(1.0, 1.0), Vec2::new(7.0, 9.0));
     assert_eq!(value, 5.0);
-    assert_eq!(grad, Some(Vec2::new(0.6, 0.8)));
+    assert_eq!(grad.map(UnitVec2::get), Some(Vec2::new(0.6, 0.8)));
     // Compressed: negative C, same direction.
     let (value, _) = c.evaluate(Vec2::new(1.0, 1.0), Vec2::new(2.5, 3.0));
     assert_eq!(value, -2.5);
