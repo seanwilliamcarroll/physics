@@ -64,8 +64,8 @@ and `Friction` go.
 
 Scenes without state are functions, not types, one file each under
 [`scenarios/`](../crates/engine/src/scenarios/) (`cluster`, `disk`,
-`collapse`, `orbit`, `pendulum`), re-exported by
-[`scenarios.rs`](../crates/engine/src/scenarios.rs).
+`collapse`, `orbit`, `pendulum`, `chain`, `double_pendulum`),
+re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 
 ## `web` — the wasm boundary
 
