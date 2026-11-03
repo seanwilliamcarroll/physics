@@ -143,13 +143,16 @@ These guarantee the demos remain demonstrations.
 | Explicit Euler orbit | Energy increases monotonically (sampled per orbit); radius grows |
 | Unsoftened close pass | With `ε = 0`, a near-head-on encounter produces a velocity spike > threshold |
 | Large `dt` orbit | Symplectic Euler at a coarse step visibly precesses (stays bounded) |
+| Impulse pendulum, β = 0 (M3) | Rod stretches > 40 cm in 10 s (measured 47 cm) |
+| XPBD pendulum, 1 substep (M3) | Loses > 8 of 9.81 J in 10 s (measured 8.79 J) |
+| XPBD pendulum in f32, 100 substeps (M3) | Energy differs from f64 by > 0.2 J (f32 *gains* 0.11 J where f64 loses 0.31 J) |
 
 Name them for what they demonstrate, e.g.
 `explicit_euler_gains_energy_on_orbit`.
 
-Phase 2+ additions from `01-solvers.md`: unstabilized impulse pendulum
-stretches; XPBD with 1 substep loses most of its energy; force-based stiff
-spring diverges.
+Still to come from `01-solvers.md`: force-based stiff spring diverges
+(M5). The whole `01` table is also a regression suite
+(`tests/solver_table.rs`, one test per row).
 
 ## Determinism
 

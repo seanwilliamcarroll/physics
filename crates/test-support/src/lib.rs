@@ -24,12 +24,14 @@
 mod barnes_hut;
 mod hash;
 mod orbit;
+mod pendulum;
 mod tol;
 mod worlds;
 
 pub use barnes_hut::{accelerations, cluster_barnes_hut, cluster_barnes_hut_force};
 pub use hash::{Fnv1a, state_hash};
 pub use orbit::{energy_errors, envelope, orbit_energy, separation, steps_for};
+pub use pendulum::{PENDULUM_DT, PENDULUM_STEPS, PendulumRun, pendulum_energy, pendulum_run};
 pub use tol::{Tol, momentum_drift_bound};
 pub use worlds::*;
 

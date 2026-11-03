@@ -105,3 +105,19 @@ fn substeps_and_iterations_are_settable() {
     w.set_iterations(NonZeroU32::new(3).unwrap());
     assert_eq!((w.substeps(), w.iterations().get()), (20, 3));
 }
+
+#[test]
+fn baumgarte_defaults_to_box2d_and_survives_solver_switches() {
+    use crate::{Baumgarte, DEFAULT_BAUMGARTE, Solver};
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    assert_eq!(w.baumgarte().get(), DEFAULT_BAUMGARTE);
+    w.set_baumgarte(Baumgarte::new(0.5).unwrap());
+    w.set_solver(Solver::Impulse);
+    w.set_solver(Solver::Xpbd);
+    assert_eq!(w.baumgarte().get(), 0.5);
+    assert!(
+        super::ConfigError::InvalidBaumgarte
+            .to_string()
+            .contains("Baumgarte")
+    );
+}

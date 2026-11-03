@@ -149,12 +149,15 @@ without, goldens are unchanged. Diagnostics: `constraint_error`,
 1 / 20 / 100 substeps (table 8.8 / 1.46 / 0.31). Golden for the XPBD
 pendulum, native and wasm.
 
-## 4. Impulse solver (test first, PR)
+## ✅ 4. Impulse solver (done)
 
-- [ ] `Solver::Impulse` and `Baumgarte<S>`: accumulated λ, warm
-      starting, the bias.
-- [ ] Known failures and the `01` table as regression tests (decision 8).
-- [ ] Golden hashes for both solvers.
+`Solver::Impulse`: kick, warm start, velocity solve with bias `(β/h) C`,
+drift; `Baumgarte<S>` in `[0, 1]`, default 0.2 (Box2D v2). `01`'s table
+is a regression suite (`tests/solver_table.rs`) and every row
+reproduces. Known failures: `impulse_without_baumgarte_stretches`,
+`xpbd_single_substep_loses_energy`, and a new one,
+`xpbd_f32_substeps_derive_noisy_velocities` (f32 XPBD at 100 substeps
+gains energy). Goldens for both solvers, native and wasm.
 
 ## 5. Web layer (PR)
 

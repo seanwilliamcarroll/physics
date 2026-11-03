@@ -24,5 +24,5 @@ pub use mass::Mass;
 pub use math::{Scalar, Vec2};
 pub use particles::{ParticleId, Particles};
 pub use softening::Softening;
-pub use solver::Solver;
+pub use solver::{Baumgarte, DEFAULT_BAUMGARTE, Solver};
 pub use world::{ConfigError, World};
