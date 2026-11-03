@@ -182,10 +182,18 @@ is DOM code, covered by the smoke test). Every miss is explained in
 to hold a baseline, and a ratchet would trip on harmless changes. Built by
 a subagent off `main`, then rebased onto the stack.
 
-## 8. Stretch: Barnes–Hut (PR, only if time)
+## ✅ 8. Stretch: Barnes–Hut (done)
 
-- [ ] `docs/barnes-hut.md` first: quadtree, θ, accuracy vs cost.
-- [ ] A third panel with θ as a slider.
+`docs/barnes-hut.md` (quadtree with Morton keys and no float-to-int casts,
+a postorder walk, θ, accuracy vs cost, momentum given up). `BarnesHut<S>`:
+θ = 0 matches direct summation to 1e-16; max error / RMS |a| ≤ 0.05 at
+θ = 0.5. Criterion: crossover around 200–256 bodies at θ = 0.5 and about
+128 at θ = 1; 3.5× faster at 4096 (f64, θ = 0.5). `OpeningAngle<S>`
+(the θ slider triggered it); `BarnesHut::approximating` keeps the exact
+force for energy readouts. The M2 page has a third panel, f64 Barnes–Hut,
+with a θ slider. `.wasm` 75,872 B: its sort runs on non-generic
+`(key, index)` pairs (−7 KB). Built by subagents off `main`, ported onto
+the stack.
 
 ## ✅ 9. M2 cleanup (done)
 

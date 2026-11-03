@@ -76,6 +76,12 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   (`cluster_gravity`/`orbit_gravity` return `ConfigError::InvalidSoftening`),
   which is more of the item 4 plumbing for errors that can't happen.
 
+- **`OpeningAngle<S>`** (M2.8, same trigger as `Softening`: the θ
+  slider). `OpeningAngle::new(θ) -> Option`, `None` for negative or NaN;
+  θ = 0 is valid (exact). `BarnesHut::new` became infallible.
+  `demo_set_theta` parses at the boundary in `f64` and `cast`s to the
+  engine's scalar.
+
 **Triggers re-checked at the end of M2:** item 1 (mass types) still
 waits: masses are still scenario-computed, never user input, and M2 added
 no constraint solver. Item 2's other parameters (compliance, restitution,
@@ -83,9 +89,8 @@ friction) wait for their sliders. Item 4 (`NonZeroU32` substeps) is
 closer: M2 added more `Result` plumbing for errors that can't happen
 (`InvalidSoftening` on positive constants), but substeps are still
 constants, and one enum variant per invariant is cheap. Item 3
-(`UnitVec2`) waits for M3. Barnes–Hut's opening angle θ is checked in
-`BarnesHut::new` (`Option`); it becomes a parameter type if a θ slider
-lands.
+(`UnitVec2`) waits for M3. Barnes–Hut's opening angle θ did get a slider
+(M2.8), so it is now a parameter type, below.
 
 **Triggers re-checked at the end of M1:** softening is still a scenario
 constant (not settable), so `Softening` (item 2) waits for M2's slider;
