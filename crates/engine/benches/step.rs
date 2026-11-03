@@ -1,6 +1,7 @@
 //! `cargo bench -p engine --bench step`: cost of a physics step as N grows
 //! (`docs/04-testing.md`, benchmarks). Results recorded in that doc; the
-//! wasm side is `cargo xtask bench-wasm`.
+//! wasm side is `cargo xtask bench-wasm`. Barnes–Hut vs pairwise:
+//! `docs/barnes-hut.md`.
 // Bench setup unwraps scenarios that can't fail; benches aren't test code,
 // so the library lints would otherwise apply (docs/lint-policy.md).
 #![expect(
@@ -12,11 +13,19 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use engine::scenarios::{cluster, cluster_gravity};
-use engine::{Force, Integrator, Scalar, Vec2};
+use engine::scenarios::{CLUSTER_SOFTENING, GRAVITATIONAL_CONSTANT, cluster, cluster_gravity};
+use engine::{BarnesHut, Force, Integrator, Scalar, Softening, Vec2};
 
 /// Body counts: O(n²) makes each ~8x step in N cost ~64x.
 const SIZES: [usize; 3] = [16, 128, 1024];
+/// Extra size for the force-only groups: where Barnes–Hut's O(n log n)
+/// should clearly beat the pair loop (`docs/barnes-hut.md`, cost).
+const LARGE_N: usize = 4096;
+/// Barnes–Hut sizes: around and past the crossover with pairwise.
+const TREE_SIZES: [usize; 3] = [128, 1024, LARGE_N];
+/// Opening angles: 0.5 (a common accuracy choice, ~5% max force error
+/// here) and 1.0 (Barnes & Hut's own, ~30%); `docs/barnes-hut.md`.
+const THETAS: [f64; 2] = [0.5, 1.0];
 const SEED: u64 = 1;
 const DT: f64 = 1.0 / 60.0;
 /// Integrators with distinct cost: explicit Euler costs the same as
@@ -45,7 +54,7 @@ fn step<S: Scalar>(c: &mut Criterion, scalar: &str) {
 fn pairwise<S: Scalar>(c: &mut Criterion, scalar: &str) {
     let mut group = c.benchmark_group(format!("pairwise_{scalar}"));
     let gravity = cluster_gravity::<S>().unwrap();
-    for n in SIZES {
+    for n in SIZES.into_iter().chain([LARGE_N]) {
         let w = cluster::<S>(n, SEED).unwrap();
         let mut acc = vec![Vec2::ZERO; n];
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
@@ -54,6 +63,28 @@ fn pairwise<S: Scalar>(c: &mut Criterion, scalar: &str) {
                 gravity.accumulate(black_box(&w.particles), &mut acc);
             });
         });
+    }
+    group.finish();
+}
+
+/// `BarnesHut::accumulate` (tree build and walk) on the same clusters as
+/// [`pairwise`], per θ: the speedup and crossover in `docs/barnes-hut.md`.
+fn barnes_hut<S: Scalar>(c: &mut Criterion, scalar: &str) {
+    let mut group = c.benchmark_group(format!("barnes_hut_{scalar}"));
+    let eps = Softening::new(S::from_f64(CLUSTER_SOFTENING)).unwrap();
+    for theta in THETAS {
+        let force =
+            BarnesHut::new(S::from_f64(GRAVITATIONAL_CONSTANT), eps, S::from_f64(theta)).unwrap();
+        for n in TREE_SIZES {
+            let w = cluster::<S>(n, SEED).unwrap();
+            let mut acc = vec![Vec2::ZERO; n];
+            group.bench_with_input(BenchmarkId::new(format!("theta_{theta}"), n), &n, |b, _| {
+                b.iter(|| {
+                    acc.fill(Vec2::ZERO);
+                    force.accumulate(black_box(&w.particles), &mut acc);
+                });
+            });
+        }
     }
     group.finish();
 }
@@ -86,6 +117,8 @@ fn benches(c: &mut Criterion) {
     step::<f64>(c, "f64");
     pairwise::<f32>(c, "f32");
     pairwise::<f64>(c, "f64");
+    barnes_hut::<f32>(c, "f32");
+    barnes_hut::<f64>(c, "f64");
     body_vec::<f32>(c, "f32");
     body_vec::<f64>(c, "f64");
 }
