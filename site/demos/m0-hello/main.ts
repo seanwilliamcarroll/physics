@@ -1,24 +1,21 @@
 // M0: the pipeline itself. Rust simulates, JS draws, positions are read
 // straight out of wasm memory (no copying across the boundary).
 
-import { loadEngine, positionsView } from "../../js/wasm.js";
-import { runLoop, RateMeter, Smoothed } from "../../js/loop.js";
-import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.js";
-import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.js";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.js";
-import { byId } from "../../js/dom.js";
-import { readInt, optionsTableHtml } from "../../js/options.js";
-/** @typedef {import("../../js/options.js").ChoiceOption} ChoiceOption */
-/** @typedef {import("../../js/options.js").IntOption} IntOption */
+import { loadEngine, positionsView } from "../../js/wasm.ts";
+import { runLoop, RateMeter, Smoothed } from "../../js/loop.ts";
+import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.ts";
+import { DEMO_FOUNTAIN, SCALAR_F32, SCALAR_F64 } from "../../js/abi.ts";
+import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { byId } from "../../js/dom.ts";
+import { readInt, optionsTableHtml } from "../../js/options.ts";
+import type { ChoiceOption, IntOption } from "../../js/options.ts";
 
 /** Scalar names on the URL → abi.js codes. The source of truth for which
  *  scalars exist. */
 const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
-/** @typedef {keyof typeof SCALAR_CODES} ScalarName */
+type ScalarName = keyof typeof SCALAR_CODES;
 
-/** @param {string | null} s
- *  @returns {s is ScalarName} */
-function isScalar(s) {
+function isScalar(s: string | null): s is ScalarName {
   return s !== null && Object.hasOwn(SCALAR_CODES, s);
 }
 
@@ -28,8 +25,8 @@ const GROUND_WIDTH_PX = 1;
 
 /** Every URL option, its legal values, and its default. The single source of
  *  truth: parsing below and the options table on the page both read it.
- *  @type {{ scalar: ChoiceOption, n: IntOption, seed: IntOption, fps: IntOption }} */
-const OPTIONS = {
+ */
+const OPTIONS: { scalar: ChoiceOption; n: IntOption; seed: IntOption; fps: IntOption } = {
   scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f32", help: "engine number type" },
   n: { kind: "int", min: 1, max: 2_000_000, default: 300, help: "particle count" },
   seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "launch randomness; same seed, same fountain" },
@@ -37,8 +34,8 @@ const OPTIONS = {
 };
 
 /** Preset links shown under the table: [label, query string].
- *  @type {[string, string][]} */
-const PRESETS = [
+ */
+const PRESETS: [string, string][] = [
   ["default", ""],
   ["f64", "?scalar=f64"],
   ["10k", "?n=10000"],
@@ -58,8 +55,7 @@ const VIEW = new View({ xMin: -6, xMax: 6, yMin: -0.5, yMax: 8 });
 
 const params = new URLSearchParams(location.search);
 const scalarParam = params.get("scalar");
-/** @type {ScalarName} */
-const scalar = isScalar(scalarParam) ? scalarParam : "f32";
+const scalar: ScalarName = isScalar(scalarParam) ? scalarParam : "f32";
 const n = readInt(params, "n", OPTIONS.n);
 const seed = readInt(params, "seed", OPTIONS.seed);
 const maxFps = readInt(params, "fps", OPTIONS.fps);

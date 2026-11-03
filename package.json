@@ -1,12 +1,12 @@
 {
   "name": "physics-site-tooling",
   "private": true,
-  "description": "Dev tooling for site/: TypeScript compiles site/js/*.ts to .js and type-checks the demos' JSDoc .js. Nothing here ships to browsers.",
+  "description": "Dev tooling for site/: TypeScript compiles site/**/*.ts to .js (plus source maps). Nothing here ships to browsers.",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
-    "build": "tsc -p tsconfig.build.json",
-    "watch": "tsc -p tsconfig.build.json --watch"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch"
   },
   "devDependencies": {
     "typescript": "7.0.2"

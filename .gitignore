@@ -3,6 +3,8 @@
 /dist/
 .DS_Store
 node_modules/
-# Emitted by tsc from site/js/*.ts (cargo xtask site)
+# Emitted by tsc from site/**/*.ts (cargo xtask site)
 site/js/*.js
 site/js/*.js.map
+site/demos/*/*.js
+site/demos/*/*.js.map

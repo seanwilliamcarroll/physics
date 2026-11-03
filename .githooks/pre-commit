@@ -4,33 +4,25 @@
 set -eu
 cd "$(git rev-parse --show-toplevel)"
 
-# JS has no compiler in this repo; at least catch syntax errors. Node is a
-# requirement (README), so a missing node fails rather than skips.
-#
-# Files go through stdin with --input-type=module: `node --check file.js`
-# silently passes ES-module syntax errors in .js files (Node 22 parses as
-# CommonJS first, then gives up without checking as a module).
-echo "pre-commit: node --check (site JS and its tests, as ES modules)"
-if ! command -v node >/dev/null 2>&1; then
-  echo "pre-commit: node not found; install Node.js (see README)" >&2
+# Site source is TypeScript: type-check it (no emit). The compiler is
+# pinned in package-lock.json; `npm ci` installs it.
+echo "pre-commit: tsc --noEmit (site TypeScript)"
+if [ ! -x node_modules/.bin/tsc ]; then
+  echo "pre-commit: TypeScript not installed; run \`npm ci\` (see README)" >&2
   exit 1
 fi
-# site/js/*.js is tsc output (gitignored), not source: skip it.
-find site tests/site -name '*.js' -not -path 'site/pkg/*' -not -path 'site/js/*' | while IFS= read -r f; do
+node_modules/.bin/tsc -p tsconfig.json --noEmit
+
+# The JS unit tests (tests/site) are plain .js: syntax-check them. Piped
+# with --input-type=module: `node --check file.js` silently passes
+# ES-module syntax errors in .js files (Node 22).
+echo "pre-commit: node --check (site unit tests)"
+find tests/site -name '*.js' | while IFS= read -r f; do
   if ! node --input-type=module --check < "$f"; then
     echo "pre-commit: JS syntax error in $f" >&2
     exit 1
   fi
 done
-
-# Type-check the same files (JSDoc + engine.d.ts; tsconfig.json). The
-# compiler is pinned in package-lock.json; `npm ci` installs it.
-echo "pre-commit: tsc (site .ts library + JSDoc demos)"
-if [ ! -x node_modules/.bin/tsc ]; then
-  echo "pre-commit: TypeScript not installed; run \`npm ci\` (see README)" >&2
-  exit 1
-fi
-node_modules/.bin/tsc -p tsconfig.json
 
 echo "pre-commit: cargo fmt --check"
 cargo fmt --all -- --check

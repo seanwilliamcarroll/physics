@@ -2,28 +2,25 @@
 // engine::scenarios::orbit) per panel, each stepped by a different
 // integrator at the same rate, plus their energy errors on one plot.
 
-import { loadEngine, positionsView } from "../../js/wasm.js";
-import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.js";
-import { setupCanvas, View, clear, drawPoints, cssColor } from "../../js/canvas.js";
+import { loadEngine, positionsView } from "../../js/wasm.ts";
+import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
+import { setupCanvas, View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
 import {
   COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
   INTEGRATOR_VELOCITY_VERLET, SCALAR_F32, SCALAR_F64,
-} from "../../js/abi.js";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.js";
-import { byId } from "../../js/dom.js";
-import { readChoice, readInt, optionsTableHtml } from "../../js/options.js";
-import { LinePlot } from "../../js/plot.js";
-import { Trail } from "../../js/trail.js";
-import { slider, select, button } from "../../js/controls.js";
-/** @typedef {import("../../js/options.js").ChoiceOption} ChoiceOption */
-/** @typedef {import("../../js/options.js").IntOption} IntOption */
-/** @typedef {import("../../js/engine").DemoHandle} DemoHandle */
+} from "../../js/abi.ts";
+import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { byId } from "../../js/dom.ts";
+import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
+import { LinePlot } from "../../js/plot.ts";
+import { Trail } from "../../js/trail.ts";
+import { slider, select, button } from "../../js/controls.ts";
+import type { ChoiceOption, IntOption } from "../../js/options.ts";
+import type { DemoHandle } from "../../js/engine";
 
 const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
-/** @typedef {keyof typeof SCALAR_CODES} ScalarName */
-/** @param {string} s
- *  @returns {s is ScalarName} */
-function isScalar(s) {
+type ScalarName = keyof typeof SCALAR_CODES;
+function isScalar(s: string): s is ScalarName {
   return Object.hasOwn(SCALAR_CODES, s);
 }
 
@@ -35,16 +32,14 @@ const PANELS = [
   { code: INTEGRATOR_VELOCITY_VERLET, name: "velocity Verlet", colorVar: "--series-3" },
 ];
 
-/** @type {{ scalar: ChoiceOption, rate: IntOption, scale: ChoiceOption, fps: IntOption }} */
-const OPTIONS = {
+const OPTIONS: { scalar: ChoiceOption; rate: IntOption; scale: ChoiceOption; fps: IntOption } = {
   scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f64", help: "engine number type (f32 shows Verlet hitting f32's rounding floor)" },
   rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate" },
   scale: { kind: "choice", values: ["log", "linear"], default: "log", help: "energy plot's y axis" },
   fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
 };
 
-/** @type {[string, string][]} */
-const PRESETS = [
+const PRESETS: [string, string][] = [
   ["default", ""],
   ["f32", "?scalar=f32"],
   ["20 Hz", "?rate=20"],
@@ -68,8 +63,7 @@ const VIEW = new View({ xMin: -3, xMax: 3, yMin: -3, yMax: 3 });
 
 const params = new URLSearchParams(location.search);
 const scalarParam = readChoice(params, "scalar", OPTIONS.scalar);
-const state = {
-  /** @type {ScalarName} */
+const state: { scalar: ScalarName; rate: number } = {
   scalar: isScalar(scalarParam) ? scalarParam : "f64",
   rate: readInt(params, "rate", OPTIONS.rate),
 };
@@ -112,12 +106,13 @@ const panels = panelEls.map(({ cfg, color, canvas, readout }) => {
     ctx: setupCanvas(canvas),
     readout,
     trail: new Trail(TRAIL_POINTS),
-    /** @type {DemoHandle | null} */
-    demo: null,
+    demo: null as DemoHandle | null,
     /** Energy at the start: the reference for ΔE/E. */
     e0: 0,
   };
 });
+
+type Panel = (typeof panels)[number];
 
 const plot = new LinePlot(byId("plot", HTMLCanvasElement), {
   series: panels.map((p) => ({ label: p.name, color: p.color })),
@@ -148,9 +143,8 @@ try {
   };
   restart();
 
-  /** @param {(typeof panels)[number]} p
-   *  @param {Float32Array} pos star then planet, interleaved */
-  const drawPanel = (p, pos) => {
+  /** `pos`: star then planet, interleaved. */
+  const drawPanel = (p: Panel, pos: Float32Array): void => {
     clear(p.ctx, colors.background);
     VIEW.apply(p.ctx);
     p.trail.draw(p.ctx, VIEW, p.color, TRAIL_WIDTH_PX);
@@ -158,9 +152,7 @@ try {
     drawPoints(p.ctx, VIEW, pos.subarray(COORDS_PER_PARTICLE), PLANET_PX, colors.planet);
   };
 
-  /** @param {(typeof panels)[number]} p
-   *  @returns {DemoHandle} */
-  const handle = (p) => {
+  const handle = (p: Panel): DemoHandle => {
     if (p.demo === null) throw new Error("demo not created");
     return p.demo;
   };
