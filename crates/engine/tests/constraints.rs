@@ -2,20 +2,14 @@
 //! guarantees, and the seams between solver, integrator, and world.
 #![cfg(test)]
 
-use engine::diagnostics::{constraint_error, kinetic_energy, momentum, uniform_gravity_potential};
-use engine::scenarios::{PENDULUM_LENGTH, pendulum, pendulum_gravity};
+use engine::diagnostics::{constraint_error, momentum};
+use engine::scenarios::{PENDULUM_LENGTH, pendulum};
 use engine::{DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
-use test_support::{Tol, for_each_scalar, kg, s, v};
+use test_support::{Tol, for_each_scalar, kg, pendulum_energy, s, v};
 
 /// The `01-solvers.md` setup: 10 s at 60 Hz.
 const DT: f64 = 1.0 / 60.0;
 const STEPS: u32 = 600;
-
-/// Pendulum energy (kinetic + gravity), J, as f64.
-fn energy<S: Scalar>(w: &World<S>) -> f64 {
-    (kinetic_energy(&w.particles) + uniform_gravity_potential(&w.particles, &pendulum_gravity()))
-        .to_f64()
-}
 
 fn max_rod_error<S: Scalar>(w: &World<S>) -> f64 {
     constraint_error(&w.particles, w.constraints()).map_or(f64::NAN, |(max, _)| max.to_f64())
@@ -54,11 +48,11 @@ fn the_pin_never_moves() {
 fn xpbd_energy_loss_shrinks_with_substeps() {
     let lost = |substeps| {
         let mut w = pendulum::<f64>(Solver::Xpbd, substeps).unwrap();
-        let e0 = energy(&w);
+        let e0 = pendulum_energy(&w);
         for _ in 0..STEPS {
             w.step(DT);
         }
-        e0 - energy(&w)
+        e0 - pendulum_energy(&w)
     };
     let (l1, l20, l100) = (lost(1), lost(20), lost(100));
     println!("XPBD energy lost over 10 s: 1 sub {l1:.3} J, 20 sub {l20:.3} J, 100 sub {l100:.3} J");

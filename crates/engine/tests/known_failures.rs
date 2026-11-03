@@ -164,3 +164,44 @@ fn unsoftened_close_pass_spikes<S: Tol>() {
     );
 }
 for_each_scalar!(unsoftened_close_pass_spikes);
+
+/// `impulse_without_baumgarte_stretches` (`01-solvers.md`): zeroing the
+/// rod's radial velocity is a linearization, so the bob leaves the circle
+/// along the tangent every step and the rod stretches. Measured: 47 cm
+/// on a 1 m rod in 10 s, in both scalars.
+fn impulse_without_baumgarte_stretches<S: Tol>() {
+    let r = test_support::pendulum_run::<S>(engine::Solver::Impulse, 0.0, 1);
+    assert!(
+        r.max_rod_error > 0.4,
+        "rod error only {} m",
+        r.max_rod_error
+    );
+}
+for_each_scalar!(impulse_without_baumgarte_stretches);
+
+/// `xpbd_single_substep_loses_energy` (`01-solvers.md`): projection acts
+/// as numerical damping proportional to the step, so with one substep per
+/// 60 Hz frame the pendulum nearly stops. Measured: 8.79 of the 9.81 J
+/// swing lost in 10 s, in both scalars.
+fn xpbd_single_substep_loses_energy<S: Tol>() {
+    let r = test_support::pendulum_run::<S>(engine::Solver::Xpbd, 0.0, 1);
+    assert!(r.energy_lost > 8.0, "lost only {} J", r.energy_lost);
+}
+for_each_scalar!(xpbd_single_substep_loses_energy);
+
+/// `xpbd_f32_substeps_derive_noisy_velocities` (found in M3.4, not in
+/// `01`): XPBD derives `v = (x − x_prev) / h`. At 100 substeps the bob
+/// moves ~0.4 mm per substep at radius 1 m, where f32's spacing is
+/// ~0.1 µm, so each derived velocity carries ~1e-4 relative rounding noise,
+/// and it compounds. f64 loses 0.31 J over 10 s; f32 *gains* 0.11 J.
+/// More substeps, worse f32: the reverse of "substeps fix everything".
+#[test]
+fn xpbd_f32_substeps_derive_noisy_velocities() {
+    use engine::Solver;
+    let f64_lost = test_support::pendulum_run::<f64>(Solver::Xpbd, 0.0, 100).energy_lost;
+    let f32_lost = test_support::pendulum_run::<f32>(Solver::Xpbd, 0.0, 100).energy_lost;
+    assert!(
+        (f32_lost - f64_lost).abs() > 0.2,
+        "f32 {f32_lost} J vs f64 {f64_lost} J: too close"
+    );
+}
