@@ -21,7 +21,8 @@ pub use force::{Force, PairwiseGravity, Spring, SpringForce, UniformGravity};
 pub use integrate::Integrator;
 pub use math::{Scalar, UnitVec2, Vec2};
 pub use params::{
-    Baumgarte, Compliance, DEFAULT_BAUMGARTE, Damping, Mass, OpeningAngle, Softening, Stiffness,
+    Baumgarte, Compliance, DEFAULT_BAUMGARTE, Damping, Mass, OpeningAngle, Radius, Restitution,
+    Softening, Stiffness,
 };
 pub use particles::{ParticleId, Particles};
 pub use solver::{Order, Solver, Stabilization};

@@ -47,6 +47,8 @@ mod compliance;
 mod damping;
 mod mass;
 mod opening_angle;
+mod radius;
+mod restitution;
 mod softening;
 mod stiffness;
 
@@ -57,5 +59,7 @@ pub use mass::Mass;
 #[cfg(test)]
 pub(crate) use mass::kg;
 pub use opening_angle::OpeningAngle;
+pub use radius::Radius;
+pub use restitution::Restitution;
 pub use softening::Softening;
 pub use stiffness::Stiffness;
