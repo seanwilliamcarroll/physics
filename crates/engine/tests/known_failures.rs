@@ -9,7 +9,7 @@ mod common;
 
 use common::{Tol, energy_errors, envelope, orbit_energy, s, separation, steps_for};
 use engine::scenarios::{GRAVITATIONAL_CONSTANT, ORBIT_SEPARATION, ORBIT_TOTAL_MASS, orbit};
-use engine::{Integrator, Scalar, World};
+use engine::{Integrator, PairwiseGravity, Scalar, Vec2, World};
 
 /// One 60 Hz frame: the step the demo uses.
 const FINE_DT: f64 = 1.0 / 60.0;
@@ -102,3 +102,67 @@ fn symplectic_euler_coarse_dt_precesses_but_stays_bounded<S: Tol>() {
     );
 }
 for_each_scalar!(symplectic_euler_coarse_dt_precesses_but_stays_bounded);
+
+/// Close-pass setup: two 10¹⁰ kg bodies 2 m apart closing at 1 m/s each,
+/// offset by an impact parameter of 1 mm: a near miss.
+const PASS_MASS_KG: f64 = 1.0e10;
+const PASS_SPEED: f64 = 1.0;
+const PASS_HALF_GAP_M: f64 = 1.0;
+const PASS_IMPACT_M: f64 = 0.001;
+/// 2 s: they meet at about 1 s.
+const PASS_STEPS: u32 = 120;
+/// Softened comparison: the property-test softening (10 cm).
+const PASS_SOFTENING_M: f64 = 0.1;
+/// Unsoftened peak speed must exceed the softened one by this factor.
+/// Measured: 1024 m/s vs 2.77 m/s (370x); ε = 1 cm gives 39 m/s.
+const SPIKE_FACTOR: f64 = 100.0;
+/// "Bounded": the softened pass stays below this peak speed, m/s.
+const SOFTENED_PEAK_MAX: f64 = 10.0;
+
+/// Fastest speed reached by either body during the close pass.
+fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
+    let mut w = World::<S>::new(Integrator::SymplecticEuler, 1).unwrap();
+    w.add_force(PairwiseGravity::new(
+        S::from_f64(GRAVITATIONAL_CONSTANT),
+        S::from_f64(softening),
+    ));
+    let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
+    let half_b = PASS_IMPACT_M / 2.0;
+    w.particles.add(
+        vec(-PASS_HALF_GAP_M, half_b),
+        vec(PASS_SPEED, 0.0),
+        s(PASS_MASS_KG),
+    );
+    w.particles.add(
+        vec(PASS_HALF_GAP_M, -half_b),
+        vec(-PASS_SPEED, 0.0),
+        s(PASS_MASS_KG),
+    );
+    let mut peak = 0.0_f64;
+    for _ in 0..PASS_STEPS {
+        w.step(s(FINE_DT));
+        for v in w.particles.vel() {
+            peak = peak.max(v.length().to_f64());
+        }
+    }
+    peak
+}
+
+/// `unsoftened_close_pass_spikes` (docs/04-testing.md): with ε = 0 the
+/// pull grows as 1/r², and one step landing near the closest approach
+/// gets an enormous kick: the bodies fling apart at hundreds of times
+/// their approach speed. Softening caps the force. M2's demo lets you set
+/// ε = 0 to watch this happen.
+fn unsoftened_close_pass_spikes<S: Tol>() {
+    let unsoftened = close_pass_peak_speed::<S>(0.0);
+    let softened = close_pass_peak_speed::<S>(PASS_SOFTENING_M);
+    assert!(
+        unsoftened >= SPIKE_FACTOR * softened,
+        "peak {unsoftened:.3e} m/s unsoftened vs {softened:.3e} softened"
+    );
+    assert!(
+        softened < SOFTENED_PEAK_MAX,
+        "softened peak {softened:.3e} m/s"
+    );
+}
+for_each_scalar!(unsoftened_close_pass_spikes);
