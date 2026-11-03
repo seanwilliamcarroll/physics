@@ -12,6 +12,9 @@ pub enum ConfigError {
     /// A softening length ε must be `≥ 0` (not negative, not NaN); see
     /// [`crate::Softening`].
     InvalidSoftening,
+    /// A mass must be positive and finite, with a finite inverse; see
+    /// [`crate::Mass`].
+    InvalidMass,
 }
 
 impl fmt::Display for ConfigError {
@@ -19,6 +22,9 @@ impl fmt::Display for ConfigError {
         match self {
             Self::ZeroSubsteps => f.write_str("substeps must be at least 1"),
             Self::InvalidSoftening => f.write_str("softening must be at least 0 (and not NaN)"),
+            Self::InvalidMass => {
+                f.write_str("mass must be positive and finite, with a finite inverse")
+            }
         }
     }
 }
