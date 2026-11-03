@@ -9,7 +9,9 @@
 #[macro_use]
 mod common;
 
-use common::{BodySpec, Tol, build_world, proptest_config, state_hash, world_spec};
+use common::{
+    BodySpec, Tol, build_world, momentum_drift_bound, proptest_config, state_hash, world_spec,
+};
 use engine::diagnostics::momentum;
 use engine::{Integrator, Scalar, Vec2, World};
 use proptest::prelude::*;
@@ -45,10 +47,8 @@ fn momentum_is_conserved<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseErro
     let w = run(w0);
     let drift = (momentum(&w.particles) - p0).length().to_f64();
     let scale = momentum_scale(&w).max(f64::MIN_POSITIVE);
-    prop_assert!(
-        drift <= S::MOMENTUM_REL * scale,
-        "drift {drift:e} vs scale {scale:e}"
-    );
+    let bound = momentum_drift_bound::<S>(STEPS, scale);
+    prop_assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
     Ok(())
 }
 

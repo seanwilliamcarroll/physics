@@ -18,9 +18,9 @@ pub trait Tol: Scalar {
     /// Absolute position/velocity error allowed from rounding alone, for
     /// scenes of order 10 m over order 100 steps. Set ~10x above measured.
     const POS_ABS: f64;
-    /// Momentum drift allowed, relative to `Σ m |v|` (16-body cluster,
-    /// 1000 steps). Set ~10x above measured.
-    const MOMENTUM_REL: f64;
+    /// Machine epsilon of the scalar, for error laws that scale with it
+    /// (see `momentum_drift_bound`).
+    const EPSILON: f64;
     /// Center-of-mass error allowed after the same run, m. ~10x measured.
     const COM_ABS: f64;
     /// Relative energy error from rounding alone over 100 orbits: added to
@@ -36,10 +36,10 @@ pub trait Tol: Scalar {
 }
 
 // Measured (2026-11-02): free fall, 64 steps: max error 1.5e-6.
-// Cluster, 1000 steps: momentum drift 8.4e-8 of Σm|v|; COM error 1.5e-6 m.
+// Cluster, 1000 steps: COM error 1.5e-6 m.
 impl Tol for f32 {
     const POS_ABS: f64 = 1e-5;
-    const MOMENTUM_REL: f64 = 1e-6;
+    const EPSILON: f64 = f32::EPSILON as f64;
     const COM_ABS: f64 = 2e-5;
     // Orbit, Verlet, 100 orbits: 9.7e-6 (vs 3.7e-7 in f64): rounding.
     const ENERGY_FLOOR: f64 = 1e-4;
@@ -49,12 +49,10 @@ impl Tol for f32 {
     const PERMUTATION_ABS: f64 = 5e-5;
 }
 
-// Measured (same runs): free fall 8.9e-16. Cluster: momentum drift
-// 7.5e-16 of Σm|v| (rounding level: forces are equal and opposite by
-// construction); COM error 1.6e-14 m.
+// Measured (same runs): free fall 8.9e-16. Cluster: COM error 1.6e-14 m.
 impl Tol for f64 {
     const POS_ABS: f64 = 1e-14;
-    const MOMENTUM_REL: f64 = 1e-14;
+    const EPSILON: f64 = f64::EPSILON;
     const COM_ABS: f64 = 2e-13;
     // f64 orbit errors match truncation formulas to 3 digits; rounding is
     // far below them.
@@ -260,4 +258,20 @@ pub fn proptest_config() -> ProptestConfig {
         config.cases = PROP_DEFAULT_CASES;
     }
     config
+}
+
+/// Largest momentum drift rounding alone can cause in `steps` steps:
+/// `steps · ε · Σ m|v|`.
+///
+/// Pairwise forces are equal and opposite, so momentum only changes through
+/// rounding. Each step, `v += a h` rounds each velocity by at most half an
+/// ulp (≤ ε/2 relative), moving that body's momentum by ≤ ε m|v|/2; summed
+/// over bodies and steps, with the momentum readout's own rounding, the
+/// drift stays under `steps · ε · Σ m|v|`. An error law in the scalar's ε,
+/// not a measured constant: a constant calibrated on one 16-body cluster
+/// (1e-6 for f32) was exceeded by a two-body world proptest found.
+/// Measured over 15,000 random worlds × 3 integrators: worst drift is 0.26
+/// (f32) and 0.10 (f64) of this bound.
+pub fn momentum_drift_bound<S: Tol>(steps: u32, scale: f64) -> f64 {
+    f64::from(steps) * S::EPSILON * scale
 }
