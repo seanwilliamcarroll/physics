@@ -125,11 +125,16 @@ plus `Baumgarte<S>` (0 ≤ β ≤ 1), `set_iterations`/`set_substeps` take
 constraints wouldn't even match symplectic Euler bit for bit). λ per
 constraint, reset per substep (XPBD) or warm-started (impulse).
 
-## 2. `ParticleId` and `Mass<S>` (test first, PR)
+## ✅ 2. `ParticleId` and `Mass<S>` (done)
 
-- [ ] `ParticleId` (decision 5); `Particles::add` returns it.
-- [ ] `Mass<S>` (decision 6): `new(m) -> Option`, positive and finite;
-      `add` takes it. All call sites updated; goldens unchanged.
+`ParticleId`: a plain index newtype that only the engine constructs;
+`add`/`add_static` return it (not `#[must_use]`: most callers ignore it).
+`Mass<S>`: `new(m) -> Option`, requiring `m > 0`, finite, and `1/m`
+finite and `> 0` (the last can only fail on fixed point, where it would
+silently make a particle static). It stores the exact `1/m`, so goldens
+are unchanged. `ConfigError::InvalidMass` for scene masses; `kg()` test
+shorthands (one for unit tests, one in `test-support`). Built by a
+subagent.
 
 ## 3. Constraints and XPBD (test first, PR)
 
