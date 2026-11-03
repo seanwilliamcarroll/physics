@@ -20,7 +20,8 @@ fn codes_map_to_kinds() {
     assert_eq!(ScalarKind::from_code(2), None);
     assert_eq!(DemoKind::from_code(0), Some(DemoKind::Fountain));
     assert_eq!(DemoKind::from_code(1), Some(DemoKind::Orbit));
-    assert_eq!(DemoKind::from_code(2), None);
+    assert_eq!(DemoKind::from_code(2), Some(DemoKind::Cluster));
+    assert_eq!(DemoKind::from_code(3), None);
     assert_eq!(integrator_from_code(0), Some(Integrator::SymplecticEuler));
     assert_eq!(integrator_from_code(1), Some(Integrator::ExplicitEuler));
     assert_eq!(integrator_from_code(2), Some(Integrator::VelocityVerlet));
@@ -117,4 +118,18 @@ fn fountain_keeps_running() {
     }
     assert_eq!(d.positions().len(), 2 * 50);
     assert!(d.positions().chunks(2).all(|p| p[1] >= 0.0));
+}
+
+#[test]
+fn cluster_demo_has_n_bodies_and_a_matching_energy() {
+    use engine::scenarios::{cluster, cluster_gravity};
+    let mut d = Demo::new(DemoKind::Cluster, ScalarKind::F64, 40, 5).unwrap();
+    assert_eq!(d.positions().len(), 2 * 40);
+    let mut w = cluster::<f64>(40, 5).unwrap();
+    for _ in 0..30 {
+        d.advance(PHYSICS_DT);
+        w.step(PHYSICS_DT);
+    }
+    let expect = total_energy(&w.particles, &cluster_gravity());
+    assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));
 }

@@ -105,6 +105,16 @@ pub const CLUSTER_SOFTENING: f64 = 0.1;
 /// Substeps for [`cluster`]: one; tests probe conservation, not accuracy.
 pub const CLUSTER_SUBSTEPS: u32 = 1;
 
+/// The force [`cluster`] adds: G and [`CLUSTER_SOFTENING`]. Public so energy
+/// readouts use exactly the scene's force (like [`orbit_gravity`]).
+#[must_use]
+pub fn cluster_gravity<S: Scalar>() -> PairwiseGravity<S> {
+    PairwiseGravity::new(
+        S::from_f64(GRAVITATIONAL_CONSTANT),
+        S::from_f64(CLUSTER_SOFTENING),
+    )
+}
+
 /// `n` bodies under mutual softened gravity: positions uniform in a disk
 /// of [`CLUSTER_RADIUS`], masses in [`CLUSTER_MASS`], small random
 /// velocities. Deterministic per seed.
@@ -119,10 +129,7 @@ pub const CLUSTER_SUBSTEPS: u32 = 1;
 /// [`CLUSTER_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
 pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
-    w.add_force(PairwiseGravity::new(
-        S::from_f64(GRAVITATIONAL_CONSTANT),
-        S::from_f64(CLUSTER_SOFTENING),
-    ));
+    w.add_force(cluster_gravity());
     let mut rng = SplitMix64::new(seed);
     let r = CLUSTER_RADIUS;
     for _ in 0..n {
