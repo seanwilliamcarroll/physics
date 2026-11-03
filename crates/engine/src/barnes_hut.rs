@@ -324,18 +324,28 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
             return; // no dynamic bodies: nothing pulls, nothing is pulled
         };
 
-        let mut bodies: Vec<Body<S>> = dynamic()
-            .map(|(index, (&pos, &w))| Body {
-                pos,
-                mass: S::ONE / w,
-                key: root.key(pos),
-                index,
+        // Sort (key, index) pairs, then gather the bodies in that order.
+        // (key, index) is unique, so the order is fully determined by the
+        // input whatever the sort algorithm: unstable is safe, and doesn't
+        // allocate. Sorting a non-generic type keeps one copy of the sort
+        // in the `.wasm` for every scalar type (sorting `Body<S>` compiled
+        // one per S, ~7 KB each).
+        let mut order: Vec<(u64, usize)> = dynamic()
+            .map(|(index, (&pos, _))| (root.key(pos), index))
+            .collect();
+        order.sort_unstable();
+        let bodies: Vec<Body<S>> = order
+            .into_iter()
+            .filter_map(|(key, index)| {
+                let (&pos, &w) = p.pos().get(index).zip(p.inv_mass().get(index))?;
+                Some(Body {
+                    pos,
+                    mass: S::ONE / w,
+                    key,
+                    index,
+                })
             })
             .collect();
-        // (key, index) is unique, so the order is fully determined by the
-        // input whatever the sort algorithm: unstable is safe, and
-        // doesn't allocate.
-        bodies.sort_unstable_by_key(|b| (b.key, b.index));
 
         // One leaf per body, and every stored cell has ≥ 2 children (path
         // compression; buckets hold ≥ 2 bodies): at most 2n − 1 nodes, so
