@@ -31,7 +31,7 @@ pub fn kinetic_energy<S: Scalar>(p: &Particles<S>) -> S {
 /// Mass-weighted mean position `Σ m x / Σ m` of the dynamic particles, or
 /// `None` if there are none (total mass 0, so the mean is undefined).
 ///
-/// Under internal forces alone (e.g. [`PairwiseGravity`](crate::PairwiseGravity))
+/// Under internal forces alone (e.g. [`PairwiseGravity`])
 /// it moves in a straight line at `momentum / total mass`.
 #[must_use]
 pub fn center_of_mass<S: Scalar>(p: &Particles<S>) -> Option<Vec2<S>> {
