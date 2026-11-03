@@ -59,8 +59,10 @@ physics/
 │   ├── sand/               # M9
 │   └── acoustic/           # A1+
 │
-├── xtask/                  # std-only build helper
-│   └── src/main.rs
+├── xtask/                  # build helper (clap; see docs/00-scope.md)
+│   ├── src/main.rs
+│   ├── serve.py            # dev server: http.server + Cache-Control: no-store
+│   └── bench_wasm.mjs      # Node side of `cargo xtask bench-wasm`
 │
 └── site/
     ├── index.html          # demo gallery
