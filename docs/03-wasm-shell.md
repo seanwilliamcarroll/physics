@@ -116,6 +116,8 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M0 | `F32`, `F64` | 28,593 B | 9,998 B | `opt-level = 3`, LTO, Rust 1.99.1; zero imports |
 | M1.1 | `F32`, `F64` | 34,230 B | 12,060 B | + panic hook (std panic formatting, ~5.2 KB) and `demo_panic_for_test`; one import, `env.console_error` |
 | M1.5 | `F32`, `F64` | 41,820 B | 14,604 B | + pairwise gravity, explicit Euler, velocity Verlet, orbit scene, energy (each ×2 scalars) |
+| M2.3 | `F32`, `F64` | 44,458 B | 15,173 B | + cluster scene |
+| M2.5 | `F32`, `F64` | 58,544 B | 19,926 B | + disk, collapse, `Softening`, `demo_set_softening`. ~7.4 KB of it is std's unstable sort (the disk's enclosed-mass radii); the stable sort was ~8.9 KB. Barnes–Hut reuses the same sort |
 
 ### The render buffer
 
