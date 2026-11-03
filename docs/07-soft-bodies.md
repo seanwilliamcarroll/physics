@@ -104,6 +104,17 @@ stepper gets the same physical damper `c` (`TASKS.md` M5 decision 4):
 
 Check, in all three: a damped bob's amplitude decays as `e^(−c t / 2m)`.
 
+**As built (M5.3,** `tests/compliance.rs`**):** k = 100 N/m, c = 0.4,
+m = 1 kg, 20 substeps, 5 s. Damped divided by undamped energy: 0.1339 vs
+`e^−2` = 0.1353, in XPBD and impulse alike (they agree to 12 digits: the
+same update, in position or velocity form). **And the undamped constraint
+loses energy too**: 0.65925 of it is left after 5 s, exactly backward
+Euler's `(1 + ω²h²)^−n` = 0.6593. Compliant constraints are implicit, and
+implicit steps damp by themselves; that's the price of having no
+stability threshold. The force spring keeps its energy (within 0.8% of
+the analytic damped decay) until it explodes. That's M5's trade-off in
+one measurement.
+
 ## The jelly: one network, two realizations
 
 `scenarios::jelly(cols, rows, …)` builds a **`SpringNetwork`**: the

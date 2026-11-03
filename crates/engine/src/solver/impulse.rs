@@ -34,6 +34,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
             rigid_bias: self.baumgarte.get() / h,
             soft_bias: S::ONE / h,
             alpha_scale: S::ONE / (h * h),
+            h,
         };
         match self.stabilization {
             Stabilization::Baumgarte => {
@@ -101,6 +102,8 @@ struct Gains<S> {
     soft_bias: S,
     /// `1 / h²`, so `α̃ = α / h²`.
     alpha_scale: S,
+    /// The substep, s (the damped soft form needs it directly).
+    h: S,
 }
 
 /// One velocity solve of `c`, updating its accumulated `lambda`:
@@ -133,10 +136,18 @@ fn solve_velocity<S: Scalar, C: Constraint<S>>(
     };
     let jv = n.dot(*vb - *va);
     let alpha = c.compliance() * gains.alpha_scale;
+    let damping = c.damping();
     let d_lambda = if alpha == S::ZERO {
         -(jv + gains.rigid_bias * value) / w
-    } else {
+    } else if damping == S::ZERO {
         -(jv + gains.soft_bias * value + alpha * *lambda) / (w + alpha)
+    } else {
+        // Catto 2011 with a damper: γ = 1 / (h (c + h k)), bias
+        // C / (α c + h); with c = 0 these are α̃ and C / h (branch above).
+        let (compliance, h) = (c.compliance(), gains.h);
+        let gamma = compliance / (h * (compliance * damping + h));
+        let bias = value / (compliance * damping + h);
+        -(jv + bias + gamma * *lambda) / (w + gamma)
     };
     *lambda += d_lambda;
     *va -= n * (wa * d_lambda);

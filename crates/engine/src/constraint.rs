@@ -1,7 +1,7 @@
 //! Constraints: geometry only (`C`, `∇C`, compliance). How to enforce
 //! them is the solver's job (`docs/06-constraints.md`).
 
-use crate::{Compliance, ParticleId, Particles, Scalar, Vec2};
+use crate::{Compliance, Damping, ParticleId, Particles, Scalar, Vec2};
 
 /// A two-body constraint `C(x_a, x_b) = 0`, described by its geometry.
 ///
@@ -21,6 +21,13 @@ pub trait Constraint<S: Scalar> {
 
     /// Compliance α = 1 / stiffness, m/N; 0 is rigid.
     fn compliance(&self) -> S;
+
+    /// Damping c along the constraint, N·s/m; 0 (the default) is
+    /// undamped. Only meaningful with compliance > 0: a rigid constraint
+    /// has no motion along it to damp.
+    fn damping(&self) -> S {
+        S::ZERO
+    }
 }
 
 /// Keeps two particles a fixed distance apart: `C = |x_b − x_a| − L`.
@@ -30,6 +37,7 @@ pub struct DistanceConstraint<S> {
     bodies: [ParticleId; 2],
     length: S,
     compliance: Compliance<S>,
+    damping: Damping<S>,
 }
 
 impl<S: Scalar> DistanceConstraint<S> {
@@ -58,6 +66,7 @@ impl<S: Scalar> DistanceConstraint<S> {
             bodies: [a, b],
             length,
             compliance,
+            damping: Damping::NONE,
         })
     }
 
@@ -65,6 +74,22 @@ impl<S: Scalar> DistanceConstraint<S> {
     #[must_use]
     pub const fn length(&self) -> S {
         self.length
+    }
+
+    /// The same constraint with damper `c` (`docs/07-soft-bodies.md`,
+    /// "Damping in all three steppers").
+    #[must_use]
+    pub const fn with_damping(self, c: Damping<S>) -> Self {
+        Self { damping: c, ..self }
+    }
+
+    /// The same constraint with compliance `alpha` (live stiffness).
+    #[must_use]
+    pub const fn with_compliance(self, alpha: Compliance<S>) -> Self {
+        Self {
+            compliance: alpha,
+            ..self
+        }
     }
 }
 
@@ -85,6 +110,10 @@ impl<S: Scalar> Constraint<S> for DistanceConstraint<S> {
 
     fn compliance(&self) -> S {
         self.compliance.get()
+    }
+
+    fn damping(&self) -> S {
+        self.damping.get()
     }
 }
 

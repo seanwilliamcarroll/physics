@@ -150,10 +150,14 @@ with a fallible `cast` (narrowing can overflow). `Spring`/`SpringForce`
 0.8%, momentum 1.3e-14. Known failure: energy 2e2× at 0.99 `k_crit`,
 6e71× at 1.01; below it the true energy still swings (19× at 0.9).
 
-## 3. Damping in the constraint solvers (test first, PR)
+## ✅ 3. Damping in the constraint solvers (done)
 
-- [ ] XPBD and impulse damped forms; undamped bit-identical (goldens);
-      decay rate matches `e^(−c t / 2m)` in both.
+`DistanceConstraint::with_damping`/`with_compliance`, `Constraint::damping`.
+XPBD (Macklin eq. 26) and impulse (Catto 2011 with the damper); undamped
+paths untouched (goldens bit-identical). Damped/undamped matches
+`e^(−ct/m)` to 1% in both. **Found:** compliant constraints damp by
+themselves at backward Euler's rate, `(1 + ω²h²)^−n` (predicted 0.6593,
+measured 0.65925): implicit stability costs energy.
 
 ## 4. Ground plane (test first, PR)
 
