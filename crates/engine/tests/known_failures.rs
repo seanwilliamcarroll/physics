@@ -4,12 +4,11 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-#[macro_use]
-mod common;
-
-use common::{Tol, energy_errors, envelope, orbit_energy, s, separation, steps_for};
 use engine::scenarios::{GRAVITATIONAL_CONSTANT, ORBIT_SEPARATION, ORBIT_TOTAL_MASS, orbit};
 use engine::{Integrator, PairwiseGravity, Scalar, Vec2, World};
+use test_support::{
+    Tol, energy_errors, envelope, for_each_scalar, orbit_energy, s, separation, steps_for,
+};
 
 /// One 60 Hz frame: the step the demo uses.
 const FINE_DT: f64 = 1.0 / 60.0;

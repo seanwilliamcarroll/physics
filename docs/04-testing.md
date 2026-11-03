@@ -31,16 +31,17 @@ Re-check both before each phase. Nothing else without a doc entry.
 crates/engine/
   src/
     diagnostics.rs        // energy, momentum, etc. — shared by tests AND demo plots
-    ...                   // unit tests inline: #[cfg(test)] mod tests
+    diagnostics/tests.rs  // its unit tests (every module: foo.rs + foo/tests.rs)
   tests/
-    common/mod.rs         // scalar macro, tolerances, scenario builders, state hash
     invariants.rs         // conservation and boundedness
     known_failures.rs     // methods that must misbehave
     determinism.rs        // repeatability + golden hashes
     properties.rs         // proptest
+    properties.proptest-regressions  // committed: shrunk failures replay forever
   benches/
     step.rs               // criterion
-  proptest-regressions/   // committed: failing seeds replay forever
+crates/test-support/      // dev-dependency: for_each_scalar!, Tol and error
+                          // laws, orbit helpers, state hash, proptest worlds
 ```
 
 ## `diagnostics` module
@@ -63,7 +64,7 @@ render buffer does `to_f64() as f32`.
 ## Running every test for every scalar
 
 ```rust
-// tests/common/mod.rs
+// crates/test-support/src/tol.rs
 pub trait Tol: Scalar {
     const MOMENTUM_ABS: f64;
     const ENERGY_REL: f64;
@@ -216,7 +217,7 @@ Configuration: modest `cases` by default (fast `cargo test`), with a higher
 count behind an env var for CI or overnight runs. Commit
 `proptest-regressions/` so every shrunk failure replays forever.
 
-**As built (M2.2)** (`tests/properties.rs`, generators in `tests/common`):
+**As built (M2.2)** (`tests/properties.rs`, generators in `crates/test-support`):
 - 64 cases by default; `PROPTEST_CASES=N` for more (verified: 6400 cases
   in under half a second, release). Each property runs f32 and f64 on the
   same generated world (2–12 bodies in a ±10 m box, one in ten static).

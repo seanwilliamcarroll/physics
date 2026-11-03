@@ -106,6 +106,14 @@ shrunk cases are committed and replay. Known failure
 `unsoftened_close_pass_spikes` (1024 vs 2.8 m/s). `test-wasm` passes
 `--nocapture`, so wasm failures print their message.
 
+## ✅ 2⅓. Test layout (done, raised during M2.2)
+
+Every inline `mod tests { … }` moved to `src/<module>/tests.rs` (14
+modules; crate roots use `src/tests.rs`). `tests/common/mod.rs` became
+`crates/test-support` (tol, orbit, hash, worlds), a dev-dependency, so
+the repo has no `mod.rs` and no `dead_code` allowance. Edition 2024
+reserves `gen`, so the generators module is `worlds`.
+
 ## 2½. `clap` for xtask (PR, raised during M2.2)
 
 Before section 3, so `bench-wasm` gets real argument parsing from the start.
@@ -165,14 +173,31 @@ Before section 3, so `bench-wasm` gets real argument parsing from the start.
 - [ ] Smoke cases for the new page; gallery link.
 - [ ] Manual check against **Done when**.
 
-## 7. Stretch: Barnes–Hut (PR, only if time)
+## 7. Code coverage (PR, raised during M2.2)
+
+Report coverage to see what's untested; gate on it later, if at all.
+
+- [ ] Rust: `cargo-llvm-cov` (LLVM source-based coverage; a tool install,
+      not a crate; policy entry in `docs/00-scope.md`), `llvm-tools`
+      component in `rust-toolchain.toml`, and `cargo xtask coverage`:
+      HTML report under `target/` plus a summary line per crate.
+- [ ] JS: Node's built-in `node --test --experimental-test-coverage` for
+      `tests/site` (no dependency). DOM code stays covered by the browser
+      smoke test.
+- [ ] First report: note anything important that no test executes; decide
+      whether to gate (e.g. "coverage can't drop") once we've seen the numbers.
+
+## 8. Stretch: Barnes–Hut (PR, only if time)
 
 - [ ] `docs/barnes-hut.md` first: quadtree, θ, accuracy vs cost.
 - [ ] A third panel with θ as a slider.
 
-## 8. M2 cleanup (PR, if needed)
+## 9. M2 cleanup (PR, if needed)
 
 - [ ] Magic-number pass; `type-invariants.md` triggers re-checked.
+- [ ] Turn on `unreachable_pub` in `[workspace.lints]`: items marked
+      `pub` that aren't exported become `pub(crate)`, so rustc's
+      `dead_code` can see them (dead `pub` code is otherwise invisible).
 - [ ] Anything that grew awkward.
 
 ---

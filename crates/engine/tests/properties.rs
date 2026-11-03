@@ -6,16 +6,13 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-#[macro_use]
-mod common;
-
-use common::{
-    BodySpec, Tol, build_world, momentum_drift_bound, proptest_config, state_hash, world_spec,
-};
 use engine::diagnostics::momentum;
 use engine::{Integrator, Scalar, Vec2, World};
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
+use test_support::{
+    BodySpec, Tol, build_world, momentum_drift_bound, proptest_config, state_hash, world_spec,
+};
 
 /// One second of 60 Hz steps per property case.
 const STEPS: u32 = 60;

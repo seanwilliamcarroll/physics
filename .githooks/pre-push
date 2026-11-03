@@ -12,7 +12,8 @@ echo "pre-push: node --test (site JS)"
 node --test 'tests/site/**/*.test.js'
 
 # Every library crate must compile for wasm, not just `web` (xtask is a
-# host-only CLI). `check` skips codegen, so this is fast; the release .wasm
+# host-only CLI; test-support is test tooling whose proptest dependency
+# needs OS randomness, which wasm32-unknown-unknown lacks). `check` skips codegen, so this is fast; the release .wasm
 # is `cargo xtask site`'s job.
 # The same math/engine tests as wasm (wasm32-wasip1 under wasmtime), so the
 # golden hashes must match on wasm too: cross-platform determinism. ~1 s.
@@ -20,7 +21,7 @@ echo "pre-push: cargo xtask test-wasm"
 cargo xtask test-wasm
 
 echo "pre-push: cargo check (wasm32-unknown-unknown)"
-cargo check --workspace --exclude xtask --target wasm32-unknown-unknown --quiet
+cargo check --workspace --exclude xtask --exclude test-support --target wasm32-unknown-unknown --quiet
 
 # Browser smoke test: headless Chrome loads the demo and checks it draws
 # (needs python3 and Chrome; see README). ~2-3 s.
