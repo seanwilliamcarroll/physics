@@ -8,6 +8,11 @@ export const DEMO_ORBIT = 1;
 export const DEMO_CLUSTER = 2;
 export const DEMO_DISK = 3;
 export const DEMO_COLLAPSE = 4;
+export const DEMO_PENDULUM = 5;
+
+/** demo_set_solver codes. */
+export const SOLVER_XPBD = 0;
+export const SOLVER_IMPULSE = 1;
 
 /** demo_set_integrator codes. */
 export const INTEGRATOR_SYMPLECTIC_EULER = 0;

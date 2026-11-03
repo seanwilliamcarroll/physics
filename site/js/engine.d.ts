@@ -44,6 +44,16 @@ export interface EngineExports {
   /** Barnes–Hut opening angle θ (gravity scenes); negative, NaN, or the
    *  fountain is rejected (0). θ = 0 is exact. */
   demo_set_theta(demo: DemoHandle, theta: number): Status;
+  /** Code: abi.ts SOLVER_*; steps worlds with constraints. */
+  demo_set_solver(demo: DemoHandle, code: number): Status;
+  /** Impulse solver's Baumgarte β in [0, 1]; else rejected (0). */
+  demo_set_beta(demo: DemoHandle, beta: number): Status;
+  /** Substeps per physics step; 0 is rejected. */
+  demo_set_substeps(demo: DemoHandle, n: number): Status;
+  /** Constraint iterations per substep; 0 is rejected. */
+  demo_set_iterations(demo: DemoHandle, n: number): Status;
+  /** Largest constraint error |C| in meters, or NaN without constraints. */
+  demo_constraint_error(demo: DemoHandle): number;
   /** Total energy in joules, or NaN where undefined (the fountain). */
   demo_energy(demo: DemoHandle): number;
   /** Test hook: panics on purpose (smoke test only). */
