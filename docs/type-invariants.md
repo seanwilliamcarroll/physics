@@ -152,6 +152,27 @@ adopt it in that milestone's PR and move the row up.
    `package.json`, which is a dependency-policy entry. Decision tracked in
    `TASKS.md` (before M1 section 6).
 
+   **`.ts` experiment (after M1), measured on the 11 shared modules in
+   `site/js/`, with the demos left as JSDoc `.js` importing them:**
+
+   | | JSDoc `.js` (before) | `.ts` (experiment) |
+   |---|---|---|
+   | Lines | 927, incl. 141 JSDoc type-tag lines | 928: types moved into signatures |
+   | Errors found by converting | n/a | **none**: strict `checkJs` already caught everything |
+   | Build step | none: files served as written | `tsc` emits `.js` + maps, 0.14 s; `npm run watch` recompiles on save |
+   | Generated files | none | `site/js/*.js`, `*.js.map` (gitignored) |
+   | Configs | one `tsconfig.json` | two: check everything; emit the library only |
+   | Unit tests | import `.js` | import `.ts` directly (Node 22 type stripping), no build |
+   | Debugging in DevTools | the served file | via source maps; `inlineSources` embeds the `.ts`, since static servers send `.ts` as `video/mp2t` |
+   | Syntax limits | JSDoc's | `erasableSyntaxOnly`: no `enum`, `namespace`, parameter properties |
+
+   **What `.ts` buys:** readability, not more safety. Signatures carry their
+   types; option and spec shapes become named, exported types (`Option`,
+   `SliderSpec`, `Scale`); `import type` and `as` replace JSDoc
+   comment-casts. **What it costs:** a build step before the site can be
+   served, generated files, and a second tsconfig, all cheap with TS 7's
+   0.14 s builds and `--watch`.
+
 9. **Typestate builders** (a world that's "being configured" vs "running"
    as different types). *Adopt when* there is configuration that is invalid
    to change mid-run (e.g. swapping integrators with per-solver state in
