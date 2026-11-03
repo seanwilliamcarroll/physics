@@ -35,8 +35,10 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
   code to clippy, so it follows the library lints, with one crate-level
   `#![expect(unwrap_used, indexing_slicing, missing_panics_doc)]`: test
   helpers fail tests by panicking.
-- **`xtask`** is a CLI: `#![allow(clippy::print_stdout, clippy::print_stderr)]`
-  at the top of `main.rs`. Cargo can't mix `workspace = true` with per-crate
+- **`xtask`** is a CLI: `#![allow(clippy::print_stdout, clippy::print_stderr,
+  clippy::doc_markdown)]` at the top of `main.rs`. Printing is its job, and
+  with `clap`'s derive API its doc comments are the `--help` text, where
+  backticks would print literally. Cargo can't mix `workspace = true` with per-crate
   overrides, so the override goes in source.
 - **`web`:** `#[expect(unsafe_code, reason = "...")]` on exactly two modules,
   the FFI boundary in each direction: `exports` (JS calls in) and `imports`
