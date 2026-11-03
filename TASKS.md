@@ -98,11 +98,28 @@ TypeScript and one `tsconfig.json` both checks (`--noEmit`) and builds;
 `proptest` 1.12.0 via `[workspace.dependencies]`, default features off
 (no subprocesses on WASI). Six properties in `tests/properties.rs`, f32
 and f64 on the same generated worlds: momentum, finiteness, translation,
-exact 90° rotation, permutation, determinism. Rotation found that it's
-exact in value, not bits (signed zero); that case is committed and
-replays. Known failure `unsoftened_close_pass_spikes` (1024 vs 2.8 m/s).
-`test-wasm` now passes `--nocapture`, so wasm test failures print their
-message instead of a bare trap.
+exact 90° rotation, permutation, determinism. Proptest found two real
+issues: rotation is exact in value, not bits (signed zero), and the f32
+momentum tolerance (a constant from one cluster run) was too tight; it's
+now an error law, `steps · ε · Σm|v|` (worst seen: 0.26 of it). Both
+shrunk cases are committed and replay. Known failure
+`unsoftened_close_pass_spikes` (1024 vs 2.8 m/s). `test-wasm` passes
+`--nocapture`, so wasm failures print their message.
+
+## 2½. `clap` for xtask (PR, raised during M2.2)
+
+Before section 3, so `bench-wasm` gets real argument parsing from the start.
+
+- [ ] `clap` 4.6.7 (`derive`) in `[workspace.dependencies]`, used by
+      `xtask` only (dev tooling; never in the engine or the shipped wasm).
+      Dependency-policy entry in `docs/00-scope.md`.
+- [ ] Replace the hand-written `parse` with `#[derive(Parser)]` +
+      subcommands; keep the unit tests via `Cli::try_parse_from` (port
+      range checked by `value_parser!(u16).range(1..)`).
+- [ ] Doc comments become `--help` text, so `xtask` allows
+      `clippy::doc_markdown` (backticks would print literally), as the
+      original lint block noted.
+- [ ] Measure the cost: clean-build time of `xtask` before and after.
 
 ## 3. Benchmarks (PR)
 

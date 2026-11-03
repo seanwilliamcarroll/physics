@@ -220,6 +220,12 @@ count behind an env var for CI or overnight runs. Commit
 - 64 cases by default; `PROPTEST_CASES=N` for more (verified: 6400 cases
   in under half a second, release). Each property runs f32 and f64 on the
   same generated world (2–12 bodies in a ±10 m box, one in ten static).
+- **Momentum drift is bounded by an error law, `steps · ε · Σ m|v|`**
+  (`momentum_drift_bound`): each step rounds every velocity by at most
+  half an ulp. It replaced a constant calibrated on one 16-body cluster,
+  which a two-body f32 world found by proptest exceeded. Worst over
+  15,000 random worlds × 3 integrators: 0.26 (f32) / 0.10 (f64) of the
+  bound.
 - Translation and permutation tolerances are ~10x the worst case over
   2000 calibration worlds (f32: 3.7e-4 m and 4.8e-6 m; f64: 4.3e-13 m and
   1.2e-14 m).
