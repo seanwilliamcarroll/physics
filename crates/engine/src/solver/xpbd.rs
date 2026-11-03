@@ -2,7 +2,7 @@
 
 use super::Step;
 use crate::integrate::{drift, evaluate, kick};
-use crate::{Constraint, Particles, Scalar};
+use crate::{Constraint, Particles, Scalar, Vec2};
 
 impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// One XPBD substep of length `h`:
@@ -25,10 +25,11 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
 
         self.lambda.fill(S::ZERO);
         let alpha_scale = S::ONE / (h * h);
+        let prev = &*self.scratch;
         for pass in 0..self.iterations.get() {
             self.order
                 .sweep(pass, self.constraints, self.lambda, |c, lambda| {
-                    project(p, c, lambda, alpha_scale);
+                    project(p, prev, c, lambda, alpha_scale, h);
                 });
         }
 
@@ -39,13 +40,21 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
 }
 
 /// One XPBD projection of `c`, updating its `lambda`. `alpha_scale` is
-/// `1 / h²`, so `α̃ = α · alpha_scale`. Skipped (no correction) when the
-/// gradient is undefined or neither body can move.
+/// `1 / h²`, so `α̃ = α · alpha_scale`; `prev` holds positions at the start
+/// of the substep (for damping). Skipped (no correction) when the gradient
+/// is undefined or neither body can move.
+///
+/// Damped (Macklin et al. 2016, eq. 26), with `γ = α̃ β̃ / h = α c / h`:
+/// `Δλ = (−C − α̃ λ − γ n · (Δx_b − Δx_a)) / ((1 + γ) w + α̃)`, where `Δx`
+/// is the motion since the substep began. Undamped keeps the M3 formula
+/// exactly (its own branch, so goldens are bit-identical).
 fn project<S: Scalar, C: Constraint<S>>(
     p: &mut Particles<S>,
+    prev: &[Vec2<S>],
     c: &C,
     lambda: &mut S,
     alpha_scale: S,
+    h: S,
 ) {
     let [a, b] = c.bodies().map(crate::ParticleId::index);
     let (Some(&wa), Some(&wb)) = (p.inv_mass.get(a), p.inv_mass.get(b)) else {
@@ -59,11 +68,20 @@ fn project<S: Scalar, C: Constraint<S>>(
         return;
     };
     let alpha = c.compliance() * alpha_scale;
-    let denom = wa + wb + alpha;
-    if denom == S::ZERO {
-        return;
-    }
-    let d_lambda = (-value - alpha * *lambda) / denom;
+    let gamma = c.compliance() * c.damping() / h;
+    let d_lambda = if gamma == S::ZERO {
+        let denom = wa + wb + alpha;
+        if denom == S::ZERO {
+            return;
+        }
+        (-value - alpha * *lambda) / denom
+    } else {
+        let (Some(&pa), Some(&pb)) = (prev.get(a), prev.get(b)) else {
+            return;
+        };
+        let rate = n.dot((*xb - pb) - (*xa - pa));
+        (-value - alpha * *lambda - gamma * rate) / ((S::ONE + gamma) * (wa + wb) + alpha)
+    };
     *lambda += d_lambda;
     *xa -= n * (wa * d_lambda);
     *xb += n * (wb * d_lambda);
