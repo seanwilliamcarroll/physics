@@ -223,3 +223,56 @@ fn set_softening_has_no_effect_on_the_fountain() {
     assert_ne!(d.positions(), before.as_slice());
     assert_eq!(d.energy(), None);
 }
+
+#[test]
+fn set_theta_switches_to_barnes_hut_and_keeps_the_exact_energy() {
+    use engine::OpeningAngle;
+    let make = || {
+        Demo::new(
+            DemoKind::Gravity(GravityScene::Cluster),
+            ScalarKind::F64,
+            64,
+            2,
+        )
+        .unwrap()
+    };
+    let (mut direct, mut tree, mut exact_tree) = (make(), make(), make());
+    // Energy is a readout of the state, not of the force: unchanged by θ.
+    assert!(tree.set_theta(OpeningAngle::new(1.0).unwrap()));
+    assert_eq!(tree.energy(), direct.energy());
+    // θ = 0 is direct summation through the tree: the same motion up to
+    // summation order, so close to (but not bit-identical with) direct.
+    assert!(exact_tree.set_theta(OpeningAngle::new(0.0).unwrap()));
+    for d in [&mut direct, &mut tree, &mut exact_tree] {
+        d.advance(PHYSICS_DT * 10.0);
+    }
+    let gap = |a: &Demo, b: &Demo| {
+        a.positions()
+            .iter()
+            .zip(b.positions())
+            .map(|(x, y)| (x - y).abs())
+            .fold(0.0_f32, f32::max)
+    };
+    assert!(gap(&direct, &exact_tree) < 1e-5, "θ = 0 tracks direct");
+    assert!(
+        gap(&direct, &tree) > gap(&direct, &exact_tree),
+        "θ = 1 approximates"
+    );
+}
+
+#[test]
+fn set_theta_survives_a_softening_change_and_is_refused_by_the_fountain() {
+    use engine::OpeningAngle;
+    let theta = OpeningAngle::new(0.5).unwrap();
+    let mut d = Demo::new(
+        DemoKind::Gravity(GravityScene::Disk),
+        ScalarKind::F32,
+        32,
+        1,
+    )
+    .unwrap();
+    assert!(d.set_theta(theta));
+    assert!(d.set_softening(Softening::new(0.2).unwrap()));
+    assert_eq!(d.theta(), Some(0.5));
+    assert!(!demo(ScalarKind::F64).set_theta(theta));
+}

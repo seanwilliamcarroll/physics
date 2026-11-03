@@ -53,7 +53,8 @@ demos in the browser. Useful companion for M3–M5.
 ## N-body (M1–M2)
 
 **Barnes, J., Hut, P. (1986).** *A hierarchical O(N log N) force-calculation
-algorithm.* Nature 324:446–449. (M2 stretch: Barnes–Hut quadtree.)
+algorithm.* Nature 324:446–449. (M2 stretch: Barnes–Hut quadtree;
+`barnes-hut.md`.)
 - DOI: https://doi.org/10.1038/324446a0
 
 ## Acoustic track (A1–A5)

@@ -98,3 +98,18 @@ fn softening_is_parsed_at_the_boundary() {
         demo_free(f);
     }
 }
+
+#[test]
+fn theta_is_parsed_at_the_boundary() {
+    let d = demo_new(abi::DEMO_CLUSTER, abi::SCALAR_F64, 32, 1);
+    // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
+    unsafe {
+        assert_eq!(super::demo_set_theta(d, -0.5), 0, "negative rejected");
+        assert_eq!(super::demo_set_theta(d, f64::NAN), 0, "NaN rejected");
+        assert_eq!(super::demo_set_theta(d, 0.5), 1);
+        assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
+        assert!(demo_energy(d).is_finite());
+        demo_free(d);
+        assert_eq!(super::demo_set_theta(ptr::null_mut(), 0.5), 0);
+    }
+}

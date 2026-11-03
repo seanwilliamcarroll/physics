@@ -4,7 +4,7 @@
 
 use engine::scenarios::{Fountain, cluster, collapse, disk, orbit};
 use engine::{Integrator, Scalar};
-use test_support::{Tol, for_each_scalar, s, state_hash};
+use test_support::{Tol, cluster_barnes_hut, for_each_scalar, s, state_hash};
 
 /// One step: a 60 Hz frame, as the demos use.
 const DT: f64 = 1.0 / 60.0;
@@ -23,9 +23,13 @@ enum Run {
     Collapse,
     /// 600 steps (~3.3 orbits).
     Orbit(Integrator),
+    /// A 64-body cluster under Barnes–Hut (θ = 0.5), 300 steps: enough
+    /// bodies for a tree of several levels, so the tree build and walk
+    /// order are pinned (`docs/barnes-hut.md`, "Determinism").
+    ClusterBarnesHut,
 }
 
-const RUNS: [Run; 7] = [
+const RUNS: [Run; 8] = [
     Run::Fountain,
     Run::Cluster,
     Run::Disk,
@@ -33,6 +37,7 @@ const RUNS: [Run; 7] = [
     Run::Orbit(Integrator::SymplecticEuler),
     Run::Orbit(Integrator::ExplicitEuler),
     Run::Orbit(Integrator::VelocityVerlet),
+    Run::ClusterBarnesHut,
 ];
 
 /// Builds the run's world, steps it, and hashes the final state.
@@ -54,6 +59,13 @@ fn run<S: Scalar>(r: Run) -> u64 {
                 _ => collapse::<S>,
             };
             let mut w = build(16, 1).unwrap();
+            for _ in 0..300 {
+                w.step(s(DT));
+            }
+            state_hash(&w.particles)
+        }
+        Run::ClusterBarnesHut => {
+            let mut w = cluster_barnes_hut::<S>(64, 1, 0.5);
             for _ in 0..300 {
                 w.step(s(DT));
             }
@@ -82,7 +94,7 @@ for_each_scalar!(every_run_is_repeatable);
 /// (then paste the new values from the failure message) or a bug.
 /// Recorded on aarch64-apple-darwin, Rust 1.99.1; `cargo xtask test-wasm`
 /// checks the same values on wasm32-wasip1 (`docs/04-testing.md`).
-const GOLDEN: [(u64, u64); 7] = [
+const GOLDEN: [(u64, u64); 8] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster
     (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
@@ -90,6 +102,7 @@ const GOLDEN: [(u64, u64); 7] = [
     (0x38b8_98d9_9f2e_436a, 0x62a3_677f_7c53_91e2), // Orbit(SymplecticEuler)
     (0xdbd3_a74a_c351_be50, 0xa548_448e_abb6_5ba7), // Orbit(ExplicitEuler)
     (0x521c_acff_69c8_f074, 0x2479_9e2b_6114_4cb8), // Orbit(VelocityVerlet)
+    (0x1b01_6782_cfd0_e3bb, 0x6ad4_4251_6e06_fcf6), // ClusterBarnesHut
 ];
 
 #[test]

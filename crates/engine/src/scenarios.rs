@@ -266,8 +266,7 @@ fn disk_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
     // Enclosed mass: the center plus every orbiter strictly closer in.
     // Sorted squared radii make that a binary search per orbiter.
     // Unstable: equal f64 keys are indistinguishable, and std's unstable
-    // sort is the one Barnes–Hut uses, so the `.wasm` carries one sort
-    // (the stable one alone measured ~8.9 KB).
+    // sort is smaller in the `.wasm` (~7.4 KB vs ~8.9 KB stable).
     let mut r_sq_sorted: Vec<f64> = pos.iter().map(|&(x, y)| x * x + y * y).collect();
     r_sq_sorted.sort_unstable_by(f64::total_cmp);
     let eps_sq = CLUSTER_SOFTENING * CLUSTER_SOFTENING;

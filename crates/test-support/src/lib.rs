@@ -21,11 +21,13 @@
     reason = "test helpers fail tests by panicking; Option plumbing would only hide failures"
 )]
 
+mod barnes_hut;
 mod hash;
 mod orbit;
 mod tol;
 mod worlds;
 
+pub use barnes_hut::{accelerations, cluster_barnes_hut, cluster_barnes_hut_force};
 pub use hash::{Fnv1a, state_hash};
 pub use orbit::{energy_errors, envelope, orbit_energy, separation, steps_for};
 pub use tol::{Tol, momentum_drift_bound};

@@ -117,7 +117,8 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M1.1 | `F32`, `F64` | 34,230 B | 12,060 B | + panic hook (std panic formatting, ~5.2 KB) and `demo_panic_for_test`; one import, `env.console_error` |
 | M1.5 | `F32`, `F64` | 41,820 B | 14,604 B | + pairwise gravity, explicit Euler, velocity Verlet, orbit scene, energy (each ×2 scalars) |
 | M2.3 | `F32`, `F64` | 44,458 B | 15,173 B | + cluster scene |
-| M2.5 | `F32`, `F64` | 58,544 B | 19,926 B | + disk, collapse, `Softening`, `demo_set_softening`. ~7.4 KB of it is std's unstable sort (the disk's enclosed-mass radii); the stable sort was ~8.9 KB. Barnes–Hut reuses the same sort |
+| M2.5 | `F32`, `F64` | 58,544 B | 19,926 B | + disk, collapse, `Softening`, `demo_set_softening`. ~7.4 KB of it is std's unstable sort (the disk's enclosed-mass radii); the stable sort was ~8.9 KB. Not shared with anything: generic sorts compile per element type and comparator. Dropping it (an O(n²) enclosed count) would save it, at a setup cost of ~16M comparisons for N = 4096 |
+| M2.8 | `F32`, `F64` | 75,872 B | 25,902 B | + Barnes–Hut and `demo_set_theta`. Its sort first compiled once per scalar (82,908 B); sorting non-generic `(key, index)` pairs keeps one copy. The disk's f64 sort could share it too (non-negative floats sort like their bit patterns), at the cost of coupling the two for size alone |
 
 ### The render buffer
 
