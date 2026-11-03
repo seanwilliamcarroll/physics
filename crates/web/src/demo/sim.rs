@@ -134,9 +134,7 @@ impl<S: Scalar> Sim<S> {
                 return false;
             };
             *force = force.with_stiffness(stiffness);
-            self.world.clear_forces();
-            self.world.add_force(*gravity);
-            self.world.add_force(force.clone());
+            reinstall(&mut self.world, *gravity, force);
         } else {
             let Ok(alpha) = compliance_for::<S>(k) else {
                 return false;
@@ -157,9 +155,7 @@ impl<S: Scalar> Sim<S> {
         };
         if let Some(force) = springs {
             *force = force.with_damping(damping);
-            self.world.clear_forces();
-            self.world.add_force(*gravity);
-            self.world.add_force(force.clone());
+            reinstall(&mut self.world, *gravity, force);
         } else {
             self.world
                 .update_constraints(grab, |rod| rod.with_damping(damping));
@@ -220,4 +216,16 @@ pub(super) fn gravity_scene<S: Scalar>(
         GravityScene::Collapse => collapse(n, seed)?,
     };
     Ok(Sim::with_gravity(world, cluster_gravity()?))
+}
+
+/// Replaces a force jelly's forces with `gravity` and the updated
+/// `springs` (M2's softening pattern: forces are rebuilt, not edited).
+fn reinstall<S: Scalar>(
+    world: &mut World<S>,
+    gravity: UniformGravity<S>,
+    springs: &SpringForce<S>,
+) {
+    world.clear_forces();
+    world.add_force(gravity);
+    world.add_force(springs.clone());
 }
