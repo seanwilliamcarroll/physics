@@ -26,7 +26,7 @@ lto = true
 codegen-units = 1
 panic = "abort"
 
-# Lint policy: see TASKS.md "Lint policy". Every crate opts in with
+# Lint policy: see docs/lint-policy.md. Every crate opts in with
 # `[lints] workspace = true`. Test code is exempted via clippy.toml.
 [workspace.lints.rust]
 unsafe_code = "deny"            # web's export module opts out locally
