@@ -4,10 +4,10 @@
 use core::num::NonZeroU32;
 
 use super::ConfigError;
-use crate::solver::Step;
+use crate::solver::{Contacts, Step};
 use crate::{
-    Baumgarte, Constraint, DistanceConstraint, Force, Order, Particles, Scalar, Solver,
-    Stabilization, Vec2,
+    Baumgarte, Constraint, DistanceConstraint, Force, Order, Particles, Restitution, Scalar,
+    Solver, Stabilization, Vec2, Wall,
 };
 
 /// The constraints, one λ per constraint (same order), and the solver
@@ -32,6 +32,8 @@ pub(super) struct Constraints<S> {
     /// Scratch: XPBD's start-of-substep positions, or split impulses'
     /// pseudo-velocities.
     scratch: Vec<Vec2<S>>,
+    /// This substep's contacts and their multipliers (M6).
+    contacts: Contacts<S>,
 }
 
 impl<S: Scalar> Constraints<S> {
@@ -45,6 +47,7 @@ impl<S: Scalar> Constraints<S> {
             baumgarte,
             scratch: Vec::new(),
             stabilization: Stabilization::Split,
+            contacts: Contacts::new(),
         }
     }
 
@@ -101,14 +104,21 @@ impl<S: Scalar> Constraints<S> {
         self.lambda.fill(S::ZERO);
     }
 
-    /// One substep of length `h` by the current solver.
+    /// One substep of length `h` by the current solver. `collision` is
+    /// `Some((walls, restitution))` when the world can collide.
     pub(super) fn substep(
         &mut self,
         forces: &[Box<dyn Force<S>>],
         particles: &mut Particles<S>,
         acc: &mut Vec<Vec2<S>>,
+        collision: Option<(&[Wall<S>], Restitution<S>)>,
         h: S,
     ) {
+        let (walls, restitution) = collision.unwrap_or((&[], Restitution::INELASTIC));
+        if collision.is_none() {
+            self.contacts.list.clear();
+            self.contacts.lambda.clear();
+        }
         let step = Step {
             forces,
             particles,
@@ -120,6 +130,10 @@ impl<S: Scalar> Constraints<S> {
             order: self.order,
             stabilization: self.stabilization,
             baumgarte: self.baumgarte,
+            collides: collision.is_some(),
+            contacts: &mut self.contacts,
+            walls,
+            restitution,
         };
         match self.solver {
             Solver::Xpbd => step.xpbd(h),
