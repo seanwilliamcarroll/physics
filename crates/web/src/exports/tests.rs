@@ -6,7 +6,7 @@ use super::lifecycle::{
 use super::readouts::{demo_constraint_error, demo_energy, demo_particle_x, demo_particle_y};
 use super::settings::{
     demo_set_beta, demo_set_integrator, demo_set_iterations, demo_set_order, demo_set_rate,
-    demo_set_softening, demo_set_solver, demo_set_substeps, demo_set_theta,
+    demo_set_softening, demo_set_solver, demo_set_stabilization, demo_set_substeps, demo_set_theta,
 };
 use crate::abi;
 use core::ptr;
@@ -174,6 +174,8 @@ fn chain_and_double_pendulum_constructors_check_their_input() {
         assert_eq!(&links[..2], &[0, 1]);
         assert_eq!(demo_set_order(c, abi::ORDER_ALTERNATING), 1);
         assert_eq!(demo_set_order(c, 9), 0);
+        assert_eq!(demo_set_stabilization(c, abi::STABILIZATION_BAUMGARTE), 1);
+        assert_eq!(demo_set_stabilization(c, 9), 0);
         demo_free(c);
         demo_free(p);
     }

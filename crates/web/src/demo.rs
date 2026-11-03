@@ -27,7 +27,8 @@ use any_world::{AnyWorld, build_any, each_scalar, fill_positions};
 #[cfg(test)]
 pub(crate) use codes::GravityScene;
 pub(crate) use codes::{
-    DemoKind, ScalarKind, integrator_from_code, order_from_code, solver_from_code, start_from_code,
+    DemoKind, ScalarKind, integrator_from_code, order_from_code, solver_from_code,
+    stabilization_from_code, start_from_code,
 };
 use sim::{Sim, gravity_scene};
 

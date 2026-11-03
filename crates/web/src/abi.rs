@@ -23,6 +23,11 @@ pub(crate) const ORDER_FORWARD: u32 = 0;
 pub(crate) const ORDER_REVERSE: u32 = 1;
 pub(crate) const ORDER_ALTERNATING: u32 = 2;
 
+/// `demo_set_stabilization` codes (M4): how the impulse solver corrects
+/// rigid rods' position error.
+pub(crate) const STABILIZATION_BAUMGARTE: u32 = 0;
+pub(crate) const STABILIZATION_SPLIT: u32 = 1;
+
 /// `demo_new_double_pendulum` start codes (M4).
 pub(crate) const START_HORIZONTAL: u32 = 0;
 pub(crate) const START_RAISED: u32 = 1;

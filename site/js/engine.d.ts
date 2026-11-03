@@ -71,6 +71,8 @@ export interface EngineExports {
   /** Particle i's exact x / y in meters (the engine's scalar as f64); NaN past the end. */
   demo_particle_x(demo: DemoHandle, i: number): number;
   demo_particle_y(demo: DemoHandle, i: number): number;
+  /** Code: abi.ts STABILIZATION_*; the impulse solver's position correction. */
+  demo_set_stabilization(demo: DemoHandle, code: number): Status;
   /** Code: abi.ts ORDER_*; order of each solver pass over constraints. */
   demo_set_order(demo: DemoHandle, code: number): Status;
   /** Total energy in joules, or NaN where undefined (the fountain). */

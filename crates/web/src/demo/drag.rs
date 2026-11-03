@@ -1,6 +1,6 @@
 //! Dragging and the links buffer: what the M4 pages need beyond stepping.
 
-use engine::{Compliance, Order, Scalar, Vec2, World};
+use engine::{Compliance, Order, Scalar, Stabilization, Vec2, World};
 
 use super::Demo;
 use super::any_world::each_scalar;
@@ -52,6 +52,11 @@ impl Demo {
     /// The order each solver pass visits the constraints in.
     pub(crate) fn set_order(&mut self, order: Order) {
         each_scalar!(&mut self.world, s => s.world.set_order(order));
+    }
+
+    /// How the impulse solver corrects rigid rods' position error.
+    pub(crate) fn set_stabilization(&mut self, stabilization: Stabilization) {
+        each_scalar!(&mut self.world, s => s.world.set_stabilization(stabilization));
     }
 
     /// `[a0, b0, a1, b1, ...]`: the particles each constraint joins.
