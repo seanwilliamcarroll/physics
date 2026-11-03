@@ -81,6 +81,7 @@ physics/
     │   ├── divergence.ts   # RMS distance between two runs
     │   ├── panels.ts       # side-by-side panel markup, demo handle check
     │   ├── scalars.ts      # f32/f64 names → scalar codes, URL parsing
+    │   ├── stiffness.ts    # M5 log stiffness slider (rigid stop), k_crit hint
     │   ├── …               # abi, dom, options, ring, smoke, trail
     │   └── engine.d.ts     # types for the wasm exports/imports
     ├── demos/
@@ -89,7 +90,8 @@ physics/
     │   ├── m2-cluster/
     │   ├── m3-pendulum/
     │   ├── m4-chain/
-    │   └── m4-double-pendulum/
+    │   ├── m4-double-pendulum/
+    │   └── m5-jelly/
     └── pkg/                # build output (gitignored): engine.wasm
 ```
 
