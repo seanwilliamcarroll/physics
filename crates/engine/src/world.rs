@@ -2,47 +2,16 @@
 //! by an integrator or, with constraints, a solver
 //! (`docs/06-constraints.md`).
 
-use core::fmt;
+mod config_error;
+mod constraints;
+
 use core::num::NonZeroU32;
 
-use crate::solver::Step;
+pub use config_error::ConfigError;
+use constraints::Constraints;
+
 use crate::{Baumgarte, DEFAULT_BAUMGARTE};
-use crate::{Constraint, DistanceConstraint, Force, Integrator, Particles, Scalar, Solver, Vec2};
-
-/// Invalid `World` configuration.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ConfigError {
-    /// `substeps` must be at least 1.
-    ZeroSubsteps,
-    /// A softening length ε must be `≥ 0` (not negative, not NaN); see
-    /// [`crate::Softening`].
-    InvalidSoftening,
-    /// A mass must be positive and finite, with a finite inverse; see
-    /// [`crate::Mass`].
-    InvalidMass,
-    /// A constraint names a particle this world doesn't have (e.g. it was
-    /// built from another world's particles).
-    UnknownParticle,
-    /// The Baumgarte factor β must be in `[0, 1]`; see
-    /// [`crate::Baumgarte`].
-    InvalidBaumgarte,
-}
-
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ZeroSubsteps => f.write_str("substeps must be at least 1"),
-            Self::InvalidSoftening => f.write_str("softening must be at least 0 (and not NaN)"),
-            Self::InvalidMass => {
-                f.write_str("mass must be positive and finite, with a finite inverse")
-            }
-            Self::UnknownParticle => f.write_str("constraint names a particle not in this world"),
-            Self::InvalidBaumgarte => f.write_str("Baumgarte factor must be in [0, 1]"),
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {}
+use crate::{DistanceConstraint, Force, Integrator, Particles, Scalar, Solver, Vec2};
 
 /// A simulation: particles, the forces acting on them, and how to integrate.
 pub struct World<S: Scalar> {
@@ -57,17 +26,9 @@ pub struct World<S: Scalar> {
     /// Second scratch buffer: velocity Verlet's accelerations at the new
     /// positions.
     acc_next: Vec<Vec2<S>>,
-    /// Rods etc. With any present, `solver` steps instead of `integrator`.
-    constraints: Vec<DistanceConstraint<S>>,
-    /// One multiplier per constraint, same order: the solver's state.
-    lambda: Vec<S>,
-    solver: Solver,
-    /// Gauss–Seidel passes over the constraints per substep.
-    iterations: NonZeroU32,
-    /// Scratch: positions at the start of a substep (XPBD).
-    prev: Vec<Vec2<S>>,
-    /// The impulse solver's β; kept across solver switches.
-    baumgarte: Baumgarte<S>,
+    /// Constraints and the solver state; with any constraints, the solver
+    /// steps instead of `integrator`.
+    constraints: Constraints<S>,
 }
 
 impl<S: Scalar> World<S> {
@@ -86,12 +47,7 @@ impl<S: Scalar> World<S> {
             substeps,
             acc: Vec::new(),
             acc_next: Vec::new(),
-            constraints: Vec::new(),
-            lambda: Vec::new(),
-            solver: Solver::Xpbd,
-            iterations: NonZeroU32::MIN,
-            prev: Vec::new(),
-            baumgarte: default_baumgarte()?,
+            constraints: Constraints::new(default_baumgarte()?),
         })
     }
 
@@ -115,49 +71,42 @@ impl<S: Scalar> World<S> {
     /// doesn't have (built from another world's particles). Nothing is
     /// added then.
     pub fn add_constraint(&mut self, c: DistanceConstraint<S>) -> Result<(), ConfigError> {
-        let n = self.particles.len();
-        if c.bodies().iter().any(|id| id.index() >= n) {
-            return Err(ConfigError::UnknownParticle);
-        }
-        self.constraints.push(c);
-        self.lambda.push(S::ZERO);
-        Ok(())
+        self.constraints.add(c, self.particles.len())
     }
 
     #[must_use]
     pub fn constraints(&self) -> &[DistanceConstraint<S>] {
-        &self.constraints
+        self.constraints.list()
     }
 
     #[must_use]
     pub const fn solver(&self) -> Solver {
-        self.solver
+        self.constraints.solver
     }
 
     /// Takes effect from the next step. Resets every λ: one solver's
     /// multipliers mean nothing to the other.
     pub fn set_solver(&mut self, solver: Solver) {
-        self.solver = solver;
-        self.lambda.fill(S::ZERO);
+        self.constraints.set_solver(solver);
     }
 
     #[must_use]
     pub const fn baumgarte(&self) -> Baumgarte<S> {
-        self.baumgarte
+        self.constraints.baumgarte
     }
 
     /// The impulse solver's β, from the next step (XPBD ignores it).
     pub const fn set_baumgarte(&mut self, beta: Baumgarte<S>) {
-        self.baumgarte = beta;
+        self.constraints.baumgarte = beta;
     }
 
     #[must_use]
     pub const fn iterations(&self) -> NonZeroU32 {
-        self.iterations
+        self.constraints.iterations
     }
 
     pub const fn set_iterations(&mut self, iterations: NonZeroU32) {
-        self.iterations = iterations;
+        self.constraints.iterations = iterations;
     }
 
     /// The type makes 0 unrepresentable, so unlike [`World::new`] there's
@@ -205,20 +154,8 @@ impl<S: Scalar> World<S> {
             );
             return;
         }
-        let step = Step {
-            forces: &self.forces,
-            particles: &mut self.particles,
-            constraints: &self.constraints,
-            lambda: &mut self.lambda,
-            acc: &mut self.acc,
-            prev: &mut self.prev,
-            iterations: self.iterations,
-            baumgarte: self.baumgarte,
-        };
-        match self.solver {
-            Solver::Xpbd => step.xpbd(h),
-            Solver::Impulse => step.impulse(h),
-        }
+        self.constraints
+            .substep(&self.forces, &mut self.particles, &mut self.acc, h);
     }
 }
 
