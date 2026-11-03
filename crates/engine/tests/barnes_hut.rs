@@ -1,11 +1,12 @@
-//! Barnes–Hut against direct summation: accuracy vs θ, momentum drift,
-//! and cost (`docs/barnes-hut.md`, where the measurements are recorded).
+//! Barnes–Hut against direct summation: accuracy vs θ and momentum drift
+//! (`docs/barnes-hut.md`, where the measurements are recorded). Cost is
+//! the criterion bench (`benches/step.rs`, group `barnes_hut_*`).
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
 use engine::diagnostics::momentum;
 use engine::scenarios::{cluster, cluster_gravity};
-use engine::{Force, Particles, Scalar, Vec2};
+use engine::{Particles, Scalar, Vec2};
 use test_support::{
     Tol, accelerations, cluster_barnes_hut, cluster_barnes_hut_force, for_each_scalar,
     momentum_drift_bound, s,
@@ -157,45 +158,6 @@ fn theta_zero_conserves_momentum_to_rounding<S: Tol>() {
     assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
 }
 for_each_scalar!(theta_zero_conserves_momentum_to_rounding);
-
-/// Cost vs `PairwiseGravity`: prints seconds per force evaluation and the
-/// speedup, per n and θ. A timing printout, not a pass/fail test (no
-/// criterion in the workspace yet: `docs/04-testing.md`). Run with
-/// `cargo test --release -p engine --test barnes_hut cost -- --ignored --nocapture`.
-#[test]
-#[ignore = "timing printout; run in release (see doc comment)"]
-fn cost_vs_direct_summation() {
-    use std::hint::black_box;
-    use std::time::Instant;
-
-    /// Pair interactions per timed batch: batches of ~10–30 ms.
-    const PAIRS_PER_BATCH: usize = 20_000_000;
-    /// Best of this many batches: the least-disturbed run.
-    const BATCHES: usize = 5;
-
-    let time = |p: &Particles<f64>, f: &dyn Force<f64>, reps: usize| {
-        (0..BATCHES)
-            .map(|_| {
-                let t = Instant::now();
-                for _ in 0..reps {
-                    black_box(accelerations(black_box(p), f));
-                }
-                t.elapsed().as_secs_f64() / f64::from(u32::try_from(reps).unwrap())
-            })
-            .fold(f64::INFINITY, f64::min)
-    };
-    for n in [16, 32, 64, 128, 256, 512, 1024, 2048, 4096] {
-        let p = cluster::<f64>(n, 1).unwrap().particles;
-        let reps = (PAIRS_PER_BATCH / (n * n)).clamp(20, 20_000);
-        let direct = time(&p, &cluster_gravity().unwrap(), reps);
-        print!("n {n:5}: direct {direct:.2e} s");
-        for (theta, _) in THETA_BOUNDS {
-            let tree = time(&p, &cluster_barnes_hut_force(theta), reps);
-            print!(" | θ {theta}: {tree:.2e} s ({:.2}x)", direct / tree);
-        }
-        println!();
-    }
-}
 
 /// Inside `World::step` (not just `accumulate`), a cluster stays finite
 /// for every θ: a smoke test of the force in a real run.
