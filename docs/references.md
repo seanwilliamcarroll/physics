@@ -55,6 +55,15 @@ XPBD for rigid bodies, including the velocity pass for restitution and friction.
 demos in the browser. Useful companion for M3–M5.
 - http://matthiasmueller.info/tenMinutePhysics
 
+## Integrators and stability (`07-soft-bodies.md`, M1–M5)
+
+**Hairer, E., Lubich, C., Wanner, G. (2006).** *Geometric Numerical
+Integration: Structure-Preserving Algorithms for Ordinary Differential
+Equations.* 2nd ed., Springer Series in Computational Mathematics 31.
+Symplectic methods (symplectic Euler, Störmer–Verlet) and why they keep
+phase-space area; the linear stability analysis behind M5's `k_crit`.
+- DOI: https://doi.org/10.1007/3-540-30666-8
+
 ## N-body (M1–M2)
 
 **Barnes, J., Hut, P. (1986).** *A hierarchical O(N log N) force-calculation
