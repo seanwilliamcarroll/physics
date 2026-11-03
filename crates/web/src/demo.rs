@@ -5,13 +5,16 @@
 
 use core::num::NonZeroU32;
 
-use engine::diagnostics::total_energy;
+use engine::diagnostics::{
+    constraint_error, kinetic_energy, total_energy, uniform_gravity_potential,
+};
 use engine::scenarios::{
     Fountain, ORBIT_CIRCULAR, cluster, cluster_gravity, collapse, disk, gravity, orbit,
-    orbit_gravity,
+    orbit_gravity, pendulum, pendulum_gravity,
 };
 use engine::{
-    BarnesHut, ConfigError, Integrator, OpeningAngle, PairwiseGravity, Scalar, Softening, World,
+    BarnesHut, Baumgarte, ConfigError, Integrator, OpeningAngle, PairwiseGravity, Scalar,
+    Softening, Solver, UniformGravity, World,
 };
 
 use crate::abi;
@@ -51,6 +54,8 @@ pub(crate) enum DemoKind {
     Orbit,
     /// One of the M2 scenes of `n` bodies under pairwise gravity.
     Gravity(GravityScene),
+    /// M3: `01-solvers.md`'s pendulum (a pin and a bob on a rod).
+    Pendulum,
 }
 
 /// The M2 gravity scenes, all under `scenarios::cluster_gravity` (same ε).
@@ -74,6 +79,7 @@ impl DemoKind {
             abi::DEMO_CLUSTER => Some(Self::Gravity(GravityScene::Cluster)),
             abi::DEMO_DISK => Some(Self::Gravity(GravityScene::Disk)),
             abi::DEMO_COLLAPSE => Some(Self::Gravity(GravityScene::Collapse)),
+            abi::DEMO_PENDULUM => Some(Self::Pendulum),
             _ => None,
         }
     }
@@ -91,6 +97,16 @@ pub(crate) const fn integrator_from_code(code: u32) -> Option<Integrator> {
     }
 }
 
+/// Decodes a `demo_set_solver` code ([`abi`]).
+#[must_use]
+pub(crate) const fn solver_from_code(code: u32) -> Option<Solver> {
+    match code {
+        abi::SOLVER_XPBD => Some(Solver::Xpbd),
+        abi::SOLVER_IMPULSE => Some(Solver::Impulse),
+        _ => None,
+    }
+}
+
 /// A world and, for the gravity scenes, a copy of its exact force:
 /// energy readouts need it, and `World` owns its forces as `dyn Force`,
 /// so it can't hand a `PairwiseGravity` back. With `theta` set, the world
@@ -100,6 +116,8 @@ struct Sim<S: Scalar> {
     world: World<S>,
     gravity: Option<PairwiseGravity<S>>,
     theta: Option<OpeningAngle<S>>,
+    /// The pendulum's uniform gravity, for its energy readout.
+    uniform: Option<UniformGravity<S>>,
 }
 
 impl<S: Scalar> Sim<S> {
@@ -108,6 +126,16 @@ impl<S: Scalar> Sim<S> {
             world,
             gravity: None,
             theta: None,
+            uniform: None,
+        }
+    }
+
+    const fn with_uniform(world: World<S>, uniform: UniformGravity<S>) -> Self {
+        Self {
+            world,
+            gravity: None,
+            theta: None,
+            uniform: Some(uniform),
         }
     }
 
@@ -116,6 +144,7 @@ impl<S: Scalar> Sim<S> {
             world,
             gravity: Some(gravity),
             theta: None,
+            uniform: None,
         }
     }
 
@@ -155,9 +184,18 @@ impl<S: Scalar> Sim<S> {
 
     /// Total energy under the stored force, or `None` without one.
     fn energy(&self) -> Option<f64> {
-        self.gravity
-            .as_ref()
-            .map(|g| total_energy(&self.world.particles, g).to_f64())
+        let p = &self.world.particles;
+        match (&self.gravity, &self.uniform) {
+            (Some(g), _) => Some(total_energy(p, g).to_f64()),
+            (None, Some(u)) => Some((kinetic_energy(p) + uniform_gravity_potential(p, u)).to_f64()),
+            (None, None) => None,
+        }
+    }
+
+    /// Max |C| over the world's constraints, m; `None` without any.
+    fn constraint_error(&self) -> Option<f64> {
+        constraint_error(&self.world.particles, self.world.constraints())
+            .map(|(max, _)| max.to_f64())
     }
 }
 
@@ -227,6 +265,20 @@ impl Demo {
                 };
                 (world, Scene::Gravity)
             }
+            DemoKind::Pendulum => {
+                // XPBD with one substep to start; the page sets the rest.
+                let world = match scalar {
+                    ScalarKind::F32 => AnyWorld::F32(Sim::with_uniform(
+                        pendulum(Solver::Xpbd, 1)?,
+                        pendulum_gravity(),
+                    )),
+                    ScalarKind::F64 => AnyWorld::F64(Sim::with_uniform(
+                        pendulum(Solver::Xpbd, 1)?,
+                        pendulum_gravity(),
+                    )),
+                };
+                (world, Scene::Gravity)
+            }
         };
         let mut demo = Self {
             world,
@@ -272,6 +324,46 @@ impl Demo {
         match &mut self.world {
             AnyWorld::F32(s) => s.world.set_integrator(integrator),
             AnyWorld::F64(s) => s.world.set_integrator(integrator),
+        }
+    }
+
+    /// Which solver steps the world when it has constraints.
+    pub(crate) fn set_solver(&mut self, solver: Solver) {
+        match &mut self.world {
+            AnyWorld::F32(s) => s.world.set_solver(solver),
+            AnyWorld::F64(s) => s.world.set_solver(solver),
+        }
+    }
+
+    /// The impulse solver's β, parsed at the boundary in `f64` and cast.
+    pub(crate) fn set_baumgarte(&mut self, beta: Baumgarte<f64>) {
+        match &mut self.world {
+            AnyWorld::F32(s) => s.world.set_baumgarte(beta.cast()),
+            AnyWorld::F64(s) => s.world.set_baumgarte(beta),
+        }
+    }
+
+    pub(crate) const fn set_substeps(&mut self, substeps: NonZeroU32) {
+        match &mut self.world {
+            AnyWorld::F32(s) => s.world.set_substeps(substeps),
+            AnyWorld::F64(s) => s.world.set_substeps(substeps),
+        }
+    }
+
+    pub(crate) const fn set_iterations(&mut self, iterations: NonZeroU32) {
+        match &mut self.world {
+            AnyWorld::F32(s) => s.world.set_iterations(iterations),
+            AnyWorld::F64(s) => s.world.set_iterations(iterations),
+        }
+    }
+
+    /// Max constraint error (m), or `None` for a world without
+    /// constraints.
+    #[must_use]
+    pub(crate) fn constraint_error(&self) -> Option<f64> {
+        match &self.world {
+            AnyWorld::F32(s) => s.constraint_error(),
+            AnyWorld::F64(s) => s.constraint_error(),
         }
     }
 

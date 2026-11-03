@@ -13,8 +13,8 @@
 use core::num::NonZeroU32;
 use core::ptr;
 
-use crate::demo::{Demo, DemoKind, ScalarKind, integrator_from_code};
-use engine::{OpeningAngle, Softening};
+use crate::demo::{Demo, DemoKind, ScalarKind, integrator_from_code, solver_from_code};
+use engine::{Baumgarte, OpeningAngle, Softening};
 
 /// Creates a demo of `n` particles. `kind` and `scalar` are codes from
 /// [`crate::abi`]. Returns null for an unknown code or invalid scene.
@@ -144,6 +144,80 @@ pub(crate) unsafe extern "C" fn demo_set_theta(d: *mut Demo, theta: f64) -> u32 
         return 0;
     };
     u32::from(d.set_theta(theta))
+}
+
+/// Which solver steps a world with constraints (`code` from
+/// [`crate::abi`]: `SOLVER_*`). Returns 1, or 0 for an unknown code or a
+/// null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_solver(d: *mut Demo, code: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(solver)) = (unsafe { d.as_mut() }, solver_from_code(code)) else {
+        return 0;
+    };
+    d.set_solver(solver);
+    1
+}
+
+/// The impulse solver's Baumgarte factor β. Returns 1, or 0 for β outside
+/// `[0, 1]`, NaN (parsed into `Baumgarte` here), or a null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_beta(d: *mut Demo, beta: f64) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(beta)) = (unsafe { d.as_mut() }, Baumgarte::new(beta)) else {
+        return 0;
+    };
+    d.set_baumgarte(beta);
+    1
+}
+
+/// Substeps per physics step. Returns 1, or 0 for 0 (parsed into
+/// `NonZeroU32` here) or a null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_substeps(d: *mut Demo, n: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, NonZeroU32::new(n)) else {
+        return 0;
+    };
+    d.set_substeps(n);
+    1
+}
+
+/// Constraint-solver iterations per substep. Returns 1, or 0 for 0 or a
+/// null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_iterations(d: *mut Demo, n: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, NonZeroU32::new(n)) else {
+        return 0;
+    };
+    d.set_iterations(n);
+    1
+}
+
+/// Largest constraint error |C| (m), or NaN for a world without
+/// constraints or a null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_constraint_error(d: *const Demo) -> f64 {
+    // SAFETY: per the contract, null (-> None) or a live Demo.
+    unsafe { d.as_ref() }
+        .and_then(Demo::constraint_error)
+        .unwrap_or(f64::NAN)
 }
 
 /// Total energy in joules, or NaN where it isn't defined (the fountain) or

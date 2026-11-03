@@ -113,3 +113,37 @@ fn theta_is_parsed_at_the_boundary() {
         assert_eq!(super::demo_set_theta(ptr::null_mut(), 0.5), 0);
     }
 }
+
+#[test]
+fn pendulum_controls_are_parsed_at_the_boundary() {
+    use super::{
+        demo_constraint_error, demo_set_beta, demo_set_iterations, demo_set_solver,
+        demo_set_substeps,
+    };
+    let d = demo_new(abi::DEMO_PENDULUM, abi::SCALAR_F32, 0, 0);
+    assert!(!d.is_null());
+    // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
+    unsafe {
+        assert_eq!(demo_set_solver(d, abi::SOLVER_IMPULSE), 1);
+        assert_eq!(demo_set_solver(d, 9), 0, "unknown solver code");
+        assert_eq!(demo_set_beta(d, 1.5), 0, "beta above 1");
+        assert_eq!(demo_set_beta(d, f64::NAN), 0);
+        assert_eq!(demo_set_beta(d, 0.0), 1);
+        assert_eq!(demo_set_substeps(d, 0), 0, "zero substeps");
+        assert_eq!(demo_set_substeps(d, 4), 1);
+        assert_eq!(demo_set_iterations(d, 0), 0, "zero iterations");
+        assert_eq!(demo_set_iterations(d, 2), 1);
+        assert_eq!(demo_advance(d, 0.25), 15, "one clamped frame");
+        let err = demo_constraint_error(d);
+        assert!(err.is_finite() && err > 0.0, "beta 0 stretches: {err}");
+        demo_free(d);
+        assert!(demo_constraint_error(ptr::null()).is_nan());
+        assert_eq!(demo_set_solver(ptr::null_mut(), 0), 0);
+    }
+    let f = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 4, 1);
+    // SAFETY: as above.
+    unsafe {
+        assert!(demo_constraint_error(f).is_nan(), "no constraints");
+        demo_free(f);
+    }
+}

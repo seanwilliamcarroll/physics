@@ -11,6 +11,12 @@ pub(crate) const DEMO_ORBIT: u32 = 1;
 pub(crate) const DEMO_CLUSTER: u32 = 2;
 pub(crate) const DEMO_DISK: u32 = 3;
 pub(crate) const DEMO_COLLAPSE: u32 = 4;
+/// M3: the `01-solvers.md` pendulum.
+pub(crate) const DEMO_PENDULUM: u32 = 5;
+
+/// `demo_set_solver` codes.
+pub(crate) const SOLVER_XPBD: u32 = 0;
+pub(crate) const SOLVER_IMPULSE: u32 = 1;
 
 /// `demo_set_integrator` codes.
 pub(crate) const INTEGRATOR_SYMPLECTIC_EULER: u32 = 0;
