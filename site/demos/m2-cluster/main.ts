@@ -38,19 +38,34 @@ const SOFTENING_STEP_M = 0.005;
 const SOFTENING_DEFAULT_MM = 100;
 const MM_PER_M = 1000;
 
-/** The two panels: scalar code, label, and CSS color variable. */
+/** Barnes–Hut opening-angle slider. 0 is exact (direct summation through
+ *  the tree); Barnes & Hut used about 1; past 1.5 the approximation is
+ *  crude (docs/barnes-hut.md: max error / RMS |a| was 0.3 at θ = 1). The
+ *  default 0.5 is a common accuracy/cost compromise. */
+const THETA_MAX = 1.5;
+const THETA_STEP = 0.05;
+const THETA_DEFAULT_PCT = 50;
+const PCT = 100;
+
+/** The panels: scalar code, label, CSS color variable, and whether it runs
+ *  Barnes–Hut. f64 (index REFERENCE) is the reference the others are
+ *  compared against. */
 const PANELS = [
-  { code: SCALAR_F32, name: "f32", colorVar: "--series-1" },
-  { code: SCALAR_F64, name: "f64", colorVar: "--series-3" },
+  { code: SCALAR_F32, name: "f32", colorVar: "--series-1", barnesHut: false },
+  { code: SCALAR_F64, name: "f64", colorVar: "--series-3", barnesHut: false },
+  { code: SCALAR_F64, name: "f64 Barnes–Hut", colorVar: "--series-2", barnesHut: true },
 ];
+const REFERENCE = 1;
 
 const OPTIONS: {
-  scene: ChoiceOption; n: IntOption; seed: IntOption; eps_mm: IntOption; rate: IntOption; fps: IntOption;
+  scene: ChoiceOption; n: IntOption; seed: IntOption; eps_mm: IntOption; theta_pct: IntOption;
+  rate: IntOption; fps: IntOption;
 } = {
   scene: { kind: "choice", values: Object.keys(SCENES), default: "disk", help: "starting configuration" },
   n: { kind: "int", min: 2, max: 4096, default: 256, help: "body count (the menu offers powers of two)" },
   seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "scene randomness; same seed, same scene" },
   eps_mm: { kind: "int", min: 0, max: SOFTENING_MAX_M * MM_PER_M, default: SOFTENING_DEFAULT_MM, help: "softening ε in millimeters; 0 = pure 1/r²" },
+  theta_pct: { kind: "int", min: 0, max: THETA_MAX * PCT, default: THETA_DEFAULT_PCT, help: "Barnes–Hut opening angle θ × 100; 0 = exact" },
   rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate" },
   fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
 };
@@ -62,6 +77,7 @@ const PRESETS: [string, string][] = [
   ["no softening", "?scene=collapse&eps_mm=0"],
   ["1024 bodies", "?n=1024"],
   ["4096 bodies", "?n=4096"],
+  ["crude Barnes–Hut", "?n=1024&theta_pct=150"],
   ["10 Hz", "?rate=10"],
 ];
 
@@ -84,6 +100,7 @@ const state = {
   n: readInt(params, "n", OPTIONS.n),
   seed: readInt(params, "seed", OPTIONS.seed),
   softening: readInt(params, "eps_mm", OPTIONS.eps_mm) / MM_PER_M,
+  theta: readInt(params, "theta_pct", OPTIONS.theta_pct) / PCT,
   rate: readInt(params, "rate", OPTIONS.rate),
 };
 const maxFps = readInt(params, "fps", OPTIONS.fps);
@@ -97,7 +114,6 @@ const colors = {
   body: cssColor(css, "--particle"),
   grid: cssColor(css, "--grid"),
   text: cssColor(css, "--muted"),
-  divergence: cssColor(css, "--series-2"),
 };
 
 // All panels go into the grid before any canvas is sized (see M1's page).
@@ -130,8 +146,10 @@ const panels = panelEls.map(({ cfg, color, canvas, readout }) => ({
 type Panel = (typeof panels)[number];
 
 const plotColors = { background: colors.background, grid: colors.grid, text: colors.text };
+/** Divergence series: every panel except the reference, against it. */
+const compared = panels.filter((_, i) => i !== REFERENCE);
 const divergencePlot = new LinePlot(byId("divergence", HTMLCanvasElement), {
-  series: [{ label: "RMS distance, m", color: colors.divergence }],
+  series: compared.map((p) => ({ label: `${p.name} vs f64`, color: p.color })),
   capacity: PLOT_SAMPLES,
   scale: "log",
   colors: plotColors,
@@ -166,6 +184,7 @@ try {
       const demo = engine.demo_new(SCENES[state.scene], p.code, state.n, state.seed);
       if (demo === 0) throw new Error("demo_new returned null");
       if (engine.demo_set_softening(demo, state.softening) !== 1) throw new Error("softening rejected");
+      if (p.barnesHut && engine.demo_set_theta(demo, state.theta) !== 1) throw new Error("θ rejected");
       engine.demo_set_rate(demo, state.rate);
       p.demo = demo;
     }
@@ -215,6 +234,18 @@ try {
       state.softening = m;
       for (const p of panels) engine.demo_set_softening(handle(p), m);
       resetEnergy();
+    },
+  });
+  slider(controls, {
+    label: "Barnes–Hut",
+    min: 0,
+    max: THETA_MAX,
+    step: THETA_STEP,
+    value: state.theta,
+    format: (t) => `θ ${t.toFixed(2)}`,
+    onInput: (t) => {
+      state.theta = t;
+      for (const p of panels) if (p.barnesHut) engine.demo_set_theta(handle(p), t);
     },
   });
   slider(controls, {
@@ -269,11 +300,11 @@ try {
         return { pos, err };
       });
       simTime += steps / state.rate;
-      const [a, b] = views;
-      if (a !== undefined && b !== undefined) {
-        divergencePlot.push(simTime, [rmsDistance(a.pos, b.pos)]);
-        energyPlot.push(simTime, [a.err, b.err]);
+      const ref = views[REFERENCE];
+      if (ref !== undefined) {
+        divergencePlot.push(simTime, views.filter((_, i) => i !== REFERENCE).map((v) => rmsDistance(v.pos, ref.pos)));
       }
+      energyPlot.push(simTime, views.map((v) => v.err));
       divergencePlot.draw();
       energyPlot.draw();
       if (now - costShownAt >= COST_REFRESH_MS) {
