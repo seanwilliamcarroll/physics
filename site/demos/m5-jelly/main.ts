@@ -35,11 +35,13 @@ const LOG_K_VALUES = Array.from(
 ).concat(RIGID);
 const logKFromParam = (s: string): number => (s === RIGID ? RIGID_STOP : Number(s));
 
-/** Damping c in N·s/m: 0 to 2 in tenths. */
-const DAMPING_STEP = 0.1;
+/** Damping c in N·s/m: 0 to 2 in tenths. Values are `i / 10`, not
+ *  `i * 0.1`, so they print as "0.3", not "0.30000000000000004". */
+const DAMPING_PER_UNIT = 10;
+const DAMPING_STEP = 1 / DAMPING_PER_UNIT;
 const DAMPING_MAX = 2;
-const DAMPING_VALUES = Array.from({ length: DAMPING_MAX / DAMPING_STEP + 1 }, (_, i) =>
-  String(Math.round(i * DAMPING_STEP * 10) / 10));
+const DAMPING_VALUES = Array.from({ length: DAMPING_MAX * DAMPING_PER_UNIT + 1 }, (_, i) =>
+  String(i / DAMPING_PER_UNIT));
 
 const OPTIONS: {
   logk: ChoiceOption; damping: ChoiceOption; grid: IntOption; substeps: IntOption; rate: IntOption; fps: IntOption;
