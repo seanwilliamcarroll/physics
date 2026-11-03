@@ -10,7 +10,7 @@ use std::process;
 
 /// One measured case: criterion group name, body count, wasm ns per step.
 #[derive(Debug, PartialEq)]
-pub struct Case {
+pub(crate) struct Case {
     pub group: String,
     pub n: usize,
     pub wasm_ns: f64,
@@ -18,7 +18,7 @@ pub struct Case {
 
 /// Parses the Node script's output: `<group> <n> <ns>` per line. Pure, so
 /// it's unit-tested.
-pub fn parse_cases(stdout: &str) -> Result<Vec<Case>, String> {
+pub(crate) fn parse_cases(stdout: &str) -> Result<Vec<Case>, String> {
     stdout
         .lines()
         .filter(|l| !l.trim().is_empty())
@@ -45,7 +45,7 @@ pub fn parse_cases(stdout: &str) -> Result<Vec<Case>, String> {
 /// inside `"mean"` only. A string search, not a JSON parser: the format is
 /// criterion's own and stable, and a JSON crate isn't worth it here.
 #[must_use]
-pub fn mean_point_estimate(json: &str) -> Option<f64> {
+pub(crate) fn mean_point_estimate(json: &str) -> Option<f64> {
     let (_, mean) = json.split_once("\"mean\":")?;
     let (_, rest) = mean.split_once("\"point_estimate\":")?;
     let end = rest.find([',', '}'])?;
@@ -53,7 +53,7 @@ pub fn mean_point_estimate(json: &str) -> Option<f64> {
 }
 
 /// Builds the site, runs the Node benchmark, and prints native vs wasm.
-pub fn bench_wasm(root: &Path, budget_ms: u32) -> Result<(), String> {
+pub(crate) fn bench_wasm(root: &Path, budget_ms: u32) -> Result<(), String> {
     super::site(root)?;
     let wasm = root.join("site").join("pkg").join("engine.wasm");
     let script = root.join("xtask").join("bench_wasm.mjs");

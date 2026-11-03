@@ -80,8 +80,8 @@ for_each_scalar!(every_run_is_repeatable);
 /// Golden hashes, per run: (f32, f64). Change detectors: a refactor that
 /// alters any result fails here, and you decide whether that was intended
 /// (then paste the new values from the failure message) or a bug.
-/// Recorded on aarch64-apple-darwin, Rust 1.99.1. Native only for now; the
-/// same values under wasm32-wasip1 are TASKS.md M1 decision 7.
+/// Recorded on aarch64-apple-darwin, Rust 1.99.1; `cargo xtask test-wasm`
+/// checks the same values on wasm32-wasip1 (`docs/04-testing.md`).
 const GOLDEN: [(u64, u64); 7] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster

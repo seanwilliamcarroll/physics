@@ -54,3 +54,19 @@ fn forces_re_added_after_clear_apply_again() {
     }
     assert_eq!(a.particles.pos(), b.particles.pos());
 }
+
+#[test]
+fn config_errors_explain_themselves() {
+    use super::ConfigError;
+    assert!(ConfigError::ZeroSubsteps.to_string().contains("substeps"));
+    assert_eq!(
+        World::<f64>::new(Integrator::SymplecticEuler, 0).err(),
+        Some(ConfigError::ZeroSubsteps)
+    );
+    assert_eq!(
+        World::<f64>::new(Integrator::SymplecticEuler, 3)
+            .unwrap()
+            .substeps(),
+        3
+    );
+}

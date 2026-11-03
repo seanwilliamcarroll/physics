@@ -11,11 +11,11 @@ use core::num::NonZeroU32;
 /// (a stalled or backgrounded tab) are clamped, so the simulation slows
 /// down instead of running hundreds of catch-up steps that make the next
 /// frame slow too (the "spiral of death").
-pub const MAX_FRAME_TIME: f64 = 0.25;
+pub(crate) const MAX_FRAME_TIME: f64 = 0.25;
 
 /// Accumulates real time and pays it out in steps of `dt`.
 #[derive(Clone, Debug)]
-pub struct FixedStep {
+pub(crate) struct FixedStep {
     /// Seconds per step, `1 / rate`: positive and finite by construction
     /// (a zero or negative `dt` would make `advance` loop forever).
     dt: f64,
@@ -31,7 +31,7 @@ impl FixedStep {
     /// `1 / rate` for a nonzero integer is always positive and finite
     /// (`docs/type-invariants.md`).
     #[must_use]
-    pub fn new(rate: NonZeroU32) -> Self {
+    pub(crate) fn new(rate: NonZeroU32) -> Self {
         Self {
             dt: 1.0 / f64::from(rate.get()),
             leftover: 0.0,
@@ -40,20 +40,20 @@ impl FixedStep {
 
     /// Seconds per step.
     #[must_use]
-    pub const fn dt(&self) -> f64 {
+    pub(crate) const fn dt(&self) -> f64 {
         self.dt
     }
 
     /// Switches to `rate` steps per second and drops any owed time: the
     /// leftover was measured in the old step size, and carrying it over
     /// could fire a step immediately at the new one.
-    pub fn set_rate(&mut self, rate: NonZeroU32) {
+    pub(crate) fn set_rate(&mut self, rate: NonZeroU32) {
         *self = Self::new(rate);
     }
 
     /// Adds `elapsed` seconds of real time; returns how many steps of `dt`
     /// to simulate now. Negative or `NaN` frame times count as zero.
-    pub fn advance(&mut self, elapsed: f64) -> u32 {
+    pub(crate) fn advance(&mut self, elapsed: f64) -> u32 {
         // `clamp` passes NaN through, so it's handled first.
         let elapsed = if elapsed.is_nan() {
             0.0
@@ -73,7 +73,7 @@ impl FixedStep {
     /// now; render interpolation (`leftover / dt`) would make it public.
     #[cfg(test)]
     #[must_use]
-    pub const fn leftover(&self) -> f64 {
+    pub(crate) const fn leftover(&self) -> f64 {
         self.leftover
     }
 }

@@ -127,7 +127,7 @@ const CHROME_NAMES: [&str; 4] = [
 
 /// A healthy page's report.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Report {
+pub(crate) struct Report {
     pub steps: u64,
     pub particle_px: u64,
 }
@@ -153,7 +153,7 @@ fn ok_fields(stderr: &str) -> Result<&str, String> {
 
 /// Judges a panic-hook load: the page saw the panic text arrive through
 /// the import (`panic_logged=1`), and Chrome's log shows the console line.
-pub fn judge_panic(stderr: &str) -> Result<String, String> {
+pub(crate) fn judge_panic(stderr: &str) -> Result<String, String> {
     let fields = ok_fields(stderr)?;
     if fields.split_whitespace().all(|kv| kv != "panic_logged=1") {
         return Err(format!("unexpected panic report `{fields}`"));
@@ -165,7 +165,7 @@ pub fn judge_panic(stderr: &str) -> Result<String, String> {
 }
 
 /// Judges a drawing load from Chrome's stderr. Pure, so it's unit-tested.
-pub fn judge(stderr: &str) -> Result<Report, String> {
+pub(crate) fn judge(stderr: &str) -> Result<Report, String> {
     let fields = ok_fields(stderr)?;
     let get = |key: &str| -> Result<u64, String> {
         fields
@@ -190,7 +190,7 @@ pub fn judge(stderr: &str) -> Result<Report, String> {
 
 /// Builds the site, serves it, and checks every case. Screenshots go to
 /// `target/smoke/<case>.png` for a human look.
-pub fn smoke(root: &Path) -> Result<(), String> {
+pub(crate) fn smoke(root: &Path) -> Result<(), String> {
     super::site(root)?;
     let chrome = find_chrome()?;
     let server = Server::start(&root.join("site"))?;

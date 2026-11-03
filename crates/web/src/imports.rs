@@ -25,7 +25,7 @@ mod wasm {
     /// `RuntimeError: unreachable`. The hook runs first, so it can send the
     /// message and location ("panicked at src/x.rs:1:2:\n<message>") to the
     /// browser console before the module traps.
-    pub fn install_panic_hook() {
+    pub(crate) fn install_panic_hook() {
         INSTALL.call_once(|| {
             std::panic::set_hook(Box::new(|info| {
                 let text = info.to_string();
@@ -39,8 +39,8 @@ mod wasm {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub use wasm::install_panic_hook;
+pub(crate) use wasm::install_panic_hook;
 
 /// Native: nothing to install (std's default hook prints to stderr).
 #[cfg(not(target_arch = "wasm32"))]
-pub const fn install_panic_hook() {}
+pub(crate) const fn install_panic_hook() {}

@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::{self, Child};
 
 /// Python's `http.server` default, so links in the README work either way.
-pub const DEFAULT_PORT: u16 = 8000;
+pub(crate) const DEFAULT_PORT: u16 = 8000;
 
 /// A child process that's killed when this goes out of scope, including on
 /// an early return: if the server fails to start, the watcher mustn't
@@ -24,7 +24,7 @@ impl Drop for KillOnDrop {
 /// Builds the site, starts `tsc --watch`, then serves `site/` on `port`
 /// until the server exits. Ctrl-C reaches every process in the terminal's
 /// foreground group (cargo, xtask, tsc, python), so one press stops all.
-pub fn serve(root: &Path, port: u16) -> Result<(), String> {
+pub(crate) fn serve(root: &Path, port: u16) -> Result<(), String> {
     super::site(root)?;
 
     let tsc = root.join("node_modules").join(".bin").join("tsc");
