@@ -63,6 +63,14 @@ impl<S: Scalar> World<S> {
         self.forces.push(Box::new(force));
     }
 
+    /// Removes every force; particles keep their state. To change a
+    /// force's parameters (e.g. softening), clear and re-add: mutating a
+    /// `Box<dyn Force>` in place would need downcasting or a setter on
+    /// every force.
+    pub fn clear_forces(&mut self) {
+        self.forces.clear();
+    }
+
     #[must_use]
     pub const fn substeps(&self) -> u32 {
         self.substeps

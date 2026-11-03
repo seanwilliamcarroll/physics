@@ -109,8 +109,7 @@ pub const CLUSTER_SUBSTEPS: u32 = 1;
 
 /// Newtonian gravity in SI units ([`GRAVITATIONAL_CONSTANT`]) with the
 /// given softening: the only force the gravity scenes use. Rebuilding a
-/// scene's force with a new ε is `clear_forces` + `add_force(gravity(ε))`
-/// (`TASKS.md` M2 decision 4).
+/// scene's force with a new ε is `clear_forces` + `add_force(gravity(ε))`.
 #[must_use]
 pub fn gravity<S: Scalar>(softening: Softening<S>) -> PairwiseGravity<S> {
     PairwiseGravity::new(S::from_f64(GRAVITATIONAL_CONSTANT), softening)
