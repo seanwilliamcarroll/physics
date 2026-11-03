@@ -5,7 +5,8 @@
 use core::fmt;
 use core::num::NonZeroU32;
 
-use crate::solver::{Baumgarte, DEFAULT_BAUMGARTE, Step};
+use crate::solver::Step;
+use crate::{Baumgarte, DEFAULT_BAUMGARTE};
 use crate::{Constraint, DistanceConstraint, Force, Integrator, Particles, Scalar, Solver, Vec2};
 
 /// Invalid `World` configuration.

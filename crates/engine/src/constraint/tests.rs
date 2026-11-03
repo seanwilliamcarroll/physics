@@ -1,5 +1,5 @@
 use super::{Constraint, DistanceConstraint};
-use crate::mass::kg;
+use crate::params::kg;
 use crate::{Particles, Vec2};
 
 fn two_bodies() -> (Particles<f64>, crate::ParticleId, crate::ParticleId) {

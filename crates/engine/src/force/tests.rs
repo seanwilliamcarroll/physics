@@ -1,5 +1,5 @@
 use super::{Force, UniformGravity};
-use crate::mass::kg;
+use crate::params::kg;
 use crate::{Particles, Vec2};
 
 #[test]
@@ -28,7 +28,7 @@ fn forces_add_into_acc_rather_than_overwrite() {
 
 mod pairwise {
     use super::super::{Force, PairwiseGravity};
-    use crate::mass::kg;
+    use crate::params::kg;
     use crate::{Particles, Softening, Vec2};
 
     fn soft(e: f64) -> Softening<f64> {

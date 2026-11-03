@@ -1,5 +1,5 @@
 use super::{center_of_mass, gravity_potential, kinetic_energy, momentum, total_energy};
-use crate::mass::kg;
+use crate::params::kg;
 use crate::{PairwiseGravity, Softening};
 use crate::{Particles, Vec2};
 

@@ -27,14 +27,17 @@ local tuples) are left out.
 ## `engine` — checked parameters (parse, don't validate)
 
 Each is checked once where the value enters, then trusted
-(`type-invariants.md`).
+(`type-invariants.md`). All live in [`params/`](../crates/engine/src/params.rs);
+the interval types share one macro, `checked_param!` (`new -> Option`,
+`get`, `cast`), which is where M5's `Compliance` and M7's `Restitution`
+and `Friction` go.
 
 | Type | Why it exists |
 |---|---|
-| [`Mass<S>`](../crates/engine/src/mass.rs) | Positive, finite, with a finite inverse: a bad mass would corrupt every constraint it touches; static particles come only from `add_static`. |
-| [`Softening<S>`](../crates/engine/src/softening.rs) | ε ≥ 0 (0 allowed: M2 demos it). A negative ε from a slider is reported, not silently squared away. |
-| [`OpeningAngle<S>`](../crates/engine/src/barnes_hut.rs) | Barnes–Hut θ ≥ 0; became a type when θ got a slider. |
-| [`Baumgarte<S>`](../crates/engine/src/solver.rs) | Impulse solver's β in `[0, 1]`: above 1 the bias overshoots. A world setting, so `Solver` stays a plain enum. |
+| [`Mass<S>`](../crates/engine/src/params/mass.rs) | Positive, finite, with a finite inverse: a bad mass would corrupt every constraint it touches; static particles come only from `add_static`. |
+| [`Softening<S>`](../crates/engine/src/params/softening.rs) | ε ≥ 0 (0 allowed: M2 demos it). A negative ε from a slider is reported, not silently squared away. |
+| [`OpeningAngle<S>`](../crates/engine/src/params/opening_angle.rs) | Barnes–Hut θ ≥ 0; became a type when θ got a slider. |
+| [`Baumgarte<S>`](../crates/engine/src/params/baumgarte.rs) | Impulse solver's β in `[0, 1]`: above 1 the bias overshoots. A world setting, so `Solver` stays a plain enum. |
 
 ## `engine` — forces, constraints, stepping
 

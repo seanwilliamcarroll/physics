@@ -1,5 +1,6 @@
-use super::{BarnesHut, OpeningAngle};
-use crate::mass::kg;
+use super::BarnesHut;
+use crate::OpeningAngle;
+use crate::params::kg;
 use crate::rng::SplitMix64;
 use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
@@ -50,16 +51,6 @@ fn max_rel_diff<S: Scalar>(a: &[Vec2<S>], b: &[Vec2<S>]) -> f64 {
         .map(|(x, y)| (*x - *y).length().to_f64())
         .fold(0.0, f64::max)
         / scale
-}
-
-#[test]
-fn negative_or_nan_theta_is_rejected() {
-    let new = OpeningAngle::<f64>::new;
-    assert!(new(-0.1).is_none());
-    assert!(new(f64::NAN).is_none());
-    assert!(new(0.0).is_some());
-    assert_eq!(new(0.5).map(|t| t.cast::<f32>().get()), Some(0.5_f32));
-    assert!(new(0.5).is_some());
 }
 
 /// θ = 0 never accepts a cell: the same sum as `PairwiseGravity`, up to
