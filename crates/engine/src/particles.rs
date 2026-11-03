@@ -95,6 +95,47 @@ impl<S: Scalar> Particles<S> {
     pub fn inv_mass(&self) -> &[S] {
         &self.inv_mass
     }
+
+    /// Moves a **static** particle to `pos` (a drag anchor, a moving pin).
+    /// `false`, changing nothing, if `id` is unknown or dynamic: teleporting
+    /// a dynamic particle would break its momentum without a force.
+    #[must_use]
+    pub fn set_static_position(&mut self, id: ParticleId, pos: Vec2<S>) -> bool {
+        match (self.inv_mass.get(id.0), self.pos.get_mut(id.0)) {
+            (Some(&w), Some(x)) if w == S::ZERO => {
+                *x = pos;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// The dynamic particle nearest to `point` within `radius` (m), if any:
+    /// what a pointer grab picks. Static particles can't be grabbed.
+    #[must_use]
+    pub fn nearest_dynamic(&self, point: Vec2<S>, radius: S) -> Option<ParticleId> {
+        let mut best: Option<(usize, S)> = None;
+        for (i, (&x, &w)) in self.pos.iter().zip(&self.inv_mass).enumerate() {
+            let d_sq = (x - point).length_sq();
+            if w != S::ZERO && d_sq <= radius * radius && best.is_none_or(|(_, b)| d_sq < b) {
+                best = Some((i, d_sq));
+            }
+        }
+        best.map(|(i, _)| ParticleId(i))
+    }
+
+    /// Removes `id` if it is the last particle added; `false` otherwise.
+    /// Undoing the latest add (a drag anchor) is the only removal: every
+    /// other id stays valid, so `ParticleId` can stay a plain index.
+    pub(crate) fn pop_if_last(&mut self, id: ParticleId) -> bool {
+        if id.0 + 1 != self.pos.len() {
+            return false;
+        }
+        self.pos.pop();
+        self.vel.pop();
+        self.inv_mass.pop();
+        true
+    }
 }
 
 impl<S: Scalar> Default for Particles<S> {
