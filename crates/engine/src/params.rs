@@ -43,11 +43,13 @@ macro_rules! checked_param {
 }
 
 mod baumgarte;
+mod compliance;
 mod mass;
 mod opening_angle;
 mod softening;
 
 pub use baumgarte::{Baumgarte, DEFAULT_BAUMGARTE};
+pub use compliance::Compliance;
 pub use mass::Mass;
 #[cfg(test)]
 pub(crate) use mass::kg;

@@ -139,13 +139,13 @@ and why the permutation property becomes a bounded difference with
 constraints; the drag as anchor + rest-length-0 compliant rod, released by
 popping the last-added. Catto 2011 added to `references.md` (URL checked).
 
-## 2. Compliance (test first, PR)
+## ✅ 2. Compliance (done)
 
-- [ ] `Compliance<S>` in `params/`; compliant `DistanceConstraint`
-      (`with_length` for rest length 0, compliance argument).
-- [ ] Impulse soft form; α = 0 bit-identical to today (goldens).
-- [ ] Tests: a compliant rod's small-oscillation period matches
-      `2π √(m α)` in both solvers (within a measured tolerance).
+`Compliance<S>` (α ≥ 0, `RIGID`) in `params/`; `DistanceConstraint` carries
+one, and `with_length` takes an explicit rest length (≥ 0). The impulse
+solver's soft branch (bias `C/h`, `α/h²`); the rigid branch untouched,
+so goldens are unchanged. Spring period `2π√(mα)`: 0.62857 s vs
+0.62832 s in both solvers.
 
 ## 3. Iteration order and the permutation property (test first, PR)
 

@@ -47,3 +47,30 @@ fn coincident_bodies_have_an_error_but_no_direction() {
     let x = Vec2::new(2.0, 2.0);
     assert_eq!(c.evaluate(x, x), (-5.0, None));
 }
+
+#[test]
+fn with_length_takes_an_explicit_length_and_compliance() {
+    use crate::Compliance;
+    let (p, a, b) = two_bodies();
+    let soft = Compliance::new(0.01).unwrap();
+    let c = DistanceConstraint::with_length(&p, a, b, 0.0, soft).unwrap();
+    assert_eq!((c.length(), c.compliance()), (0.0, 0.01));
+    // Rest length 0, bodies 5 m apart: stretched by the full distance.
+    assert_eq!(
+        c.evaluate(*p.pos().first().unwrap(), *p.pos().last().unwrap())
+            .0,
+        5.0
+    );
+    assert!(
+        DistanceConstraint::with_length(&p, a, b, -1.0, soft).is_none(),
+        "negative length"
+    );
+    assert!(
+        DistanceConstraint::with_length(&p, a, b, f64::NAN, soft).is_none(),
+        "NaN length"
+    );
+    assert!(
+        DistanceConstraint::with_length(&p, a, a, 1.0, soft).is_none(),
+        "same body"
+    );
+}

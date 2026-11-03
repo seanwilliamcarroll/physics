@@ -243,7 +243,9 @@ b  = C / h         compliant (α > 0): the spring's own bias (β' = 1)
 So α = 0 is exactly today's rigid update (goldens unchanged), and a
 compliant rod means the same physical stiffness `k = 1/α` in both
 solvers. Check: a bob on a compliant rod oscillates with period
-`2π √(m α)` (small amplitude) under either. No damping in M4; M5's springs
+`2π √(m α)` (small amplitude) under either. **As built (M4.2):** k =
+100 N/m, m = 1 kg: 0.62857 s measured in both solvers against 0.62832 s
+(`tests/compliance.rs`). No damping in M4; M5's springs
 decide whether to add `c`.
 
 ### Iteration order

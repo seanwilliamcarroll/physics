@@ -20,7 +20,7 @@ pub use constraint::{Constraint, DistanceConstraint};
 pub use force::{Force, PairwiseGravity, UniformGravity};
 pub use integrate::Integrator;
 pub use math::{Scalar, Vec2};
-pub use params::{Baumgarte, DEFAULT_BAUMGARTE, Mass, OpeningAngle, Softening};
+pub use params::{Baumgarte, Compliance, DEFAULT_BAUMGARTE, Mass, OpeningAngle, Softening};
 pub use particles::{ParticleId, Particles};
 pub use solver::Solver;
 pub use world::{ConfigError, World};

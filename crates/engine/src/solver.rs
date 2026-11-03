@@ -99,10 +99,14 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         for (c, &lambda) in self.constraints.iter().zip(self.lambda.iter()) {
             apply_impulse(p, c, lambda);
         }
-        let bias_scale = self.baumgarte.get() / h;
+        let gains = Gains {
+            rigid_bias: self.baumgarte.get() / h,
+            soft_bias: S::ONE / h,
+            alpha_scale: S::ONE / (h * h),
+        };
         for _ in 0..self.iterations.get() {
             for (c, lambda) in self.constraints.iter().zip(self.lambda.iter_mut()) {
-                solve_velocity(p, c, lambda, bias_scale);
+                solve_velocity(p, c, lambda, gains);
             }
         }
         drift(&mut p.pos, &p.vel, h);
@@ -135,14 +139,29 @@ fn apply_impulse<S: Scalar, C: Constraint<S>>(p: &mut Particles<S>, c: &C, lambd
     *vb += n * (wb * lambda);
 }
 
-/// One velocity solve of `c` with Baumgarte bias `(β / h) C`, updating
-/// its accumulated `lambda`. Skipped when the gradient is undefined or
-/// neither body can move.
+/// Per-substep factors of the impulse update (`docs/06-constraints.md`,
+/// "Compliance in both solvers").
+#[derive(Copy, Clone)]
+struct Gains<S> {
+    /// `β / h`: a rigid rod's Baumgarte bias per meter of error.
+    rigid_bias: S,
+    /// `1 / h`: a compliant rod's own bias (Catto's bias factor 1).
+    soft_bias: S,
+    /// `1 / h²`, so `α̃ = α / h²`.
+    alpha_scale: S,
+}
+
+/// One velocity solve of `c`, updating its accumulated `lambda`:
+/// rigid `Δλ = −(Jv + (β/h) C) / w`; compliant (Catto's soft form)
+/// `Δλ = −(Jv + C/h + α̃ λ) / (w + α̃)`. Two branches rather than the soft
+/// formula with α = 0: adding `0 · λ` can flip a zero's sign, and the
+/// rigid path must stay bit-identical to M3 (goldens). Skipped when the
+/// gradient is undefined or neither body can move.
 fn solve_velocity<S: Scalar, C: Constraint<S>>(
     p: &mut Particles<S>,
     c: &C,
     lambda: &mut S,
-    bias_scale: S,
+    gains: Gains<S>,
 ) {
     let Some((a, b, wa, wb)) = masses(p, c) else {
         return;
@@ -161,7 +180,12 @@ fn solve_velocity<S: Scalar, C: Constraint<S>>(
         return;
     };
     let jv = n.dot(*vb - *va);
-    let d_lambda = -(jv + bias_scale * value) / w;
+    let alpha = c.compliance() * gains.alpha_scale;
+    let d_lambda = if alpha == S::ZERO {
+        -(jv + gains.rigid_bias * value) / w
+    } else {
+        -(jv + gains.soft_bias * value + alpha * *lambda) / (w + alpha)
+    };
     *lambda += d_lambda;
     *va -= n * (wa * d_lambda);
     *vb += n * (wb * d_lambda);
