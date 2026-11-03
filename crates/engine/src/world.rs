@@ -5,6 +5,7 @@
 mod config_error;
 mod constraints;
 mod drag;
+mod ground;
 
 use core::num::NonZeroU32;
 
@@ -33,6 +34,9 @@ pub struct World<S: Scalar> {
     /// Constraints and the solver state; with any constraints, the solver
     /// steps instead of `integrator`.
     constraints: Constraints<S>,
+    /// The ground's height, m, if any: a half-plane clamp after every
+    /// substep (`world/ground.rs`).
+    ground: Option<S>,
 }
 
 impl<S: Scalar> World<S> {
@@ -48,6 +52,7 @@ impl<S: Scalar> World<S> {
             acc: Vec::new(),
             acc_next: Vec::new(),
             constraints: Constraints::new(Baumgarte::default()),
+            ground: None,
         }
     }
 
@@ -173,10 +178,10 @@ impl<S: Scalar> World<S> {
                 &mut self.acc_next,
                 h,
             );
-            return;
+        } else {
+            self.constraints
+                .substep(&self.forces, &mut self.particles, &mut self.acc, h);
         }
-        self.constraints
-            .substep(&self.forces, &mut self.particles, &mut self.acc, h);
     }
 }
 
