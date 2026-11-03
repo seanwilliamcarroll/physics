@@ -132,11 +132,15 @@ didn't apply, leaving a test that asserted nothing). License: MIT (#62).
 
 ---
 
-## 1. `docs/07-soft-bodies.md` (PR)
+## ✅ 1. `docs/07-soft-bodies.md` (done)
 
-- [ ] The stability threshold (decision 1, derived), the two parameter
-      types, `SpringForce`, damping in all three (4), the network (5), the
-      ground (6), live stiffness (7), and the energy terms (9).
+The threshold derived (symplectic Euler's matrix has det 1 and trace
+`2 − h²ω²`, so it's bounded exactly while `ω h ≤ 2`: `k_crit = 4m/h²`;
+a network fails earlier, at its fastest mode); why compliant constraints
+have no threshold (implicit in disguise, paid for in damping);
+`Stiffness`/`Damping`; `SpringForce`; damping in all three steppers
+(Macklin eq. 26, Catto 2011); the network, the ground, live stiffness,
+energy terms. Hairer–Lubich–Wanner added to references.
 
 ## 2. `Stiffness`, `Damping`, `SpringForce` (test first, PR)
 
