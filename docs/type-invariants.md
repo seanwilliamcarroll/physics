@@ -64,6 +64,18 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   checked, typed element or a clear error; `OPTIONS` entries are a
   discriminated union (`kind: "choice" | "int"`).
 
+## Adopted in M2
+
+- **`Softening<S>`** (item 2 below; trigger: M2's softening slider).
+  `Softening::new(eps) -> Option`: `None` for a negative ε or NaN (NaN
+  fails `eps >= 0`, so one comparison rejects both); ε = 0 is valid.
+  `PairwiseGravity::new` takes it, so the force never re-checks. Before,
+  ε was stored squared, which made a negative ε *harmless* but also
+  *silent*: a sign error from a slider would have been absorbed rather
+  than reported. The scene constants go through the same check once
+  (`cluster_gravity`/`orbit_gravity` return `ConfigError::InvalidSoftening`),
+  which is more of the item 4 plumbing for errors that can't happen.
+
 **Triggers re-checked at the end of M1:** softening is still a scenario
 constant (not settable), so `Softening` (item 2) waits for M2's slider;
 mass is still constant per scenario, so item 1 waits for M3; no unit-mixing
@@ -98,7 +110,8 @@ adopt it in that milestone's PR and move the row up.
    the boundary where parsing belongs. Until then each is a constant in a
    scenario. Note for **M1/M2**: softening must allow **ε = 0**, because the M2
    demo deliberately sets it to zero to show close encounters exploding.
-   So the type is "non-negative", not "positive".
+   So the type is "non-negative", not "positive". **`Softening` adopted in
+   M2** (above); the other three wait for their sliders.
 
 3. **`UnitVec2<S>` (normalized direction).** Constraint gradients
    (`n = x / |x|`, `docs/01-solvers.md`) assume unit length, and normalizing

@@ -9,12 +9,16 @@ use crate::{Force, Integrator, Particles, Scalar, Vec2};
 pub enum ConfigError {
     /// `substeps` must be at least 1.
     ZeroSubsteps,
+    /// A softening length ε must be `≥ 0` (not negative, not NaN); see
+    /// [`crate::Softening`].
+    InvalidSoftening,
 }
 
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ZeroSubsteps => f.write_str("substeps must be at least 1"),
+            Self::InvalidSoftening => f.write_str("softening must be at least 0 (and not NaN)"),
         }
     }
 }
@@ -57,6 +61,14 @@ impl<S: Scalar> World<S> {
 
     pub fn add_force(&mut self, force: impl Force<S> + 'static) {
         self.forces.push(Box::new(force));
+    }
+
+    /// Removes every force; particles keep their state. To change a
+    /// force's parameters (e.g. softening), clear and re-add: mutating a
+    /// `Box<dyn Force>` in place would need downcasting or a setter on
+    /// every force.
+    pub fn clear_forces(&mut self) {
+        self.forces.clear();
     }
 
     #[must_use]

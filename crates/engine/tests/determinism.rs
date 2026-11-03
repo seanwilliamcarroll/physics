@@ -2,7 +2,7 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-use engine::scenarios::{Fountain, cluster, orbit};
+use engine::scenarios::{Fountain, cluster, collapse, disk, orbit};
 use engine::{Integrator, Scalar};
 use test_support::{Tol, for_each_scalar, s, state_hash};
 
@@ -17,13 +17,19 @@ enum Run {
     Fountain,
     /// 16 bodies, 300 steps: chaotic, so any change shows up fast.
     Cluster,
+    /// 16 bodies, 300 steps (5 s: the inner orbits go round several times).
+    Disk,
+    /// 16 bodies, 300 steps (5 s: through the first collapse).
+    Collapse,
     /// 600 steps (~3.3 orbits).
     Orbit(Integrator),
 }
 
-const RUNS: [Run; 5] = [
+const RUNS: [Run; 7] = [
     Run::Fountain,
     Run::Cluster,
+    Run::Disk,
+    Run::Collapse,
     Run::Orbit(Integrator::SymplecticEuler),
     Run::Orbit(Integrator::ExplicitEuler),
     Run::Orbit(Integrator::VelocityVerlet),
@@ -41,8 +47,13 @@ fn run<S: Scalar>(r: Run) -> u64 {
             }
             state_hash(&w.particles)
         }
-        Run::Cluster => {
-            let mut w = cluster::<S>(16, 1).unwrap();
+        Run::Cluster | Run::Disk | Run::Collapse => {
+            let build = match r {
+                Run::Cluster => cluster::<S>,
+                Run::Disk => disk::<S>,
+                _ => collapse::<S>,
+            };
+            let mut w = build(16, 1).unwrap();
             for _ in 0..300 {
                 w.step(s(DT));
             }
@@ -71,9 +82,11 @@ for_each_scalar!(every_run_is_repeatable);
 /// (then paste the new values from the failure message) or a bug.
 /// Recorded on aarch64-apple-darwin, Rust 1.99.1. Native only for now; the
 /// same values under wasm32-wasip1 are TASKS.md M1 decision 7.
-const GOLDEN: [(u64, u64); 5] = [
+const GOLDEN: [(u64, u64); 7] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0xfd76_1b94_7897_ef95, 0x187f_c50c_b7bf_522b), // Cluster
+    (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
+    (0x4243_55a9_2d1b_b9d3, 0x2ec5_fcc0_29c0_1f7b), // Collapse
     (0x38b8_98d9_9f2e_436a, 0x62a3_677f_7c53_91e2), // Orbit(SymplecticEuler)
     (0xdbd3_a74a_c351_be50, 0xa548_448e_abb6_5ba7), // Orbit(ExplicitEuler)
     (0x521c_acff_69c8_f074, 0x2479_9e2b_6114_4cb8), // Orbit(VelocityVerlet)

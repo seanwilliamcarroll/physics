@@ -6,7 +6,7 @@ use super::{
     orbit_relative_speed,
 };
 use crate::diagnostics::{center_of_mass, momentum};
-use crate::{Force, Integrator, PairwiseGravity, Vec2, World};
+use crate::{Force, Integrator, Vec2, World};
 
 fn in_launch_range(v: Vec2<f64>) -> bool {
     (FOUNTAIN_VX.0..FOUNTAIN_VX.1).contains(&v.x) && (FOUNTAIN_VY.0..FOUNTAIN_VY.1).contains(&v.y)
@@ -133,7 +133,8 @@ fn circular_speed_balances_the_softened_pull() {
     // from the actual force must equal v_rel² / d.
     let w = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let mut acc = vec![Vec2::ZERO; 2];
-    PairwiseGravity::new(super::GRAVITATIONAL_CONSTANT, super::ORBIT_SOFTENING)
+    orbit_gravity::<f64>()
+        .unwrap()
         .accumulate(&w.particles, &mut acc);
     let a_rel = (acc[0] - acc[1]).length();
     let v_rel = (w.particles.vel()[1] - w.particles.vel()[0]).length();
@@ -166,7 +167,9 @@ fn orbit_gravity_is_the_force_the_scene_uses() {
     // step: one source for the force, so energy readouts match it.
     let w = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let mut acc = vec![Vec2::ZERO; 2];
-    orbit_gravity::<f64>().accumulate(&w.particles, &mut acc);
+    orbit_gravity::<f64>()
+        .unwrap()
+        .accumulate(&w.particles, &mut acc);
     let mut stepped = orbit::<f64>(Integrator::ExplicitEuler, 1.0).unwrap();
     let v0 = stepped.particles.vel().to_vec();
     stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
@@ -180,12 +183,159 @@ fn cluster_gravity_is_the_force_the_cluster_uses() {
     use super::cluster_gravity;
     let w = cluster::<f64>(8, 3).unwrap();
     let mut acc = vec![Vec2::ZERO; 8];
-    cluster_gravity::<f64>().accumulate(&w.particles, &mut acc);
+    cluster_gravity::<f64>()
+        .unwrap()
+        .accumulate(&w.particles, &mut acc);
     let mut stepped = cluster::<f64>(8, 3).unwrap();
     stepped.set_integrator(Integrator::ExplicitEuler);
     let v0 = stepped.particles.vel().to_vec();
     stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
     for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
         assert_eq!(*v1 - *v0, *a);
+    }
+}
+
+#[test]
+fn invalid_softening_constant_is_a_config_error() {
+    assert_eq!(
+        super::softening::<f64>(-0.1),
+        Err(crate::ConfigError::InvalidSoftening)
+    );
+    assert_eq!(
+        super::softening::<f32>(f64::NAN),
+        Err(crate::ConfigError::InvalidSoftening)
+    );
+    assert!(
+        crate::ConfigError::InvalidSoftening
+            .to_string()
+            .contains("softening")
+    );
+}
+
+mod disk {
+    use super::super::{
+        CLUSTER_SOFTENING, DISK_CENTRAL_MASS, DISK_INNER_RADIUS, DISK_ORBITERS_TOTAL_MASS,
+        DISK_RADIUS, GRAVITATIONAL_CONSTANT, disk,
+    };
+    use crate::Vec2;
+    use crate::diagnostics::momentum;
+
+    #[test]
+    fn heavy_center_then_orbiters_in_the_annulus() {
+        let w = disk::<f64>(50, 1).unwrap();
+        let p = &w.particles;
+        assert_eq!(p.len(), 50);
+        assert_eq!(p.pos()[0], Vec2::ZERO);
+        assert_eq!(1.0 / p.inv_mass()[0], DISK_CENTRAL_MASS);
+        for (x, &w) in p.pos().iter().zip(p.inv_mass()).skip(1) {
+            let r = x.length();
+            assert!((DISK_INNER_RADIUS..=DISK_RADIUS).contains(&r), "r = {r}");
+            // Orbiters share DISK_ORBITERS_TOTAL_MASS equally.
+            assert!(
+                (1.0 / w - DISK_ORBITERS_TOTAL_MASS / 49.0).abs()
+                    <= 1e-6 * DISK_ORBITERS_TOTAL_MASS
+            );
+        }
+    }
+
+    #[test]
+    fn small_counts() {
+        assert_eq!(disk::<f32>(0, 1).unwrap().particles.len(), 0);
+        let one = disk::<f32>(1, 1).unwrap();
+        assert_eq!(one.particles.len(), 1);
+        assert_eq!(one.particles.vel(), [Vec2::ZERO]);
+    }
+
+    #[test]
+    fn is_deterministic_per_seed() {
+        let (a, b, c) = (
+            disk::<f32>(30, 7).unwrap(),
+            disk::<f32>(30, 7).unwrap(),
+            disk::<f32>(30, 8).unwrap(),
+        );
+        assert_eq!(a.particles.pos(), b.particles.pos());
+        assert_eq!(a.particles.vel(), b.particles.vel());
+        assert_ne!(a.particles.pos(), c.particles.pos());
+    }
+
+    #[test]
+    fn net_momentum_is_zero() {
+        let w = disk::<f64>(200, 3).unwrap();
+        let p = &w.particles;
+        // Relative to one orbiter's momentum, a typical term in the sum.
+        let typical = p.vel()[1].length() / p.inv_mass()[1];
+        assert!(momentum(p).length() <= 1e-10 * typical, "{:?}", momentum(p));
+    }
+
+    #[test]
+    fn launch_speeds_balance_the_enclosed_mass() {
+        // Relative to the center, each orbiter moves counterclockwise at
+        // the softened circular speed for the mass inside its radius:
+        // v² (r² + ε²)^(3/2) / r² = G M_enc. Recomputed here the slow way.
+        let w = disk::<f64>(100, 5).unwrap();
+        let p = &w.particles;
+        let (x, v, inv) = (p.pos(), p.vel(), p.inv_mass());
+        let eps_sq = CLUSTER_SOFTENING * CLUSTER_SOFTENING;
+        for i in 1..p.len() {
+            let r_i = x[i].length();
+            let enclosed: f64 = (1..p.len())
+                .filter(|&j| x[j].length_sq() < x[i].length_sq())
+                .map(|j| 1.0 / inv[j])
+                .sum::<f64>()
+                + DISK_CENTRAL_MASS;
+            let rel = v[i] - v[0];
+            let q = r_i * r_i + eps_sq;
+            let lhs = rel.length_sq() * q * q.sqrt() / (r_i * r_i);
+            let rhs = GRAVITATIONAL_CONSTANT * enclosed;
+            assert!((lhs - rhs).abs() <= 1e-12 * rhs, "body {i}: {lhs} vs {rhs}");
+            // Tangential and counterclockwise: r x v > 0, r · v = 0.
+            let (r, u) = (x[i] - x[0], rel);
+            assert!(r.x * u.y - r.y * u.x > 0.0);
+            assert!((r.x * u.x + r.y * u.y).abs() <= 1e-12 * r_i * u.length());
+        }
+    }
+}
+
+mod collapse {
+    use super::super::{CLUSTER_RADIUS, COLLAPSE_TOTAL_MASS, collapse};
+    use crate::Vec2;
+    use crate::diagnostics::center_of_mass;
+
+    #[test]
+    fn cold_cloud_in_the_disk() {
+        let w = collapse::<f64>(64, 1).unwrap();
+        let p = &w.particles;
+        assert_eq!(p.len(), 64);
+        assert!(p.vel().iter().all(|&v| v == Vec2::ZERO));
+        assert!(p.pos().iter().all(|x| x.length() <= CLUSTER_RADIUS));
+        let total: f64 = p.inv_mass().iter().map(|w| 1.0 / w).sum();
+        assert!((total - COLLAPSE_TOTAL_MASS).abs() <= 1e-12 * COLLAPSE_TOTAL_MASS);
+    }
+
+    #[test]
+    fn is_deterministic_per_seed() {
+        let (a, b, c) = (
+            collapse::<f32>(30, 7).unwrap(),
+            collapse::<f32>(30, 7).unwrap(),
+            collapse::<f32>(30, 8).unwrap(),
+        );
+        assert_eq!(a.particles.pos(), b.particles.pos());
+        assert_ne!(a.particles.pos(), c.particles.pos());
+    }
+
+    #[test]
+    fn falls_in_on_itself() {
+        // Mean distance from the center of mass shrinks: it collapses
+        // rather than drifting or expanding. 1 s is about half the
+        // free-fall scale; measured 0.83-0.85 of the start over seeds 2-4.
+        let mean_radius = |w: &crate::World<f64>| {
+            let c = center_of_mass(&w.particles).unwrap();
+            let p = w.particles.pos();
+            p.iter().map(|x| (*x - c).length()).sum::<f64>() / 64.0
+        };
+        let mut w = collapse::<f64>(64, 2).unwrap();
+        let r0 = mean_radius(&w);
+        super::run(&mut w, 60);
+        assert!(mean_radius(&w) < 0.9 * r0, "{} vs {r0}", mean_radius(&w));
     }
 }

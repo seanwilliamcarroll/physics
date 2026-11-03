@@ -27,7 +27,11 @@ fn forces_add_into_acc_rather_than_overwrite() {
 
 mod pairwise {
     use super::super::{Force, PairwiseGravity};
-    use crate::{Particles, Vec2};
+    use crate::{Particles, Softening, Vec2};
+
+    fn soft(e: f64) -> Softening<f64> {
+        Softening::new(e).unwrap()
+    }
 
     const G: f64 = 6.674_30e-11;
 
@@ -43,7 +47,7 @@ mod pairwise {
         let mut p = Particles::new();
         p.add(Vec2::ZERO, Vec2::ZERO, m1);
         p.add(Vec2::new(d, 0.0), Vec2::ZERO, m2);
-        let a = accel(&p, &PairwiseGravity::new(G, eps));
+        let a = accel(&p, &PairwiseGravity::new(G, soft(eps)));
 
         // Newton's third law: m1 a1 = -m2 a2.
         let (f1, f2) = (a[0] * m1, a[1] * m2);
@@ -62,24 +66,12 @@ mod pairwise {
     }
 
     #[test]
-    fn negative_softening_acts_like_positive() {
-        // Stored as eps^2, so the sign can't matter.
-        let mut p = Particles::new();
-        p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10);
-        p.add(Vec2::new(1.0, 0.0), Vec2::ZERO, 1.0e10);
-        assert_eq!(
-            accel(&p, &PairwiseGravity::new(G, -0.2)),
-            accel(&p, &PairwiseGravity::new(G, 0.2))
-        );
-    }
-
-    #[test]
     fn static_particles_neither_pull_nor_are_pulled() {
         let mut p = Particles::new();
         p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10);
         p.add_static(Vec2::new(1.0, 0.0));
         assert_eq!(
-            accel(&p, &PairwiseGravity::new(G, 0.1)),
+            accel(&p, &PairwiseGravity::new(G, soft(0.1))),
             [Vec2::ZERO, Vec2::ZERO]
         );
     }
@@ -92,7 +84,7 @@ mod pairwise {
         p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, 1.0e10);
         p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, 1.0e10);
         assert_eq!(
-            accel(&p, &PairwiseGravity::new(G, 0.0)),
+            accel(&p, &PairwiseGravity::new(G, soft(0.0))),
             [Vec2::ZERO, Vec2::ZERO]
         );
     }
@@ -106,7 +98,7 @@ mod pairwise {
             p.add(Vec2::new(x, 0.0), Vec2::ZERO, 1.0e10);
         }
         let mut acc: Vec<Vec2<f64>> = vec![Vec2::new(0.0, 5.0); 3];
-        PairwiseGravity::new(G, 0.0).accumulate(&p, &mut acc);
+        PairwiseGravity::new(G, soft(0.0)).accumulate(&p, &mut acc);
         assert!(acc[1].x.abs() <= 1e-15, "{:?}", acc[1]);
         // Untouched bit for bit: pairwise gravity along x adds nothing to y.
         assert!(acc.iter().all(|a| a.y.to_bits() == 5.0_f64.to_bits()));

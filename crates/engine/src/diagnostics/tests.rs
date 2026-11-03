@@ -1,5 +1,5 @@
 use super::{center_of_mass, gravity_potential, kinetic_energy, momentum, total_energy};
-use crate::PairwiseGravity;
+use crate::{PairwiseGravity, Softening};
 use crate::{Particles, Vec2};
 
 fn two_dynamic_one_static() -> Particles<f64> {
@@ -65,7 +65,7 @@ fn potential_of_a_pair_is_the_softened_plummer_form() {
     let mut p = Particles::new();
     p.add(Vec2::ZERO, Vec2::ZERO, m1);
     p.add(Vec2::new(d, 0.0), Vec2::ZERO, m2);
-    let u = gravity_potential(&p, &PairwiseGravity::new(G, eps));
+    let u = gravity_potential(&p, &PairwiseGravity::new(G, Softening::new(eps).unwrap()));
     let expect = -G * m1 * m2 / (d * d + eps * eps).sqrt();
     assert!(
         (u - expect).abs() <= 1e-12 * expect.abs(),
@@ -82,7 +82,7 @@ fn potential_sums_every_pair_once() {
     for (x, y) in [(0.0, 0.0), (3.0, 0.0), (0.0, 4.0)] {
         p.add(Vec2::new(x, y), Vec2::ZERO, m);
     }
-    let u = gravity_potential(&p, &PairwiseGravity::new(G, 0.0));
+    let u = gravity_potential(&p, &PairwiseGravity::new(G, Softening::new(0.0).unwrap()));
     let expect = -G * m * m * (1.0 / 3.0 + 1.0 / 4.0 + 1.0 / 5.0);
     assert!(
         (u - expect).abs() <= 1e-12 * expect.abs(),
@@ -92,7 +92,7 @@ fn potential_sums_every_pair_once() {
 
 #[test]
 fn potential_skips_static_and_coincident_unsoftened_pairs() {
-    let g = PairwiseGravity::new(G, 0.0);
+    let g = PairwiseGravity::new(G, Softening::new(0.0).unwrap());
     let mut p = Particles::new();
     p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10);
     p.add_static(Vec2::new(1.0, 0.0));
@@ -104,7 +104,7 @@ fn potential_skips_static_and_coincident_unsoftened_pairs() {
 
 #[test]
 fn total_energy_is_kinetic_plus_potential() {
-    let g = PairwiseGravity::new(G, 0.1);
+    let g = PairwiseGravity::new(G, Softening::new(0.1).unwrap());
     let p = two_dynamic_one_static();
     let sum = kinetic_energy(&p) + gravity_potential(&p, &g);
     assert_eq!(total_energy(&p, &g).to_bits(), sum.to_bits());

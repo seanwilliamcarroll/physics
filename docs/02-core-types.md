@@ -180,6 +180,12 @@ Expect N-body to be a *demo of fixed-point failure* before it's a success.
 Accelerations, not forces: storing `a = F/m` means static particles
 (`inv_mass = 0`) are skipped naturally, with no division by zero.
 
+**As built (M2.4):** `PairwiseGravity::new(g_const, softening: Softening<S>)`.
+`Softening` is checked once (`≥ 0`, not NaN; `docs/type-invariants.md`), so
+the force stores ε² and trusts it. Changing ε on a running world is
+`World::clear_forces` + `add_force(scenarios::gravity(ε))`, rather than a
+setter on `Box<dyn Force>` (which would need downcasting).
+
 **As built (M1.2):** each pair computes one force vector and applies it
 `+F·wᵢ` / `−F·wⱼ`, so forces are equal and opposite by construction
 (momentum drift is at rounding level). Static particles have no defined

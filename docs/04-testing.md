@@ -174,7 +174,9 @@ hash covers position, velocity, and inverse mass as `to_f64()` bits (exact
 for f32). On mismatch the test prints paste-ready replacement lines.
 Keeping that guarantee meant scenarios avoid libm functions whose last bits
 vary by platform: rejection sampling instead of `sin`/`cos` in `cluster`,
-`q·√q` instead of `powf(1.5)` in `orbit`.
+`q·√q` instead of `powf(1.5)` in `orbit`. M2.4 added `disk` and `collapse`
+(seven runs), built the same way (rejection sampling in an annulus, `sqrt`
+only); their hashes match on `wasm32-wasip1` too.
 
 **Cross-platform, confirmed (M1.7):** `cargo xtask test-wasm` (pre-push)
 runs the math and engine suites compiled to `wasm32-wasip1` under
