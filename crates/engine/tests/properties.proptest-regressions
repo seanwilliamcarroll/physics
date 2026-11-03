@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 256f29a5f19ee94866bc0a73d5c1aaea885f4213fc3eb328bfc57307b4f14740 # shrinks to bodies = [BodySpec { pos: (0.0, 0.0), vel: (0.0, 0.0), mass: None }, BodySpec { pos: (0.0, 0.0), vel: (0.0, 0.0), mass: Some(1000000000.0) }]
+cc c2b8c42dcda257d49062987c6f3b6fee1296461bd0d28a2dbf1de48333bc7958 # shrinks to bodies = [BodySpec { pos: (-1.4448283796703085, -1.4289267027085586), vel: (0.7786702645741738, -0.557895822288414), mass: Some(7185170289.318695) }, BodySpec { pos: (9.726082191786249, 7.4170693552819005), vel: (0.4884930249351968, -0.3958362077428005), mass: Some(2086119145.251673) }]

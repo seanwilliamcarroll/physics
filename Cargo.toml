@@ -7,6 +7,14 @@ edition = "2024"
 rust-version = "1.99"
 publish = false
 
+# Third-party crates, one pinned version for the whole workspace; crates
+# opt in with `name.workspace = true`. Each needs a justification
+# (docs/00-scope.md, dependency policy). Dev-only so far.
+[workspace.dependencies]
+# Default features include `fork`/`timeout` (each case in a subprocess),
+# which WASI doesn't have; the engine tests also run on wasm32-wasip1.
+proptest = { version = "1.12.0", default-features = false, features = ["std"] }
+
 [profile.release]
 opt-level = 3   # try "s"/"z" later and measure size vs speed
 lto = true

@@ -6,7 +6,7 @@
 #[macro_use]
 mod common;
 
-use common::{Tol, bits, energy_errors, envelope, s, steps_for, v};
+use common::{Tol, bits, energy_errors, envelope, momentum_drift_bound, s, steps_for, v};
 use engine::diagnostics::{center_of_mass, momentum};
 use engine::scenarios::{ORBIT_SEPARATION, cluster, orbit, orbit_period};
 use engine::{ConfigError, Integrator, Particles, Scalar, UniformGravity, Vec2, World};
@@ -188,10 +188,8 @@ fn pairwise_gravity_conserves_momentum<S: Tol>() {
     }
     let drift = (momentum(&w.particles) - p0).length().to_f64();
     let scale = momentum_scale(&w.particles);
-    assert!(
-        drift <= S::MOMENTUM_REL * scale,
-        "drift {drift:e} vs scale {scale:e}"
-    );
+    let bound = momentum_drift_bound::<S>(CLUSTER_STEPS, scale);
+    assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
 }
 for_each_scalar!(pairwise_gravity_conserves_momentum);
 

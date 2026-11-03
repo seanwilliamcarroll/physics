@@ -146,8 +146,7 @@ Create `sand/` and `acoustic/` when their milestones begin, not before.
 
 ## Open questions
 
-- Workspace dependency inheritance (`[workspace.dependencies]` for
-  `proptest`/`criterion`): adopt from the start? Recommended, so versions are pinned once.
+- ~~Workspace dependency inheritance~~: adopted in M2 (`[workspace.dependencies]`).
 - One `engine.wasm` for all demos, or one per crate (`engine.wasm`,
   `sand.wasm`, `acoustic.wasm`)? Likely per crate: demos shouldn't
   download code they don't use. Revisit at M9.

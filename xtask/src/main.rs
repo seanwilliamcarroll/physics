@@ -195,6 +195,10 @@ fn test_wasm(root: &Path) -> Result<(), String> {
             "--target",
             "wasm32-wasip1",
         ])
+        // wasm targets use panic = abort: a failing test kills the process
+        // before libtest prints the output it captured, so the panic message
+        // would be lost. --nocapture prints it as it happens.
+        .args(["--", "--nocapture"])
         .status()
         .map_err(|e| format!("failed to run cargo: {e}"))?;
     if status.success() {
