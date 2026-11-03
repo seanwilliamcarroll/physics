@@ -4,6 +4,7 @@
 //! Design: `docs/02-core-types.md`. Units are SI (m, kg, s).
 
 mod barnes_hut;
+mod constraint;
 pub mod diagnostics;
 mod force;
 mod integrate;
@@ -15,6 +16,7 @@ mod softening;
 mod world;
 
 pub use barnes_hut::{BarnesHut, OpeningAngle};
+pub use constraint::{Constraint, DistanceConstraint};
 pub use force::{Force, PairwiseGravity, UniformGravity};
 pub use integrate::Integrator;
 pub use mass::Mass;
