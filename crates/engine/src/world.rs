@@ -5,7 +5,7 @@
 use core::fmt;
 use core::num::NonZeroU32;
 
-use crate::solver::Step;
+use crate::solver::{Baumgarte, DEFAULT_BAUMGARTE, Step};
 use crate::{Constraint, DistanceConstraint, Force, Integrator, Particles, Scalar, Solver, Vec2};
 
 /// Invalid `World` configuration.
@@ -22,6 +22,9 @@ pub enum ConfigError {
     /// A constraint names a particle this world doesn't have (e.g. it was
     /// built from another world's particles).
     UnknownParticle,
+    /// The Baumgarte factor β must be in `[0, 1]`; see
+    /// [`crate::Baumgarte`].
+    InvalidBaumgarte,
 }
 
 impl fmt::Display for ConfigError {
@@ -33,6 +36,7 @@ impl fmt::Display for ConfigError {
                 f.write_str("mass must be positive and finite, with a finite inverse")
             }
             Self::UnknownParticle => f.write_str("constraint names a particle not in this world"),
+            Self::InvalidBaumgarte => f.write_str("Baumgarte factor must be in [0, 1]"),
         }
     }
 }
@@ -61,6 +65,8 @@ pub struct World<S: Scalar> {
     iterations: NonZeroU32,
     /// Scratch: positions at the start of a substep (XPBD).
     prev: Vec<Vec2<S>>,
+    /// The impulse solver's β; kept across solver switches.
+    baumgarte: Baumgarte<S>,
 }
 
 impl<S: Scalar> World<S> {
@@ -84,6 +90,7 @@ impl<S: Scalar> World<S> {
             solver: Solver::Xpbd,
             iterations: NonZeroU32::MIN,
             prev: Vec::new(),
+            baumgarte: default_baumgarte()?,
         })
     }
 
@@ -131,6 +138,16 @@ impl<S: Scalar> World<S> {
     pub fn set_solver(&mut self, solver: Solver) {
         self.solver = solver;
         self.lambda.fill(S::ZERO);
+    }
+
+    #[must_use]
+    pub const fn baumgarte(&self) -> Baumgarte<S> {
+        self.baumgarte
+    }
+
+    /// The impulse solver's β, from the next step (XPBD ignores it).
+    pub const fn set_baumgarte(&mut self, beta: Baumgarte<S>) {
+        self.baumgarte = beta;
     }
 
     #[must_use]
@@ -195,11 +212,19 @@ impl<S: Scalar> World<S> {
             acc: &mut self.acc,
             prev: &mut self.prev,
             iterations: self.iterations,
+            baumgarte: self.baumgarte,
         };
         match self.solver {
             Solver::Xpbd => step.xpbd(h),
+            Solver::Impulse => step.impulse(h),
         }
     }
+}
+
+/// [`DEFAULT_BAUMGARTE`] in `S`. It's in `[0, 1]`, so this never fails;
+/// the `Result` is [`World::new`]'s, like the scenes' checked constants.
+fn default_baumgarte<S: Scalar>() -> Result<Baumgarte<S>, ConfigError> {
+    Baumgarte::new(S::from_f64(DEFAULT_BAUMGARTE)).ok_or(ConfigError::InvalidBaumgarte)
 }
 
 #[cfg(test)]
