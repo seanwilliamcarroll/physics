@@ -189,11 +189,20 @@ broadphase cell `2 r_max + 2 v_max h`, kept when `gap ≤ max(0, −v_n) h`
 coincident centers along `UnitVec2::X` (new, with `::Y`). Order: pairs
 sorted, then walls by particle (deterministic). `ParticleId: Ord`.
 
-## 5. Contacts in XPBD (PR)
+## ✅ 5. Contacts in XPBD (done)
 
-- [ ] Inequality correction, velocity pass with restitution. Tests:
-      head-on elastic matches analytic velocities, `e = 0` sticks,
-      momentum conserved, resting penetration within tolerance, energy.
+`solver::Contacts` (list, λ, saved velocities, resting thresholds) in
+the world's solver state; the solver steps any world that `collides()`
+(others skip the search: goldens unchanged). Contacts found after the
+kick, projected after the rods each pass (one-sided, current normal),
+then Müller's velocity pass. Resting threshold `2 |a_b − a_a| h` (any
+force, not just gravity). **Found:** measuring `v_n⁻` along the
+found-time normal gained energy on glancing elastic hits (+1.4% at 10
+substeps, ∝ h); now along the current normal (2e-13 J). Stacks of 3+
+jittered forever (missed resting contacts); `CONTACT_MARGIN` = 1 mm
+settles every stack to exactly zero. Tests: analytic head-on (1e-13),
+inelastic, momentum (1.6e-13), `e²` bounce, energy never rises, a stack
+rests.
 
 ## 6. Contacts in the impulse solver (PR)
 
