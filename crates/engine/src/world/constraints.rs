@@ -6,7 +6,8 @@ use core::num::NonZeroU32;
 use super::ConfigError;
 use crate::solver::Step;
 use crate::{
-    Baumgarte, Constraint, DistanceConstraint, Force, Order, Particles, Scalar, Solver, Vec2,
+    Baumgarte, Constraint, DistanceConstraint, Force, Order, Particles, Scalar, Solver,
+    Stabilization, Vec2,
 };
 
 /// The constraints, one λ per constraint (same order), and the solver
@@ -24,10 +25,13 @@ pub(super) struct Constraints<S> {
     pub(super) iterations: NonZeroU32,
     /// The order each pass visits the constraints in.
     pub(super) order: Order,
+    /// How the impulse solver corrects rigid rods' position error.
+    pub(super) stabilization: Stabilization,
     /// The impulse solver's β; kept across solver switches.
     pub(super) baumgarte: Baumgarte<S>,
-    /// Scratch: positions at the start of a substep (XPBD).
-    prev: Vec<Vec2<S>>,
+    /// Scratch: XPBD's start-of-substep positions, or split impulses'
+    /// pseudo-velocities.
+    scratch: Vec<Vec2<S>>,
 }
 
 impl<S: Scalar> Constraints<S> {
@@ -39,7 +43,8 @@ impl<S: Scalar> Constraints<S> {
             iterations: NonZeroU32::MIN,
             order: Order::Forward,
             baumgarte,
-            prev: Vec::new(),
+            scratch: Vec::new(),
+            stabilization: Stabilization::Split,
         }
     }
 
@@ -97,9 +102,10 @@ impl<S: Scalar> Constraints<S> {
             constraints: &self.list,
             lambda: &mut self.lambda,
             acc,
-            prev: &mut self.prev,
+            scratch: &mut self.scratch,
             iterations: self.iterations,
             order: self.order,
+            stabilization: self.stabilization,
             baumgarte: self.baumgarte,
         };
         match self.solver {

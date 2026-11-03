@@ -19,8 +19,8 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
         kick(&mut p.vel, self.acc, h);
-        self.prev.clear();
-        self.prev.extend_from_slice(&p.pos);
+        self.scratch.clear();
+        self.scratch.extend_from_slice(&p.pos);
         drift(&mut p.pos, &p.vel, h);
 
         self.lambda.fill(S::ZERO);
@@ -32,7 +32,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                 });
         }
 
-        for ((v, &x), &x0) in p.vel.iter_mut().zip(&p.pos).zip(self.prev.iter()) {
+        for ((v, &x), &x0) in p.vel.iter_mut().zip(&p.pos).zip(self.scratch.iter()) {
             *v = (x - x0) / h;
         }
     }
