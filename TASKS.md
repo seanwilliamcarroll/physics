@@ -1,18 +1,21 @@
-# TASKS — M5: Spring–mass jelly
+# TASKS — M6: Colliding masses
 
-Source: `docs/05-roadmap.md` (M5), `docs/06-constraints.md` (compliance in
-both solvers, M4), `docs/01-solvers.md` ("very stiff spring" row).
+Source: `docs/05-roadmap.md` (M6), `docs/06-constraints.md` (both
+solvers, warm starting, split impulses), `docs/07-soft-bodies.md` (the
+ground clamp contacts replace).
 
-**Goal:** stiffness vs stability. Force-based springs explode past a
-critical stiffness; compliant constraints stay stable at any stiffness,
-up to fully rigid.
+**Goal:** momentum exchange in collisions. Circles that collide, elastic
+to inelastic by a restitution slider, in both solvers; and **Newton's
+cradle**, which exposes how sequential solvers handle simultaneous
+contacts.
 
-**Done when:** sliding stiffness up blows up the force-based jelly and
-merely firms up the constraint-based one.
+**Done when:** a box of bouncing balls keeps its energy at `e = 1` (and
+loses it as `e` drops), a free-space collision keeps a flat momentum plot,
+and the cradle behaves (or misbehaves) per solver.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m5/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`m6/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -24,6 +27,7 @@ merely firms up the constraint-based one.
 - Hooks gate every commit and push: JS syntax, `tsc`, fmt, clippy (native
   and wasm32); tests, `node --test`, `test-wasm`, wasm32 check, browser
   smoke test.
+- CI (`.github/workflows/ci.yml`) runs the same checks on every PR.
 - When a section is done, collapse it here to a one-paragraph summary,
   then list the headings to check nothing else moved.
 
@@ -74,152 +78,135 @@ carried forward: **every scene's tests check energy**, and **scripted
 edits must fail loudly** when their target text is missing (one silently
 didn't apply, leaving a test that asserted nothing). License: MIT (#62).
 
+## ✅ M5: Spring–mass jelly (done, PRs #64–#72)
+
+`Stiffness`, `Damping`, `SpringForce` (`k_crit = 4m/h²`, a tested known
+failure); damping in both constraint solvers (Macklin eq. 26, Catto
+2011); a ground clamp; the jelly as force springs, XPBD and impulse
+constraints; a three-panel page with a log stiffness slider to rigid.
+**Found:** soft constraints in the impulse solver exploded when
+warm-started (now restarted each substep; rigid ones still warm-start);
+compliant constraints damp at backward Euler's rate by themselves; an
+exploding force jelly leaves the view within a frame or two, so the page
+freezes on the last sane frame. **Before M6 (#73):** CI, `UnitVec2`.
+
 ---
 
 ## Decisions to review before starting
 
-1. **The threshold is a formula, so it's a test.** Symplectic Euler on a
-   spring is stable only while `ω h < 2` (`ω = √(k/m)`, `h` the substep):
-   **`k_crit = 4 m / h²`**. Known failure
-   `explicit_spring_diverges_above_critical_stiffness`: stable at
-   0.9 `k_crit`, energy grows without bound at 1.1. A grid fails earlier
-   (its stiffest mode is faster than one spring's); measured, recorded,
-   and shown on the page.
-2. **Two new parameter types** (`params/`, `checked_param!`):
-   `Stiffness<S>` (k > 0, finite: a force-based spring can't be rigid) and
-   `Damping<S>` (c ≥ 0, N·s/m). Compliant constraints keep `Compliance`
-   (α = 1/k, and α = 0 is rigid). The page's one stiffness slider maps to
-   both: log scale over orders of magnitude, with a "rigid" end that only
-   the constraint panels can reach.
-3. **`SpringForce`**: a `Force` over a list of springs `(a, b, rest, k, c)`,
-   Hooke plus damping along the spring (`c · (v_b − v_a) · n`), equal and
-   opposite (momentum to rounding). Stepped by the integrator like every
-   force, so the explosion is the integrator's.
-4. **Damping in the constraint solvers too**, so the comparison is fair
-   (an undamped jelly wobbles forever; a damped force spring against
-   undamped constraints compares damping, not stability). XPBD: Macklin
-   et al. 2016's damped form (`γ = α̃ β̃ / h`); impulse: Catto 2011's full
-   soft form with the damper (`γ = 1/(h(c + h k))`, bias factor
-   `h k / (c + h k)`). Undamped (`c = 0`) stays bit-identical to M4.
-   Checked: a damped bob's amplitude decays as `e^(−c t / 2m)` in all
-   three (force, XPBD, impulse), within a measured tolerance.
-5. **One spring network, two realizations.** `scenarios::jelly(cols, rows)`
-   builds a `SpringNetwork` (particles plus structural, shear and bend
-   pairs with rest lengths) once; it becomes either `SpringForce` springs
-   or compliant `DistanceConstraint`s. Same topology, same masses, so the
-   panels differ only in how springs are enforced.
-6. **Ground: a half-plane clamp, not contacts** (M6 brings real ones).
-   `World::set_ground(y)`: after each substep, any particle below `y`
-   moves to it and loses its downward velocity (inelastic, no friction).
-   Applies to every stepper (integrator and both solvers), so the jelly
-   can land in every panel. It removes energy on impact: energy checks
-   account for it (energy may only drop at impacts).
-7. **Live stiffness.** Force panel: `clear_forces` + re-add the springs
-   with the new k (M2's pattern). Constraint panels: a new
-   `World::set_compliance(Compliance)` updates every constraint in place
-   (the drag rod excluded), so the slider doesn't reset the jelly.
-8. **Three panels: force springs, XPBD, impulse (soft)** (a change from
-   the roadmap's two). Both constraint solvers stay stable at any
-   stiffness, which is the point; showing both makes it a property of
-   compliant constraints, not of XPBD. Dragging works in all three.
-9. **Energy readout**: a spring-network potential (`½ k (L − L₀)²` per
-   force spring; `½ C² / α` per compliant constraint, 0 when rigid) plus
-   gravity and kinetic. The page's energy plot is where the explosion
-   shows first (the jelly visibly tears a moment later).
-10. **Grid size**: default 8 × 8 (64 particles, ~300 springs including
-    bend), slider up to ~20 × 20; measured cost recorded, kept well under
-    a frame.
+1. **The roadmap's "done when" needs a fix: walls don't conserve
+   momentum.** A box's walls push back, so a box of balls' momentum isn't
+   flat (it's not supposed to be). So two showcases: **energy** in the
+   box (flat at `e = 1`, falling below it), and **momentum** in a
+   wall-free, gravity-free scene (a cue ball fired into a cluster),
+   flat to rounding in both solvers.
+2. **Circles are particles with a radius.** A `radius` column in
+   `Particles` (SoA, like `inv_mass`), 0 meaning a point that never
+   collides, so every existing scene is unchanged (goldens). No rotation
+   in M6 (circles without friction don't need it; M7's spin decides).
+3. **Walls are static half-planes** `{ normal: UnitVec2, offset }` in the
+   `World`. The M5 ground clamp stays for the jelly (its goldens), and
+   isn't how M6's floor works.
+4. **Contacts are transient constraints, rebuilt every substep.** A
+   `Contact { a, b (particle or wall), normal: UnitVec2, depth }` with
+   `C = |x_b − x_a| − (r_a + r_b) ≥ 0`: an *inequality*. XPBD applies a
+   correction only while `C < 0`; the impulse solver clamps the
+   *accumulated* impulse at ≥ 0 (Catto 2006: clamping each delta
+   instead breaks stacks). Detection per substep is the simple, correct
+   choice (Macklin 2019 detects once per step with a margin, an
+   optimization to measure later).
+5. **Warm starting for contacts** in the impulse solver, matched by
+   `(a, b)` from the previous substep: M4/M5 kept rigid constraints
+   warm-started for exactly this (stacks settle without it only with
+   many iterations). XPBD needs none.
+6. **Restitution `e` in [0, 1]**, a new `Restitution` param, one per
+   world in M6 (per material in M7). Impulse: target normal velocity
+   `−e · v_n` from *before* the solve. XPBD: Müller et al. 2020's velocity
+   pass after positions settle. Both skip restitution below a small
+   approach speed (`~2 g h`), or resting balls jitter forever.
+7. **Broadphase: a uniform grid**, cell size the largest diameter,
+   rebuilt each substep; tested by proptest as a **superset** of the
+   true overlapping pairs (brute force). Sweep-and-prune stays a later
+   comparison.
+8. **Split impulses for contacts too** (M4's default): penetration is
+   corrected positionally, so it doesn't turn into bounce. Classic
+   Baumgarte remains selectable (the pendulum lesson again: here it shows
+   as balls popping out of each other).
+9. **Newton's cradle**: five balls on rods (M3's `DistanceConstraint`,
+   rigid), just touching. A sequential solver with one iteration spreads
+   the impact (several balls swing out); more iterations or substeps get
+   closer to "one in, one out". Shown per solver, with an iterations
+   slider; tests record the measured behavior rather than demand the
+   ideal (as M4 did for chains).
+10. **Pages: two**, as in M4. `m6-collisions`: the box (restitution,
+    ball count, a broadphase overlay of grid cells and candidate pairs,
+    energy plot) and the free-space momentum shot. `m6-cradle`: the
+    cradle, XPBD vs impulse side by side.
+11. **Out of M6:** friction, segments and pockets (M7), tunneling
+    measurement (M7: M6's speeds are low enough with substeps), polygons
+    and rotation (deferred).
 
 ---
 
-## ✅ 1. `docs/07-soft-bodies.md` (done)
+## 1. `docs/08-collision.md` (PR)
 
-The threshold derived (symplectic Euler's matrix has det 1 and trace
-`2 − h²ω²`, so it's bounded exactly while `ω h ≤ 2`: `k_crit = 4m/h²`;
-a network fails earlier, at its fastest mode); why compliant constraints
-have no threshold (implicit in disguise, paid for in damping);
-`Stiffness`/`Damping`; `SpringForce`; damping in all three steppers
-(Macklin eq. 26, Catto 2011); the network, the ground, live stiffness,
-energy terms. Hairer–Lubich–Wanner added to references.
+- [ ] Shapes, walls, contact generation, the contact constraint form
+      (inequality, accumulated clamp), restitution in both solvers,
+      warm starting, the broadphase. Decisions above, as adopted.
 
-## ✅ 2. `Stiffness`, `Damping`, `SpringForce` (done)
+## 2. Radius, walls, `Restitution` (PR)
 
-`Stiffness` (k > 0, finite) and `Damping` (c ≥ 0, finite), written out
-with a fallible `cast` (narrowing can overflow). `Spring`/`SpringForce`
-(equal and opposite, potential). Period within 0.04%, damped energy within
-0.8%, momentum 1.3e-14. Known failure: energy 2e2× at 0.99 `k_crit`,
-6e71× at 1.01; below it the true energy still swings (19× at 0.9).
+- [ ] `Particles` radius column (0 = no collision; goldens unchanged),
+      `World` walls, `Restitution` param (`checked_param!`, [0, 1]).
 
-## ✅ 3. Damping in the constraint solvers (done)
+## 3. Broadphase: uniform grid (PR)
 
-`DistanceConstraint::with_damping`/`with_compliance`, `Constraint::damping`.
-XPBD (Macklin eq. 26) and impulse (Catto 2011 with the damper); undamped
-paths untouched (goldens bit-identical). Damped/undamped matches
-`e^(−ct/m)` to 1% in both. **Found:** compliant constraints damp by
-themselves at backward Euler's rate, `(1 + ω²h²)^−n` (predicted 0.6593,
-measured 0.65925): implicit stability costs energy.
+- [ ] Candidate pairs; proptest superset of brute force; cost measured.
 
-## ✅ 4. Ground plane (done)
+## 4. Narrowphase: contacts (PR)
 
-`World::set_ground(Option<S>)` (default `None`: goldens unchanged); a clamp
-at the end of every substep, after whichever stepper ran (so after XPBD's
-velocity derive). At or below the ground (not strictly below: explicit
-Euler leaves a resting particle on the ground moving down at `g h`).
-Dropped particles settle exactly, in every stepper and both scalars; the
-largest per-step energy gain is rounding (≤ 3.6e-14 J). Static particles
-untouched. Built by a subagent. Open question it raised: a multi-particle
-body lifted by the clamp could in principle pass energy on through its
-rods; the jelly (section 5) is the real check.
+- [ ] Circle–circle, circle–wall → `Contact` (normal, depth); coincident
+      centers handled (no direction: `UnitVec2` makes it explicit).
 
-## ✅ 5. The jelly (done)
+## 5. Contacts in XPBD (PR)
 
-`SpringNetwork::grid`, `scenarios::jelly(body, …, k, c)` (k parsed per
-realization; constraints take ∞ = rigid), `World::update_constraints`
-(skips a held grab's rod), `SpringForce::with_stiffness/with_damping`,
-`diagnostics::constraint_potential`. Force springs blow up at 0.1–0.15
-`k_crit`; both constraint solvers stable to rigid at one iteration.
-**Found:** the impulse solver's soft constraints exploded from 10⁴ N/m
-(the M4 mechanism through the soft form); your call was to fix the soft
-form first: remedies measured, and **soft constraints are no longer
-warm-started** (stable, period and damping unchanged). Decision 8 holds
-as written. Stability judged by kinetic energy (elastic energy of stiff,
-unconverged constraints is meaningless). Goldens for all three.
+- [ ] Inequality correction, velocity pass with restitution. Tests:
+      head-on elastic matches analytic velocities, `e = 0` sticks,
+      momentum conserved, resting penetration within tolerance, energy.
 
-## ✅ 6. Web layer (done)
+## 6. Contacts in the impulse solver (PR)
 
-`demo_new_jelly(scalar, body, cols, rows, k, c)` (`JELLY_SPRINGS/XPBD/
-IMPULSE`, 10 substeps to start), live `demo_set_stiffness` and
-`demo_set_damping` (refused for non-jelly scenes and values the body can't
-take; a held drag rod keeps its stiffness), `demo_kinetic_energy`.
-`.wasm` 127,655 B (gzip 42,813).
+- [ ] Accumulated clamp, warm starting by pair, restitution target,
+      split impulses. The same tests as section 5.
 
-## ✅ 7. Site: the M5 page (done, manual check pending)
+## 7. Scenes (PR)
 
-`site/demos/m5-jelly/`: force springs, XPBD and impulse panels; a log
-stiffness slider (10–10⁷ N/m in half decades, then rigid; the force panel
-keeps its k at rigid), damping, grid, substeps, rate, drag in every
-panel, the ground line, a log kinetic-energy plot (a panel past 100 J
-freezes as exploded), and a live `k_crit` hint. `stiffness.ts` with node
-tests; the links buffer now includes force springs. Smoke `m5`,
-`m5rigid`; gallery link.
+- [ ] Box of balls, free-space break, Newton's cradle; goldens; energy
+      and momentum tests per scene; the cradle's measured behavior per
+      solver and iteration count.
 
+## 8. Web layer (PR)
+
+- [ ] Scene constructors, radii and walls for drawing, live
+      restitution, broadphase debug buffers (cells, candidate pairs).
+
+## 9. Site: two pages (PR)
+
+- [ ] `m6-collisions` (box + overlay, momentum shot) and `m6-cradle`;
+      smoke cases; gallery.
 - [ ] Manual check against **Done when** (yours).
 
-## ✅ 8. M5 cleanup (done)
+## 10. M6 cleanup (PR, if needed)
 
-One `reinstall` helper for the force jelly's live settings; exact damping
-tenths on the page; 07's live-stiffness section corrected
-(`update_constraints`, not a `set_compliance` that never existed).
-`types.md` already listed M5's types; no file over ~300 lines. Triggers
-re-checked (`type-invariants.md`): **`UnitVec2`'s trigger is met**
-(`SpringForce` is the second `d / |d|`), left for your decision before M6.
+- [ ] Magic numbers, triggers, `docs/types.md`, small files.
 
 ---
 
-## Out of scope for M5
+## Out of scope for M6
 
-- Real contacts and collisions (M6): the ground is a clamp.
-- Friction, restitution (M6–M7).
+- Friction, cushions (segments), pockets, a cue (M7).
+- Tunneling measurement (M7).
+- Rotation, polygons, CCD (deferred).
 - Web Workers (known gap below).
 
 ## Known gaps
