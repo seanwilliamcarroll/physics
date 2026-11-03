@@ -58,6 +58,17 @@ impl<S: Scalar> Constraints<S> {
         Ok(())
     }
 
+    /// Removes the constraint at `index` (and its λ) if it is the last one
+    /// added; `false` otherwise (only the latest add can be undone).
+    pub(super) fn pop_if_last(&mut self, index: usize) -> bool {
+        if index + 1 != self.list.len() {
+            return false;
+        }
+        self.list.pop();
+        self.lambda.pop();
+        true
+    }
+
     pub(super) fn list(&self) -> &[DistanceConstraint<S>] {
         &self.list
     }

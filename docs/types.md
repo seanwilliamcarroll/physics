@@ -23,6 +23,7 @@ local tuples) are left out.
 | [`ParticleId`](../crates/engine/src/particles.rs) | Names a particle for constraints; only the engine can make one, so ids come from a real `add`. Plain index until particles can be removed. |
 | [`World<S>`](../crates/engine/src/world.rs) | The simulation: particles, forces, constraints, and how a step is taken (integrator, or solver when constraints exist). |
 | [`Constraints<S>`](../crates/engine/src/world/constraints.rs) | A world's constraints, one λ each, and the solver settings in one field, so `lambda` can't fall out of step with the list and a solver switch always resets it. |
+| [`Grab`](../crates/engine/src/world/drag.rs) | A drag in progress; `release` consumes it (or hands it back if something newer was added), so a grab can't be released twice or leave a stale anchor. |
 | [`ConfigError`](../crates/engine/src/world/config_error.rs) | One typed error for every invalid configuration (substeps, softening, mass, unknown particle, β), so scenes return `Result` instead of panicking. |
 
 ## `engine` — checked parameters (parse, don't validate)
