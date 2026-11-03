@@ -24,6 +24,7 @@ const M1: &str = "demos/m1-orbits/";
 const M2: &str = "demos/m2-cluster/";
 const M3: &str = "demos/m3-pendulum/";
 const M4_CHAIN: &str = "demos/m4-chain/";
+const M5: &str = "demos/m5-jelly/";
 const M4_DP: &str = "demos/m4-double-pendulum/";
 
 /// M0: default settings, the other scalar, the size that once rendered a
@@ -34,7 +35,7 @@ const M4_DP: &str = "demos/m4-double-pendulum/";
 /// a heavier cluster. M3: both solver panels, default and the f32 stress
 /// case (100 substeps). M4: the chain (both solver panels) and the double
 /// pendulum in both comparison modes.
-pub(super) const CASES: [Case; 15] = [
+pub(super) const CASES: [Case; 17] = [
     Case {
         name: "default",
         page: M0,
@@ -123,6 +124,20 @@ pub(super) const CASES: [Case; 15] = [
         name: "m4dp32",
         page: M4_DP,
         query: "?smoke&mode=scalar",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m5",
+        page: M5,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    // Rigid: the force panel falls back to its default k (springs can't be
+    // rigid), so every panel stays finite.
+    Case {
+        name: "m5rigid",
+        page: M5,
+        query: "?smoke&logk=rigid&grid=4",
         check: Check::Draws,
     },
 ];

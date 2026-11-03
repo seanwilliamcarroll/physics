@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M5 · Jelly: stiffness against stability</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Jelly: stiffness against stability</h1>
+    <p class="muted">
+      One jelly, the same particles and the same springs, enforced three
+      ways: as <b>force springs</b> stepped by symplectic Euler, and as
+      compliant <b>constraints</b> in XPBD and in the impulse solver. Drag the
+      <b>stiffness</b> slider up. The force springs hold until their fastest
+      vibration outruns the time step, then explode in a few frames. The
+      constraints stay stable at any stiffness, all the way to rigid, which a
+      force spring can't even express. Their price is damping: an implicit
+      step bleeds energy, so stiff constraint jellies settle where the force
+      jelly would ring. <b>Grab any panel's jelly and throw it.</b>
+    </p>
+    <div class="controls" id="controls"></div>
+    <p class="muted" id="hint"></p>
+    <div class="panels" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Kinetic energy</h2>
+    <p class="muted">
+      In joules (log scale). The drop peaks at about 5 J on landing; a panel
+      past 100 J has exploded, and is frozen there until reset.
+    </p>
+    <div class="plot"><canvas id="energy"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
