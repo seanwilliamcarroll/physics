@@ -99,6 +99,11 @@ bug yet (item 7).
 
 ## Adopted in M3
 
+- **`Baumgarte<S>`** (item 2; trigger: the β slider). `new(β) -> Option`
+  for `0 ≤ β ≤ 1` (NaN rejected; above 1 overshoots). Not a field of
+  `Solver::Impulse`, so `Solver` stays a plain non-generic enum, and β
+  survives solver switches.
+
 - **`Mass<S>`** (item 1; trigger: M3's constraint solvers weight every
   correction by `inv_mass`). `Mass::new(m) -> Option`: `None` for
   `m ≤ 0`, NaN, ±∞, or an `m` so small that `1 / m` overflows (e.g.

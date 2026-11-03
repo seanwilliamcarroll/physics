@@ -181,6 +181,27 @@ the storage right now is the point.
 g = 9.81, ours 9.80665). The rod error stays within 8 ulps of 1 m in
 both scalars.
 
+**As built (M3.4), the whole table** (f64, `tests/solver_table.rs`; f32
+matches to the digits shown except where noted):
+
+| Row | `01` rod error | ours | `01` energy lost | ours |
+|---|---|---|---|---|
+| Impulse, β = 0 | 47 cm | 47.5 cm | 8.4 J | 8.39 J |
+| Impulse, β = 0.2 | 1.3 cm | 1.27 cm | 0.98 J | 0.986 J |
+| Impulse, β = 0.2, 20 substeps | 0.03 mm | 0.034 mm | 0.005 J | 0.0056 J |
+| XPBD, 1 substep | ~0 | 2.2e-16 m | 8.8 J | 8.79 J |
+| XPBD, 20 substeps | ~0 | 2.2e-16 m | 1.46 J | 1.45 J |
+| XPBD, 100 substeps | ~0 | 2.2e-16 m | 0.31 J | 0.31 J (f32: **gains** 0.11 J) |
+
+**The f32 row `01` doesn't have:** XPBD derives `v = (x − x_prev) / h`.
+At 100 substeps the bob moves ~0.4 mm per substep at radius 1 m, where
+f32's spacing is ~0.1 µm, so every derived velocity carries ~1e-4
+relative rounding noise, and the energy wanders (here, upward). More
+substeps make f32 XPBD *worse*, the reverse of "substeps are the great
+equalizer". The impulse solver integrates velocities directly and doesn't
+have this problem. A known failure now
+(`xpbd_f32_substeps_derive_noisy_velocities`); worth showing on the page.
+
 ## Per-solver state: λ next to the constraints
 
 `World` keeps `lambda: Vec<S>`, one per constraint, in the same order.

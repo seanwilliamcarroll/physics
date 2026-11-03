@@ -121,6 +121,10 @@ simulated 10 s at a 60 Hz frame rate. Total swing energy is 9.81 J.
 | XPBD, 20 substeps | ~0 | 1.46 J |
 | XPBD, 100 substeps | ~0 | 0.31 J |
 
+Reproduced by the engine in M3, row for row (`06-constraints.md`, "As
+built"; `tests/solver_table.rs`), plus one thing this script couldn't
+show: in f32, XPBD with many substeps derives noisy velocities.
+
 Takeaways:
 
 1. **XPBD always satisfies the constraint**; the impulse solver only does so
