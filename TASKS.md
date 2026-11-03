@@ -1,22 +1,18 @@
-# TASKS — M4: Chains and the double pendulum
+# TASKS — M5: Spring–mass jelly
 
-Source: `docs/05-roadmap.md` (M4), `docs/06-constraints.md` ("Extending"),
-`docs/01-solvers.md` (mass ratios, the side-by-side demo table).
+Source: `docs/05-roadmap.md` (M5), `docs/06-constraints.md` (compliance in
+both solvers, M4), `docs/01-solvers.md` ("very stiff spring" row).
 
-**Goal:** where the two solver families really diverge. A heavy bob on a
-light chain (1:100) stays solid under one solver and goes rubbery under
-the other; a double pendulum shows chaos (copies 1e-9 apart, and f32 vs
-f64); any particle can be grabbed and dragged with the mouse.
+**Goal:** stiffness vs stability. Force-based springs explode past a
+critical stiffness; compliant constraints stay stable at any stiffness,
+up to fully rigid.
 
-**Done when** (revised in M4.9): both solvers hold a dragged heavy chain
-(split impulses), and switching the impulse panel to classic Baumgarte
-shows the chain gaining energy and blowing up; the double pendulum
-divergence is visible. (The original "solid in one panel, stretchy in the
-other" was classic Baumgarte's blow-up mistaken for softness.)
+**Done when:** sliding stiffness up blows up the force-based jelly and
+merely firms up the constraint-based one.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m4/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`m5/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -66,179 +62,127 @@ velocities); the pendulum page; `xtask serve` sends `no-store`.
 and world split into small files with re-exports; shared site modules;
 `World::new(NonZeroU32)` can't fail; `cargo doc -D warnings` in pre-push.
 
+## ✅ M4: Chains and the double pendulum (done, PRs #51–#61)
+
+`Compliance` (a milestone early) and Catto's soft form in the impulse
+solver; `Order`; chain and double-pendulum scenes; dragging (`Grab`);
+two pages. **Found in review:** classic Baumgarte + warm starting blows up
+heavy chains (worse with more substeps); fixed with
+`Stabilization::{Baumgarte, Split}` (split by default, pendulum scenes
+classic, since split impulses dissipate like XPBD). The original "solid vs
+rubbery" showcase was that blow-up; corrected everywhere. Process lessons
+carried forward: **every scene's tests check energy**, and **scripted
+edits must fail loudly** when their target text is missing (one silently
+didn't apply, leaving a test that asserted nothing). License: MIT (#62).
+
 ---
 
 ## Decisions to review before starting
 
-1. **Dragging needs compliance now, a milestone early.** The roadmap's
-   drag is a *soft* constraint from the grabbed particle to the cursor;
-   a rigid one would yank the chain and, with the impulse solver, inject
-   energy. So M4 adopts **`Compliance<S>`** (α ≥ 0, m/N; a `params/`
-   type via `checked_param!`) and a compliant `DistanceConstraint`. M5
-   then reuses both for springs instead of introducing them.
-2. **The impulse solver gets the soft form too** (the question `06` left
-   for M5). Catto's soft constraints (GDC 2011) map a spring onto the
-   impulse update in the same shape as XPBD:
-   `Δλ = −(J v + b + α̃ λ) / (w + α̃)`, `α̃ = α / h²`. The bias `b` differs
-   by kind: a **rigid** rod (α = 0) keeps today's Baumgarte `b = (β/h) C`
-   with the β setting (so goldens are unchanged); a **compliant** one uses
-   its spring's own bias, `b = C / h` (Catto's mapping with no damper:
-   `γ = α/h²`, bias factor 1). Both solvers then mean the same physical
-   stiffness `k = 1/α`. The alternative, "impulse is rigid-only", would
-   make the drag panel impossible to compare. (Damping: none in M4; M5's
-   springs decide.)
-3. **The drag anchor is a static particle the page moves.** Grab: the
-   world adds a static particle at the cursor and a compliant rod of rest
-   length 0 to the nearest particle (within a pick radius). Drag: the
-   anchor's position is set each frame. Release: both are removed. Needs
-   `Particles::set_static_position(id, pos)` (static only, checked), a
-   way to remove the last constraint and particle (a small `pop`, not
-   general removal, so `ParticleId` stays a plain index), and a rest
-   length of 0, whose gradient is undefined exactly when C = 0 (already
-   handled: `evaluate` returns `None`, the solvers skip).
-4. **Picking happens in Rust**, nearest particle to the cursor within a
-   radius: `demo_grab(d, x, y, radius) -> i32` (index or −1),
-   `demo_drag(d, x, y)`, `demo_release(d)`. Rust has the positions in its
-   own scalar; JS only converts the pointer to world coordinates
-   (`View.toWorld`, pure and unit-tested).
-5. **Constraint rendering:** the page needs to know which particles are
-   joined. `demo_links_ptr/len` exposes `[a0, b0, a1, b1, …]` as `u32`
-   (rebuilt only when constraints change), so the renderer draws lines
-   without knowing scene topology.
-6. **Iteration order: `Order::{Forward, Reverse, Alternating}`** on
-   `Constraints` (where the audit put solver settings), default Forward
-   (goldens unchanged). Alternating flips every iteration, a cheap way to
-   cancel Gauss–Seidel's directional bias along a chain.
-7. **The permutation canary.** `properties.rs` checks that shuffling
-   bodies changes results only by rounding. With constraints, Gauss–Seidel
-   order is part of the method, so a shuffled chain gives a genuinely
-   different (but valid) answer. The existing property stays for
-   unconstrained worlds; a new one for constrained worlds asserts a
-   *bounded* difference (both runs keep the chain within the solver's
-   error bound) and the doc says why exact invariance is gone.
-8. **Scenes:** `chain(links, mass_ratio)` (pinned at one end, links of
-   equal length, light links and a bob `mass_ratio` times heavier;
-   1:100 is the roadmap's case) and `double_pendulum(offset)` (two rods,
-   released horizontal; `offset` nudges the tip, 1e-9 m for the chaos
-   demo). Both take a solver and substeps like `pendulum`.
-9. **Two pages:** `m4-chain` (XPBD vs impulse panels on the same chain,
-   drag in either, mass-ratio and iteration controls, length-error plot)
-   and `m4-double-pendulum` (two copies 1e-9 apart, or f32 vs f64, tip
-   trails, log divergence plot). Default solver for the double pendulum:
-   impulse with 20 substeps, the one `01` measured nearly energy-
-   conserving (chaos needs the energy to stay put).
-10. **Shared pointer module** (`site/js/pointer.ts`): pointer events →
-    world coordinates through `View`, with pointer capture so a drag
-    survives leaving the canvas. Touch works through pointer events too.
+1. **The threshold is a formula, so it's a test.** Symplectic Euler on a
+   spring is stable only while `ω h < 2` (`ω = √(k/m)`, `h` the substep):
+   **`k_crit = 4 m / h²`**. Known failure
+   `explicit_spring_diverges_above_critical_stiffness`: stable at
+   0.9 `k_crit`, energy grows without bound at 1.1. A grid fails earlier
+   (its stiffest mode is faster than one spring's); measured, recorded,
+   and shown on the page.
+2. **Two new parameter types** (`params/`, `checked_param!`):
+   `Stiffness<S>` (k > 0, finite: a force-based spring can't be rigid) and
+   `Damping<S>` (c ≥ 0, N·s/m). Compliant constraints keep `Compliance`
+   (α = 1/k, and α = 0 is rigid). The page's one stiffness slider maps to
+   both: log scale over orders of magnitude, with a "rigid" end that only
+   the constraint panels can reach.
+3. **`SpringForce`**: a `Force` over a list of springs `(a, b, rest, k, c)`,
+   Hooke plus damping along the spring (`c · (v_b − v_a) · n`), equal and
+   opposite (momentum to rounding). Stepped by the integrator like every
+   force, so the explosion is the integrator's.
+4. **Damping in the constraint solvers too**, so the comparison is fair
+   (an undamped jelly wobbles forever; a damped force spring against
+   undamped constraints compares damping, not stability). XPBD: Macklin
+   et al. 2016's damped form (`γ = α̃ β̃ / h`); impulse: Catto 2011's full
+   soft form with the damper (`γ = 1/(h(c + h k))`, bias factor
+   `h k / (c + h k)`). Undamped (`c = 0`) stays bit-identical to M4.
+   Checked: a damped bob's amplitude decays as `e^(−c t / 2m)` in all
+   three (force, XPBD, impulse), within a measured tolerance.
+5. **One spring network, two realizations.** `scenarios::jelly(cols, rows)`
+   builds a `SpringNetwork` (particles plus structural, shear and bend
+   pairs with rest lengths) once; it becomes either `SpringForce` springs
+   or compliant `DistanceConstraint`s. Same topology, same masses, so the
+   panels differ only in how springs are enforced.
+6. **Ground: a half-plane clamp, not contacts** (M6 brings real ones).
+   `World::set_ground(y)`: after each substep, any particle below `y`
+   moves to it and loses its downward velocity (inelastic, no friction).
+   Applies to every stepper (integrator and both solvers), so the jelly
+   can land in every panel. It removes energy on impact: energy checks
+   account for it (energy may only drop at impacts).
+7. **Live stiffness.** Force panel: `clear_forces` + re-add the springs
+   with the new k (M2's pattern). Constraint panels: a new
+   `World::set_compliance(Compliance)` updates every constraint in place
+   (the drag rod excluded), so the slider doesn't reset the jelly.
+8. **Three panels: force springs, XPBD, impulse (soft)** (a change from
+   the roadmap's two). Both constraint solvers stay stable at any
+   stiffness, which is the point; showing both makes it a property of
+   compliant constraints, not of XPBD. Dragging works in all three.
+9. **Energy readout**: a spring-network potential (`½ k (L − L₀)²` per
+   force spring; `½ C² / α` per compliant constraint, 0 when rigid) plus
+   gravity and kinetic. The page's energy plot is where the explosion
+   shows first (the jelly visibly tears a moment later).
+10. **Grid size**: default 8 × 8 (64 particles, ~300 springs including
+    bend), slider up to ~20 × 20; measured cost recorded, kept well under
+    a frame.
 
 ---
 
-## ✅ 1. `docs/06-constraints.md` update (done)
+## 1. `docs/07-soft-bodies.md` (PR)
 
-New section "M4: compliance, iteration order, dragging": Catto's soft
-form for the impulse solver (`γ = α/h²`, bias factor 1 for compliant
-rods, the β setting for rigid ones), period check `2π √(m α)`; `Order`
-and why the permutation property becomes a bounded difference with
-constraints; the drag as anchor + rest-length-0 compliant rod, released by
-popping the last-added. Catto 2011 added to `references.md` (URL checked).
+- [ ] The stability threshold (decision 1, derived), the two parameter
+      types, `SpringForce`, damping in all three (4), the network (5), the
+      ground (6), live stiffness (7), and the energy terms (9).
 
-## ✅ 2. Compliance (done)
+## 2. `Stiffness`, `Damping`, `SpringForce` (test first, PR)
 
-`Compliance<S>` (α ≥ 0, `RIGID`) in `params/`; `DistanceConstraint` carries
-one, and `with_length` takes an explicit rest length (≥ 0). The impulse
-solver's soft branch (bias `C/h`, `α/h²`); the rigid branch untouched,
-so goldens are unchanged. Spring period `2π√(mα)`: 0.62857 s vs
-0.62832 s in both solvers.
+- [ ] Types; `SpringForce` (momentum conserved, period `2π √(m/k)`,
+      damped decay); spring potential diagnostic.
+- [ ] Known failure at 1.1 `k_crit`; stable at 0.9.
 
-## ✅ 3. Iteration order and the permutation property (done)
+## 3. Damping in the constraint solvers (test first, PR)
 
-`Order::{Forward, Reverse, Alternating}` on `Constraints`,
-`World::set_order`; `solver.rs` split into a hub plus `xpbd.rs` and
-`impulse.rs`. Forward is M3's behavior (goldens unchanged); forward and
-reverse differ on a two-link chain in both solvers. New
-`tests/constrained_properties.rs`: random chains, reordered rods stay
-within the solver's error bound and within 52 µm (XPBD) / 4.9 µm
-(impulse) of each other after 0.1 s.
+- [ ] XPBD and impulse damped forms; undamped bit-identical (goldens);
+      decay rate matches `e^(−c t / 2m)` in both.
 
-## ✅ 4. Chains and the double pendulum (done)
+## 4. Ground plane (test first, PR)
 
-`scenarios::chain(solver, substeps, links, mass_ratio)` and
-`double_pendulum(solver, substeps, start, offset)` (built by a subagent).
-**1:100 chain, 10 links, 10 s:** at 20 substeps XPBD holds links to
-3.2 mm, impulse 42 cm (133× apart) **[wrong: classic Baumgarte's blow-up;
-corrected in section 9: with split impulses 4.3 mm]**, 10 iterations tighten both; at 1
-substep both fail; 1:1 holds in both, so the mass ratio is the cause.
-**Double pendulum (impulse, 20 substeps):** energy within 0.039 J over 30 s;
-copies 1e-9 m apart separate (1 cm) at **23.8 s**, not "a few seconds"
-(decision 8's horizontal start stays nearly regular for ~10 s), f32 vs
-f64 at 14.9 s. **Deviation from decision 8:** added
-`DoublePendulumStart::{Horizontal, Raised}`; raised (both rods at 135°,
-`sqrt`-only so wasm stays bit-identical) separates at 11.1 s and is the
-page's default; the log divergence plot shows the growth from t = 0.
-XPBD's damping kills the chaos (no separation in 120 s). Goldens for
-both chains and the double pendulum, native and wasm.
+- [ ] `World::set_ground`; resting contact holds still; energy only drops
+      at impacts; all three steppers.
 
-## ✅ 5. Dragging (done)
+## 5. The jelly (test first, PR)
 
-On `World` (decided: the engine owns it, so it's tested natively):
-`grab(point, radius, softness) -> Option<Grab>`, `drag(&Grab, point)`,
-`release(Grab) -> Result<(), Grab>`. `Particles::nearest_dynamic`,
-`set_static_position` (static only), crate-private `pop_if_last`. A
-flicked 1:100 chain: XPBD 8.1 mm link error, impulse 18.3 cm with the bob
-42 cm behind the cursor **[wrong, and the test asserted nothing; corrected
-in section 9: 10.0 mm, both bobs ~7.8 cm behind]**.
+- [ ] `SpringNetwork`, `scenarios::jelly` in both realizations;
+      `World::set_compliance`; the grid's measured blow-up stiffness vs
+      `k_crit`; energy checks; goldens.
 
-## ✅ 6. Web layer (done)
+## 6. Web layer (PR)
 
-`demo_new_chain(scalar, links, mass_ratio)` and
-`demo_new_double_pendulum(scalar, start, offset)` (dedicated constructors:
-`demo_new`'s `(n, seed)` can't carry them); `demo_grab` / `demo_drag` /
-`demo_release` (k = 1000 N/m drag rod); `demo_links_ptr/len`;
-`demo_set_order`; `ORDER_*`, `START_*` codes mirrored. `exports.rs` split
-into lifecycle/settings/readouts/drag. `.wasm` 102,099 B (gzip 34,099).
+- [ ] `demo_new_jelly`, `demo_set_stiffness` (live, both kinds),
+      `demo_set_damping`, ground; ABI mirror; size row.
 
-## ✅ 7. Site: the M4 pages (done; manual check pending)
+## 7. Site: the M5 page (PR)
 
-`m4-chain` (XPBD vs impulse on the same chain, drag in either; mass ratio,
-links, substeps, iterations, order; link-error plot) and
-`m4-double-pendulum` (1e-9 m apart or f32 vs f64; raised or horizontal
-start; tip trails; log divergence and energy plots). Shared modules:
-`pointer.ts` and `View.toWorld` (a subagent), `drag.ts`, `wasm.ts`
-`linksView`, `canvas.ts` `drawLinks`. Two engine-side fixes found while
-building: the rod-error readout leaves out a held grab's rod, and
-`demo_particle_x/y` give exact positions (the f32 render buffer reads tips
-1e-9 m apart as identical). Three smoke cases; gallery links. **Still to
-do: your manual check against Done when** (dragging needs a real pointer).
+- [ ] `m5-jelly`: three panels, one log stiffness slider with a rigid
+      end, damping, grid size, drag, energy plot; smoke cases; gallery.
+- [ ] Manual check against **Done when** (yours).
 
-## ✅ 8. M4 cleanup (done)
+## 8. M5 cleanup (PR, if needed)
 
-The two files that grow every milestone split: `smoke.rs` (case table to
-`smoke/cases.rs`, server to `smoke/server.rs`) and `barnes_hut.rs`
-(quadtree to `barnes_hut/tree.rs`). `docs/types.md` gains
-`DoublePendulumStart`; `type-invariants.md` triggers re-checked. No
-unnamed literals in M4's code.
-
-## ✅ 9. Fix: classic Baumgarte blows up on heavy chains (done, found in review)
-
-The impulse chain gained energy without bound (+435 J in 5 s). Root
-cause (a replica, then the engine): classic Baumgarte adds its bias as
-real velocity; one Gauss–Seidel pass can't remove it on a 1:100 chain and
-warm starting carries it forward; worse with more substeps. Fix:
-`Stabilization::{Baumgarte, Split}` (your choice), split impulses by
-default; the pendulum and double-pendulum scenes opt into classic (split
-impulses dissipate like XPBD: −8.2 J on the double pendulum). Chain tests
-re-measured with energy checks; the blow-up is a known-failure test; the
-drag test finally asserts its bounds. `demo_set_stabilization`; the chain
-page gets a stabilization menu, an energy plot, and a "classic blows up"
-preset. Corrections in `06`, `04-testing`, `05-roadmap` and above.
+- [ ] Magic numbers, triggers, `docs/types.md`, small files.
 
 ---
 
-## Out of scope for M4
+## Out of scope for M5
 
-- Force-based springs and soft bodies (M5); M4 only adds compliance.
-- Contacts (M6+). General particle removal (generational `ParticleId`).
-- Web Workers for the M2 page (known gap below).
+- Real contacts and collisions (M6): the ground is a clamp.
+- Friction, restitution (M6–M7).
+- Web Workers (known gap below).
 
 ## Known gaps
 
