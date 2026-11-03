@@ -32,6 +32,10 @@ const PANELS = [
 /** Rod length, m (engine::scenarios::PENDULUM_LENGTH): the rest circle. */
 const ROD_LENGTH_M = 1;
 const PCT = 100;
+/** Rod errors read out in millimeters. */
+const MM_PER_M = 1000;
+/** β slider step: 1/20, so 0.2 (the default) and 0 are both on it. */
+const BETA_STEP = 0.05;
 
 const OPTIONS: {
   scalar: ChoiceOption; beta_pct: IntOption; substeps: IntOption; iterations: IntOption; rate: IntOption;
@@ -202,7 +206,7 @@ try {
     label: "β",
     min: 0,
     max: 1,
-    step: 0.05,
+    step: BETA_STEP,
     value: state.beta,
     format: (b) => `${b.toFixed(2)} (impulse only)`,
     onInput: (b) => {
@@ -279,7 +283,7 @@ try {
         const lost = p.e0 - engine.demo_energy(demo);
         p.worst = Math.max(p.worst, rod);
         p.readout.textContent =
-          `rod error ${(rod * 1000).toFixed(3)} mm (worst ${(p.worst * 1000).toFixed(3)}) · ` +
+          `rod error ${(rod * MM_PER_M).toFixed(3)} mm (worst ${(p.worst * MM_PER_M).toFixed(3)}) · ` +
           `energy lost ${lost.toFixed(3)} J`;
         return { rod, lost };
       });
