@@ -6,18 +6,19 @@
 use core::num::NonZeroU32;
 
 use engine::diagnostics::total_energy;
-use engine::scenarios::{Fountain, orbit, orbit_gravity};
+use engine::scenarios::{Fountain, ORBIT_CIRCULAR, orbit, orbit_gravity};
 use engine::{ConfigError, Integrator, Scalar, World};
 
 use crate::abi;
 use crate::fixed_step::FixedStep;
 
-/// Physics steps per simulated second. Displays at any refresh rate advance
-/// the simulation at this rate via [`FixedStep`]. A `NonZeroU32` so the step
-/// size `1 / rate` is positive by construction.
+/// Physics steps per simulated second a demo starts with ([`abi::DEFAULT_RATE_HZ`]).
+/// Displays at any refresh rate advance the simulation at this rate via
+/// [`FixedStep`]. A `NonZeroU32` so the step size `1 / rate` is positive by
+/// construction.
 // `unwrap` in a const item runs at compile time: a zero here fails the
 // build, so it can't panic at runtime (and clippy's unwrap_used agrees).
-pub const PHYSICS_RATE: NonZeroU32 = NonZeroU32::new(60).unwrap();
+pub const PHYSICS_RATE: NonZeroU32 = NonZeroU32::new(abi::DEFAULT_RATE_HZ).unwrap();
 
 /// Which numeric type the engine runs on, chosen at runtime by JS.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -117,8 +118,8 @@ impl Demo {
             DemoKind::Orbit => {
                 let start = Integrator::SymplecticEuler;
                 let world = match scalar {
-                    ScalarKind::F32 => AnyWorld::F32(orbit(start, 1.0)?),
-                    ScalarKind::F64 => AnyWorld::F64(orbit(start, 1.0)?),
+                    ScalarKind::F32 => AnyWorld::F32(orbit(start, ORBIT_CIRCULAR)?),
+                    ScalarKind::F64 => AnyWorld::F64(orbit(start, ORBIT_CIRCULAR)?),
                 };
                 (world, Scene::Orbit)
             }

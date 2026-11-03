@@ -36,6 +36,8 @@ and a test are cheaper.
 | `ScalarKind`, `DemoKind`, xtask `Command` | Only known codes/commands | Enums parsed once at the boundary (`from_code`, `parse`); `None`/`Err` otherwise |
 | `Vec2`, scalar-returning methods | Results aren't silently discarded | `#[must_use]` (`docs/lint-policy.md`) |
 | `crates/web/src/abi.rs` | Rust and JS agree on wasm codes | One owner, a mirror, and a test that compares them |
+| `demo_set_integrator` (M1) | Only known integrators | Wire code decoded once at the boundary (`integrator_from_code`); unknown codes return 0 |
+| `diagnostics::center_of_mass` (M1) | No mean of zero mass | Returns `Option`: `None` rather than `0/0` |
 | Exports | Raw pointers only in one module, each with a contract | `unsafe extern "C"`, `# Safety` docs, `#[expect(unsafe_code)]` on the module |
 
 ## Adopted in the cleanup PR
@@ -49,6 +51,23 @@ construction, with a std type and no `Option` plumbing. `PHYSICS_RATE` is a
 
 Why this one: the failure was a hang, the cheapest kind of bug to cause and
 the hardest to diagnose in a browser tab, and the fix cost nothing.
+
+## Adopted in M1
+
+- **`demo_set_rate(hz)`** parses `u32 → NonZeroU32` at the C boundary, so
+  `FixedStep`'s positive-`dt` guarantee reaches all the way to the slider;
+  0 is rejected with status 0.
+- **JS side** (with `tsc --checkJs`, item 8): branded `DemoHandle` and
+  `Ptr` in `site/js/engine.d.ts`, so a handle can't be passed where a count
+  or a pointer belongs (verified with swapped arguments); `dom.js`'s
+  `byId(id, Type)` turns "maybe null, maybe the wrong element" into a
+  checked, typed element or a clear error; `OPTIONS` entries are a
+  discriminated union (`kind: "choice" | "int"`).
+
+**Triggers re-checked at the end of M1:** softening is still a scenario
+constant (not settable), so `Softening` (item 2) waits for M2's slider;
+mass is still constant per scenario, so item 1 waits for M3; no unit-mixing
+bug yet (item 7).
 
 ## Considered and not adopted
 
@@ -111,7 +130,7 @@ adopt it in that milestone's PR and move the row up.
    (samples at 44.1/48 kHz, physics seconds, frame milliseconds). The
    `FixedStep` rate-vs-`dt` change is a small instance of the same idea.
 
-8. **Checked JS.** *Trigger met at M1.1:* the site JS is 465 lines in 6
+8. **Checked JS.** ✅ *Adopted in M1.5½ as JSDoc + `tsc --checkJs`; the `.ts` experiment follows M1.* *Trigger met at M1.1:* the site JS is 465 lines in 6
    files, and M1's plots, controls, and three-panel page roughly double
    it. Options, cheapest first:
    - **JSDoc types + `tsc --checkJs --noEmit` (recommended).** Files stay

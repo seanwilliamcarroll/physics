@@ -163,6 +163,10 @@ pub const ORBIT_MASS_RATIO: f64 = 1.0e-3;
 /// explicit choice for M2.
 pub const ORBIT_SOFTENING: f64 = 0.01;
 
+/// `speed_ratio` for a circular [`orbit`]: launch at exactly the circular
+/// speed.
+pub const ORBIT_CIRCULAR: f64 = 1.0;
+
 /// Substeps for [`orbit`]: one, so `dt` is exactly what the integrators
 /// are compared at.
 pub const ORBIT_SUBSTEPS: u32 = 1;

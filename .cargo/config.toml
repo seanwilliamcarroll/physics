@@ -1,3 +1,8 @@
 [alias]
 # `cargo xtask <cmd>`: the build helper in xtask/ (docs/repo-layout.md).
 xtask = "run --quiet -p xtask --"
+
+# `cargo test --target wasm32-wasip1` runs test binaries in wasmtime
+# (`cargo xtask test-wasm`; docs/04-testing.md, cross-platform determinism).
+[target.wasm32-wasip1]
+runner = "wasmtime"

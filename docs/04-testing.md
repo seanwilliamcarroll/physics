@@ -173,9 +173,13 @@ hash covers position, velocity, and inverse mass as `to_f64()` bits (exact
 for f32). On mismatch the test prints paste-ready replacement lines.
 Keeping that guarantee meant scenarios avoid libm functions whose last bits
 vary by platform: rejection sampling instead of `sin`/`cos` in `cluster`,
-`q·√q` instead of `powf(1.5)` in `orbit`. Native only so far; the
-`wasm32-wasip1` comparison needs `wasmtime` (`cargo xtask test-wasm`,
-planned).
+`q·√q` instead of `powf(1.5)` in `orbit`.
+
+**Cross-platform, confirmed (M1.7):** `cargo xtask test-wasm` (pre-push)
+runs the math and engine suites compiled to `wasm32-wasip1` under
+wasmtime, and the golden hashes recorded natively on aarch64-apple-darwin
+match bit for bit on wasm. (Verified the test binaries really are `.wasm`:
+without the runner, cargo can't execute them.)
 
 A useful property, seen when checking the goldens: a change smaller than
 f32's resolution (1 nm on a 1 cm softening) changes only the f64 hashes,

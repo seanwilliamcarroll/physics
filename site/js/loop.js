@@ -2,7 +2,7 @@
 // reports real elapsed time, and Rust's fixed-timestep accumulator decides
 // how many physics steps that is (docs/03-wasm-shell.md).
 
-const MS_PER_SECOND = 1000;
+export const MS_PER_SECOND = 1000;
 
 /** Tolerance when capping the frame rate: rAF timestamps jitter by a
  *  fraction of a millisecond, so a 60 fps cap on a 60 Hz display would

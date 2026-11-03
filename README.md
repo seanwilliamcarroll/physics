@@ -18,6 +18,8 @@ Requirements:
   Install the pinned TypeScript once per clone with `npm ci`.
 - Python 3 (local dev server) and Google Chrome or Chromium (the pre-push
   browser smoke test; set `CHROME` to its path if it isn't found).
+- `wasmtime`, to run the engine tests as wasm in pre-push:
+  `cargo install wasmtime-cli` (or MacPorts: `sudo port install wasmtime`).
 
 Once per clone:
 
@@ -29,7 +31,7 @@ npm ci                        # pinned TypeScript, for the type check
 | Hook | Runs |
 |---|---|
 | `pre-commit` | JS syntax and type checks (`tsc`), `cargo fmt --check`, `cargo clippy -D warnings` (native and wasm32) |
-| `pre-push` | `cargo test`, `cargo check --target wasm32-unknown-unknown`, `cargo xtask smoke` |
+| `pre-push` | `cargo test`, `node --test`, `cargo xtask test-wasm`, `cargo check --target wasm32-unknown-unknown`, `cargo xtask smoke` |
 
 The hooks check the working tree, not just what's staged.
 

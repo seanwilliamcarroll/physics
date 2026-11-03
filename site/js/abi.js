@@ -15,6 +15,9 @@ export const INTEGRATOR_VELOCITY_VERLET = 2;
 export const SCALAR_F32 = 0;
 export const SCALAR_F64 = 1;
 
+/** Physics steps per second a new demo starts with (and pages' default). */
+export const DEFAULT_RATE_HZ = 60;
+
 /** Floats per particle in the positions buffer: [x, y]. */
 export const COORDS_PER_PARTICLE = 2;
 

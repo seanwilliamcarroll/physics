@@ -18,6 +18,7 @@ usage: cargo xtask <command>
 commands:
   site           build crates/web for wasm32 (release) -> site/pkg/engine.wasm
   smoke          build the site, load the demo in headless Chrome, check it draws
+  test-wasm      run the math and engine tests as wasm32-wasip1 under wasmtime
   install-hooks  point git at the tracked hooks in .githooks/
   help           show this message";
 
@@ -28,6 +29,7 @@ const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/web.wasm";
 enum Command {
     Site,
     Smoke,
+    TestWasm,
     InstallHooks,
     Help,
 }
@@ -39,6 +41,7 @@ fn parse(args: &[String]) -> Result<Command, String> {
         [cmd] => match cmd.as_str() {
             "site" => Ok(Command::Site),
             "smoke" => Ok(Command::Smoke),
+            "test-wasm" => Ok(Command::TestWasm),
             "install-hooks" => Ok(Command::InstallHooks),
             "help" | "-h" | "--help" => Ok(Command::Help),
             other => Err(format!("unknown command `{other}`")),
@@ -66,6 +69,7 @@ fn run(cmd: Command) -> Result<(), String> {
     match cmd {
         Command::Site => site(&root),
         Command::Smoke => smoke::smoke(&root),
+        Command::TestWasm => test_wasm(&root),
         Command::InstallHooks => install_hooks(&root),
         Command::Help => {
             println!("{USAGE}");
@@ -115,6 +119,46 @@ fn site(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Runs the math and engine test suites compiled to `wasm32-wasip1`,
+/// executed by wasmtime (the runner set in `.cargo/config.toml`). The same
+/// golden hashes then have to match on wasm as natively: the cross-platform
+/// determinism check (`docs/04-testing.md`).
+fn test_wasm(root: &Path) -> Result<(), String> {
+    // Fail with an install hint, not cargo's "cannot execute binary file".
+    let found = process::Command::new("wasmtime")
+        .arg("--version")
+        .stdout(process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success());
+    if !found {
+        return Err(
+            "wasmtime not found; install it with `cargo install wasmtime-cli` \
+                    (or MacPorts: `sudo port install wasmtime`)"
+                .to_owned(),
+        );
+    }
+    let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
+    let status = process::Command::new(cargo)
+        .current_dir(root)
+        .args([
+            "test",
+            "--quiet",
+            "-p",
+            "math",
+            "-p",
+            "engine",
+            "--target",
+            "wasm32-wasip1",
+        ])
+        .status()
+        .map_err(|e| format!("failed to run cargo: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("wasm tests failed ({status})"))
+    }
+}
+
 /// Points git at `.githooks/` (fmt + clippy on commit, tests + wasm check
 /// on push). Per clone, because git never copies hook config.
 fn install_hooks(root: &Path) -> Result<(), String> {
@@ -142,6 +186,7 @@ mod tests {
     fn parses_known_commands() {
         assert_eq!(parse(&args(&["site"])), Ok(Command::Site));
         assert_eq!(parse(&args(&["smoke"])), Ok(Command::Smoke));
+        assert_eq!(parse(&args(&["test-wasm"])), Ok(Command::TestWasm));
         assert_eq!(parse(&args(&["install-hooks"])), Ok(Command::InstallHooks));
     }
 
