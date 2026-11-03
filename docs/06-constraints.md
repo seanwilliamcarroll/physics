@@ -368,6 +368,29 @@ shows the classic blow-up as a stabilization choice. (`01`'s side-by-side
 table and the roadmap's "solid vs rubbery" chain both describe classic
 Baumgarte.)
 
+## Ground (M5.4)
+
+A half-plane clamp, not a contact (`TASKS.md` M5 decision 6; real
+contacts are M6). `World::set_ground(Option<S>)` sets a height `y` (m),
+default `None`. After **every substep**, in `World::substep` after
+whichever stepper ran, each dynamic particle at or below `y` moves to it
+and loses its downward velocity (inelastic, no friction); static
+particles are left alone (`world/ground.rs`). After the stepper, so the
+integrator and both solvers get the same rule, and after XPBD derives
+`v = (x − x_prev) / h`, so the next substep starts from a clamped
+position *and* velocity. "At", not only "below": explicit Euler leaves a
+resting particle on the ground moving down.
+
+It only removes energy: a clamped particle ends the substep with the
+least energy its horizontal speed allows, so it had at least that when
+the substep began. Measured (`tests/ground.rs`, f64, 20 substeps): the
+largest energy gain over any step is 0 (symplectic Euler, XPBD, impulse)
+or 3.6e-14 J (velocity Verlet, rounding); a dropped particle rests
+exactly on the ground at exactly zero velocity under every integrator,
+in f32 and f64. A dropped tilted rod rests exactly on the ground; XPBD's
+slides at 2.4e-12 m/s in f64 and 1.9 mm/s in f32 (the derived-velocity
+noise above; nothing frictional stops it).
+
 ## Extending (not M4)
 
 - **M5 springs:** compliant `DistanceConstraint`s exist since M4; M5 adds

@@ -5,6 +5,7 @@
 mod config_error;
 mod constraints;
 mod drag;
+mod ground;
 
 use core::num::NonZeroU32;
 
@@ -33,6 +34,9 @@ pub struct World<S: Scalar> {
     /// Constraints and the solver state; with any constraints, the solver
     /// steps instead of `integrator`.
     constraints: Constraints<S>,
+    /// The ground's height, m, if any: a half-plane clamp after every
+    /// substep (`world/ground.rs`).
+    ground: Option<S>,
 }
 
 impl<S: Scalar> World<S> {
@@ -48,6 +52,7 @@ impl<S: Scalar> World<S> {
             acc: Vec::new(),
             acc_next: Vec::new(),
             constraints: Constraints::new(Baumgarte::default()),
+            ground: None,
         }
     }
 
@@ -163,7 +168,10 @@ impl<S: Scalar> World<S> {
 
     /// No constraints: the integrator, exactly as before M3. With
     /// constraints: the solver owns the whole substep, and the integrator
-    /// setting is ignored (`docs/06-constraints.md`).
+    /// setting is ignored (`docs/06-constraints.md`). Then the ground, if
+    /// any, clamps the result: after the stepper, so it applies to all of
+    /// them alike, and after XPBD derives its velocities, so the next
+    /// substep starts from a clamped position *and* velocity.
     fn substep(&mut self, h: S) {
         if self.constraints.is_empty() {
             self.integrator.substep(
@@ -173,10 +181,13 @@ impl<S: Scalar> World<S> {
                 &mut self.acc_next,
                 h,
             );
-            return;
+        } else {
+            self.constraints
+                .substep(&self.forces, &mut self.particles, &mut self.acc, h);
         }
-        self.constraints
-            .substep(&self.forces, &mut self.particles, &mut self.acc, h);
+        if let Some(y) = self.ground {
+            ground::clamp(&mut self.particles, y);
+        }
     }
 }
 

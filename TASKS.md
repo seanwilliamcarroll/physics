@@ -159,10 +159,17 @@ paths untouched (goldens bit-identical). Damped/undamped matches
 themselves at backward Euler's rate, `(1 + ω²h²)^−n` (predicted 0.6593,
 measured 0.65925): implicit stability costs energy.
 
-## 4. Ground plane (test first, PR)
+## ✅ 4. Ground plane (done)
 
-- [ ] `World::set_ground`; resting contact holds still; energy only drops
-      at impacts; all three steppers.
+`World::set_ground(Option<S>)` (default `None`: goldens unchanged); a clamp
+at the end of every substep, after whichever stepper ran (so after XPBD's
+velocity derive). At or below the ground (not strictly below: explicit
+Euler leaves a resting particle on the ground moving down at `g h`).
+Dropped particles settle exactly, in every stepper and both scalars; the
+largest per-step energy gain is rounding (≤ 3.6e-14 J). Static particles
+untouched. Built by a subagent. Open question it raised: a multi-particle
+body lifted by the clamp could in principle pass energy on through its
+rods; the jelly (section 5) is the real check.
 
 ## 5. The jelly (test first, PR)
 
