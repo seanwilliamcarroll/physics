@@ -32,6 +32,8 @@ const M0: &str = "demos/m0-hello/";
 const M1: &str = "demos/m1-orbits/";
 const M2: &str = "demos/m2-cluster/";
 const M3: &str = "demos/m3-pendulum/";
+const M4_CHAIN: &str = "demos/m4-chain/";
+const M4_DP: &str = "demos/m4-double-pendulum/";
 
 /// M0: default settings, the other scalar, the size that once rendered a
 /// blank canvas (one path over Chrome's ~16 MiB draw-command limit), and
@@ -39,8 +41,9 @@ const M3: &str = "demos/m3-pendulum/";
 /// energy, in both scalars. M2: both panels on the default disk, the
 /// unsoftened collapse (energy must stay finite through the blow-up), and
 /// a heavier cluster. M3: both solver panels, default and the f32 stress
-/// case (100 substeps).
-const CASES: [Case; 11] = [
+/// case (100 substeps). M4: the chain (both solver panels) and the double
+/// pendulum in both comparison modes.
+const CASES: [Case; 14] = [
     Case {
         name: "default",
         page: M0,
@@ -105,6 +108,24 @@ const CASES: [Case; 11] = [
         name: "m3f32",
         page: M3,
         query: "?smoke&scalar=f32&substeps=100&beta_pct=0",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m4chain",
+        page: M4_CHAIN,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m4dp",
+        page: M4_DP,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m4dp32",
+        page: M4_DP,
+        query: "?smoke&mode=scalar",
         check: Check::Draws,
     },
 ];

@@ -55,3 +55,14 @@ export function positionsView(engine: EngineExports, demo: DemoHandle): Float32A
     engine.demo_positions_len(demo),
   );
 }
+
+/** A Uint32Array view of a demo's links, `[a0, b0, a1, b1, ...]`: the
+ *  particles each constraint joins. Fresh per frame, like positionsView;
+ *  the length changes when a grab adds or removes its rod. */
+export function linksView(engine: EngineExports, demo: DemoHandle): Uint32Array {
+  return new Uint32Array(
+    engine.memory.buffer,
+    engine.demo_links_ptr(demo),
+    engine.demo_links_len(demo),
+  );
+}
