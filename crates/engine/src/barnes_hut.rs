@@ -296,8 +296,9 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
         // doesn't allocate.
         bodies.sort_unstable_by_key(|b| (b.key, b.index));
 
-        // A cell with ≥ 2 children per stored node (path compression) and
-        // one leaf per body: at most 2n − 1 nodes, so this never regrows.
+        // One leaf per body, and every stored cell has ≥ 2 children (path
+        // compression; buckets hold ≥ 2 bodies): at most 2n − 1 nodes, so
+        // this never regrows.
         let mut nodes = Vec::with_capacity(2 * bodies.len());
         let side = root.half_side + root.half_side;
         let _ = build(&bodies, 0, side, root.half, &mut nodes);
