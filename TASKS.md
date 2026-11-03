@@ -174,13 +174,14 @@ page's default; the log divergence plot shows the growth from t = 0.
 XPBD's damping kills the chaos (no separation in 120 s). Goldens for
 both chains and the double pendulum, native and wasm.
 
-## 5. Dragging (test first, PR)
+## ✅ 5. Dragging (done)
 
-- [ ] `Particles::set_static_position`, the pop operations, grab / drag /
-      release on `World` or `Demo` (decide in code review).
-- [ ] Tests: grab picks the nearest within radius; release restores the
-      world's constraint and particle counts exactly; a dragged chain
-      follows the anchor.
+On `World` (decided: the engine owns it, so it's tested natively):
+`grab(point, radius, softness) -> Option<Grab>`, `drag(&Grab, point)`,
+`release(Grab) -> Result<(), Grab>`. `Particles::nearest_dynamic`,
+`set_static_position` (static only), crate-private `pop_if_last`. A
+flicked 1:100 chain: XPBD 8.1 mm link error, impulse 18.3 cm with the bob
+42 cm behind the cursor.
 
 ## 6. Web layer (PR)
 
