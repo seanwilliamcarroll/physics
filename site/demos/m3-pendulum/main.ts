@@ -1,0 +1,302 @@
+// M3: the solver duel. `01-solvers.md`'s pendulum (Rust:
+// engine::scenarios::pendulum), stepped by XPBD and by sequential impulses
+// side by side under the same settings, with rod-error and energy plots.
+
+import { loadEngine, positionsView } from "../../js/wasm.ts";
+import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
+import { setupCanvas, View, clear, drawPoints, drawSegment, drawCircle, cssColor } from "../../js/canvas.ts";
+import {
+  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_PENDULUM, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD,
+} from "../../js/abi.ts";
+import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { byId } from "../../js/dom.ts";
+import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
+import { LinePlot } from "../../js/plot.ts";
+import { Trail } from "../../js/trail.ts";
+import { slider, select, button } from "../../js/controls.ts";
+import type { ChoiceOption, IntOption } from "../../js/options.ts";
+import type { DemoHandle } from "../../js/engine";
+
+const SCALAR_CODES = { f64: SCALAR_F64, f32: SCALAR_F32 };
+type ScalarName = keyof typeof SCALAR_CODES;
+function isScalar(s: string): s is ScalarName {
+  return Object.hasOwn(SCALAR_CODES, s);
+}
+
+/** The two panels: solver code, name, CSS color variable. */
+const PANELS = [
+  { code: SOLVER_XPBD, name: "XPBD", colorVar: "--series-1" },
+  { code: SOLVER_IMPULSE, name: "impulse", colorVar: "--series-3" },
+];
+
+/** Rod length, m (engine::scenarios::PENDULUM_LENGTH): the rest circle. */
+const ROD_LENGTH_M = 1;
+const PCT = 100;
+
+const OPTIONS: {
+  scalar: ChoiceOption; beta_pct: IntOption; substeps: IntOption; iterations: IntOption; rate: IntOption;
+  fps: IntOption;
+} = {
+  scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f64", help: "engine number type (f32 + many substeps: XPBD gains energy)" },
+  // 20%: engine::DEFAULT_BAUMGARTE (Box2D v2), the β in 01's table.
+  beta_pct: { kind: "int", min: 0, max: PCT, default: 20, help: "impulse solver's Baumgarte β × 100; 0 = no feedback" },
+  substeps: { kind: "int", min: 1, max: 100, default: 1, help: "substeps per physics step (01's table: 1, 20, 100)" },
+  iterations: { kind: "int", min: 1, max: 10, default: 1, help: "solver passes per substep (one rod converges in one; matters for chains)" },
+  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate" },
+  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+};
+
+/** One preset per row of 01-solvers.md's table (both solvers show at
+ *  once), plus the f32 finding. */
+const PRESETS: [string, string][] = [
+  ["β = 0", "?beta_pct=0"],
+  ["β = 0.2 (default)", ""],
+  ["β = 0.2, 20 substeps", "?substeps=20"],
+  ["100 substeps", "?substeps=100"],
+  ["f32, 100 substeps", "?scalar=f32&substeps=100"],
+];
+
+/** Pin and bob squares, rod and circle widths, CSS pixels. */
+const PIN_PX = 6;
+const BOB_PX = 10;
+const ROD_WIDTH_PX = 2;
+const CIRCLE_WIDTH_PX = 1;
+const TRAIL_WIDTH_PX = 1.5;
+/** Trail length in frames: about one full swing at 60 fps (period ≈ 2.4 s
+ *  for a 1 m pendulum released horizontally). */
+const TRAIL_POINTS = 150;
+/** Plot history in frames: 30 s at 60 fps. */
+const PLOT_SAMPLES = 1800;
+
+/** The swing spans x ∈ [−1, 1], y ∈ [−1, 0]; margin above for the pin and
+ *  below for a stretching rod (47 cm at β = 0 within 10 s). */
+const VIEW = new View({ xMin: -1.6, xMax: 1.6, yMin: -1.7, yMax: 0.5 });
+
+const params = new URLSearchParams(location.search);
+const scalarParam = readChoice(params, "scalar", OPTIONS.scalar);
+const state = {
+  scalar: (isScalar(scalarParam) ? scalarParam : "f64") as ScalarName,
+  beta: readInt(params, "beta_pct", OPTIONS.beta_pct) / PCT,
+  substeps: readInt(params, "substeps", OPTIONS.substeps),
+  iterations: readInt(params, "iterations", OPTIONS.iterations),
+  rate: readInt(params, "rate", OPTIONS.rate),
+};
+const maxFps = readInt(params, "fps", OPTIONS.fps);
+
+byId("options", HTMLElement).innerHTML = optionsTableHtml(OPTIONS, PRESETS);
+const hud = byId("hud", HTMLElement);
+const css = document.documentElement;
+const colors = {
+  background: cssColor(css, "--stage-bg"),
+  pin: cssColor(css, "--star"),
+  bob: cssColor(css, "--particle"),
+  rest: cssColor(css, "--grid"),
+  grid: cssColor(css, "--grid"),
+  text: cssColor(css, "--muted"),
+};
+
+// All panels go into the grid before any canvas is sized (see M1's page).
+const panelsEl = byId("panels", HTMLElement);
+const panelEls = PANELS.map((cfg) => {
+  const color = cssColor(css, cfg.colorVar);
+  const el = document.createElement("div");
+  el.className = "panel";
+  const title = document.createElement("h3");
+  title.textContent = cfg.name;
+  title.style.color = color;
+  const canvas = document.createElement("canvas");
+  const readout = document.createElement("div");
+  readout.className = "readout";
+  el.append(title, canvas, readout);
+  return { cfg, color, canvas, readout, el };
+});
+panelsEl.append(...panelEls.map((p) => p.el));
+const panels = panelEls.map(({ cfg, color, canvas, readout }) => ({
+  ...cfg,
+  color,
+  ctx: setupCanvas(canvas),
+  readout,
+  trail: new Trail(TRAIL_POINTS),
+  demo: null as DemoHandle | null,
+  /** Energy at release: the reference for "energy lost". */
+  e0: 0,
+  /** Largest rod error since the last reset, m. */
+  worst: 0,
+}));
+type Panel = (typeof panels)[number];
+
+const plotColors = { background: colors.background, grid: colors.grid, text: colors.text };
+const rodPlot = new LinePlot(byId("rod", HTMLCanvasElement), {
+  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  capacity: PLOT_SAMPLES,
+  scale: "log",
+  colors: plotColors,
+});
+const energyPlot = new LinePlot(byId("energy", HTMLCanvasElement), {
+  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  capacity: PLOT_SAMPLES,
+  scale: "linear",
+  colors: plotColors,
+});
+
+try {
+  const engine = await loadEngine();
+  /** Simulated seconds since the last (re)start. */
+  let simTime = 0;
+
+  const handle = (p: Panel): DemoHandle => {
+    if (p.demo === null) throw new Error("demo not created");
+    return p.demo;
+  };
+
+  /** Pushes the shared settings to both demos (each setter is checked:
+   *  a 0 status means the page passed something the engine rejects). */
+  const applySettings = () => {
+    for (const p of panels) {
+      const d = handle(p);
+      const statuses = [
+        engine.demo_set_solver(d, p.code),
+        engine.demo_set_beta(d, state.beta),
+        engine.demo_set_substeps(d, state.substeps),
+        engine.demo_set_iterations(d, state.iterations),
+        engine.demo_set_rate(d, state.rate),
+      ];
+      if (!statuses.every((s) => s === 1)) throw new Error("a setting was rejected");
+    }
+  };
+
+  /** (Re)creates both pendulums with the current scalar and settings. */
+  const restart = () => {
+    for (const p of panels) {
+      if (p.demo !== null) engine.demo_free(p.demo);
+      const demo = engine.demo_new(DEMO_PENDULUM, SCALAR_CODES[state.scalar], 0, 0);
+      if (demo === 0) throw new Error("demo_new returned null");
+      p.demo = demo;
+      p.e0 = engine.demo_energy(demo);
+      p.worst = 0;
+      p.trail.clear();
+    }
+    applySettings();
+    rodPlot.clear();
+    energyPlot.clear();
+    simTime = 0;
+  };
+  restart();
+
+  /** `pos`: pin then bob, interleaved. */
+  const drawPanel = (p: Panel, pos: Float32Array): void => {
+    clear(p.ctx, colors.background);
+    VIEW.apply(p.ctx);
+    const pin: [number, number] = [pos[0] ?? 0, pos[1] ?? 0];
+    const bob: [number, number] = [pos[COORDS_PER_PARTICLE] ?? 0, pos[COORDS_PER_PARTICLE + 1] ?? 0];
+    drawCircle(p.ctx, VIEW, pin, ROD_LENGTH_M, CIRCLE_WIDTH_PX, colors.rest);
+    p.trail.draw(p.ctx, VIEW, p.color, TRAIL_WIDTH_PX);
+    drawSegment(p.ctx, VIEW, pin, bob, ROD_WIDTH_PX, p.color);
+    drawPoints(p.ctx, VIEW, pos.subarray(0, COORDS_PER_PARTICLE), PIN_PX, colors.pin);
+    drawPoints(p.ctx, VIEW, pos.subarray(COORDS_PER_PARTICLE), BOB_PX, colors.bob);
+  };
+
+  // Controls: shared by both panels, so each 01 row is one setting.
+  const controls = byId("controls", HTMLElement);
+  slider(controls, {
+    label: "β",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    value: state.beta,
+    format: (b) => `${b.toFixed(2)} (impulse only)`,
+    onInput: (b) => {
+      state.beta = b;
+      applySettings();
+    },
+  });
+  slider(controls, {
+    label: "substeps",
+    min: OPTIONS.substeps.min,
+    max: OPTIONS.substeps.max,
+    value: state.substeps,
+    onInput: (n) => {
+      state.substeps = n;
+      applySettings();
+    },
+  });
+  slider(controls, {
+    label: "iterations",
+    min: OPTIONS.iterations.min,
+    max: OPTIONS.iterations.max,
+    value: state.iterations,
+    onInput: (n) => {
+      state.iterations = n;
+      applySettings();
+    },
+  });
+  slider(controls, {
+    label: "rate",
+    min: OPTIONS.rate.min,
+    max: OPTIONS.rate.max,
+    value: state.rate,
+    format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
+    onInput: (hz) => {
+      state.rate = hz;
+      applySettings();
+    },
+  });
+  select(controls, {
+    label: "scalar",
+    choices: [["f64", "f64"], ["f32", "f32"]],
+    value: state.scalar,
+    onChange: (v) => {
+      if (isScalar(v)) state.scalar = v;
+      restart();
+    },
+  });
+  button(controls, { label: "reset", onClick: restart });
+
+  if (smokeMode) {
+    runSmoke(
+      engine,
+      panels.map((p) => ({
+        demo: handle(p),
+        ctx: p.ctx,
+        draw: () => drawPanel(p, positionsView(engine, handle(p))),
+      })),
+      colors.bob,
+      { checkEnergy: true },
+    );
+  } else {
+    const fps = new RateMeter();
+    const sps = new RateMeter();
+    runLoop((elapsed, now) => {
+      let steps = 0;
+      for (const p of panels) steps = engine.demo_advance(handle(p), elapsed);
+      // Views after all stepping (memory growth would detach earlier ones).
+      const readings = panels.map((p) => {
+        const demo = handle(p);
+        const pos = positionsView(engine, demo);
+        p.trail.push(pos);
+        drawPanel(p, pos);
+        const rod = engine.demo_constraint_error(demo);
+        const lost = p.e0 - engine.demo_energy(demo);
+        p.worst = Math.max(p.worst, rod);
+        p.readout.textContent =
+          `rod error ${(rod * 1000).toFixed(3)} mm (worst ${(p.worst * 1000).toFixed(3)}) · ` +
+          `energy lost ${lost.toFixed(3)} J`;
+        return { rod, lost };
+      });
+      simTime += steps / state.rate;
+      rodPlot.push(simTime, readings.map((r) => r.rod));
+      energyPlot.push(simTime, readings.map((r) => r.lost));
+      rodPlot.draw();
+      energyPlot.draw();
+      fps.add(now);
+      sps.add(now, steps);
+      hud.textContent =
+        `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · ${state.scalar} · ` +
+        `t = ${simTime.toFixed(1)} s` + (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
+    }, { maxFps });
+  }
+} catch (err) {
+  hud.textContent = `error: ${errorText(err)}`;
+  smokeError(err);
+  throw err;
+}

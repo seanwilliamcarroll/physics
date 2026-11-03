@@ -363,7 +363,8 @@ in headless Chrome, one fresh profile per case: M0 (default, f64, 500k,
 panic) and M1 (orbits in f64 and f32; every panel must step, draw its
 planet, and report finite energy; the reported pixels are the minimum
 across panels, so one blank panel fails), and M2 (the default disk, the
-unsoftened collapse, and the cluster at N = 1024, both scalar panels). The
+unsoftened collapse, and the cluster at N = 1024, both scalar panels),
+and M3 (both solver panels: the default, and f32 at 100 substeps). The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs
 `SMOKE ok steps=N particle_px=N`.

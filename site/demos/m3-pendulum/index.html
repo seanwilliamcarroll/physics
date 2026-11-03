@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M3 · Pendulum: the solver duel</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Pendulum: the solver duel</h1>
+    <p class="muted">
+      One pendulum (1 m rod, 1 kg bob, released level with the pin), solved two
+      ways. The <b>impulse</b> solver fixes the rod's <i>velocity</i>, so the
+      bob drifts off the circle unless the Baumgarte factor β feeds the error
+      back. <b>XPBD</b> projects the bob's <i>position</i> back onto the circle,
+      so the rod never stretches, but the projection quietly drains energy.
+      More substeps fix most of both. The faint circle is the rod's true length.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="panels" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Rod error</h2>
+    <p class="muted">
+      How far the rod is from 1 m, in meters (log scale). XPBD sits at float
+      rounding; the impulse solver drifts unless β and substeps hold it.
+    </p>
+    <div class="plot"><canvas id="rod"></canvas></div>
+    <h2>Energy lost</h2>
+    <p class="muted">
+      Energy at release minus energy now, in joules (the full swing is 9.8 J).
+      A perfect solver stays at 0. Below 0 means energy was <i>gained</i>: try
+      the f32 preset with 100 substeps.
+    </p>
+    <div class="plot"><canvas id="energy"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
