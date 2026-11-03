@@ -40,9 +40,12 @@ export function optionsTableHtml(
     return `<tr><td><code>${name}</code></td><td>${legal}</td><td>${dflt}</td><td>${o.help}</td></tr>`;
   });
   const links = presets.map(([label, q]) => `<a href="./${q}">${label}</a>`).join(" · ");
+  // The example comes from the page's own presets, so it names an option
+  // the page actually has.
+  const example = presets.find(([, q]) => q !== "")?.[1] ?? "";
   return `
     <h2>Options</h2>
-    <p class="muted">Add to the URL, e.g. <code>?scalar=f64</code>.
+    <p class="muted">Add to the URL${example === "" ? "" : `, e.g. <code>${example}</code>`}.
       Out-of-range numbers are clamped to the nearest legal value.</p>
     <table>
       <thead><tr><th>option</th><th>legal values</th><th>default</th><th>effect</th></tr></thead>

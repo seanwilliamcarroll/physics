@@ -36,3 +36,9 @@ test("optionsTableHtml: one row per option, readable defaults, preset links", ()
   assert.match(html, /uncapped/, "Infinity default reads as 'uncapped'");
   assert.match(html, /<a href="\.\/\?fps=120">fast<\/a>/);
 });
+
+test("optionsTableHtml: the URL example is the first non-empty preset", () => {
+  const html = optionsTableHtml({ n: N }, [["default", ""], ["big", "?n=99"]]);
+  assert.match(html, /e\.g\. <code>\?n=99<\/code>/);
+  assert.doesNotMatch(optionsTableHtml({ n: N }, [["default", ""]]), /e\.g\./);
+});

@@ -30,12 +30,15 @@ struct Case {
 
 const M0: &str = "demos/m0-hello/";
 const M1: &str = "demos/m1-orbits/";
+const M2: &str = "demos/m2-cluster/";
 
 /// M0: default settings, the other scalar, the size that once rendered a
 /// blank canvas (one path over Chrome's ~16 MiB draw-command limit), and
 /// the panic hook. M1: all three orbit panels must draw and report finite
-/// energy, in both scalars.
-const CASES: [Case; 6] = [
+/// energy, in both scalars. M2: both panels on the default disk, the
+/// unsoftened collapse (energy must stay finite through the blow-up), and
+/// a heavier cluster.
+const CASES: [Case; 9] = [
     Case {
         name: "default",
         page: M0,
@@ -70,6 +73,24 @@ const CASES: [Case; 6] = [
         name: "orbits32",
         page: M1,
         query: "?smoke&scalar=f32",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m2",
+        page: M2,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m2eps0",
+        page: M2,
+        query: "?smoke&scene=collapse&eps_mm=0",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m2n1024",
+        page: M2,
+        query: "?smoke&scene=cluster&n=1024",
         check: Check::Draws,
     },
 ];
