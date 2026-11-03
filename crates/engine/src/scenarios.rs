@@ -214,15 +214,26 @@ pub const DISK_ORBITERS_TOTAL_MASS: f64 = 1.0e10;
 pub fn disk<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
     w.add_force(cluster_gravity()?);
-    if n == 0 {
-        return Ok(w);
+    let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
+    for (pos, vel, mass) in disk_bodies(n, seed) {
+        w.particles.add(vec(pos), vec(vel), S::from_f64(mass));
     }
-    let orbiters = n - 1;
+    Ok(w)
+}
+
+/// One body in `f64` before conversion: `(position, velocity, mass)`.
+type BodyF64 = ((f64, f64), (f64, f64), f64);
+
+/// [`disk`]'s bodies in `f64`, center first. Not generic, so the setup (including its sort) is compiled once
+/// rather than once per scalar type in the `.wasm`.
+fn disk_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
+    let Some(orbiters) = n.checked_sub(1) else {
+        return Vec::new();
+    };
     let mut rng = SplitMix64::new(seed);
     let pos: Vec<(f64, f64)> = (0..orbiters)
         .map(|_| point_in_annulus(&mut rng, DISK_INNER_RADIUS, DISK_RADIUS))
         .collect();
-    // Exact for any count a `usize` can hold in practice (< 2⁵³).
     #[expect(
         clippy::cast_precision_loss,
         reason = "orbiter counts are far below 2^53, so the conversion is exact"
@@ -231,8 +242,11 @@ pub fn disk<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
 
     // Enclosed mass: the center plus every orbiter strictly closer in.
     // Sorted squared radii make that a binary search per orbiter.
+    // Unstable: equal f64 keys are indistinguishable, and std's unstable
+    // sort is the one Barnes–Hut uses, so the `.wasm` carries one sort
+    // (the stable one alone measured ~8.9 KB).
     let mut r_sq_sorted: Vec<f64> = pos.iter().map(|&(x, y)| x * x + y * y).collect();
-    r_sq_sorted.sort_by(f64::total_cmp);
+    r_sq_sorted.sort_unstable_by(f64::total_cmp);
     let eps_sq = CLUSTER_SOFTENING * CLUSTER_SOFTENING;
     let vel: Vec<(f64, f64)> = pos
         .iter()
@@ -259,14 +273,13 @@ pub fn disk<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
         .fold((0.0, 0.0), |(px, py), &(vx, vy)| (px + m * vx, py + m * vy));
     let total = DISK_CENTRAL_MASS + DISK_ORBITERS_TOTAL_MASS;
     let (bx, by) = (-px / total, -py / total);
-    let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
-    w.particles
-        .add(Vec2::ZERO, vec(bx, by), S::from_f64(DISK_CENTRAL_MASS));
-    for (&(x, y), &(vx, vy)) in pos.iter().zip(&vel) {
-        w.particles
-            .add(vec(x, y), vec(vx + bx, vy + by), S::from_f64(m));
-    }
-    Ok(w)
+    core::iter::once(((0.0, 0.0), (bx, by), DISK_CENTRAL_MASS))
+        .chain(
+            pos.into_iter()
+                .zip(vel)
+                .map(|(p, (vx, vy))| (p, (vx + bx, vy + by), m)),
+        )
+        .collect()
 }
 
 /// Total mass of [`collapse`], kg, shared equally: `G M` = 2 m³/s², so the
