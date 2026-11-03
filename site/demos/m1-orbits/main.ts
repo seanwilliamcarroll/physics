@@ -7,8 +7,10 @@ import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
 import { setupCanvas, View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
 import {
   COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
-  INTEGRATOR_VELOCITY_VERLET, SCALAR_F32, SCALAR_F64,
+  INTEGRATOR_VELOCITY_VERLET,
 } from "../../js/abi.ts";
+import { SCALAR_CODES, isScalar, readScalar } from "../../js/scalars.ts";
+import type { ScalarName } from "../../js/scalars.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
@@ -17,12 +19,6 @@ import { Trail } from "../../js/trail.ts";
 import { slider, select, button } from "../../js/controls.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
 import type { DemoHandle } from "../../js/engine";
-
-const SCALAR_CODES = { f32: SCALAR_F32, f64: SCALAR_F64 };
-type ScalarName = keyof typeof SCALAR_CODES;
-function isScalar(s: string): s is ScalarName {
-  return Object.hasOwn(SCALAR_CODES, s);
-}
 
 /** The three panels: integrator code, display name, and the CSS variable
  *  holding its color (title, trail, plot line). */
@@ -62,9 +58,8 @@ const PLOT_SAMPLES = 1800;
 const VIEW = new View({ xMin: -3, xMax: 3, yMin: -3, yMax: 3 });
 
 const params = new URLSearchParams(location.search);
-const scalarParam = readChoice(params, "scalar", OPTIONS.scalar);
 const state: { scalar: ScalarName; rate: number } = {
-  scalar: isScalar(scalarParam) ? scalarParam : "f64",
+  scalar: readScalar(params, OPTIONS.scalar),
   rate: readInt(params, "rate", OPTIONS.rate),
 };
 const maxFps = readInt(params, "fps", OPTIONS.fps);

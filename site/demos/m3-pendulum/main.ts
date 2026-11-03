@@ -6,22 +6,17 @@ import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
 import { setupCanvas, View, clear, drawPoints, drawSegment, drawCircle, cssColor } from "../../js/canvas.ts";
 import {
-  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_PENDULUM, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD,
+  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_PENDULUM, SOLVER_IMPULSE, SOLVER_XPBD,
 } from "../../js/abi.ts";
+import { SCALAR_CODES, isScalar, readScalar } from "../../js/scalars.ts";
 import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
-import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
+import { readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
 import { Trail } from "../../js/trail.ts";
 import { slider, select, button } from "../../js/controls.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
 import type { DemoHandle } from "../../js/engine";
-
-const SCALAR_CODES = { f64: SCALAR_F64, f32: SCALAR_F32 };
-type ScalarName = keyof typeof SCALAR_CODES;
-function isScalar(s: string): s is ScalarName {
-  return Object.hasOwn(SCALAR_CODES, s);
-}
 
 /** The two panels: solver code, name, CSS color variable. */
 const PANELS = [
@@ -41,7 +36,7 @@ const OPTIONS: {
   scalar: ChoiceOption; beta_pct: IntOption; substeps: IntOption; iterations: IntOption; rate: IntOption;
   fps: IntOption;
 } = {
-  scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f64", help: "engine number type (f32 + many substeps: XPBD gains energy)" },
+  scalar: { kind: "choice", values: ["f64", "f32"], default: "f64", help: "engine number type (f32 + many substeps: XPBD gains energy)" },
   // 20%: engine::DEFAULT_BAUMGARTE (Box2D v2), the β in 01's table.
   beta_pct: { kind: "int", min: 0, max: PCT, default: 20, help: "impulse solver's Baumgarte β × 100; 0 = no feedback" },
   substeps: { kind: "int", min: 1, max: 100, default: 1, help: "substeps per physics step (01's table: 1, 20, 100)" },
@@ -77,9 +72,8 @@ const PLOT_SAMPLES = 1800;
 const VIEW = new View({ xMin: -1.6, xMax: 1.6, yMin: -1.7, yMax: 0.5 });
 
 const params = new URLSearchParams(location.search);
-const scalarParam = readChoice(params, "scalar", OPTIONS.scalar);
 const state = {
-  scalar: (isScalar(scalarParam) ? scalarParam : "f64") as ScalarName,
+  scalar: readScalar(params, OPTIONS.scalar),
   beta: readInt(params, "beta_pct", OPTIONS.beta_pct) / PCT,
   substeps: readInt(params, "substeps", OPTIONS.substeps),
   iterations: readInt(params, "iterations", OPTIONS.iterations),
