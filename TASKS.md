@@ -8,8 +8,11 @@ light chain (1:100) stays solid under one solver and goes rubbery under
 the other; a double pendulum shows chaos (copies 1e-9 apart, and f32 vs
 f64); any particle can be grabbed and dragged with the mouse.
 
-**Done when:** dragging a chain feels solid in one panel and stretchy in
-the other at the same cost; the double pendulum divergence is visible.
+**Done when** (revised in M4.9): both solvers hold a dragged heavy chain
+(split impulses), and switching the impulse panel to classic Baumgarte
+shows the chain gaining energy and blowing up; the double pendulum
+divergence is visible. (The original "solid in one panel, stretchy in the
+other" was classic Baumgarte's blow-up mistaken for softness.)
 
 ## Workflow
 
@@ -162,7 +165,8 @@ within the solver's error bound and within 52 µm (XPBD) / 4.9 µm
 `scenarios::chain(solver, substeps, links, mass_ratio)` and
 `double_pendulum(solver, substeps, start, offset)` (built by a subagent).
 **1:100 chain, 10 links, 10 s:** at 20 substeps XPBD holds links to
-3.2 mm, impulse 42 cm (133× apart), 10 iterations tighten both; at 1
+3.2 mm, impulse 42 cm (133× apart) **[wrong: classic Baumgarte's blow-up;
+corrected in section 9: with split impulses 4.3 mm]**, 10 iterations tighten both; at 1
 substep both fail; 1:1 holds in both, so the mass ratio is the cause.
 **Double pendulum (impulse, 20 substeps):** energy within 0.039 J over 30 s;
 copies 1e-9 m apart separate (1 cm) at **23.8 s**, not "a few seconds"
@@ -181,7 +185,8 @@ On `World` (decided: the engine owns it, so it's tested natively):
 `release(Grab) -> Result<(), Grab>`. `Particles::nearest_dynamic`,
 `set_static_position` (static only), crate-private `pop_if_last`. A
 flicked 1:100 chain: XPBD 8.1 mm link error, impulse 18.3 cm with the bob
-42 cm behind the cursor.
+42 cm behind the cursor **[wrong, and the test asserted nothing; corrected
+in section 9: 10.0 mm, both bobs ~7.8 cm behind]**.
 
 ## ✅ 6. Web layer (done)
 
@@ -212,6 +217,20 @@ The two files that grow every milestone split: `smoke.rs` (case table to
 (quadtree to `barnes_hut/tree.rs`). `docs/types.md` gains
 `DoublePendulumStart`; `type-invariants.md` triggers re-checked. No
 unnamed literals in M4's code.
+
+## ✅ 9. Fix: classic Baumgarte blows up on heavy chains (done, found in review)
+
+The impulse chain gained energy without bound (+435 J in 5 s). Root
+cause (a replica, then the engine): classic Baumgarte adds its bias as
+real velocity; one Gauss–Seidel pass can't remove it on a 1:100 chain and
+warm starting carries it forward; worse with more substeps. Fix:
+`Stabilization::{Baumgarte, Split}` (your choice), split impulses by
+default; the pendulum and double-pendulum scenes opt into classic (split
+impulses dissipate like XPBD: −8.2 J on the double pendulum). Chain tests
+re-measured with energy checks; the blow-up is a known-failure test; the
+drag test finally asserts its bounds. `demo_set_stabilization`; the chain
+page gets a stabilization menu, an energy plot, and a "classic blows up"
+preset. Corrections in `06`, `04-testing`, `05-roadmap` and above.
 
 ---
 
