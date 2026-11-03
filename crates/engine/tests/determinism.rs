@@ -32,7 +32,7 @@ enum Run {
     Pendulum(Solver),
 }
 
-const RUNS: [Run; 9] = [
+const RUNS: [Run; 10] = [
     Run::Fountain,
     Run::Cluster,
     Run::Disk,
@@ -42,6 +42,7 @@ const RUNS: [Run; 9] = [
     Run::Orbit(Integrator::VelocityVerlet),
     Run::ClusterBarnesHut,
     Run::Pendulum(Solver::Xpbd),
+    Run::Pendulum(Solver::Impulse),
 ];
 
 /// Builds the run's world, steps it, and hashes the final state.
@@ -105,7 +106,7 @@ for_each_scalar!(every_run_is_repeatable);
 /// (then paste the new values from the failure message) or a bug.
 /// Recorded on aarch64-apple-darwin, Rust 1.99.1; `cargo xtask test-wasm`
 /// checks the same values on wasm32-wasip1 (`docs/04-testing.md`).
-const GOLDEN: [(u64, u64); 9] = [
+const GOLDEN: [(u64, u64); 10] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster
     (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
@@ -115,6 +116,7 @@ const GOLDEN: [(u64, u64); 9] = [
     (0x521c_acff_69c8_f074, 0x2479_9e2b_6114_4cb8), // Orbit(VelocityVerlet)
     (0x1b01_6782_cfd0_e3bb, 0x6ad4_4251_6e06_fcf6), // ClusterBarnesHut
     (0x989a_6cd3_ba07_198c, 0x208c_a668_28aa_95aa), // Pendulum(Xpbd)
+    (0x1ddc_6b8c_24f6_6c6b, 0x6642_c1e3_c031_d93e), // Pendulum(Impulse)
 ];
 
 #[test]
