@@ -383,6 +383,81 @@ DOM-touching code is covered by the browser smoke test
 instead. The tests live outside `site/`, so they're never served. Note:
 `node --test` needs a glob; a directory argument is treated as a module.
 
+## Coverage
+
+```sh
+cargo xtask coverage          # needs: cargo install cargo-llvm-cov
+```
+
+- **Rust:** `cargo-llvm-cov` (LLVM source-based coverage) runs the
+  workspace tests, except xtask's, instrumented, then writes an HTML
+  report to `target/llvm-cov/html/index.html` (per file, line by line)
+  and prints lines and functions covered per crate. `test-support` and
+  math's `#[cfg(test)]` `test_util` are left out of the report: they're
+  test tooling. cargo-llvm-cov already drops `tests/` and `foo/tests.rs`.
+  The `llvm-tools` component it uses is pinned in `rust-toolchain.toml`.
+- **Site JS:** `node --test --experimental-test-coverage` over
+  `tests/site` (the test files themselves excluded). Node prints its own
+  table. It only lists **modules the tests import**: `dom.ts`, `wasm.ts`,
+  `controls.ts`, `smoke.ts` and the demo pages aren't in it at all, not
+  even as 0%.
+- **Report only, no thresholds.** Both halves run every time (the JS
+  half takes well under a second). Warm run: ~2.5 s; after
+  `cargo llvm-cov clean --workspace`: ~4 s.
+
+Only the native `cargo test` run counts. The wasm run (`test-wasm`) and
+the browser smoke test execute code too, but aren't measured.
+
+**First report (M2.7):**
+
+| Crate | Lines | Functions |
+|---|---|---|
+| `math` | 100.00% (65/65) | 100.00% (21/21) |
+| `engine` | 97.01% (324/334) | 94.92% (56/59) |
+| `web` | 97.27% (178/183) | 97.14% (34/35) |
+| Rust total | 97.42% (567/582) | 96.52% (111/115) |
+
+| Site JS (imported modules only) | Lines | Branches | Functions |
+|---|---|---|---|
+| `abi.ts`, `options.ts` | 100% | 100% | 100% |
+| `ring.ts` | 100% | 94.12% | 100% |
+| `loop.ts` | 81.01% | 93.33% | 87.50% |
+| `plot.ts` | 43.93% | 87.50% | 75.00% |
+| `trail.ts` | 42.47% | 85.71% | 50.00% |
+| `canvas.ts` | 27.46% | 50.00% | 0.00% |
+| All listed files | 57.02% | 92.00% | 71.43% |
+
+**What no test executes, and whether it matters:**
+
+- `web` `demo_panic_for_test` (`exports.rs`): can't run natively, since
+  a panic can't unwind out of an `extern "C"` fn. Its Rust-ABI helper is
+  tested, and the smoke test's panic case runs the export in Chrome. Fine.
+- `web` `Demo::energy` for an **f32** orbit (`demo.rs`): the native tests
+  only read energy from f64 orbits. The smoke test's f32 orbit case runs
+  it in the browser, but a native test would be cheap. Worth adding.
+- `engine` `ConfigError`'s `Display` (`world.rs`): no test formats the
+  error. Small, but it's the message a user would see; one assertion
+  would cover it.
+- `engine` `World::substeps()` getter and `Particles::default()`: unused
+  accessors. Harmless.
+- `engine` scenarios: the `?` after `World::new(.., *_SUBSTEPS)` never
+  takes the error branch (the constants are nonzero). Region-only misses;
+  unreachable by construction.
+- Site JS: the uncovered lines are drawing code (`canvas.ts`, the
+  drawing halves of `plot.ts` and `trail.ts`) and `runLoop` (rAF). They
+  touch the DOM, so by design they're covered by the browser smoke test,
+  not unit tests. The pure halves of those modules are covered.
+
+**Gate: not recommended yet.** The Rust misses are all explained above,
+so a number like 97% adds little that reading the HTML doesn't. A "can't
+drop" ratchet would trip on harmless changes (a new `Default` impl, an
+accessor, a generic instantiated differently), and there's no CI to
+hold a baseline; a local hook would need a committed number that every
+PR edits. The JS percentage is mostly a statement about how much of the
+site is DOM code, so gating it would push tests toward the wrong layer.
+Revisit if CI arrives, or if a review ever finds a real bug in code the
+report showed as unexecuted.
+
 ## Phase 1 test-first order
 
 1. `Vec2` and `Scalar` unit tests.
