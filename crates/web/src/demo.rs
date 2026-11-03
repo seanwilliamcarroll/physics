@@ -6,8 +6,8 @@
 use core::num::NonZeroU32;
 
 use engine::diagnostics::total_energy;
-use engine::scenarios::{Fountain, ORBIT_CIRCULAR, orbit, orbit_gravity};
-use engine::{ConfigError, Integrator, Scalar, World};
+use engine::scenarios::{Fountain, ORBIT_CIRCULAR, cluster, cluster_gravity, orbit, orbit_gravity};
+use engine::{ConfigError, Integrator, PairwiseGravity, Scalar, World};
 
 use crate::abi;
 use crate::fixed_step::FixedStep;
@@ -44,6 +44,8 @@ impl ScalarKind {
 pub enum DemoKind {
     Fountain,
     Orbit,
+    /// `n` bodies under pairwise gravity (`scenarios::cluster`): M2.
+    Cluster,
 }
 
 impl DemoKind {
@@ -53,6 +55,7 @@ impl DemoKind {
         match code {
             abi::DEMO_FOUNTAIN => Some(Self::Fountain),
             abi::DEMO_ORBIT => Some(Self::Orbit),
+            abi::DEMO_CLUSTER => Some(Self::Cluster),
             _ => None,
         }
     }
@@ -83,6 +86,8 @@ enum Scene {
     Fountain(Fountain),
     /// Nothing between steps; energy is defined (`orbit_gravity`).
     Orbit,
+    /// Nothing between steps; energy is defined (`cluster_gravity`).
+    Cluster,
 }
 
 pub struct Demo {
@@ -122,6 +127,13 @@ impl Demo {
                     ScalarKind::F64 => AnyWorld::F64(orbit(start, ORBIT_CIRCULAR)?),
                 };
                 (world, Scene::Orbit)
+            }
+            DemoKind::Cluster => {
+                let world = match scalar {
+                    ScalarKind::F32 => AnyWorld::F32(cluster(n, seed)?),
+                    ScalarKind::F64 => AnyWorld::F64(cluster(n, seed)?),
+                };
+                (world, Scene::Cluster)
             }
         };
         let mut demo = Self {
@@ -184,8 +196,10 @@ impl Demo {
     pub fn energy(&self) -> Option<f64> {
         match (&self.scene, &self.world) {
             (Scene::Fountain(_), _) => None,
-            (Scene::Orbit, AnyWorld::F32(w)) => Some(orbit_energy(w)),
-            (Scene::Orbit, AnyWorld::F64(w)) => Some(orbit_energy(w)),
+            (Scene::Orbit, AnyWorld::F32(w)) => Some(energy_under(w, &orbit_gravity())),
+            (Scene::Orbit, AnyWorld::F64(w)) => Some(energy_under(w, &orbit_gravity())),
+            (Scene::Cluster, AnyWorld::F32(w)) => Some(energy_under(w, &cluster_gravity())),
+            (Scene::Cluster, AnyWorld::F64(w)) => Some(energy_under(w, &cluster_gravity())),
         }
     }
 
@@ -207,8 +221,9 @@ fn step_scene<S: Scalar>(w: &mut World<S>, scene: &mut Scene, steps: u32, dt: f6
     }
 }
 
-fn orbit_energy<S: Scalar>(w: &World<S>) -> f64 {
-    total_energy(&w.particles, &orbit_gravity()).to_f64()
+/// Total energy under `gravity`, which must be the scene's own force.
+fn energy_under<S: Scalar>(w: &World<S>, gravity: &PairwiseGravity<S>) -> f64 {
+    total_energy(&w.particles, gravity).to_f64()
 }
 
 fn fill_positions<S: Scalar>(w: &World<S>, buf: &mut Vec<f32>) {

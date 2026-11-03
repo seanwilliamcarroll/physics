@@ -10,7 +10,12 @@ math = { path = "../math" }
 
 [dev-dependencies]
 proptest.workspace = true
+criterion.workspace = true
 test-support = { path = "../test-support" }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "step"
+harness = false  # criterion provides main

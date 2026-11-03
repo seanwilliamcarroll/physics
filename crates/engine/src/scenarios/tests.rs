@@ -174,3 +174,18 @@ fn orbit_gravity_is_the_force_the_scene_uses() {
         assert_eq!(*v1 - *v0, *a);
     }
 }
+
+#[test]
+fn cluster_gravity_is_the_force_the_cluster_uses() {
+    use super::cluster_gravity;
+    let w = cluster::<f64>(8, 3).unwrap();
+    let mut acc = vec![Vec2::ZERO; 8];
+    cluster_gravity::<f64>().accumulate(&w.particles, &mut acc);
+    let mut stepped = cluster::<f64>(8, 3).unwrap();
+    stepped.set_integrator(Integrator::ExplicitEuler);
+    let v0 = stepped.particles.vel().to_vec();
+    stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
+    for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
+        assert_eq!(*v1 - *v0, *a);
+    }
+}

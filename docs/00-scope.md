@@ -89,6 +89,14 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   Nothing it produces ships to browsers. Microsoft-maintained, very widely
   used; pinned exactly in `package.json` / `package-lock.json`. See
   `type-invariants.md` (item 8).
+- *Considered, not adopted:* `thiserror`. The engine validates at the
+  edges (constructors return `Result`, the C boundary returns status
+  codes) and keeps the hot path infallible, so it has a single error type
+  (`ConfigError`) with ten hand-written lines of `Display`/`Error`; a
+  proc-macro dependency in the std-only core isn't worth that. Numerical
+  failure (NaN, blow-up) isn't `Result`-shaped: tests and diagnostics catch
+  it. *Revisit when* the engine has several error enums that wrap one
+  another (`source()` chains), e.g. scene loading or constraint setup.
 
 ## Non-goals (v1)
 

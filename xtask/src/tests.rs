@@ -22,6 +22,18 @@ fn parses_known_commands() {
     assert_eq!(parse(&["smoke"]), Ok(Command::Smoke));
     assert_eq!(parse(&["test-wasm"]), Ok(Command::TestWasm));
     assert_eq!(parse(&["install-hooks"]), Ok(Command::InstallHooks));
+    assert_eq!(
+        parse(&["bench-wasm"]),
+        Ok(Command::BenchWasm { budget_ms: 500 })
+    );
+    assert_eq!(
+        parse(&["bench-wasm", "--budget-ms", "100"]),
+        Ok(Command::BenchWasm { budget_ms: 100 })
+    );
+    assert!(
+        parse(&["bench-wasm", "--budget-ms", "0"]).is_err(),
+        "too short"
+    );
 }
 
 #[test]

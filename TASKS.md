@@ -122,19 +122,16 @@ hand-written parser is gone; gains are typo suggestions, range-checked
 tests. `xtask` allows `doc_markdown` (doc comments are `--help` text).
 Cost: clean build 0.38 s → 2.35 s, incremental 0.16 s.
 
-## 3. Benchmarks (PR)
+## ✅ 3. Benchmarks (done)
 
-`docs/04-testing.md` step 7.
-
-- [ ] `crates/engine/benches/step.rs` (`criterion`): `World::step` for
-      N ∈ {16, 128, 1024} per scalar and integrator; `PairwiseGravity`
-      alone.
-- [ ] `cargo xtask bench-wasm` (decision 3): the same scenarios through
-      `engine.wasm` in Node; report the native/wasm ratio per case.
-- [ ] Use the numbers on two M1 questions: the per-call mass allocation in
-      `PairwiseGravity`, and velocity Verlet's second force pass (M1
-      decision 2). Change code only where a measurement says to.
-- [ ] Record results in `docs/04-testing.md` (benchmarks section).
+`criterion` 0.8.2 (no plotters/rayon) in `benches/step.rs`: O(n²) at
+~2 ns/pair; Verlet exactly 2× (M1 decision 2 stands); the per-call body
+`Vec` is negligible (no change); f32 only 5–10% faster. `cargo xtask
+bench-wasm` (Node, codes from `abi.ts`): wasm matches native from n = 128
+(0.87–1.21×), pays fixed per-call costs at n = 16; f64 wasm ~10% faster
+than native is unexplained (target-cpu=native hypothesis tested and
+refuted). A minimal `DEMO_CLUSTER` + `cluster_gravity` moved up from
+section 5 for the wasm side. Also: `thiserror` considered, not adopted.
 
 ## 4. Scenarios and softening (test first, PR)
 
