@@ -8,7 +8,7 @@ use engine::{Scalar, World};
 /// Total energy of a `scenarios::orbit` world, under the scene's own force.
 #[must_use]
 pub fn orbit_energy<S: Scalar>(w: &World<S>) -> f64 {
-    total_energy(&w.particles, &orbit_gravity()).to_f64()
+    total_energy(&w.particles, &orbit_gravity().unwrap()).to_f64()
 }
 
 /// Distance between the two bodies of an orbit world, m.

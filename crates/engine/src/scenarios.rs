@@ -2,7 +2,9 @@
 //! scene you demo. All in SI units.
 
 use crate::rng::SplitMix64;
-use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, UniformGravity, Vec2, World};
+use crate::{
+    ConfigError, Integrator, PairwiseGravity, Scalar, Softening, UniformGravity, Vec2, World,
+};
 
 /// Standard gravity g₀, m/s²: a magnitude, applied downward (y is up) as
 /// `(0, -g₀)`. Exact by definition (3rd CGPM, 1901), not a measurement.
@@ -105,14 +107,28 @@ pub const CLUSTER_SOFTENING: f64 = 0.1;
 /// Substeps for [`cluster`]: one; tests probe conservation, not accuracy.
 pub const CLUSTER_SUBSTEPS: u32 = 1;
 
-/// The force [`cluster`] adds: G and [`CLUSTER_SOFTENING`]. Public so energy
-/// readouts use exactly the scene's force (like [`orbit_gravity`]).
+/// Newtonian gravity in SI units ([`GRAVITATIONAL_CONSTANT`]) with the
+/// given softening: the only force the gravity scenes use. Rebuilding a
+/// scene's force with a new ε is `clear_forces` + `add_force(gravity(ε))`
+/// (`TASKS.md` M2 decision 4).
 #[must_use]
-pub fn cluster_gravity<S: Scalar>() -> PairwiseGravity<S> {
-    PairwiseGravity::new(
-        S::from_f64(GRAVITATIONAL_CONSTANT),
-        S::from_f64(CLUSTER_SOFTENING),
-    )
+pub fn gravity<S: Scalar>(softening: Softening<S>) -> PairwiseGravity<S> {
+    PairwiseGravity::new(S::from_f64(GRAVITATIONAL_CONSTANT), softening)
+}
+
+/// Checks a scene's softening constant once, in `S`.
+fn softening<S: Scalar>(eps: f64) -> Result<Softening<S>, ConfigError> {
+    Softening::new(S::from_f64(eps)).ok_or(ConfigError::InvalidSoftening)
+}
+
+/// The force [`cluster`] adds: [`gravity`] with [`CLUSTER_SOFTENING`].
+/// Public so energy readouts use exactly the scene's force (like
+/// [`orbit_gravity`]).
+///
+/// # Errors
+/// Only if [`CLUSTER_SOFTENING`] were invalid (it isn't: it's positive).
+pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
+    softening(CLUSTER_SOFTENING).map(gravity)
 }
 
 /// `n` bodies under mutual softened gravity: positions uniform in a disk
@@ -126,10 +142,10 @@ pub fn cluster_gravity<S: Scalar>() -> PairwiseGravity<S> {
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
+/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive).
 pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
-    w.add_force(cluster_gravity());
+    w.add_force(cluster_gravity()?);
     let mut rng = SplitMix64::new(seed);
     let r = CLUSTER_RADIUS;
     for _ in 0..n {
@@ -207,14 +223,14 @@ pub fn orbit_period() -> f64 {
     2.0 * core::f64::consts::PI * ORBIT_SEPARATION / orbit_relative_speed()
 }
 
-/// The force [`orbit`] adds: G and [`ORBIT_SOFTENING`]. Public so energy
-/// readouts (`diagnostics::total_energy`) use exactly the scene's force.
-#[must_use]
-pub fn orbit_gravity<S: Scalar>() -> PairwiseGravity<S> {
-    PairwiseGravity::new(
-        S::from_f64(GRAVITATIONAL_CONSTANT),
-        S::from_f64(ORBIT_SOFTENING),
-    )
+/// The force [`orbit`] adds: [`gravity`] with [`ORBIT_SOFTENING`]. Public
+/// so energy readouts (`diagnostics::total_energy`) use exactly the scene's
+/// force.
+///
+/// # Errors
+/// Only if [`ORBIT_SOFTENING`] were invalid (it isn't: it's positive).
+pub fn orbit_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
+    softening(ORBIT_SOFTENING).map(gravity)
 }
 
 /// A star and a planet [`ORBIT_SEPARATION`] apart, center of mass at the
@@ -227,10 +243,10 @@ pub fn orbit_gravity<S: Scalar>() -> PairwiseGravity<S> {
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`ORBIT_SUBSTEPS`] is nonzero); the `Result` comes from [`World::new`].
+/// [`ORBIT_SUBSTEPS`] is nonzero, [`ORBIT_SOFTENING`] positive).
 pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(integrator, ORBIT_SUBSTEPS)?;
-    w.add_force(orbit_gravity());
+    w.add_force(orbit_gravity()?);
     // Split the separation and the relative velocity by mass, so the
     // center of mass sits at the origin with zero momentum.
     let q = ORBIT_MASS_RATIO;

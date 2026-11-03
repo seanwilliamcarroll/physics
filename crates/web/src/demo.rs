@@ -73,21 +73,50 @@ pub const fn integrator_from_code(code: u32) -> Option<Integrator> {
     }
 }
 
+/// A world and, for the gravity scenes, a copy of the force it runs under:
+/// energy readouts need the force, and `World` owns its forces as
+/// `dyn Force`, so it can't hand a `PairwiseGravity` back.
+struct Sim<S: Scalar> {
+    world: World<S>,
+    gravity: Option<PairwiseGravity<S>>,
+}
+
+impl<S: Scalar> Sim<S> {
+    const fn plain(world: World<S>) -> Self {
+        Self {
+            world,
+            gravity: None,
+        }
+    }
+
+    const fn with_gravity(world: World<S>, gravity: PairwiseGravity<S>) -> Self {
+        Self {
+            world,
+            gravity: Some(gravity),
+        }
+    }
+
+    /// Total energy under the stored force, or `None` without one.
+    fn energy(&self) -> Option<f64> {
+        self.gravity
+            .as_ref()
+            .map(|g| total_energy(&self.world.particles, g).to_f64())
+    }
+}
+
 /// Runtime scalar choice. Each variant monomorphizes a full engine copy into
 /// the `.wasm`, so binary size grows per variant (measure when adding one).
 enum AnyWorld {
-    F32(World<f32>),
-    F64(World<f64>),
+    F32(Sim<f32>),
+    F64(Sim<f64>),
 }
 
-/// Per-scene state and behavior beyond the world itself.
+/// Per-scene behavior between steps.
 enum Scene {
     /// Relaunches fallen particles after every step; owns the PRNG.
     Fountain(Fountain),
-    /// Nothing between steps; energy is defined (`orbit_gravity`).
-    Orbit,
-    /// Nothing between steps; energy is defined (`cluster_gravity`).
-    Cluster,
+    /// Nothing between steps (orbit, cluster).
+    Gravity,
 }
 
 pub struct Demo {
@@ -115,25 +144,35 @@ impl Demo {
             DemoKind::Fountain => {
                 let mut fountain = Fountain::new(seed);
                 let world = match scalar {
-                    ScalarKind::F32 => AnyWorld::F32(fountain.world(n)?),
-                    ScalarKind::F64 => AnyWorld::F64(fountain.world(n)?),
+                    ScalarKind::F32 => AnyWorld::F32(Sim::plain(fountain.world(n)?)),
+                    ScalarKind::F64 => AnyWorld::F64(Sim::plain(fountain.world(n)?)),
                 };
                 (world, Scene::Fountain(fountain))
             }
             DemoKind::Orbit => {
                 let start = Integrator::SymplecticEuler;
                 let world = match scalar {
-                    ScalarKind::F32 => AnyWorld::F32(orbit(start, ORBIT_CIRCULAR)?),
-                    ScalarKind::F64 => AnyWorld::F64(orbit(start, ORBIT_CIRCULAR)?),
+                    ScalarKind::F32 => AnyWorld::F32(Sim::with_gravity(
+                        orbit(start, ORBIT_CIRCULAR)?,
+                        orbit_gravity()?,
+                    )),
+                    ScalarKind::F64 => AnyWorld::F64(Sim::with_gravity(
+                        orbit(start, ORBIT_CIRCULAR)?,
+                        orbit_gravity()?,
+                    )),
                 };
-                (world, Scene::Orbit)
+                (world, Scene::Gravity)
             }
             DemoKind::Cluster => {
                 let world = match scalar {
-                    ScalarKind::F32 => AnyWorld::F32(cluster(n, seed)?),
-                    ScalarKind::F64 => AnyWorld::F64(cluster(n, seed)?),
+                    ScalarKind::F32 => {
+                        AnyWorld::F32(Sim::with_gravity(cluster(n, seed)?, cluster_gravity()?))
+                    }
+                    ScalarKind::F64 => {
+                        AnyWorld::F64(Sim::with_gravity(cluster(n, seed)?, cluster_gravity()?))
+                    }
                 };
-                (world, Scene::Cluster)
+                (world, Scene::Gravity)
             }
         };
         let mut demo = Self {
@@ -152,8 +191,8 @@ impl Demo {
         let steps = self.clock.advance(elapsed);
         let dt = self.clock.dt();
         match &mut self.world {
-            AnyWorld::F32(w) => step_scene(w, &mut self.scene, steps, dt),
-            AnyWorld::F64(w) => step_scene(w, &mut self.scene, steps, dt),
+            AnyWorld::F32(s) => step_scene(&mut s.world, &mut self.scene, steps, dt),
+            AnyWorld::F64(s) => step_scene(&mut s.world, &mut self.scene, steps, dt),
         }
         self.fill_render_buf();
         steps
@@ -170,16 +209,16 @@ impl Demo {
     #[must_use]
     pub const fn integrator(&self) -> Integrator {
         match &self.world {
-            AnyWorld::F32(w) => w.integrator(),
-            AnyWorld::F64(w) => w.integrator(),
+            AnyWorld::F32(s) => s.world.integrator(),
+            AnyWorld::F64(s) => s.world.integrator(),
         }
     }
 
     /// Takes effect from the next step.
     pub const fn set_integrator(&mut self, integrator: Integrator) {
         match &mut self.world {
-            AnyWorld::F32(w) => w.set_integrator(integrator),
-            AnyWorld::F64(w) => w.set_integrator(integrator),
+            AnyWorld::F32(s) => s.world.set_integrator(integrator),
+            AnyWorld::F64(s) => s.world.set_integrator(integrator),
         }
     }
 
@@ -194,19 +233,16 @@ impl Demo {
     /// uniform-gravity potential).
     #[must_use]
     pub fn energy(&self) -> Option<f64> {
-        match (&self.scene, &self.world) {
-            (Scene::Fountain(_), _) => None,
-            (Scene::Orbit, AnyWorld::F32(w)) => Some(energy_under(w, &orbit_gravity())),
-            (Scene::Orbit, AnyWorld::F64(w)) => Some(energy_under(w, &orbit_gravity())),
-            (Scene::Cluster, AnyWorld::F32(w)) => Some(energy_under(w, &cluster_gravity())),
-            (Scene::Cluster, AnyWorld::F64(w)) => Some(energy_under(w, &cluster_gravity())),
+        match &self.world {
+            AnyWorld::F32(s) => s.energy(),
+            AnyWorld::F64(s) => s.energy(),
         }
     }
 
     fn fill_render_buf(&mut self) {
         match &self.world {
-            AnyWorld::F32(w) => fill_positions(w, &mut self.render_buf),
-            AnyWorld::F64(w) => fill_positions(w, &mut self.render_buf),
+            AnyWorld::F32(s) => fill_positions(&s.world, &mut self.render_buf),
+            AnyWorld::F64(s) => fill_positions(&s.world, &mut self.render_buf),
         }
     }
 }
@@ -219,11 +255,6 @@ fn step_scene<S: Scalar>(w: &mut World<S>, scene: &mut Scene, steps: u32, dt: f6
             fountain.respawn_fallen(w);
         }
     }
-}
-
-/// Total energy under `gravity`, which must be the scene's own force.
-fn energy_under<S: Scalar>(w: &World<S>, gravity: &PairwiseGravity<S>) -> f64 {
-    total_energy(&w.particles, gravity).to_f64()
 }
 
 fn fill_positions<S: Scalar>(w: &World<S>, buf: &mut Vec<f32>) {

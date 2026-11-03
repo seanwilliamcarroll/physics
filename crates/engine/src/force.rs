@@ -1,6 +1,6 @@
 //! Force generators: anything that contributes acceleration each substep.
 
-use crate::{Particles, Scalar, Vec2};
+use crate::{Particles, Scalar, Softening, Vec2};
 
 /// A source of acceleration.
 ///
@@ -56,20 +56,21 @@ impl<S: Scalar> Force<S> for UniformGravity<S> {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PairwiseGravity<S> {
     g_const: S,
-    /// ε², stored squared: the force only ever uses ε², and squaring makes
-    /// a negative ε harmless (`docs/type-invariants.md`).
+    /// ε², stored squared: the force only ever uses ε². Nonnegative ε is
+    /// guaranteed by [`Softening`], checked where it was built.
     softening_sq: S,
 }
 
 impl<S: Scalar> PairwiseGravity<S> {
     /// `g_const`: the gravitational constant in the scene's units (SI:
-    /// [`crate::scenarios::GRAVITATIONAL_CONSTANT`]). `softening`: ε in
-    /// meters; 0 is allowed (pure 1/r², what M2 demonstrates blowing up).
+    /// [`crate::scenarios::GRAVITATIONAL_CONSTANT`]). `softening`: ε;
+    /// [`Softening::ZERO`] is allowed (pure 1/r², what M2 demonstrates
+    /// blowing up).
     #[must_use]
-    pub fn new(g_const: S, softening: S) -> Self {
+    pub fn new(g_const: S, softening: Softening<S>) -> Self {
         Self {
             g_const,
-            softening_sq: softening * softening,
+            softening_sq: softening.squared(),
         }
     }
 

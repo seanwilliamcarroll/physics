@@ -9,12 +9,16 @@ use crate::{Force, Integrator, Particles, Scalar, Vec2};
 pub enum ConfigError {
     /// `substeps` must be at least 1.
     ZeroSubsteps,
+    /// A softening length ε must be `≥ 0` (not negative, not NaN); see
+    /// [`crate::Softening`].
+    InvalidSoftening,
 }
 
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ZeroSubsteps => f.write_str("substeps must be at least 1"),
+            Self::InvalidSoftening => f.write_str("softening must be at least 0 (and not NaN)"),
         }
     }
 }

@@ -6,7 +6,7 @@ use super::{
     orbit_relative_speed,
 };
 use crate::diagnostics::{center_of_mass, momentum};
-use crate::{Force, Integrator, PairwiseGravity, Vec2, World};
+use crate::{Force, Integrator, Vec2, World};
 
 fn in_launch_range(v: Vec2<f64>) -> bool {
     (FOUNTAIN_VX.0..FOUNTAIN_VX.1).contains(&v.x) && (FOUNTAIN_VY.0..FOUNTAIN_VY.1).contains(&v.y)
@@ -133,7 +133,8 @@ fn circular_speed_balances_the_softened_pull() {
     // from the actual force must equal v_rel² / d.
     let w = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let mut acc = vec![Vec2::ZERO; 2];
-    PairwiseGravity::new(super::GRAVITATIONAL_CONSTANT, super::ORBIT_SOFTENING)
+    orbit_gravity::<f64>()
+        .unwrap()
         .accumulate(&w.particles, &mut acc);
     let a_rel = (acc[0] - acc[1]).length();
     let v_rel = (w.particles.vel()[1] - w.particles.vel()[0]).length();
@@ -166,7 +167,9 @@ fn orbit_gravity_is_the_force_the_scene_uses() {
     // step: one source for the force, so energy readouts match it.
     let w = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let mut acc = vec![Vec2::ZERO; 2];
-    orbit_gravity::<f64>().accumulate(&w.particles, &mut acc);
+    orbit_gravity::<f64>()
+        .unwrap()
+        .accumulate(&w.particles, &mut acc);
     let mut stepped = orbit::<f64>(Integrator::ExplicitEuler, 1.0).unwrap();
     let v0 = stepped.particles.vel().to_vec();
     stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
@@ -180,7 +183,9 @@ fn cluster_gravity_is_the_force_the_cluster_uses() {
     use super::cluster_gravity;
     let w = cluster::<f64>(8, 3).unwrap();
     let mut acc = vec![Vec2::ZERO; 8];
-    cluster_gravity::<f64>().accumulate(&w.particles, &mut acc);
+    cluster_gravity::<f64>()
+        .unwrap()
+        .accumulate(&w.particles, &mut acc);
     let mut stepped = cluster::<f64>(8, 3).unwrap();
     stepped.set_integrator(Integrator::ExplicitEuler);
     let v0 = stepped.particles.vel().to_vec();
@@ -188,4 +193,21 @@ fn cluster_gravity_is_the_force_the_cluster_uses() {
     for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
         assert_eq!(*v1 - *v0, *a);
     }
+}
+
+#[test]
+fn invalid_softening_constant_is_a_config_error() {
+    assert_eq!(
+        super::softening::<f64>(-0.1),
+        Err(crate::ConfigError::InvalidSoftening)
+    );
+    assert_eq!(
+        super::softening::<f32>(f64::NAN),
+        Err(crate::ConfigError::InvalidSoftening)
+    );
+    assert!(
+        crate::ConfigError::InvalidSoftening
+            .to_string()
+            .contains("softening")
+    );
 }

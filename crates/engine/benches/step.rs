@@ -12,15 +12,13 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use engine::scenarios::{GRAVITATIONAL_CONSTANT, cluster};
-use engine::{Force, Integrator, PairwiseGravity, Scalar, Vec2};
+use engine::scenarios::{cluster, cluster_gravity};
+use engine::{Force, Integrator, Scalar, Vec2};
 
 /// Body counts: O(n²) makes each ~8x step in N cost ~64x.
 const SIZES: [usize; 3] = [16, 128, 1024];
 const SEED: u64 = 1;
 const DT: f64 = 1.0 / 60.0;
-/// Cluster softening, as in `scenarios::cluster`.
-const SOFTENING_M: f64 = 0.1;
 /// Integrators with distinct cost: explicit Euler costs the same as
 /// symplectic Euler (one force pass); velocity Verlet does two.
 const INTEGRATORS: [(Integrator, &str); 2] = [
@@ -46,10 +44,7 @@ fn step<S: Scalar>(c: &mut Criterion, scalar: &str) {
 /// The force alone (no integration), to separate the O(n²) pair loop.
 fn pairwise<S: Scalar>(c: &mut Criterion, scalar: &str) {
     let mut group = c.benchmark_group(format!("pairwise_{scalar}"));
-    let gravity = PairwiseGravity::new(
-        S::from_f64(GRAVITATIONAL_CONSTANT),
-        S::from_f64(SOFTENING_M),
-    );
+    let gravity = cluster_gravity::<S>().unwrap();
     for n in SIZES {
         let w = cluster::<S>(n, SEED).unwrap();
         let mut acc = vec![Vec2::ZERO; n];

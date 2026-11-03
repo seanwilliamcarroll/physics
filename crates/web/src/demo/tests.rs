@@ -66,7 +66,7 @@ fn orbit_energy_matches_diagnostics_on_the_same_world() {
         d.advance(PHYSICS_DT);
         w.step(PHYSICS_DT);
     }
-    let expect = total_energy(&w.particles, &orbit_gravity());
+    let expect = total_energy(&w.particles, &orbit_gravity().unwrap());
     assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));
 }
 
@@ -130,6 +130,6 @@ fn cluster_demo_has_n_bodies_and_a_matching_energy() {
         d.advance(PHYSICS_DT);
         w.step(PHYSICS_DT);
     }
-    let expect = total_energy(&w.particles, &cluster_gravity());
+    let expect = total_energy(&w.particles, &cluster_gravity().unwrap());
     assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));
 }
