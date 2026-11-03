@@ -64,7 +64,8 @@ type (~7 KB each).
    `PinConstraint`:** a pin is a distance constraint to a static particle
    (`add_static`, `inv_mass = 0`), which both solvers handle for free.
 2. **Solver: an enum, not a trait object**, like `Integrator`:
-   `Solver::{Xpbd, Impulse { beta }}`. Two known solvers; the closed set
+   `Solver::{Xpbd, Impulse}`, with β a separate `Baumgarte<S>` setting
+   (revised in `06-constraints.md`: keeps `Solver` non-generic). Two known solvers; the closed set
    gives exhaustive matches, no `dyn`, and an easy `demo_set_solver` code.
    The `01` sketch (`trait Solver`) predates the `Integrator` precedent;
    revisit if a third solver appears.
@@ -112,12 +113,17 @@ type (~7 KB each).
 
 ---
 
-## 1. `docs/06-constraints.md` (PR)
+## ✅ 1. `docs/06-constraints.md` (done)
 
-- [ ] Constraint trait, solver enum, how the step is split, where λ
-      lives, and how this extends to M4 chains and M6 contacts.
-      Decisions 1–4 written up properly, with the XPBD and impulse update
-      equations and references (Macklin et al. 2016; Catto, Solver2D).
+Two-body `Constraint<S>` trait (C, ∇C, compliance), solvers generic over
+it with concrete storage (`Vec<DistanceConstraint>`, no `dyn`);
+`DistanceConstraint::between` takes its rest length from current positions
+(no invalid length) and is rigid-only until M5's `Compliance`;
+`add_constraint` checks ids (`UnknownParticle`). `Solver::{Xpbd, Impulse}`
+plus `Baumgarte<S>` (0 ≤ β ≤ 1), `set_iterations`/`set_substeps` take
+`NonZeroU32`. With constraints the solver owns the step (XPBD with no
+constraints wouldn't even match symplectic Euler bit for bit). λ per
+constraint, reset per substep (XPBD) or warm-started (impulse).
 
 ## 2. `ParticleId` and `Mass<S>` (test first, PR)
 
@@ -136,7 +142,8 @@ type (~7 KB each).
 
 ## 4. Impulse solver (test first, PR)
 
-- [ ] `Solver::Impulse { beta }`: accumulated λ, warm starting, Baumgarte.
+- [ ] `Solver::Impulse` and `Baumgarte<S>`: accumulated λ, warm
+      starting, the bias.
 - [ ] Known failures and the `01` table as regression tests (decision 8).
 - [ ] Golden hashes for both solvers.
 
