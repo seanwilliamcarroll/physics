@@ -145,6 +145,7 @@ These guarantee the demos remain demonstrations.
 | Large `dt` orbit | Symplectic Euler at a coarse step visibly precesses (stays bounded) |
 | Impulse pendulum, β = 0 (M3) | Rod stretches > 40 cm in 10 s (measured 47 cm) |
 | XPBD pendulum, 1 substep (M3) | Loses > 8 of 9.81 J in 10 s (measured 8.79 J) |
+| Force spring past `k_crit = 4m/h²` (M5.2, `springs.rs`) | Energy bounded at 0.9 `k_crit`, grows > 1e6x at 1.1 (measured 2e2x at 0.99, 6e71x at 1.01) |
 | Classic Baumgarte on the 1:100 chain (M4.9, `chains.rs`) | Gains > 100 J in 10 s at 20 substeps, more than at 2 (measured +3398 J vs +15 J) |
 | XPBD pendulum in f32, 100 substeps (M3) | Energy differs from f64 by > 0.2 J (f32 *gains* 0.11 J where f64 loses 0.31 J) |
 

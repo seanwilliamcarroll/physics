@@ -35,6 +35,13 @@ divergent at `1.1 k_crit` (`explicit_spring_diverges_above_critical_stiffness`).
 Substeps raise it as `1/h²`: twice the substeps, four times the
 stiffness.
 
+**As built (M5.2,** `tests/springs.rs`**):** 1 kg, one 1/60 s substep
+(`k_crit` = 14 400 N/m): max energy over 10 s is 2.0e2× the start at
+0.99 `k_crit` and 5.9e71× at 1.01. And below the threshold the *true*
+energy still swings (3× at 0.5 `k_crit`, 19× at 0.9): symplectic Euler
+conserves a nearby "shadow" energy that drifts far from the true one near
+`ωh = 2`. Bounded is not the same as accurate.
+
 **A network fails earlier.** Coupled springs have vibration modes, and the
 fastest decides stability: `ω_max = √(λ_max(M⁻¹ K))`. For a chain of
 equal masses and springs, `λ_max → 4k/m`, so `ω_max = 2ω` and the chain
