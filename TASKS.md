@@ -192,12 +192,18 @@ flicked 1:100 chain: XPBD 8.1 mm link error, impulse 18.3 cm with the bob
 `demo_set_order`; `ORDER_*`, `START_*` codes mirrored. `exports.rs` split
 into lifecycle/settings/readouts/drag. `.wasm` 102,099 B (gzip 34,099).
 
-## 7. Site: the M4 pages (PR)
+## ✅ 7. Site: the M4 pages (done; manual check pending)
 
-- [ ] `pointer.ts` (+ `View.toWorld`, unit-tested), constraint lines and
-      tip trails, `m4-chain` and `m4-double-pendulum`, smoke cases,
-      gallery links.
-- [ ] Manual check against **Done when** (yours).
+`m4-chain` (XPBD vs impulse on the same chain, drag in either; mass ratio,
+links, substeps, iterations, order; link-error plot) and
+`m4-double-pendulum` (1e-9 m apart or f32 vs f64; raised or horizontal
+start; tip trails; log divergence and energy plots). Shared modules:
+`pointer.ts` and `View.toWorld` (a subagent), `drag.ts`, `wasm.ts`
+`linksView`, `canvas.ts` `drawLinks`. Two engine-side fixes found while
+building: the rod-error readout leaves out a held grab's rod, and
+`demo_particle_x/y` give exact positions (the f32 render buffer reads tips
+1e-9 m apart as identical). Three smoke cases; gallery links. **Still to
+do: your manual check against Done when** (dragging needs a real pointer).
 
 ## 8. M4 cleanup (PR, if needed)
 

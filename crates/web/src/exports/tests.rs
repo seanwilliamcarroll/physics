@@ -3,7 +3,7 @@ use super::lifecycle::{
     demo_advance, demo_free, demo_links_len, demo_links_ptr, demo_new, demo_new_chain,
     demo_new_double_pendulum, demo_positions_len, demo_positions_ptr,
 };
-use super::readouts::{demo_constraint_error, demo_energy};
+use super::readouts::{demo_constraint_error, demo_energy, demo_particle_x, demo_particle_y};
 use super::settings::{
     demo_set_beta, demo_set_integrator, demo_set_iterations, demo_set_order, demo_set_rate,
     demo_set_softening, demo_set_solver, demo_set_substeps, demo_set_theta,
@@ -191,6 +191,14 @@ fn grab_drag_release_through_the_c_abi() {
         // Anchor added: 12 particles, 11 rods.
         assert_eq!((demo_positions_len(d), demo_links_len(d)), (24, 22));
         assert_eq!(demo_drag(d, 1.0, 1.0), 1);
+        // Dragging far off stretches the drag rod, not the chain: the
+        // readout leaves the drag rod out (a fresh grab: the chain is intact).
+        assert_eq!(demo_drag(d, 50.0, 50.0), 1);
+        assert!(
+            demo_constraint_error(d) < 1e-9,
+            "chain untouched before stepping"
+        );
+        assert_eq!(demo_drag(d, 1.0, 1.0), 1);
         assert_eq!(demo_drag(d, f64::NAN, 1.0), 0);
         assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
         assert_eq!(demo_release(d), 1);
@@ -199,5 +207,24 @@ fn grab_drag_release_through_the_c_abi() {
         assert_eq!((demo_positions_len(d), demo_links_len(d)), (22, 20));
         demo_free(d);
         assert_eq!(demo_grab(core::ptr::null_mut(), 0.0, 0.0, 1.0), -1);
+    }
+}
+
+#[test]
+fn exact_positions_resolve_what_the_f32_buffer_cannot() {
+    let a = demo_new_double_pendulum(abi::SCALAR_F64, abi::START_HORIZONTAL, 0.0);
+    let b = demo_new_double_pendulum(abi::SCALAR_F64, abi::START_HORIZONTAL, 1e-9);
+    // SAFETY: both from the constructor, freed once, last; null allowed.
+    unsafe {
+        // Tip (particle 2) at (2, 0) and (2, 1e-9): exact in f64...
+        assert_eq!(demo_particle_x(a, 2), 2.0);
+        assert_eq!(demo_particle_y(b, 2), 1e-9);
+        // ...while the f32 render buffer can't tell them apart from 0.
+        let pos = core::slice::from_raw_parts(demo_positions_ptr(b), 6);
+        assert!(pos[5].abs() < 1e-8);
+        assert!(demo_particle_x(a, 3).is_nan(), "past the last particle");
+        assert!(demo_particle_y(ptr::null(), 0).is_nan());
+        demo_free(a);
+        demo_free(b);
     }
 }

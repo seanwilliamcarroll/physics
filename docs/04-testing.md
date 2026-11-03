@@ -364,7 +364,9 @@ panic) and M1 (orbits in f64 and f32; every panel must step, draw its
 planet, and report finite energy; the reported pixels are the minimum
 across panels, so one blank panel fails), and M2 (the default disk, the
 unsoftened collapse, and the cluster at N = 1024, both scalar panels),
-and M3 (both solver panels: the default, and f32 at 100 substeps). The
+M3 (both solver panels: the default, and f32 at 100 substeps), and M4
+(the chain's two solver panels; the double pendulum in both comparison
+modes). The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs
 `SMOKE ok steps=N particle_px=N`.

@@ -112,9 +112,15 @@ impl<S: Scalar> Sim<S> {
     }
 
     /// Max |C| over the world's constraints, m; `None` without any.
-    pub(super) fn constraint_error(&self) -> Option<f64> {
-        constraint_error(&self.world.particles, self.world.constraints())
-            .map(|(max, _)| max.to_f64())
+    /// Max |C| over the world's constraints, m, leaving out the last
+    /// `skip` (a drag rod, whose stretch is the user's pull, not error);
+    /// `None` without any left.
+    pub(super) fn constraint_error(&self, skip: usize) -> Option<f64> {
+        let all = self.world.constraints();
+        let kept = all
+            .get(..all.len().saturating_sub(skip))
+            .unwrap_or_default();
+        constraint_error(&self.world.particles, kept).map(|(max, _)| max.to_f64())
     }
 }
 

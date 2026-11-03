@@ -85,7 +85,8 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | Type | Why it exists |
 |---|---|
 | [`EngineExports`, `DemoHandle`, `Ptr`, `Status`](../site/js/engine.d.ts) | Types for the untyped wasm exports; branded handles can't be swapped with counts or pointers. |
-| [`View`](../site/js/canvas.ts) | World (m, y up) to screen (px, y down) as one canvas transform, aspect preserved. |
+| [`View`, `ViewBox`, `ViewTransform`](../site/js/canvas.ts) | World (m, y up) to screen (px, y down) as one canvas transform, aspect preserved; `toWorld` is its exact inverse for pointer input, the math pure and unit-tested. |
+| [`DragHandlers`, `DragTracker`, `PointerSample`](../site/js/pointer.ts) | Pointer drags (mouse, pen, touch) delivered to pages in world meters; the tracker (pure, unit-tested) keeps one primary pointer per drag. |
 | [`LinePlot`](../site/js/plot.ts) | Live multi-series plots over simulated time (linear or log); scale math is pure and unit-tested. |
 | [`Ring`](../site/js/ring.ts) | Fixed-capacity history in constant memory, for plots and trails. |
 | [`Trail`](../site/js/trail.ts) | Fading position history; rendering-only memory that Rust doesn't keep. |

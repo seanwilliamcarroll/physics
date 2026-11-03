@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M4 · Double pendulum: chaos</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Double pendulum: chaos</h1>
+    <p class="muted">
+      Two double pendulums that start a billionth of a meter apart, far below
+      anything you can see. For about ten seconds they move as one; then they
+      have nothing to do with each other. The difference grows
+      exponentially, so on the log plot below it climbs as a straight line
+      from the very start. Switch to <b>f32 vs f64</b> to start them
+      <i>identically</i> and watch rounding alone do the same thing.
+      Grab a bob to throw one of them off.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="panels" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Divergence</h2>
+    <p class="muted">
+      Distance between the two tips, in meters (log scale). Exponential growth
+      is a straight line here; it flattens once the tips are as far apart as
+      the pendulums allow (a few meters).
+    </p>
+    <div class="plot"><canvas id="divergence"></canvas></div>
+    <h2>Energy</h2>
+    <p class="muted">
+      Energy lost since release, in joules. The impulse solver keeps it within
+      a few hundredths of a joule, so the chaos is the pendulum's, not the
+      solver's. Switch to XPBD: its damping drains the energy and the chaos
+      with it.
+    </p>
+    <div class="plot"><canvas id="energy"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
