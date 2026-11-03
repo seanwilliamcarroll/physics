@@ -1,6 +1,6 @@
 {
-  // Type-checks site/'s plain .js (JSDoc annotations) without emitting
-  // anything: browsers run the .js files exactly as written.
+  // Type-checks site/: the TypeScript library (site/js/*.ts) and the demos'
+  // plain .js (JSDoc). Checks only; tsconfig.build.json emits.
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
@@ -8,11 +8,16 @@
     "strict": true,
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    // Native ES modules with explicit ".js" import paths, as the browser
-    // loads them.
     "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    // Only TS syntax that compiles by deletion (no enums, namespaces, or
+    // parameter properties), so emitted .js mirrors the source and Node can
+    // run the .ts directly in tests.
+    "erasableSyntaxOnly": true,
+    // Library files import "./ring.ts" (what Node needs); emit rewrites
+    // those to "./ring.js" for the browser.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
   },
-  "include": ["site/**/*.js", "site/**/*.d.ts"],
-  "exclude": ["site/pkg"]
+  "include": ["site/js/**/*.ts", "site/demos/**/*.js"]
 }

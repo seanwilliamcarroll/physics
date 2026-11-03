@@ -15,7 +15,8 @@ if ! command -v node >/dev/null 2>&1; then
   echo "pre-commit: node not found; install Node.js (see README)" >&2
   exit 1
 fi
-find site tests/site -name '*.js' -not -path 'site/pkg/*' | while IFS= read -r f; do
+# site/js/*.js is tsc output (gitignored), not source: skip it.
+find site tests/site -name '*.js' -not -path 'site/pkg/*' -not -path 'site/js/*' | while IFS= read -r f; do
   if ! node --input-type=module --check < "$f"; then
     echo "pre-commit: JS syntax error in $f" >&2
     exit 1
@@ -24,7 +25,7 @@ done
 
 # Type-check the same files (JSDoc + engine.d.ts; tsconfig.json). The
 # compiler is pinned in package-lock.json; `npm ci` installs it.
-echo "pre-commit: tsc (site JS types)"
+echo "pre-commit: tsc (site .ts library + JSDoc demos)"
 if [ ! -x node_modules/.bin/tsc ]; then
   echo "pre-commit: TypeScript not installed; run \`npm ci\` (see README)" >&2
   exit 1

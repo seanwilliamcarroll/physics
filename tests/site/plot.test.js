@@ -1,7 +1,7 @@
 // Unit tests for the pure scale math in site/js/plot.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { LOG_FLOOR, plotValue, yRange, decadeTicks } from "../../site/js/plot.js";
+import { LOG_FLOOR, plotValue, yRange, decadeTicks } from "../../site/js/plot.ts";
 
 test("linear range always includes zero, with padding", () => {
   const [lo, hi] = yRange([[2, 3, 4]], "linear");

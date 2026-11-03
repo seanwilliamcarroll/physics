@@ -42,13 +42,17 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-Build the wasm module into the site, then serve it (browsers won't
-instantiate wasm from `file://`):
+Build the site (compiles `site/js/*.ts` and the wasm module), then serve
+it (browsers won't instantiate wasm from `file://`):
 
 ```sh
-cargo xtask site              # -> site/pkg/engine.wasm
+cargo xtask site              # site/js/*.ts -> .js, and -> site/pkg/engine.wasm
 python3 -m http.server -d site
 ```
+
+While editing `site/js/*.ts`, keep `npm run watch` running in another
+terminal: it recompiles on save (well under a second), then reload the
+page. The generated `site/js/*.js` and `*.js.map` are gitignored.
 
 `cargo xtask help` lists all commands.
 

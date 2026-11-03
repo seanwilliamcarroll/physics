@@ -4,40 +4,32 @@
 
 /** An option chosen from a list, or an integer in a range. `kind` tells
  *  them apart (a discriminated union), so code that reads `min` or `values`
- *  has checked which one it holds.
- *  @typedef {{ kind: "choice", values: string[], default: string, help: string }} ChoiceOption
- *  @typedef {{ kind: "int", min: number, max: number, default: number, help: string }} IntOption
- *  @typedef {ChoiceOption | IntOption} Option */
+ *  has checked which one it holds. */
+export type ChoiceOption = { kind: "choice"; values: string[]; default: string; help: string };
+export type IntOption = { kind: "int"; min: number; max: number; default: number; help: string };
+export type Option = ChoiceOption | IntOption;
 
 /** The option's value from the URL if it's one of `opt.values`, else the
- *  default.
- *  @param {URLSearchParams} params
- *  @param {string} name
- *  @param {ChoiceOption} opt
- *  @returns {string} */
-export function readChoice(params, name, opt) {
+ *  default. */
+export function readChoice(params: URLSearchParams, name: string, opt: ChoiceOption): string {
   const v = params.get(name);
   return v !== null && opt.values.includes(v) ? v : opt.default;
 }
 
 /** The option's integer from the URL, clamped to `[min, max]`; the default
  *  if absent or not a number. Uses `parseInt`, so "12abc" reads as 12 and
- *  "1e9" as 1.
- *  @param {URLSearchParams} params
- *  @param {string} name
- *  @param {IntOption} opt
- *  @returns {number} */
-export function readInt(params, name, opt) {
+ *  "1e9" as 1. */
+export function readInt(params: URLSearchParams, name: string, opt: IntOption): number {
   const v = Number.parseInt(params.get(name) ?? "", 10);
   return Number.isFinite(v) ? Math.min(Math.max(v, opt.min), opt.max) : opt.default;
 }
 
 /** The options section's HTML: a table row per option (legal values,
- *  default, effect) and links to `presets` ([label, query string]).
- *  @param {Record<string, Option>} options
- *  @param {[string, string][]} presets
- *  @returns {string} */
-export function optionsTableHtml(options, presets) {
+ *  default, effect) and links to `presets` ([label, query string]). */
+export function optionsTableHtml(
+  options: Record<string, Option>,
+  presets: [string, string][],
+): string {
   const rows = Object.entries(options).map(([name, o]) => {
     const legal = o.kind === "choice"
       ? o.values.join(" | ")

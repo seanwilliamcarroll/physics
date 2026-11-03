@@ -1,7 +1,7 @@
 // Unit tests for the pure fade math in site/js/trail.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fadeBands } from "../../site/js/trail.js";
+import { fadeBands } from "../../site/js/trail.ts";
 
 test("bands cover the history once, overlapping by one point so lines join", () => {
   const bands = fadeBands(10, 3);
