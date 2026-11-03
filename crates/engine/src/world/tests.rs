@@ -71,3 +71,37 @@ fn config_errors_explain_themselves() {
         3
     );
 }
+
+#[test]
+fn add_constraint_rejects_bodies_from_another_world() {
+    use super::ConfigError;
+    use crate::mass::kg;
+    use crate::{DistanceConstraint, Vec2};
+    let mut big = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let a = big.particles.add_static(Vec2::ZERO);
+    let _ = big.particles.add_static(Vec2::new(1.0, 0.0));
+    let c = big.particles.add(Vec2::new(2.0, 0.0), Vec2::ZERO, kg(1.0));
+    let rod = DistanceConstraint::between(&big.particles, a, c).unwrap();
+
+    let mut small = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    let _ = small.particles.add_static(Vec2::ZERO);
+    assert_eq!(small.add_constraint(rod), Err(ConfigError::UnknownParticle));
+    assert_eq!(small.constraints(), []);
+    assert_eq!(big.add_constraint(rod), Ok(()));
+    assert_eq!(big.constraints(), [rod]);
+    assert!(
+        ConfigError::UnknownParticle
+            .to_string()
+            .contains("particle")
+    );
+}
+
+#[test]
+fn substeps_and_iterations_are_settable() {
+    use core::num::NonZeroU32;
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, 1).unwrap();
+    assert_eq!(w.iterations().get(), 1);
+    w.set_substeps(NonZeroU32::new(20).unwrap());
+    w.set_iterations(NonZeroU32::new(3).unwrap());
+    assert_eq!((w.substeps(), w.iterations().get()), (20, 3));
+}

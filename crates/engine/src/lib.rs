@@ -13,6 +13,7 @@ mod particles;
 mod rng;
 pub mod scenarios;
 mod softening;
+mod solver;
 mod world;
 
 pub use barnes_hut::{BarnesHut, OpeningAngle};
@@ -23,4 +24,5 @@ pub use mass::Mass;
 pub use math::{Scalar, Vec2};
 pub use particles::{ParticleId, Particles};
 pub use softening::Softening;
+pub use solver::Solver;
 pub use world::{ConfigError, World};
