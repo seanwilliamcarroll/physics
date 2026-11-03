@@ -130,10 +130,14 @@ and world split into small files with re-exports; shared site modules;
 
 ---
 
-## 1. `docs/06-constraints.md` update (PR)
+## ✅ 1. `docs/06-constraints.md` update (done)
 
-- [ ] Compliance in both solvers (decisions 1–2), iteration order (6),
-      the drag design (3–5), the permutation property (7).
+New section "M4: compliance, iteration order, dragging": Catto's soft
+form for the impulse solver (`γ = α/h²`, bias factor 1 for compliant
+rods, the β setting for rigid ones), period check `2π √(m α)`; `Order`
+and why the permutation property becomes a bounded difference with
+constraints; the drag as anchor + rest-length-0 compliant rod, released by
+popping the last-added. Catto 2011 added to `references.md` (URL checked).
 
 ## 2. Compliance (test first, PR)
 
