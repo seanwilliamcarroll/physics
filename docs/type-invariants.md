@@ -82,6 +82,15 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   `demo_set_theta` parses at the boundary in `f64` and `cast`s to the
   engine's scalar.
 
+**Triggers re-checked at the end of M3:** item 3 (`UnitVec2`) is half
+met: `DistanceConstraint::evaluate` is the first `x / |x|` in a constraint
+gradient, and it returns `None` at `|x| = 0`. Its trigger asks for a second
+call site; M4's chains reuse the same constraint, so likely M6 (contact
+normals). Item 2's `Compliance` waits for M5's springs (rods are rigid-only
+until then). Item 4 (`NonZeroU32` substeps) is now half adopted:
+`set_substeps` takes it (the slider triggered it), `World::new` keeps its
+`Result`. Item 5's generational `ParticleId` waits for removal.
+
 **Triggers re-checked at the end of M2:** item 1 (mass types) still
 waits: masses are still scenario-computed, never user input, and M2 added
 no constraint solver. Item 2's other parameters (compliance, restitution,

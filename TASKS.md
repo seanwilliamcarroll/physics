@@ -177,10 +177,13 @@ is visible. Rod-error (log) and energy-lost (linear, J) plots.
 `drawSegment`/`drawCircle` in `canvas.ts`. Two smoke cases; gallery link.
 **Still to do: your manual check against Done when.**
 
-## 7. M3 cleanup (PR, if needed)
+## ✅ 7. M3 cleanup (done)
 
-- [ ] Magic numbers, `type-invariants.md` triggers (`UnitVec2`: M3 adds
-      the first `x / |x|` in a constraint gradient), awkward bits.
+The web demo's `Sim` keeps its force as one enum (`SceneForce`:
+`Unmeasured | Pairwise { exact, theta } | Uniform`) instead of three
+`Option`s, so a θ can only exist next to the gravity it approximates.
+Literals named on the M3 page. `type-invariants.md` triggers re-checked
+(`UnitVec2` half met; `Compliance` waits for M5).
 
 ---
 
