@@ -53,6 +53,7 @@ and `Friction` go.
 | [`PairwiseGravity<S>`](../crates/engine/src/force.rs) | Exact softened N-body gravity, O(n²), equal and opposite by construction (momentum to rounding). |
 | [`BarnesHut<S>`](../crates/engine/src/barnes_hut.rs) | The same gravity in O(n log n) via a quadtree; trades accuracy (θ) and exact momentum for speed past ~200 bodies. |
 | [`Spring<S>`, `SpringForce<S>`](../crates/engine/src/force/spring.rs) | Force-based springs with dampers, the M5 baseline: stepped by the integrator, so they explode past `k_crit = 4m/h²`. |
+| [`SpringNetwork`, `JellyBody`, `Jelly<S>`](../crates/engine/src/scenarios/jelly.rs) | One grid of pairs realized as force springs or compliant constraints, so the M5 panels differ only in how springs are enforced. |
 | [`Constraint<S>`](../crates/engine/src/constraint.rs) | Geometry only (C, ∇C, compliance), so both solvers read the same definition; solvers are generic over it (no `dyn` in the hot loop). |
 | [`DistanceConstraint<S>`](../crates/engine/src/constraint.rs) | A rod; to a static particle, a pin. Rest length from current positions, so no invalid length can be passed. |
 | [`Integrator`](../crates/engine/src/integrate.rs) | How an unconstrained substep turns acceleration into motion; an enum (closed set, exhaustive matches, a wire code). |

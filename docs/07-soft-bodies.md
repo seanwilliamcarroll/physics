@@ -129,6 +129,37 @@ The same network becomes either `SpringForce` springs or compliant
 `DistanceConstraint`s, with the same masses and topology, so the panels
 differ only in how springs are enforced.
 
+**As built (M5.5,** `tests/jelly.rs`**; 8×8, 1 kg, 10 substeps, c = 0.5):**
+the force-based jelly blows up between 0.1 and 0.15 of the single-spring
+`k_crit` (22 500 N/m here), so between ~2 250 and ~3 400 N/m: the grid's
+fastest mode is about 3× faster than one spring's. Both constraint solvers
+stay stable at one iteration from k = 10³ to rigid (peak kinetic energy
+4.82 J, the fall's, in every run). Stability is judged by kinetic
+energy: the elastic energy of very stiff, unconverged constraints
+(`½ C²/α`, tiny `α`) is meaningless, and showed XPBD "gaining" 3e5 J
+while at rest.
+
+### Soft constraints aren't warm-started (found in M5.5)
+
+At first the impulse solver's jelly exploded from k ≈ 10⁴ N/m at one
+iteration (peak kinetic energy up to 7.8e5 J), while 10 iterations
+held it at any stiffness. The M4 mechanism again, through the soft form:
+a soft constraint's λ feeds back into its own update (the `α̃ λ` term), so
+warm starting re-applies the previous substep's bias on a network one
+pass can't converge. Measured remedies:
+
+| Remedy | Jelly | Spring period | Damping rate |
+|---|---|---|---|
+| none (warm start everything) | explodes from 10⁴ | right | right |
+| **no warm start for soft constraints** | **stable, any k** | **right** | **right** |
+| relax pass without bias (Box2D v3 style) | stable | **broken: springs stop oscillating** | broken |
+| frequency cap, `ω h ≤ 1` | stable | right | changes the physics |
+| frequency cap, `ω h ≤ π/2` | still explodes | right | |
+
+So soft λ restarts at 0 every substep (it still accumulates within the
+substep); rigid constraints keep warm starting, which M6's contacts will
+need for stacks.
+
 ## The ground: a clamp, not contacts
 
 `World::set_ground(Some(y))`: after each substep, any dynamic particle
