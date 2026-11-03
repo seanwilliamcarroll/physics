@@ -28,7 +28,7 @@ const COL_MISSED_LINES: usize = 8;
 
 /// Covered/total counts for one crate (or the whole report).
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct Counts {
+pub(crate) struct Counts {
     pub name: String,
     pub lines: u32,
     pub missed_lines: u32,
@@ -49,7 +49,7 @@ impl Counts {
 /// appearance, plus a total. A file's crate is the path component before
 /// `src` (`engine/src/world.rs` -> `engine`); rows that don't parse
 /// (header, rules, `TOTAL`) are skipped.
-pub fn per_crate(table: &str) -> (Vec<Counts>, Counts) {
+pub(crate) fn per_crate(table: &str) -> (Vec<Counts>, Counts) {
     let mut crates: Vec<Counts> = Vec::new();
     let mut total = Counts {
         name: "total".to_owned(),
@@ -96,7 +96,7 @@ fn crate_of(file: &str) -> Option<&str> {
 }
 
 /// `covered/total (pct%)`, or `-` when there is nothing to cover.
-pub fn ratio(total: u32, missed: u32) -> String {
+pub(crate) fn ratio(total: u32, missed: u32) -> String {
     if total == 0 {
         return "-".to_owned();
     }
@@ -105,7 +105,7 @@ pub fn ratio(total: u32, missed: u32) -> String {
     format!("{pct:6.2}% ({covered}/{total})")
 }
 
-pub fn coverage(root: &Path) -> Result<(), String> {
+pub(crate) fn coverage(root: &Path) -> Result<(), String> {
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     // Fail with an install hint, not cargo's "no such command: llvm-cov".
     let found = process::Command::new(&cargo)

@@ -21,11 +21,11 @@ use crate::fixed_step::FixedStep;
 /// construction.
 // `unwrap` in a const item runs at compile time: a zero here fails the
 // build, so it can't panic at runtime (and clippy's unwrap_used agrees).
-pub const PHYSICS_RATE: NonZeroU32 = NonZeroU32::new(abi::DEFAULT_RATE_HZ).unwrap();
+pub(crate) const PHYSICS_RATE: NonZeroU32 = NonZeroU32::new(abi::DEFAULT_RATE_HZ).unwrap();
 
 /// Which numeric type the engine runs on, chosen at runtime by JS.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ScalarKind {
+pub(crate) enum ScalarKind {
     F32,
     F64,
 }
@@ -33,7 +33,7 @@ pub enum ScalarKind {
 impl ScalarKind {
     /// Decodes a `demo_new` scalar code ([`abi`]).
     #[must_use]
-    pub const fn from_code(code: u32) -> Option<Self> {
+    pub(crate) const fn from_code(code: u32) -> Option<Self> {
         match code {
             abi::SCALAR_F32 => Some(Self::F32),
             abi::SCALAR_F64 => Some(Self::F64),
@@ -44,7 +44,7 @@ impl ScalarKind {
 
 /// Which scene to run.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum DemoKind {
+pub(crate) enum DemoKind {
     Fountain,
     Orbit,
     /// One of the M2 scenes of `n` bodies under pairwise gravity.
@@ -53,7 +53,7 @@ pub enum DemoKind {
 
 /// The M2 gravity scenes, all under `scenarios::cluster_gravity` (same ε).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum GravityScene {
+pub(crate) enum GravityScene {
     /// Random bodies in a disk, drifting (`scenarios::cluster`).
     Cluster,
     /// A heavy center and `n - 1` orbiters (`scenarios::disk`).
@@ -65,7 +65,7 @@ pub enum GravityScene {
 impl DemoKind {
     /// Decodes a `demo_new` kind code ([`abi`]).
     #[must_use]
-    pub const fn from_code(code: u32) -> Option<Self> {
+    pub(crate) const fn from_code(code: u32) -> Option<Self> {
         match code {
             abi::DEMO_FOUNTAIN => Some(Self::Fountain),
             abi::DEMO_ORBIT => Some(Self::Orbit),
@@ -80,7 +80,7 @@ impl DemoKind {
 /// Decodes a `demo_set_integrator` code ([`abi`]). A free function because
 /// `Integrator` belongs to the engine, which knows nothing of wire codes.
 #[must_use]
-pub const fn integrator_from_code(code: u32) -> Option<Integrator> {
+pub(crate) const fn integrator_from_code(code: u32) -> Option<Integrator> {
     match code {
         abi::INTEGRATOR_SYMPLECTIC_EULER => Some(Integrator::SymplecticEuler),
         abi::INTEGRATOR_EXPLICIT_EULER => Some(Integrator::ExplicitEuler),
@@ -149,7 +149,7 @@ enum Scene {
     Gravity,
 }
 
-pub struct Demo {
+pub(crate) struct Demo {
     world: AnyWorld,
     scene: Scene,
     clock: FixedStep,
@@ -164,7 +164,7 @@ impl Demo {
     ///
     /// # Errors
     /// Propagates [`ConfigError`] from building the scene's world.
-    pub fn new(
+    pub(crate) fn new(
         kind: DemoKind,
         scalar: ScalarKind,
         n: usize,
@@ -213,7 +213,7 @@ impl Demo {
 
     /// Adds `elapsed` seconds of real time, runs the resulting fixed steps,
     /// and refreshes the render buffer. Returns the number of steps taken.
-    pub fn advance(&mut self, elapsed: f64) -> u32 {
+    pub(crate) fn advance(&mut self, elapsed: f64) -> u32 {
         let steps = self.clock.advance(elapsed);
         let dt = self.clock.dt();
         match &mut self.world {
@@ -226,14 +226,14 @@ impl Demo {
 
     /// Interleaved particle positions, `f32`, in meters.
     #[must_use]
-    pub fn positions(&self) -> &[f32] {
+    pub(crate) fn positions(&self) -> &[f32] {
         &self.render_buf
     }
 
     /// Test-only: JS sets integrators but never reads them back.
     #[cfg(test)]
     #[must_use]
-    pub const fn integrator(&self) -> Integrator {
+    pub(crate) const fn integrator(&self) -> Integrator {
         match &self.world {
             AnyWorld::F32(s) => s.world.integrator(),
             AnyWorld::F64(s) => s.world.integrator(),
@@ -241,7 +241,7 @@ impl Demo {
     }
 
     /// Takes effect from the next step.
-    pub const fn set_integrator(&mut self, integrator: Integrator) {
+    pub(crate) const fn set_integrator(&mut self, integrator: Integrator) {
         match &mut self.world {
             AnyWorld::F32(s) => s.world.set_integrator(integrator),
             AnyWorld::F64(s) => s.world.set_integrator(integrator),
@@ -250,7 +250,7 @@ impl Demo {
 
     /// Physics steps per simulated second (`dt = 1 / rate`). Drops owed
     /// time, so a rate change never fires a catch-up step.
-    pub fn set_rate(&mut self, rate: NonZeroU32) {
+    pub(crate) fn set_rate(&mut self, rate: NonZeroU32) {
         self.clock.set_rate(rate);
     }
 
@@ -258,7 +258,7 @@ impl Demo {
     /// readout follows. `eps` was parsed at the boundary in `f64` and is
     /// cast, still checked, to the engine's scalar. Returns `false`,
     /// changing nothing, for the fountain (no gravity to soften).
-    pub fn set_softening(&mut self, eps: Softening<f64>) -> bool {
+    pub(crate) fn set_softening(&mut self, eps: Softening<f64>) -> bool {
         match &mut self.world {
             AnyWorld::F32(s) => s.set_softening(eps.cast()),
             AnyWorld::F64(s) => s.set_softening(eps),
@@ -269,7 +269,7 @@ impl Demo {
     /// `None` where it isn't defined (the fountain: `diagnostics` has no
     /// uniform-gravity potential).
     #[must_use]
-    pub fn energy(&self) -> Option<f64> {
+    pub(crate) fn energy(&self) -> Option<f64> {
         match &self.world {
             AnyWorld::F32(s) => s.energy(),
             AnyWorld::F64(s) => s.energy(),

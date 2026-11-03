@@ -22,6 +22,6 @@ macro_rules! for_each_scalar {
 }
 
 /// Shorthand for `S::from_f64(v)` in tests.
-pub fn s<S: Scalar>(v: f64) -> S {
+pub(crate) fn s<S: Scalar>(v: f64) -> S {
     S::from_f64(v)
 }

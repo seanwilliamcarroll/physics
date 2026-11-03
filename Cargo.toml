@@ -30,6 +30,7 @@ panic = "abort"
 # `[lints] workspace = true`. Test code is exempted via clippy.toml.
 [workspace.lints.rust]
 unsafe_code = "deny"            # web's export module opts out locally
+unreachable_pub = "warn"        # `pub` only for what the crate exports, so dead_code sees the rest
 
 [workspace.lints.clippy]
 # Default groups (perf, correctness, style, complexity, suspicious) are already on.
