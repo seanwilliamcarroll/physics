@@ -18,6 +18,10 @@ pub(crate) struct Contacts<S> {
     /// what the forces alone add in two substeps (Müller et al. 2020's
     /// `2 |g| h`, for any force). Keeps resting contacts at rest.
     pub(crate) rest_speed: Vec<S>,
+    /// Every particle's velocity when the contacts were found (after the
+    /// kick, before the solve): XPBD's velocity pass measures `v_n⁻` from
+    /// these along the contact's *current* normal (Müller et al. 2020).
+    pub(crate) vel_before: Vec<Vec2<S>>,
     /// The broadphase's scratch.
     pairs: Vec<(usize, usize)>,
 }
@@ -29,6 +33,7 @@ impl<S: Scalar> Contacts<S> {
             lambda: Vec::new(),
             approach: Vec::new(),
             rest_speed: Vec::new(),
+            vel_before: Vec::new(),
             pairs: Vec::new(),
         }
     }
@@ -38,6 +43,8 @@ impl<S: Scalar> Contacts<S> {
     /// this substep's per-particle acceleration from the forces.
     pub(crate) fn find(&mut self, p: &Particles<S>, walls: &[Wall<S>], acc: &[Vec2<S>], h: S) {
         find_contacts(p, walls, h, &mut self.pairs, &mut self.list);
+        self.vel_before.clear();
+        self.vel_before.extend_from_slice(p.vel());
         self.lambda.clear();
         self.lambda.resize(self.list.len(), S::ZERO);
         self.approach.clear();
@@ -92,11 +99,17 @@ pub(crate) fn geometry<S: Scalar>(
     }
 }
 
-/// `n · (v_b − v_a)`: positive when separating. A wall's velocity is 0.
+/// `n · (v_b − v_a)` at the particles' current velocities: positive when
+/// separating. A wall's velocity is 0.
 pub(crate) fn normal_velocity<S: Scalar>(p: &Particles<S>, c: &Contact<S>, n: UnitVec2<S>) -> S {
-    let va = p.vel().get(c.a.index()).copied().unwrap_or(Vec2::ZERO);
+    normal_velocity_in(p.vel(), c, n)
+}
+
+/// `n · (v_b − v_a)` with velocities from `vel` (current, or saved).
+pub(crate) fn normal_velocity_in<S: Scalar>(vel: &[Vec2<S>], c: &Contact<S>, n: UnitVec2<S>) -> S {
+    let va = vel.get(c.a.index()).copied().unwrap_or(Vec2::ZERO);
     let vb = match c.b {
-        Body::Particle(b) => p.vel().get(b.index()).copied().unwrap_or(Vec2::ZERO),
+        Body::Particle(b) => vel.get(b.index()).copied().unwrap_or(Vec2::ZERO),
         Body::Wall(_) => Vec2::ZERO,
     };
     n.dot(vb - va)

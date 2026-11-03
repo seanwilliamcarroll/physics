@@ -1,7 +1,7 @@
 //! The XPBD substep (Macklin et al. 2016): predict, project, derive.
 
 use super::Step;
-use super::contacts::{bodies, geometry, normal_velocity, push_apart};
+use super::contacts::{bodies, geometry, normal_velocity, normal_velocity_in, push_apart};
 use crate::collision::Contact;
 use crate::integrate::{drift, evaluate, kick};
 use crate::{Constraint, Particles, Scalar, Vec2, Wall};
@@ -53,16 +53,14 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         }
 
         let e = self.restitution.get();
-        for (((c, &lambda), &approach), &rest) in contacts
+        for ((c, &lambda), &rest) in contacts
             .list
             .iter()
             .zip(&contacts.lambda)
-            .zip(&contacts.approach)
             .zip(&contacts.rest_speed)
         {
             if lambda > S::ZERO {
-                let e = if -approach > rest { e } else { S::ZERO };
-                restitute(p, self.walls, c, approach, e);
+                restitute(p, self.walls, c, &contacts.vel_before, rest, e);
             }
         }
     }
@@ -94,14 +92,20 @@ fn project_contact<S: Scalar>(
 }
 
 /// The velocity pass for one contact that pushed this substep (Müller et
-/// al. 2020): replace its normal velocity with `max(−e v_n⁻, 0)`, where
-/// `v_n⁻` (`approach`) is from before the solve. With `e = 0` that removes
-/// whatever separating speed the position projection left behind.
+/// al. 2020): replace its normal velocity with `max(−e v_n⁻, 0)`. Both
+/// are measured along the contact's **current** normal: `v_n⁻` from the
+/// velocities saved before the solve (`vel_before`). Measuring `v_n⁻`
+/// along the normal from when the contact was found instead gains energy
+/// on every glancing elastic hit, in proportion to `h` (the normal turns
+/// during the substep; found in M6.5). Approaches no faster than `rest`
+/// get `e = 0`. With `e = 0` this removes whatever separating speed the
+/// position projection left behind.
 fn restitute<S: Scalar>(
     p: &mut Particles<S>,
     walls: &[Wall<S>],
     c: &Contact<S>,
-    approach: S,
+    vel_before: &[Vec2<S>],
+    rest: S,
     e: S,
 ) {
     let Some((a, b, wa, wb)) = bodies(p, c) else {
@@ -114,6 +118,8 @@ fn restitute<S: Scalar>(
     if w == S::ZERO {
         return;
     }
+    let approach = normal_velocity_in(vel_before, c, n);
+    let e = if -approach > rest { e } else { S::ZERO };
     let target = -e * approach;
     let target = if target > S::ZERO { target } else { S::ZERO };
     let dv = target - normal_velocity(p, c, n);
