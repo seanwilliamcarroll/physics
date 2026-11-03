@@ -6,8 +6,11 @@
 use core::num::NonZeroU32;
 
 use engine::diagnostics::total_energy;
-use engine::scenarios::{Fountain, ORBIT_CIRCULAR, cluster, cluster_gravity, orbit, orbit_gravity};
-use engine::{ConfigError, Integrator, PairwiseGravity, Scalar, World};
+use engine::scenarios::{
+    Fountain, ORBIT_CIRCULAR, cluster, cluster_gravity, collapse, disk, gravity, orbit,
+    orbit_gravity,
+};
+use engine::{ConfigError, Integrator, PairwiseGravity, Scalar, Softening, World};
 
 use crate::abi;
 use crate::fixed_step::FixedStep;
@@ -44,8 +47,19 @@ impl ScalarKind {
 pub enum DemoKind {
     Fountain,
     Orbit,
-    /// `n` bodies under pairwise gravity (`scenarios::cluster`): M2.
+    /// One of the M2 scenes of `n` bodies under pairwise gravity.
+    Gravity(GravityScene),
+}
+
+/// The M2 gravity scenes, all under `scenarios::cluster_gravity` (same ε).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum GravityScene {
+    /// Random bodies in a disk, drifting (`scenarios::cluster`).
     Cluster,
+    /// A heavy center and `n - 1` orbiters (`scenarios::disk`).
+    Disk,
+    /// A cold cloud at rest (`scenarios::collapse`).
+    Collapse,
 }
 
 impl DemoKind {
@@ -55,7 +69,9 @@ impl DemoKind {
         match code {
             abi::DEMO_FOUNTAIN => Some(Self::Fountain),
             abi::DEMO_ORBIT => Some(Self::Orbit),
-            abi::DEMO_CLUSTER => Some(Self::Cluster),
+            abi::DEMO_CLUSTER => Some(Self::Gravity(GravityScene::Cluster)),
+            abi::DEMO_DISK => Some(Self::Gravity(GravityScene::Disk)),
+            abi::DEMO_COLLAPSE => Some(Self::Gravity(GravityScene::Collapse)),
             _ => None,
         }
     }
@@ -94,6 +110,20 @@ impl<S: Scalar> Sim<S> {
             world,
             gravity: Some(gravity),
         }
+    }
+
+    /// Replaces the gravity (and only it: a scene with gravity has no
+    /// other force) with one of softening `eps`. `false`, changing
+    /// nothing, for a scene without gravity.
+    fn set_softening(&mut self, eps: Softening<S>) -> bool {
+        if self.gravity.is_none() {
+            return false;
+        }
+        let g = gravity(eps);
+        self.world.clear_forces();
+        self.world.add_force(g);
+        self.gravity = Some(g);
+        true
     }
 
     /// Total energy under the stored force, or `None` without one.
@@ -163,14 +193,10 @@ impl Demo {
                 };
                 (world, Scene::Gravity)
             }
-            DemoKind::Cluster => {
+            DemoKind::Gravity(scene) => {
                 let world = match scalar {
-                    ScalarKind::F32 => {
-                        AnyWorld::F32(Sim::with_gravity(cluster(n, seed)?, cluster_gravity()?))
-                    }
-                    ScalarKind::F64 => {
-                        AnyWorld::F64(Sim::with_gravity(cluster(n, seed)?, cluster_gravity()?))
-                    }
+                    ScalarKind::F32 => AnyWorld::F32(gravity_scene(scene, n, seed)?),
+                    ScalarKind::F64 => AnyWorld::F64(gravity_scene(scene, n, seed)?),
                 };
                 (world, Scene::Gravity)
             }
@@ -228,6 +254,17 @@ impl Demo {
         self.clock.set_rate(rate);
     }
 
+    /// Sets the gravity scenes' softening (from the next step); the energy
+    /// readout follows. `eps` was parsed at the boundary in `f64` and is
+    /// cast, still checked, to the engine's scalar. Returns `false`,
+    /// changing nothing, for the fountain (no gravity to soften).
+    pub fn set_softening(&mut self, eps: Softening<f64>) -> bool {
+        match &mut self.world {
+            AnyWorld::F32(s) => s.set_softening(eps.cast()),
+            AnyWorld::F64(s) => s.set_softening(eps),
+        }
+    }
+
     /// Total energy (kinetic + potential) in joules, read out as `f64`, or
     /// `None` where it isn't defined (the fountain: `diagnostics` has no
     /// uniform-gravity potential).
@@ -245,6 +282,20 @@ impl Demo {
             AnyWorld::F64(s) => fill_positions(&s.world, &mut self.render_buf),
         }
     }
+}
+
+/// `scene`'s world, with its gravity.
+fn gravity_scene<S: Scalar>(
+    scene: GravityScene,
+    n: usize,
+    seed: u64,
+) -> Result<Sim<S>, ConfigError> {
+    let world = match scene {
+        GravityScene::Cluster => cluster(n, seed)?,
+        GravityScene::Disk => disk(n, seed)?,
+        GravityScene::Collapse => collapse(n, seed)?,
+    };
+    Ok(Sim::with_gravity(world, cluster_gravity()?))
 }
 
 fn step_scene<S: Scalar>(w: &mut World<S>, scene: &mut Scene, steps: u32, dt: f64) {

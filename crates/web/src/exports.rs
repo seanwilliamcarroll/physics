@@ -9,6 +9,7 @@ use core::num::NonZeroU32;
 use core::ptr;
 
 use crate::demo::{Demo, DemoKind, ScalarKind, integrator_from_code};
+use engine::Softening;
 
 /// Creates a demo of `n` particles. `kind` and `scalar` are codes from
 /// [`crate::abi`]. Returns null for an unknown code or invalid scene.
@@ -106,6 +107,22 @@ pub unsafe extern "C" fn demo_set_rate(d: *mut Demo, hz: u32) -> u32 {
     };
     d.set_rate(rate);
     1
+}
+
+/// Sets the softening length ε (meters) of a gravity scene, from the next
+/// step. Returns 1 on success; 0 for a negative or NaN `eps` (parsed into
+/// `Softening` here, at the boundary), a scene without gravity (the
+/// fountain), or a null handle. ε = 0 is allowed.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn demo_set_softening(d: *mut Demo, eps: f64) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(eps)) = (unsafe { d.as_mut() }, Softening::new(eps)) else {
+        return 0;
+    };
+    u32::from(d.set_softening(eps))
 }
 
 /// Total energy in joules, or NaN where it isn't defined (the fountain) or

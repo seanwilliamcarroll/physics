@@ -1,6 +1,6 @@
 use super::{
     demo_advance, demo_energy, demo_free, demo_new, demo_positions_len, demo_positions_ptr,
-    demo_set_integrator, demo_set_rate,
+    demo_set_integrator, demo_set_rate, demo_set_softening,
 };
 use crate::abi;
 use core::ptr;
@@ -72,5 +72,29 @@ fn null_handles_are_harmless() {
         assert!(demo_positions_ptr(ptr::null()).is_null());
         assert_eq!(demo_positions_len(ptr::null()), 0);
         demo_free(ptr::null_mut());
+    }
+}
+
+#[test]
+fn softening_is_parsed_at_the_boundary() {
+    let d = demo_new(abi::DEMO_DISK, abi::SCALAR_F32, 32, 1);
+    assert!(!d.is_null());
+    // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
+    unsafe {
+        let e0 = demo_energy(d);
+        assert_eq!(demo_set_softening(d, -0.1), 0, "negative rejected");
+        assert_eq!(demo_set_softening(d, f64::NAN), 0, "NaN rejected");
+        assert_eq!(demo_energy(d).to_bits(), e0.to_bits(), "unchanged");
+        assert_eq!(demo_set_softening(d, 0.0), 1, "zero allowed");
+        assert_eq!(demo_set_softening(d, 0.5), 1);
+        assert!(demo_energy(d) > e0, "softer: shallower potential");
+        demo_free(d);
+        assert_eq!(demo_set_softening(ptr::null_mut(), 0.1), 0);
+    }
+    let f = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 4, 1);
+    // SAFETY: as above.
+    unsafe {
+        assert_eq!(demo_set_softening(f, 0.1), 0, "fountain has no gravity");
+        demo_free(f);
     }
 }
