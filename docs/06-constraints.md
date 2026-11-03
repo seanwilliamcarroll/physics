@@ -204,6 +204,31 @@ equalizer". The impulse solver integrates velocities directly and doesn't
 have this problem. A known failure now
 (`xpbd_f32_substeps_derive_noisy_velocities`); worth showing on the page.
 
+**As built (M4.4), the 1:100 chain** (`scenarios::chain`: 10 links,
+1 m, 10 g link particles, 1 kg bob, released level with the pin; 10 s
+at 60 Hz, f64, `tests/chains.rs`). Max link error / max total stretch:
+
+| Solver | Substeps | Iterations 1 | Iterations 10 |
+|---|---|---|---|
+| XPBD | 1 | 65 cm / 5.7 m | 8.1 cm / 71 cm |
+| XPBD | 20 | 3.2 mm / 2.8 cm | 0.46 mm / 4.0 mm |
+| Impulse (β = 0.2) | 1 | 1.19 m / 5.6 m | 1.10 m / 5.4 m |
+| Impulse (β = 0.2) | 20 | 42 cm / 1.65 m | 3.7 cm / 14 cm |
+
+At one substep both fail; at 20, XPBD's chain is ~130x tighter than the
+impulse solver's, and iterations help both (~7x XPBD, ~11x impulse). The
+mass ratio is the cause: at 1:1 the same 20-substep chain holds to 0.51
+mm (XPBD) and 4.1 mm (impulse). f32 is within ~30% of each.
+
+**As built (M4.4), the double pendulum** (`scenarios::double_pendulum`:
+two 1 m rods, 1 kg bobs, released horizontal; impulse, 20 substeps).
+Copies 1e-9 m apart reach 1 cm tip separation at **23.8 s**, not "a few
+seconds": this start stays nearly regular for ~10 s (tips 3e-9 m apart
+at 10 s, 1e-4 m at 20 s). f32 against f64 separates at 14.9 s. Energy
+stays within 0.039 J (0.4% of m g L) over 30 s. XPBD at 20 substeps
+loses ~10 J in 20 s, and its 1e-9 copies never reach 1 cm in 120 s:
+its damping kills the chaos, which is why the page defaults to impulse.
+
 ## Per-solver state: λ next to the constraints
 
 `World` keeps `lambda: Vec<S>`, one per constraint, in the same order.
