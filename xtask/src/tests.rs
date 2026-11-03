@@ -34,6 +34,16 @@ fn parses_known_commands() {
         parse(&["bench-wasm", "--budget-ms", "0"]).is_err(),
         "too short"
     );
+    assert_eq!(parse(&["coverage"]), Ok(Command::Coverage));
+}
+
+#[test]
+fn coverage_takes_no_args() {
+    // Rust and JS always run together: the JS half takes about a second.
+    assert_eq!(
+        parse(&["coverage", "--js"]),
+        Err(ErrorKind::UnknownArgument)
+    );
 }
 
 #[test]
