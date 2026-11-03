@@ -4,6 +4,20 @@
 use super::{Wall, candidate_pairs};
 use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2};
 
+/// Pairs this close (m) are contacts even when they aren't approaching.
+///
+/// Without it, a ball resting on another (gap ~0 from rounding, both
+/// falling at the same rate, so no approach) isn't a contact. During that
+/// substep the lower ball is held up by its own contact while the upper
+/// one falls freely, so they overlap by `g h²`, get pushed apart, separate
+/// by a hair, and miss each other again: a stack of three or more never
+/// settles (M6.5: six balls jittered at ~5 cm/s, forever). With 1 mm,
+/// every stack measured settles to exactly zero velocity. Extra contacts
+/// cost nothing physically: XPBD corrects only overlap, and the impulse
+/// solver lets a speculative gap close. `Box2D` keeps a margin for the same
+/// reason.
+pub const CONTACT_MARGIN: f64 = 1e-3;
+
 /// What a contact's first body touches.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Body {
@@ -30,8 +44,8 @@ pub struct Contact<S> {
 /// and wall. `pairs` is the broadphase's scratch.
 ///
 /// A contact is kept when its gap is at most what the pair can close in
-/// `h` at their current approach speed (the speculative margin): touching
-/// or overlapping always counts. Pairs that can't move (both static) and
+/// `h` at their current approach speed (the speculative margin), plus
+/// [`CONTACT_MARGIN`]: touching or overlapping always counts. Pairs that can't move (both static) and
 /// points (radius 0) make none.
 pub fn find_contacts<S: Scalar>(
     p: &Particles<S>,
@@ -42,18 +56,19 @@ pub fn find_contacts<S: Scalar>(
 ) {
     out.clear();
     let two = S::ONE + S::ONE;
+    let margin = S::from_f64(CONTACT_MARGIN);
     let max_speed = p
         .vel()
         .iter()
         .zip(p.radius())
         .filter(|(_, r)| **r > S::ZERO)
         .fold(S::ZERO, |m, (v, _)| max(m, v.length()));
-    // Any pair that can touch this substep: within both radii plus what
-    // both can travel.
-    let cell = two * p.max_radius() + two * max_speed * h;
+    // Any pair that can be a contact this substep: within both radii,
+    // plus what both can travel, plus the margin.
+    let cell = two * p.max_radius() + two * max_speed * h + margin;
     candidate_pairs(p.pos(), p.radius(), cell, pairs);
     for &(a, b) in pairs.iter() {
-        if let Some(c) = pair_contact(p, a, b, h) {
+        if let Some(c) = pair_contact(p, a, b, h, margin) {
             out.push(c);
         }
     }
@@ -67,7 +82,7 @@ pub fn find_contacts<S: Scalar>(
             let normal = -wall.normal();
             let gap = wall.distance(x) - r;
             // The wall doesn't move: v_n = n · (0 − v_a).
-            if speculative(gap, -normal.dot(v), h) {
+            if speculative(gap, -normal.dot(v), h, margin) {
                 out.push(Contact {
                     a: ParticleId(a),
                     b: Body::Wall(i),
@@ -80,7 +95,13 @@ pub fn find_contacts<S: Scalar>(
 }
 
 /// The contact between circles `a < b`, if they touch or can this substep.
-fn pair_contact<S: Scalar>(p: &Particles<S>, a: usize, b: usize, h: S) -> Option<Contact<S>> {
+fn pair_contact<S: Scalar>(
+    p: &Particles<S>,
+    a: usize,
+    b: usize,
+    h: S,
+    margin: S,
+) -> Option<Contact<S>> {
     let (xa, xb) = (*p.pos().get(a)?, *p.pos().get(b)?);
     let (va, vb) = (*p.vel().get(a)?, *p.vel().get(b)?);
     let (wa, wb) = (*p.inv_mass().get(a)?, *p.inv_mass().get(b)?);
@@ -94,7 +115,7 @@ fn pair_contact<S: Scalar>(p: &Particles<S>, a: usize, b: usize, h: S) -> Option
         .length_and_direction()
         .unwrap_or((S::ZERO, UnitVec2::X));
     let gap = dist - reach;
-    speculative(gap, normal.dot(vb - va), h).then_some(Contact {
+    speculative(gap, normal.dot(vb - va), h, margin).then_some(Contact {
         a: ParticleId(a),
         b: Body::Particle(ParticleId(b)),
         normal,
@@ -103,9 +124,9 @@ fn pair_contact<S: Scalar>(p: &Particles<S>, a: usize, b: usize, h: S) -> Option
 }
 
 /// Whether a `gap` closing at normal velocity `v_n` (negative =
-/// approaching) can reach 0 within `h`: `gap ≤ max(0, −v_n) h`.
-fn speculative<S: Scalar>(gap: S, v_n: S, h: S) -> bool {
-    gap <= max(S::ZERO, -v_n) * h
+/// approaching) is a contact: `gap ≤ max(0, −v_n) h + margin`.
+fn speculative<S: Scalar>(gap: S, v_n: S, h: S, margin: S) -> bool {
+    gap <= max(S::ZERO, -v_n) * h + margin
 }
 
 fn max<S: Scalar>(a: S, b: S) -> S {

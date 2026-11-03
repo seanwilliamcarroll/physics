@@ -80,15 +80,7 @@ fn momentum_is_conserved_through_a_pileup() {
     // walls: total momentum fixed to rounding.
     for solver in SOLVERS {
         let mut w = world(solver, 0.7);
-        let specs = [
-            ((-1.0, 0.03), (2.0, 0.0), 1.0),
-            ((0.0, 0.0), (0.0, 0.0), 2.0),
-            ((0.21, 0.1), (0.0, 0.0), 0.5),
-            ((0.25, -0.12), (0.0, 0.0), 1.5),
-            ((0.6, 0.6), (-1.0, -1.0), 1.0),
-            ((1.0, -0.05), (-1.5, 0.1), 0.8),
-        ];
-        for (x, v, m) in specs {
+        for (x, v, m) in PILEUP {
             ball(&mut w, x, v, m);
         }
         let p0 = momentum(&w.particles);
@@ -147,5 +139,81 @@ fn a_bounce_reaches_e_squared_of_the_drop() {
                 "{solver:?} e = {e}: {peak}"
             );
         }
+    }
+}
+
+/// A ball: (position, velocity, mass).
+type BallSpec = ((f64, f64), (f64, f64), f64);
+
+/// The pileup's balls.
+const PILEUP: [BallSpec; 6] = [
+    ((-1.0, 0.03), (2.0, 0.0), 1.0),
+    ((0.0, 0.0), (0.0, 0.0), 2.0),
+    ((0.21, 0.1), (0.0, 0.0), 0.5),
+    ((0.25, -0.12), (0.0, 0.0), 1.5),
+    ((0.6, 0.6), (-1.0, -1.0), 1.0),
+    ((1.0, -0.05), (-1.5, 0.1), 0.8),
+];
+
+/// Kinetic energy through the pileup at `e`: (start, end, largest
+/// step-to-step rise).
+fn pileup_energy(solver: Solver, e: f64) -> (f64, f64, f64) {
+    let mut w = world(solver, e);
+    for (x, v, m) in PILEUP {
+        ball(&mut w, x, v, m);
+    }
+    let e0 = kinetic_energy(&w.particles);
+    let (mut prev, mut rise) = (e0, 0.0_f64);
+    for _ in 0..120 {
+        w.step(DT);
+        let ke = kinetic_energy(&w.particles);
+        rise = rise.max(ke - prev);
+        prev = ke;
+    }
+    (e0, prev, rise)
+}
+
+#[test]
+fn collisions_never_add_energy() {
+    for solver in SOLVERS {
+        for e in [1.0, 0.7, 0.0] {
+            let (e0, end, rise) = pileup_energy(solver, e);
+            println!("{solver:?} e = {e}: KE {e0:.6} -> {end:.6} J, largest rise {rise:e} J");
+            assert!(
+                rise < 1e-12,
+                "{solver:?} e = {e}: gained {rise} J in a step"
+            );
+        }
+    }
+}
+
+/// Three balls stacked on a floor, released touching, with gravity:
+/// deepest overlap (between balls or with the floor) over 2 s, and the
+/// final kinetic energy.
+fn stack(solver: Solver) -> (f64, f64) {
+    let mut w = world(solver, 0.0);
+    w.add_force(pendulum_gravity());
+    w.add_wall(Wall::through(Vec2::ZERO, UnitVec2::Y));
+    for i in 0..3 {
+        ball(&mut w, (0.0, R + 2.0 * R * f64::from(i)), (0.0, 0.0), 1.0);
+    }
+    let mut deepest = 0.0_f64;
+    for _ in 0..120 {
+        w.step(DT);
+        let y = |i: usize| w.particles.pos()[i].y;
+        deepest = deepest.max(R - y(0));
+        deepest = deepest.max(2.0 * R - (y(1) - y(0)));
+        deepest = deepest.max(2.0 * R - (y(2) - y(1)));
+    }
+    (deepest, kinetic_energy(&w.particles))
+}
+
+#[test]
+fn a_stack_rests_without_sinking() {
+    for solver in SOLVERS {
+        let (deepest, ke) = stack(solver);
+        println!("{solver:?}: deepest overlap {deepest:e} m, final KE {ke:e} J");
+        assert!(deepest < 1e-3, "{solver:?}: {deepest} m");
+        assert!(ke < 1e-9, "{solver:?}: {ke} J");
     }
 }

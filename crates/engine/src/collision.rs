@@ -7,5 +7,5 @@ mod narrowphase;
 mod wall;
 
 pub use broadphase::candidate_pairs;
-pub use narrowphase::{Body, Contact, find_contacts};
+pub use narrowphase::{Body, CONTACT_MARGIN, Contact, find_contacts};
 pub use wall::Wall;
