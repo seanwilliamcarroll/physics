@@ -56,6 +56,11 @@ cargo xtask site                      # release build of `web` → site/pkg/engi
 python3 -m http.server -d site        # instantiateStreaming won't load from file://
 ```
 
+Day to day, `cargo xtask serve` does both, plus `tsc --watch`, and serves
+with `Cache-Control: no-store` (`xtask/serve.py`): plain `http.server`
+lets the browser reuse a cached `engine.wasm`, which once paired the new
+M3 page with a pre-M3 engine (`demo_new` returned null for the new kind).
+
 `cargo xtask site` wraps the manual steps:
 
 ```sh

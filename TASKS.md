@@ -184,6 +184,9 @@ The web demo's `Sim` keeps its force as one enum (`SceneForce`:
 `Option`s, so a θ can only exist next to the gravity it approximates.
 Literals named on the M3 page. `type-invariants.md` triggers re-checked
 (`UnitVec2` half met; `Compliance` waits for M5).
+Found in review: `cargo xtask serve` now sends `Cache-Control: no-store`
+(`xtask/serve.py`); a cached pre-M3 `engine.wasm` made `demo_new` return
+null on the new page.
 
 ---
 

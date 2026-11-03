@@ -1,5 +1,6 @@
 //! `cargo xtask serve`: build the site, then serve it with `tsc --watch`
-//! running alongside, so editing a `.ts` file only needs a reload. Rust
+//! running alongside, so editing a `.ts` file only needs a reload. Every
+//! response says `Cache-Control: no-store` (`xtask/serve.py`). Rust
 //! changes still need a rerun (it doesn't watch the wasm build).
 
 use std::path::Path;
@@ -39,20 +40,22 @@ pub(crate) fn serve(root: &Path, port: u16) -> Result<(), String> {
     println!("serving site/ at http://127.0.0.1:{port}/  (Ctrl-C to stop)");
     println!("  .ts edits recompile automatically; reload the page");
     println!("  Rust edits need `cargo xtask serve` again (it rebuilds the wasm)");
+    // `xtask/serve.py`: `http.server` plus `Cache-Control: no-store`, so a
+    // reload never pairs a new page with a cached old `engine.wasm`.
     let mut server = KillOnDrop(
         process::Command::new("python3")
             .current_dir(root)
             .args([
-                "-m",
-                "http.server",
+                "xtask/serve.py",
+                "--port",
                 &port.to_string(),
                 "--bind",
                 "127.0.0.1",
-                "-d",
+                "--directory",
                 "site",
             ])
             .spawn()
-            .map_err(|e| format!("failed to start python3 http.server: {e}"))?,
+            .map_err(|e| format!("failed to start python3 xtask/serve.py: {e}"))?,
     );
     let status = server
         .0
@@ -64,7 +67,7 @@ pub(crate) fn serve(root: &Path, port: u16) -> Result<(), String> {
         Ok(())
     } else {
         Err(format!(
-            "http.server exited ({status}); is port {port} in use?"
+            "the server exited ({status}); is port {port} in use?"
         ))
     }
 }
