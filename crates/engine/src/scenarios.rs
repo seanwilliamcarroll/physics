@@ -134,10 +134,10 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 /// of [`CLUSTER_RADIUS`], masses in [`CLUSTER_MASS`], small random
 /// velocities. Deterministic per seed.
 ///
-/// Positions use rejection sampling (draw in the square, keep points
-/// inside the disk) rather than `r = R√u, θ = 2πv`: no `sin`/`cos`, whose
-/// last bits depend on the platform's libm, so the scene is bit-identical
-/// on every platform, which cross-platform golden hashes rely on.
+/// Positions use rejection sampling ([`point_in_annulus`]) rather than
+/// `r = R√u, θ = 2πv`: no `sin`/`cos`, whose last bits depend on the
+/// platform's libm, so the scene is bit-identical on every platform, which
+/// cross-platform golden hashes rely on.
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
@@ -146,15 +146,8 @@ pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> 
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
     w.add_force(cluster_gravity()?);
     let mut rng = SplitMix64::new(seed);
-    let r = CLUSTER_RADIUS;
     for _ in 0..n {
-        // Accepts with probability π/4 per try, so ~1.3 tries on average.
-        let (x, y) = loop {
-            let (x, y) = (rng.range(-r, r), rng.range(-r, r));
-            if x * x + y * y <= r * r {
-                break (x, y);
-            }
-        };
+        let (x, y) = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
         let vx = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
         let vy = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
         let mass = rng.range(CLUSTER_MASS.0, CLUSTER_MASS.1);
@@ -163,6 +156,144 @@ pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> 
             Vec2::new(S::from_f64(vx), S::from_f64(vy)),
             S::from_f64(mass),
         );
+    }
+    Ok(w)
+}
+
+/// A point uniform in the annulus `inner ≤ r ≤ outer` around the origin
+/// (`inner = 0`: the disk), by rejection sampling: draw in the bounding
+/// square, keep points inside. No `sin`/`cos` (see [`cluster`]). For the
+/// full disk a try is accepted with probability π/4, so ~1.3 tries on
+/// average; the disk scene's annulus is nearly as good.
+fn point_in_annulus(rng: &mut SplitMix64, inner: f64, outer: f64) -> (f64, f64) {
+    loop {
+        let (x, y) = (rng.range(-outer, outer), rng.range(-outer, outer));
+        let r_sq = x * x + y * y;
+        if inner * inner <= r_sq && r_sq <= outer * outer {
+            return (x, y);
+        }
+    }
+}
+
+/// Outer radius of [`disk`], m: the same as the cluster's, so the scenes
+/// share a view.
+pub const DISK_RADIUS: f64 = 2.0;
+
+/// Inner radius of [`disk`], m: 3 ε ([`CLUSTER_SOFTENING`]), so no orbiter
+/// starts inside the center's softened core, where the circular speed
+/// formula would put it on a slow, barely bound orbit. Also bounds the
+/// fastest orbit: period ≈ 0.6 s, about 35 steps at 60 Hz.
+pub const DISK_INNER_RADIUS: f64 = 0.3;
+
+/// Mass of [`disk`]'s central body, kg: `G M` ≈ 3.3 m³/s², so an orbiter
+/// at [`DISK_RADIUS`] takes about 10 s per orbit.
+pub const DISK_CENTRAL_MASS: f64 = 5.0e10;
+
+/// Total mass of [`disk`]'s orbiters, kg, shared equally: 1/5 of the
+/// center. Fixed rather than per body, so the time scale doesn't change
+/// with N, and small next to the center, so the enclosed-mass speeds are
+/// close to right (see [`disk`]).
+pub const DISK_ORBITERS_TOTAL_MASS: f64 = 1.0e10;
+
+/// A heavy body at the origin and `n - 1` equal-mass orbiters scattered
+/// over the annulus [`DISK_INNER_RADIUS`]..[`DISK_RADIUS`], each launched
+/// counterclockwise at the circular speed for the mass inside its radius
+/// (center plus closer orbiters), under the softened force. Looks like a
+/// stable disk at first; orbiter–orbiter pulls then make it chaotic.
+///
+/// The enclosed mass is an approximation: Newton's shell theorem doesn't
+/// hold for 1/r² gravity in a plane, so mass *outside* a radius still pulls.
+/// The heavy center keeps the error small. Every velocity then gets the
+/// same boost that makes total momentum zero, which leaves the speeds
+/// relative to the center unchanged. Only `sqrt`, no trig: bit-identical
+/// across platforms. Deterministic per seed.
+///
+/// # Errors
+/// Only if the fixed configuration were invalid (it isn't:
+/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive).
+pub fn disk<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
+    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
+    w.add_force(cluster_gravity()?);
+    if n == 0 {
+        return Ok(w);
+    }
+    let orbiters = n - 1;
+    let mut rng = SplitMix64::new(seed);
+    let pos: Vec<(f64, f64)> = (0..orbiters)
+        .map(|_| point_in_annulus(&mut rng, DISK_INNER_RADIUS, DISK_RADIUS))
+        .collect();
+    // Exact for any count a `usize` can hold in practice (< 2⁵³).
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "orbiter counts are far below 2^53, so the conversion is exact"
+    )]
+    let m = DISK_ORBITERS_TOTAL_MASS / orbiters.max(1) as f64;
+
+    // Enclosed mass: the center plus every orbiter strictly closer in.
+    // Sorted squared radii make that a binary search per orbiter.
+    let mut r_sq_sorted: Vec<f64> = pos.iter().map(|&(x, y)| x * x + y * y).collect();
+    r_sq_sorted.sort_by(f64::total_cmp);
+    let eps_sq = CLUSTER_SOFTENING * CLUSTER_SOFTENING;
+    let vel: Vec<(f64, f64)> = pos
+        .iter()
+        .map(|&(x, y)| {
+            let r_sq = x * x + y * y;
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "orbiter counts are far below 2^53, so the conversion is exact"
+            )]
+            let closer = r_sq_sorted.partition_point(|&q| q < r_sq) as f64;
+            let enclosed = DISK_CENTRAL_MASS + m * closer;
+            // v² / r = G M r / (r² + ε²)^(3/2), as for `orbit_relative_speed`.
+            let q = r_sq + eps_sq;
+            let speed = (GRAVITATIONAL_CONSTANT * enclosed * r_sq / (q * q.sqrt())).sqrt();
+            // Counterclockwise unit tangent: (-y, x) / r.
+            let r = r_sq.sqrt();
+            (-y / r * speed, x / r * speed)
+        })
+        .collect();
+
+    // Boost into the zero-momentum frame: subtract P / M_total from all.
+    let (px, py) = vel
+        .iter()
+        .fold((0.0, 0.0), |(px, py), &(vx, vy)| (px + m * vx, py + m * vy));
+    let total = DISK_CENTRAL_MASS + DISK_ORBITERS_TOTAL_MASS;
+    let (bx, by) = (-px / total, -py / total);
+    let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
+    w.particles
+        .add(Vec2::ZERO, vec(bx, by), S::from_f64(DISK_CENTRAL_MASS));
+    for (&(x, y), &(vx, vy)) in pos.iter().zip(&vel) {
+        w.particles
+            .add(vec(x, y), vec(vx + bx, vy + by), S::from_f64(m));
+    }
+    Ok(w)
+}
+
+/// Total mass of [`collapse`], kg, shared equally: `G M` = 2 m³/s², so the
+/// free-fall scale `√(R³ / G M)` is 2 s at [`CLUSTER_RADIUS`] whatever N.
+pub const COLLAPSE_TOTAL_MASS: f64 = 3.0e10;
+
+/// A cold cloud: `n` equal-mass bodies uniform in a disk of
+/// [`CLUSTER_RADIUS`], all at rest, so gravity pulls it in on itself.
+/// Zero momentum and center-of-mass motion by construction. Deterministic
+/// per seed.
+///
+/// # Errors
+/// Only if the fixed configuration were invalid (it isn't:
+/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive).
+pub fn collapse<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
+    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
+    w.add_force(cluster_gravity()?);
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "body counts are far below 2^53, so the conversion is exact"
+    )]
+    let m = S::from_f64(COLLAPSE_TOTAL_MASS / n.max(1) as f64);
+    let mut rng = SplitMix64::new(seed);
+    for _ in 0..n {
+        let (x, y) = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
+        w.particles
+            .add(Vec2::new(S::from_f64(x), S::from_f64(y)), Vec2::ZERO, m);
     }
     Ok(w)
 }
