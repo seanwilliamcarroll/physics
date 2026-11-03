@@ -8,6 +8,7 @@ mod chain;
 mod cluster;
 mod collapse;
 mod disk;
+mod double_pendulum;
 mod fountain;
 mod orbit;
 mod pendulum;
@@ -20,6 +21,7 @@ pub use cluster::{
 };
 pub use collapse::{COLLAPSE_TOTAL_MASS, collapse};
 pub use disk::{DISK_CENTRAL_MASS, DISK_INNER_RADIUS, DISK_ORBITERS_TOTAL_MASS, DISK_RADIUS, disk};
+pub use double_pendulum::{DOUBLE_PENDULUM_LENGTH, DOUBLE_PENDULUM_MASS, double_pendulum};
 pub use fountain::{FOUNTAIN_SUBSTEPS, FOUNTAIN_VX, FOUNTAIN_VY, Fountain};
 pub use orbit::{
     ORBIT_CIRCULAR, ORBIT_MASS_RATIO, ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, ORBIT_SOFTENING,
