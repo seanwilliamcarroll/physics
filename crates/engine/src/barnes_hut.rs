@@ -154,7 +154,8 @@ enum NodeKind<S> {
 struct Root<S> {
     center: Vec2<S>,
     half_side: S,
-    /// ½, converted once (`from_f64` is for setup, not loops).
+    /// ½, as `1 / (1 + 1)`: exact, and no `from_f64` (setup only) in the
+    /// force path, as in `integrate.rs`.
     half: S,
 }
 
@@ -277,7 +278,8 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
                 .enumerate()
                 .filter(|&(_, (_, &w))| w != S::ZERO)
         };
-        let Some(root) = Root::around(dynamic().map(|(_, (&x, _))| x), S::from_f64(0.5)) else {
+        let Some(root) = Root::around(dynamic().map(|(_, (&x, _))| x), S::ONE / (S::ONE + S::ONE))
+        else {
             return; // no dynamic bodies: nothing pulls, nothing is pulled
         };
 
