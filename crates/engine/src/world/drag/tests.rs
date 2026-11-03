@@ -80,3 +80,38 @@ fn only_static_particles_can_be_moved() {
     );
     assert_eq!(w.particles.pos()[0], Vec2::new(0.0, 1.0));
 }
+
+#[test]
+fn update_constraints_skips_the_held_grabs_rod() {
+    use crate::scenarios::{JellyBody, jelly};
+    use crate::{Constraint, Solver};
+    let mut j = jelly::<f64>(
+        JellyBody::Constraints(Solver::Xpbd),
+        NonZeroU32::MIN,
+        3,
+        3,
+        100.0,
+        0.0,
+    )
+    .unwrap();
+    let w = &mut j.world;
+    let rods = w.constraints().len();
+    let g = w
+        .grab(w.particles.pos()[4], 0.05, Compliance::new(SOFT).unwrap())
+        .unwrap();
+    let stiff = Compliance::new(1e-6).unwrap();
+    w.update_constraints(Some(&g), |c| c.with_compliance(stiff));
+    let all = w.constraints();
+    assert!(
+        all[..rods]
+            .iter()
+            .all(|c| c.compliance().to_bits() == 1e-6_f64.to_bits()),
+        "jelly rods updated"
+    );
+    assert_eq!(
+        all[rods].compliance().to_bits(),
+        SOFT.to_bits(),
+        "drag rod kept its own stiffness"
+    );
+    assert_eq!(w.release(g), Ok(()));
+}

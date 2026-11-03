@@ -3,8 +3,8 @@
 #![cfg(test)]
 
 use engine::scenarios::{
-    CHAIN_LINKS, DoublePendulumStart, Fountain, chain, cluster, collapse, disk, double_pendulum,
-    orbit, pendulum,
+    CHAIN_LINKS, DoublePendulumStart, Fountain, JELLY_COLS, JELLY_ROWS, JellyBody, chain, cluster,
+    collapse, disk, double_pendulum, jelly, orbit, pendulum,
 };
 use engine::{Integrator, Scalar, Solver};
 use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, s, state_hash};
@@ -33,6 +33,9 @@ enum Run {
     /// The `01` pendulum, 4 substeps, 600 steps (10 s): pins the solver's
     /// predict / project / derive order and λ handling.
     Pendulum(Solver),
+    /// The 8×8 jelly, 10 substeps, 300 steps (5 s: falls, lands, settles):
+    /// force springs at k = 1000 N/m, constraints at k = 1e5 (M5.5).
+    Jelly(JellyBody),
     /// The 1:100 chain ([`CHAIN_LINKS`] links), 4 substeps, 600 steps:
     /// pins Gauss–Seidel's constraint order along a chain.
     Chain(Solver),
@@ -41,7 +44,7 @@ enum Run {
     DoublePendulum,
 }
 
-const RUNS: [Run; 13] = [
+const RUNS: [Run; 16] = [
     Run::Fountain,
     Run::Cluster,
     Run::Disk,
@@ -55,6 +58,9 @@ const RUNS: [Run; 13] = [
     Run::Chain(Solver::Xpbd),
     Run::Chain(Solver::Impulse),
     Run::DoublePendulum,
+    Run::Jelly(JellyBody::Springs),
+    Run::Jelly(JellyBody::Constraints(Solver::Xpbd)),
+    Run::Jelly(JellyBody::Constraints(Solver::Impulse)),
 ];
 
 /// Builds the run's world, steps it, and hashes the final state.
@@ -80,6 +86,18 @@ fn run<S: Scalar>(r: Run) -> u64 {
                 w.step(s(DT));
             }
             state_hash(&w.particles)
+        }
+        Run::Jelly(body) => {
+            let k = if body == JellyBody::Springs {
+                1000.0
+            } else {
+                1e5
+            };
+            let mut j = jelly::<S>(body, nonzero(10), JELLY_COLS, JELLY_ROWS, k, 0.5).unwrap();
+            for _ in 0..300 {
+                j.world.step(s(DT));
+            }
+            state_hash(&j.world.particles)
         }
         Run::Pendulum(solver) => {
             let mut w = pendulum::<S>(solver, nonzero(4)).unwrap();
@@ -138,7 +156,7 @@ for_each_scalar!(every_run_is_repeatable);
 /// (then paste the new values from the failure message) or a bug.
 /// Recorded on aarch64-apple-darwin, Rust 1.99.1; `cargo xtask test-wasm`
 /// checks the same values on wasm32-wasip1 (`docs/04-testing.md`).
-const GOLDEN: [(u64, u64); 13] = [
+const GOLDEN: [(u64, u64); 16] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster
     (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
@@ -152,6 +170,9 @@ const GOLDEN: [(u64, u64); 13] = [
     (0x45e3_0c60_6f1f_bfe2, 0xe52e_d266_de49_2a04), // Chain(Xpbd)
     (0x89f6_7e75_f857_3861, 0x03d2_2ac8_3b0d_121f), // Chain(Impulse)
     (0x766f_e60d_00da_4c07, 0x0901_793c_4bbc_980c), // DoublePendulum
+    (0xa62e_3f2f_299a_3174, 0x5ec9_8ade_fa46_b8ce), // Jelly(Springs)
+    (0x2079_e496_6081_d007, 0xa96f_bdb3_87ea_cd29), // Jelly(Constraints(Xpbd))
+    (0x417b_f5ac_8bf7_f82b, 0x3182_4044_ab02_85a0), // Jelly(Constraints(Impulse))
 ];
 
 #[test]
