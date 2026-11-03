@@ -341,7 +341,8 @@ cases through `engine.wasm` in Node 22, vs criterion's native means):
 in headless Chrome, one fresh profile per case: M0 (default, f64, 500k,
 panic) and M1 (orbits in f64 and f32; every panel must step, draw its
 planet, and report finite energy; the reported pixels are the minimum
-across panels, so one blank panel fails). The
+across panels, so one blank panel fails), and M2 (the default disk, the
+unsoftened collapse, and the cluster at N = 1024, both scalar panels). The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs
 `SMOKE ok steps=N particle_px=N`.
@@ -356,6 +357,10 @@ Lessons that shaped it:
   alone would pass the latter. The 500k blank-canvas bug produced 0
   particle pixels and a `Failed to serialize op` log; the test checks both.
 - **Fresh profile per run**: a reused one served stale JS from cache.
+- **It catches scene design, not just plumbing (M2.6):** the N = 1024
+  cluster case drew 0 pixels because the cluster's per-body masses made
+  total mass grow with N, and every body left the view in 0.5 s. The
+  cluster now has a fixed total mass.
 - **The panic case** (`?smoke&panic`) calls the shipped
   `demo_panic_for_test` export and passes only if the page saw
   `TEST_PANIC_MESSAGE` arrive through the `console_error` import *and*
@@ -373,7 +378,8 @@ syntax errors in `.js` files).
 `tests/site/*.test.js`, run by Node's built-in runner (`node --test`, no
 dependency) in pre-push: the pure modules (`options.js`, `ring.js`, the
 scale math in `plot.js`, the fade bands in `trail.js`, `RateMeter` and
-`Smoothed`). DOM-touching code is covered by the browser smoke test
+`Smoothed`, and since M2 `divergence.ts` and `perf.ts`'s cost table).
+DOM-touching code is covered by the browser smoke test
 instead. The tests live outside `site/`, so they're never served. Note:
 `node --test` needs a glob; a directory argument is treated as a module.
 
