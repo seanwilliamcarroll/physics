@@ -136,14 +136,18 @@ are unchanged. `ConfigError::InvalidMass` for scene masses; `kg()` test
 shorthands (one for unit tests, one in `test-support`). Built by a
 subagent.
 
-## 3. Constraints and XPBD (test first, PR)
+## ✅ 3. Constraints and XPBD (done)
 
-- [ ] `Constraint<S>`, `DistanceConstraint`; `World::add_constraint`.
-- [ ] `Solver::Xpbd`, substeps and iterations; XPBD keeps the rod at
-      rounding level; energy loss shrinks with substeps.
-- [ ] Diagnostics: constraint error (max, RMS).
-- [ ] `scenarios::pendulum` (L = 1 m, m = 1 kg, released horizontal, the
-      `01` setup).
+`Constraint<S>` (`evaluate -> (C, Option<∇C>)`: C stays readable for
+coincident bodies) and `DistanceConstraint::between`; `World` constraints,
+λ, `Solver::Xpbd`, `set_iterations`/`set_substeps` (`NonZeroU32`),
+`add_constraint` rejecting foreign ids (`UnknownParticle`). With
+constraints the solver owns the step (integrator ignored, tested);
+without, goldens are unchanged. Diagnostics: `constraint_error`,
+`uniform_gravity_potential`. `scenarios::pendulum`. XPBD holds the rod to
+8 ulps, and energy lost over 10 s matches `01`: 8.791 / 1.454 / 0.312 J at
+1 / 20 / 100 substeps (table 8.8 / 1.46 / 0.31). Golden for the XPBD
+pendulum, native and wasm.
 
 ## 4. Impulse solver (test first, PR)
 

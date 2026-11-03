@@ -5,7 +5,7 @@
 //! principle. Mass is recovered as `1 / inv_mass`, a division per particle;
 //! fine for once-per-frame readouts, which is what these are for.
 
-use crate::{PairwiseGravity, Particles, Scalar, Vec2};
+use crate::{Constraint, PairwiseGravity, Particles, Scalar, UniformGravity, Vec2};
 
 /// Iterates `(velocity, inv_mass)` over dynamic particles only.
 fn dynamic<S: Scalar>(p: &Particles<S>) -> impl Iterator<Item = (Vec2<S>, S)> + '_ {
@@ -83,6 +83,45 @@ pub fn gravity_potential<S: Scalar>(p: &Particles<S>, g: &PairwiseGravity<S>) ->
 #[must_use]
 pub fn total_energy<S: Scalar>(p: &Particles<S>, g: &PairwiseGravity<S>) -> S {
     kinetic_energy(p) + gravity_potential(p, g)
+}
+
+/// Potential energy in uniform gravity, `Σ m (−g · x)`, J: zero at the
+/// origin, so `m g h` with `h` the height above it. With [`kinetic_energy`],
+/// conserved by a frictionless pendulum: the M3 energy plot.
+#[must_use]
+pub fn uniform_gravity_potential<S: Scalar>(p: &Particles<S>, g: &UniformGravity<S>) -> S {
+    p.pos()
+        .iter()
+        .zip(p.inv_mass())
+        .filter(|&(_, &w)| w != S::ZERO)
+        .fold(S::ZERO, |acc, (&x, &w)| acc - g.g().dot(x) / w)
+}
+
+/// Max and RMS of `|C|` over `constraints`, in the constraint's units (m
+/// for a rod: how far it is stretched or compressed). `None` with no
+/// constraints. A constraint whose bodies aren't in `p` is skipped (worlds
+/// check ids when constraints are added, so that means a mismatched `p`).
+#[must_use]
+pub fn constraint_error<S: Scalar, C: Constraint<S>>(
+    p: &Particles<S>,
+    constraints: &[C],
+) -> Option<(S, S)> {
+    let (mut max, mut sum_sq, mut count) = (S::ZERO, S::ZERO, S::ZERO);
+    for c in constraints {
+        let [a, b] = c.bodies();
+        let (Some(&xa), Some(&xb)) = (p.pos().get(a.index()), p.pos().get(b.index())) else {
+            continue;
+        };
+        let err = c.evaluate(xa, xb).0.abs();
+        if err > max {
+            max = err;
+        }
+        sum_sq += err * err;
+        // Counting in S avoids a usize-to-float cast; exact far beyond
+        // any constraint count we'll have (2^24 in f32).
+        count += S::ONE;
+    }
+    (count > S::ZERO).then(|| (max, (sum_sq / count).sqrt()))
 }
 
 #[cfg(test)]

@@ -69,7 +69,11 @@ impl Integrator {
 }
 
 /// Fills `acc` with every force's acceleration at the current positions.
-fn evaluate<S: Scalar>(forces: &[Box<dyn Force<S>>], p: &Particles<S>, acc: &mut Vec<Vec2<S>>) {
+pub(crate) fn evaluate<S: Scalar>(
+    forces: &[Box<dyn Force<S>>],
+    p: &Particles<S>,
+    acc: &mut Vec<Vec2<S>>,
+) {
     acc.clear();
     acc.resize(p.len(), Vec2::ZERO);
     for force in forces {
@@ -78,14 +82,14 @@ fn evaluate<S: Scalar>(forces: &[Box<dyn Force<S>>], p: &Particles<S>, acc: &mut
 }
 
 /// `v += a h`.
-fn kick<S: Scalar>(vel: &mut [Vec2<S>], acc: &[Vec2<S>], h: S) {
+pub(crate) fn kick<S: Scalar>(vel: &mut [Vec2<S>], acc: &[Vec2<S>], h: S) {
     for (v, &a) in vel.iter_mut().zip(acc) {
         *v += a * h;
     }
 }
 
 /// `x += v h`.
-fn drift<S: Scalar>(pos: &mut [Vec2<S>], vel: &[Vec2<S>], h: S) {
+pub(crate) fn drift<S: Scalar>(pos: &mut [Vec2<S>], vel: &[Vec2<S>], h: S) {
     for (x, &v) in pos.iter_mut().zip(vel) {
         *x += v * h;
     }

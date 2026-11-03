@@ -1,8 +1,12 @@
-//! [`World<S>`]: particles + forces + integrator, advanced in fixed steps.
+//! [`World<S>`]: particles + forces + constraints, advanced in fixed steps
+//! by an integrator or, with constraints, a solver
+//! (`docs/06-constraints.md`).
 
 use core::fmt;
+use core::num::NonZeroU32;
 
-use crate::{Force, Integrator, Particles, Scalar, Vec2};
+use crate::solver::Step;
+use crate::{Constraint, DistanceConstraint, Force, Integrator, Particles, Scalar, Solver, Vec2};
 
 /// Invalid `World` configuration.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -15,6 +19,9 @@ pub enum ConfigError {
     /// A mass must be positive and finite, with a finite inverse; see
     /// [`crate::Mass`].
     InvalidMass,
+    /// A constraint names a particle this world doesn't have (e.g. it was
+    /// built from another world's particles).
+    UnknownParticle,
 }
 
 impl fmt::Display for ConfigError {
@@ -25,6 +32,7 @@ impl fmt::Display for ConfigError {
             Self::InvalidMass => {
                 f.write_str("mass must be positive and finite, with a finite inverse")
             }
+            Self::UnknownParticle => f.write_str("constraint names a particle not in this world"),
         }
     }
 }
@@ -44,6 +52,15 @@ pub struct World<S: Scalar> {
     /// Second scratch buffer: velocity Verlet's accelerations at the new
     /// positions.
     acc_next: Vec<Vec2<S>>,
+    /// Rods etc. With any present, `solver` steps instead of `integrator`.
+    constraints: Vec<DistanceConstraint<S>>,
+    /// One multiplier per constraint, same order: the solver's state.
+    lambda: Vec<S>,
+    solver: Solver,
+    /// Gauss–Seidel passes over the constraints per substep.
+    iterations: NonZeroU32,
+    /// Scratch: positions at the start of a substep (XPBD).
+    prev: Vec<Vec2<S>>,
 }
 
 impl<S: Scalar> World<S> {
@@ -62,6 +79,11 @@ impl<S: Scalar> World<S> {
             substeps,
             acc: Vec::new(),
             acc_next: Vec::new(),
+            constraints: Vec::new(),
+            lambda: Vec::new(),
+            solver: Solver::Xpbd,
+            iterations: NonZeroU32::MIN,
+            prev: Vec::new(),
         })
     }
 
@@ -75,6 +97,55 @@ impl<S: Scalar> World<S> {
     /// every force.
     pub fn clear_forces(&mut self) {
         self.forces.clear();
+    }
+
+    /// Adds a constraint; from the next step, the [`Solver`] steps this
+    /// world.
+    ///
+    /// # Errors
+    /// [`ConfigError::UnknownParticle`] if it names a particle this world
+    /// doesn't have (built from another world's particles). Nothing is
+    /// added then.
+    pub fn add_constraint(&mut self, c: DistanceConstraint<S>) -> Result<(), ConfigError> {
+        let n = self.particles.len();
+        if c.bodies().iter().any(|id| id.index() >= n) {
+            return Err(ConfigError::UnknownParticle);
+        }
+        self.constraints.push(c);
+        self.lambda.push(S::ZERO);
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn constraints(&self) -> &[DistanceConstraint<S>] {
+        &self.constraints
+    }
+
+    #[must_use]
+    pub const fn solver(&self) -> Solver {
+        self.solver
+    }
+
+    /// Takes effect from the next step. Resets every λ: one solver's
+    /// multipliers mean nothing to the other.
+    pub fn set_solver(&mut self, solver: Solver) {
+        self.solver = solver;
+        self.lambda.fill(S::ZERO);
+    }
+
+    #[must_use]
+    pub const fn iterations(&self) -> NonZeroU32 {
+        self.iterations
+    }
+
+    pub const fn set_iterations(&mut self, iterations: NonZeroU32) {
+        self.iterations = iterations;
+    }
+
+    /// The type makes 0 unrepresentable, so unlike [`World::new`] there's
+    /// nothing to report.
+    pub const fn set_substeps(&mut self, substeps: NonZeroU32) {
+        self.substeps = substeps.get();
     }
 
     #[must_use]
@@ -102,14 +173,32 @@ impl<S: Scalar> World<S> {
         }
     }
 
+    /// No constraints: the integrator, exactly as before M3. With
+    /// constraints: the solver owns the whole substep, and the integrator
+    /// setting is ignored (`docs/06-constraints.md`).
     fn substep(&mut self, h: S) {
-        self.integrator.substep(
-            &self.forces,
-            &mut self.particles,
-            &mut self.acc,
-            &mut self.acc_next,
-            h,
-        );
+        if self.constraints.is_empty() {
+            self.integrator.substep(
+                &self.forces,
+                &mut self.particles,
+                &mut self.acc,
+                &mut self.acc_next,
+                h,
+            );
+            return;
+        }
+        let step = Step {
+            forces: &self.forces,
+            particles: &mut self.particles,
+            constraints: &self.constraints,
+            lambda: &mut self.lambda,
+            acc: &mut self.acc,
+            prev: &mut self.prev,
+            iterations: self.iterations,
+        };
+        match self.solver {
+            Solver::Xpbd => step.xpbd(h),
+        }
     }
 }
 
