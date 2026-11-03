@@ -87,7 +87,9 @@ physics/
     │   ├── m0-hello/       # each: index.html + main.ts (emits main.js)
     │   ├── m1-orbits/
     │   ├── m2-cluster/
-    │   └── m3-pendulum/
+    │   ├── m3-pendulum/
+    │   ├── m4-chain/
+    │   └── m4-double-pendulum/
     └── pkg/                # build output (gitignored): engine.wasm
 ```
 
