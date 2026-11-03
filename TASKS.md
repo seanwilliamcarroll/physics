@@ -133,16 +133,18 @@ than native is unexplained (target-cpu=native hypothesis tested and
 refuted). A minimal `DEMO_CLUSTER` + `cluster_gravity` moved up from
 section 5 for the wasm side. Also: `thiserror` considered, not adopted.
 
-## 4. Scenarios and softening (test first, PR)
+## ✅ 4. Scenarios and softening (done)
 
-- [ ] `Softening<S>` (decision 5): non-negative, built from `f64` with a
-      `Result`/`Option`; `PairwiseGravity::new` takes it.
-- [ ] `World::clear_forces` (decision 4) and a scene-level way to rebuild
-      forces with a new ε.
-- [ ] `scenarios::disk` and `scenarios::collapse` (decision 8), with
-      setup tests (counts, bounds, determinism; disk's launch speeds
-      balance the enclosed mass).
-- [ ] Golden hashes extended to the new scenarios.
+`Softening<S>`: `new(eps) -> Option`, rejecting negative and NaN with one
+`>= 0`; ε = 0 is valid. `PairwiseGravity::new` takes it. Scene constants
+are checked once (`cluster_gravity`/`orbit_gravity` → `Result`,
+`ConfigError::InvalidSoftening`), and `scenarios::gravity(ε)` plus
+`World::clear_forces` rebuild a scene's force. The web demo stores the
+scene's gravity next to the world for energy readouts. New `disk` (heavy
+center, enclosed-mass circular orbits, zero-momentum boost; approximate in
+2D, since there's no shell theorem) and `collapse` (cold equal-mass cloud),
+both with fixed total mass so time scales don't depend on N. Seven golden
+runs; native and wasm agree.
 
 ## 5. Web layer (PR)
 
