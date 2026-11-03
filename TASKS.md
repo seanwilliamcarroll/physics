@@ -1,20 +1,18 @@
-# TASKS — M1: Orbits and integrators
+# TASKS — M2: N-body cluster
 
-Source: `docs/05-roadmap.md` (M1), `docs/04-testing.md` (phase 1
-test-first order, steps 3–5), `docs/02-core-types.md` (forces,
-integrators), `docs/03-wasm-shell.md` (multiple demos, plots),
-`docs/type-invariants.md` (triggers).
+Source: `docs/05-roadmap.md` (M2), `docs/04-testing.md` (phase 1 steps 6–7:
+property tests, benchmarks), `docs/type-invariants.md` (the `Softening`
+trigger), `docs/03-wasm-shell.md` (rendering cost).
 
-**Goal:** why integrator choice matters. One two-body orbit, three
-integrators side by side: explicit Euler spirals out, symplectic Euler
-wobbles but stays bounded, velocity Verlet is tightest.
+**Goal:** O(n²) cost made visible, softening, and the first **scalar
+comparison**: the same cluster in `f32` and `f64` drifting apart over time.
 
-**Done when:** a page shows three orbits and one energy-vs-time plot with
-three lines, and you can change `dt` with a slider and watch them diverge.
+**Done when:** a few hundred bodies run at 60 Hz; f32/f64 panels visibly
+diverge; the overlay reports cost growth with N.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m1/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`m2/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -23,21 +21,25 @@ three lines, and you can change `dt` with a slider and watch them diverge.
 - Commit frequently on branches: one commit per logical step (failing tests,
   implementation, refactor). The squash merge keeps `main` at one commit
   per section.
-- Hooks gate every commit and push: JS syntax, fmt, clippy `-D warnings`;
-  tests, wasm32 check, browser smoke test.
-- When a section is done, collapse it here to a one-paragraph summary.
+- Hooks gate every commit and push: JS syntax, `tsc`, fmt, clippy (native
+  and wasm32); tests, `node --test`, `test-wasm`, wasm32 check, browser
+  smoke test.
+- When a section is done, collapse it here to a one-paragraph summary,
+  then list the headings to check nothing else moved.
 
 ---
 
-## ✅ M0: Hello particles (done, PRs #1–#7)
+## ✅ M1: Orbits and integrators (done, PRs #8–#17)
 
-Workspace (`math`, `engine`, `web`, `xtask`), lint policy and hooks, the
-fountain demo with an `f32` render buffer and fixed-timestep accumulator,
-raw `extern "C"` exports, `cargo xtask site|smoke|install-hooks`, the
-M0 page with HUD and options, and a cleanup pass (magic numbers, ABI
-mirror test, JS syntax check, browser smoke test, `FixedStep` rate type).
-Details: the PRs, and `docs/lint-policy.md`, `docs/type-invariants.md`.
-Open follow-up: choose a license (none yet, so "all rights reserved").
+Wasm panic hook; `PairwiseGravity`, center of mass, `cluster`; explicit
+Euler and velocity Verlet with closed-form and error-law tests ((ωh)²,
+(ωh)⁴/4); Plummer potential and energy; the orbit scene; determinism and
+FNV-1a golden hashes, confirmed bit-identical on wasm (`cargo xtask
+test-wasm`); the M1 page (three panels, log energy plot, rate slider) on
+shared `plot`/`trail`/`controls`/`options` modules with `node --test`
+unit tests; checked JS, then TypeScript for `site/js` (new pages in
+`.ts`). Proposed tracks recorded: controls (PID) and web ideas.
+Open follow-up: choose a license.
 
 ---
 
@@ -45,150 +47,136 @@ Open follow-up: choose a license (none yet, so "all rights reserved").
 
 Recommendations in **bold**; reply on the PR to change any.
 
-1. **Orbit scale: SI at demo scale.** A heavy "star" and a light planet,
-   2 m apart, period ≈ 3 s, which needs a star of about 5 × 10¹¹ kg
-   (`G M = 4π² d³ / T²`). Positions and velocities stay order 1, so `f32`
-   is fine, and SI (decided in M0) holds. Alternative: dimensionless units
-   (`G = 1`), which breaks the SI decision.
-2. **Velocity Verlet recomputes accelerations every substep (no cache).**
-   Two force evaluations per step. A cached `a(x)` from the previous step
-   halves that, but goes stale whenever positions change outside the
-   integrator (the fountain's respawn teleports particles). Correct first;
-   measure the cost in M2's benchmarks before caching.
-3. **The `dt` slider sets the physics rate (steps/s), not `dt` directly.**
-   `dt = 1 / rate` keeps `FixedStep`'s `NonZeroU32` guarantee; the export
-   parses `u32 → NonZeroU32` at the boundary (`docs/type-invariants.md`).
-   The UI shows the resulting `dt`. Changing the rate resets the
-   accumulator's leftover.
-4. **Softening: accept ε, store ε².** Squaring makes a negative ε harmless,
-   so no `Softening` type is needed while it's a constant. The type
-   (non-negative, since M2 sets ε = 0 on purpose) waits for M2's slider.
-5. **Plot relative energy error `(E − E₀) / |E₀|`**, not raw energy: the
-   three integrators' curves share a scale, and "0 = perfect" reads at a
-   glance.
-6. **Trails live in JS** (a ring buffer per panel). They're a rendering
-   concern; Rust keeps returning positions only.
-7. **Golden hashes run natively only.** The cross-platform check (same
-   hash under `wasm32-wasip1`) needs `wasmtime`, which isn't installed.
-   Install it (MacPorts: `sudo port install wasmtime`; 50.0.0 is available) and add `cargo xtask test-wasm`
-   now, or defer to M2? **Defer**, unless you want the cross-platform
-   check in M1.
+1. **Dev dependencies: `proptest` 1.12.0 and `criterion` 0.8.2**, through
+   **`[workspace.dependencies]`** (one pinned version for the workspace;
+   the open question in `repo-layout.md`). Both are re-checked: active,
+   widely used, under `proptest-rs` / `criterion-rs`.
+2. **`proptest` with `default-features = false, features = ["std"]`.** Its
+   default `fork`/`timeout` features run each case in a subprocess, which
+   WASI doesn't have, and `cargo xtask test-wasm` runs the engine tests on
+   WASI. Check in section 2 that the property tests build and pass there.
+3. **Native-vs-wasm benchmark ratio: `criterion` natively, plus a small
+   Node harness timing the same scenarios through `engine.wasm`** (the M0
+   approach, as `cargo xtask bench-wasm`). That's closer to what the
+   browser runs than `criterion` under wasmtime, and avoids getting
+   `criterion` itself working on WASI.
+4. **Changing ε live: `World::clear_forces` + re-add.** The demo's
+   softening slider rebuilds the scene's force list rather than mutating a
+   `Box<dyn Force>` in place (which would need downcasting or a
+   parameter-setting method on every force).
+5. **`Softening<S>` becomes a type** (`type-invariants.md` item 2: the
+   slider is its trigger). Non-negative, ε = 0 allowed, since M2's demo
+   sets it on purpose. `demo_set_softening(d, eps)` parses at the C
+   boundary and rejects negative or NaN.
+6. **f32-vs-f64 divergence metric: RMS distance between matching bodies**,
+   plotted on a log scale. Both panels build the same seeded scene, so the
+   only difference at t = 0 is f32's rounding of the initial state, and
+   the plot shows that difference growing roughly exponentially (chaos).
+7. **The M2 page is `.ts`, and M0/M1 pages convert in the same PR.** Adding
+   demo pages to the TypeScript build means gitignoring their emitted
+   `main.js`. A pattern that covers some demos but not others gets
+   fragile, so convert all three at once (they're already JSDoc-typed).
+8. **Scenarios:** keep `cluster`; add **`disk`** (a central heavy body
+   with lighter bodies on circular orbits for the enclosed mass, so it
+   looks stable before chaos sets in) and **`collapse`** (a cold cloud, all
+   at rest, that falls in on itself).
+9. **Barnes–Hut stays a stretch:** only if everything else lands, and it
+   needs its own design doc first (`docs/barnes-hut.md`).
 
-8. ✅ **Decided: checked JS before section 6** (raised during M1.1). The site JS
-   already passes the "few hundred lines" trigger in
-   `docs/type-invariants.md` (item 8), and section 6 roughly doubles it.
-   **JSDoc types + `tsc --checkJs --noEmit` in pre-commit**, plus an
-   `engine.d.ts` for the wasm exports; files stay plain `.js` with no
-   build step. Alternatives (`.ts` with a compile step, or nothing) and
-   their costs are in that doc. Agreed: its own small PR before
-   section 6. The longer-term goal is `.ts` source; see the experiment
-   section below.
 ---
 
-## ✅ 1. Wasm panic hook (done)
+## 1. Tooling: `cargo xtask serve`, TypeScript demo pages (PR)
 
-A std panic hook (installed once from `demo_new`) sends "panicked at
-<file:line>: <message>" through the module's first import,
-`env.console_error`, supplied by `site/js/wasm.js`. Imports are
-wasm-only, so `crates/web/src/imports.rs` is cfg-gated and pre-commit
-gained a wasm32 clippy run; `unsafe` now lives in two FFI modules
-(`exports`, `imports`). Tested end to end by a shipped
-`demo_panic_for_test` export and a `panic` smoke case (verified to fail
-when the hook is missing). `.wasm`: 28,593 → 34,230 B. Decision 8
-(checked JS) added for review before section 6.
+- [ ] `cargo xtask serve [--port N]`: build the site, then serve it
+      (python3 `http.server`) with `tsc --watch` alongside; one Ctrl-C
+      stops both. README: "build and serve" becomes one command.
+- [ ] Decision 7: `tsconfig.build.json` also emits `site/demos/**/*.ts`;
+      convert `m0-hello/main.js` and `m1-orbits/main.js` to `.ts`;
+      gitignore `site/demos/**/*.js` (+ maps). Smoke test unchanged in
+      what it checks.
 
-## ✅ 2. `PairwiseGravity` (done)
+## 2. Dependencies and property tests (test first, PR)
 
-`PairwiseGravity` (softened, O(n²), one force vector per pair applied ±,
-static particles excluded, ε stored squared, coincident unsoftened pairs
-skipped, `split_first_mut` instead of indexing), the CODATA 2018
-`GRAVITATIONAL_CONSTANT`, `diagnostics::center_of_mass` (returns `None`
-without dynamic mass), and `scenarios::cluster` (rejection-sampled disk,
-no trig, so it's bit-identical across platforms). Invariants over 1000
-steps of a 16-body cluster: momentum (f64 drift at rounding level) and
-center of mass at `P/M`, tolerances ~10x measured; verified to fail when
-the reaction force is wrong.
+`docs/04-testing.md` step 6.
 
-## ✅ 3. Integrators, orbit scenario, energy (done)
+- [ ] `[workspace.dependencies]` with `proptest` (decision 2) and
+      `criterion` (section 3); dependency-policy entries re-checked in
+      `docs/00-scope.md`.
+- [ ] `proptest` strategies in `tests/common`: random particle sets
+      (positions in a box, bounded velocities, masses in a range,
+      occasionally static).
+- [ ] Properties (`tests/properties.rs`), both scalars: pairwise gravity
+      conserves momentum for **any** world; finiteness with softening;
+      translation invariance; rotation by 90° (`perp`, no trig); permutation
+      invariance (the canary for M3's Gauss–Seidel); determinism.
+- [ ] Known failure `unsoftened_close_pass_spikes`: with ε = 0, a
+      near-head-on encounter produces a velocity spike over a threshold.
+- [ ] Commit `proptest-regressions/`; modest default case count, more via
+      `PROPTEST_CASES` for longer runs.
+- [ ] Confirm the property tests build and pass under `test-wasm`.
 
-`ExplicitEuler` and `VelocityVerlet` (second force pass into a second
-scratch buffer, no cache), `Integrator::ALL`; free fall checks each
-integrator's exact closed form (`c = +1 / −1 / 0`). Plummer
-`gravity_potential` (consistent with the softened force) and
-`total_energy`. `scenarios::orbit(integrator, speed_ratio)`: mass from
-Kepler's third law (const), circular speed for the softened force, no
-`powf`. Orbit tests bound energy by measured error laws, (ωh)² and
-(ωh)⁴/4, plus an f32 rounding floor; known failures: explicit Euler
-escapes; coarse-dt symplectic Euler precesses (LRL vector) but stays
-bounded. Verified tests fail if symplectic Euler's step order is swapped.
+## 3. Benchmarks (PR)
 
-## ✅ 4. Determinism and golden hashes (done)
+`docs/04-testing.md` step 7.
 
-FNV-1a 64 (reference vectors checked independently) over every particle's
-state bits; five reference runs (fountain with respawn, cluster, orbit ×
-3 integrators) × 2 scalars are repeatable and match committed goldens; a
-mismatch prints paste-ready replacements. A 1 nm softening change alters
-exactly the f64 orbit hashes. Decision 7: native only; the wasm
-comparison waits for `wasmtime`. Also recorded: a proposed controls track
-(PID demos C1–C3) in `docs/05-roadmap.md`.
+- [ ] `crates/engine/benches/step.rs` (`criterion`): `World::step` for
+      N ∈ {16, 128, 1024} per scalar and integrator; `PairwiseGravity`
+      alone.
+- [ ] `cargo xtask bench-wasm` (decision 3): the same scenarios through
+      `engine.wasm` in Node; report the native/wasm ratio per case.
+- [ ] Use the numbers on two M1 questions: the per-call mass allocation in
+      `PairwiseGravity`, and velocity Verlet's second force pass (M1
+      decision 2). Change code only where a measurement says to.
+- [ ] Record results in `docs/04-testing.md` (benchmarks section).
 
-## ✅ 5. Web: scenes, controls, metrics (done)
+## 4. Scenarios and softening (test first, PR)
 
-`Demo` holds a `Scene` (fountain respawns, orbit doesn't); `DEMO_ORBIT`
-and integrator codes in the ABI (sync test extended); exports
-`demo_set_integrator`, `demo_set_rate` (parses `NonZeroU32` at the
-boundary; drops owed time), `demo_energy` (NaN where undefined). Engine:
-`World::set_integrator`, `scenarios::orbit_gravity` (single source for
-the orbit's force). M0's irrefutable `let DemoKind::Fountain` became a
-compile error on cue. `.wasm`: 41,820 B. wasmtime: not installed (MacPorts
-has 50.0.0; `cargo install wasmtime-cli` also works).
+- [ ] `Softening<S>` (decision 5): non-negative, built from `f64` with a
+      `Result`/`Option`; `PairwiseGravity::new` takes it.
+- [ ] `World::clear_forces` (decision 4) and a scene-level way to rebuild
+      forces with a new ε.
+- [ ] `scenarios::disk` and `scenarios::collapse` (decision 8), with
+      setup tests (counts, bounds, determinism; disk's launch speeds
+      balance the enclosed mass).
+- [ ] Golden hashes extended to the new scenarios.
 
-## ✅ 5½. Checked JS (done)
+## 5. Web layer (PR)
 
-TypeScript 7.0.2 (pinned, dev-only) type-checks all site JS through JSDoc
-and `site/js/engine.d.ts` (branded `DemoHandle`/`Ptr`), in pre-commit
-(`npm ci` once per clone). Baseline was 81 errors; typing fixed real gaps:
-null `getElementById`/`getContext` (new `dom.js` `byId`), memory read
-before instantiation in the panic import, `.message` on non-Error throws,
-and an untagged `OPTIONS` union. Verified: swapped boundary arguments
-fail to type-check. Also: a "Web track (ideas)" section in the roadmap.
+- [ ] `DEMO_CLUSTER` with a scenario code (`cluster`, `disk`, `collapse`),
+      using `n` and `seed`; ABI mirror and sync test.
+- [ ] `demo_set_softening(d, eps) -> u32` (parses `Softening` at the
+      boundary), `demo_energy` for the cluster scenes.
+- [ ] Native tests; `.wasm` size row in `docs/03`.
 
-## ✅ 6. Site: shared infrastructure and the M1 page (done)
+## 6. Site: the M2 page (PR)
 
-Shared modules: `options.js`, `ring.js`, `plot.js` (`LinePlot`, linear or
-log `|ΔE/E|`), `trail.js`, `controls.js`, with `node --test` unit tests
-in `tests/site/` (pre-push). `site/demos/m1-orbits/`: three panels
-(explicit Euler, symplectic Euler, velocity Verlet) with trails and ΔE/E
-readouts, one energy plot, rate slider (showing `dt`), scalar dropdown,
-plot scale toggle, reset, URL options; gallery link. Smoke: M1 cases in
-both scalars (minimum across panels). Fixed two canvas sizing bugs found
-by a headless probe. **Done when** confirmed in a real browser.
+- [ ] `site/demos/m2-cluster/` (`.ts`): f32 and f64 panels of the same
+      seeded scene; a divergence plot (decision 6) and an energy plot;
+      controls for N (rebuilds), softening (live), scenario, rate, reset.
+- [ ] Performance overlay as a shared module: steps/s, ms per step, ms
+      per draw, and a small table of measured cost at each N tried, so cost
+      growth with N is visible.
+- [ ] Smoke cases for the new page; gallery link.
+- [ ] Manual check against **Done when**.
 
-## ✅ 7. M1 cleanup (done)
+## 7. Stretch: Barnes–Hut (PR, only if time)
 
-`cargo xtask test-wasm` (pre-push) runs the math and engine suites as
-`wasm32-wasip1` under wasmtime: the native golden hashes match bit for bit
-on wasm (decision 7, cross-platform determinism confirmed). Magic-number
-pass: `ORBIT_CIRCULAR`, `DEFAULT_RATE_HZ` (one owner in `abi.rs`, mirrored
-in JS, sync-tested), `MS_PER_SECOND` reused. `docs/type-invariants.md`
-updated with M1's adoptions and re-checked triggers.
+- [ ] `docs/barnes-hut.md` first: quadtree, θ, accuracy vs cost.
+- [ ] A third panel with θ as a slider.
 
-## ✅ After M1: TypeScript experiment (done, adopted)
+## 8. M2 cleanup (PR, if needed)
 
-The 11 shared modules in `site/js/` became `.ts` (`erasableSyntaxOnly`,
-`rewriteRelativeImportExtensions`, source maps with `inlineSources`);
-`tsc` emits gitignored `.js` (0.14 s; `npm run watch` while editing);
-`cargo xtask site` runs the build; Node runs the unit tests on the `.ts`
-directly. Finding: readability gain, no safety gain (zero new errors),
-for the cost of a build step. **Adopted:** new pages in `.ts`; the M0/M1
-demo pages convert when next touched. Details: `docs/type-invariants.md`
-item 8.
+- [ ] Magic-number pass; `type-invariants.md` triggers re-checked.
+- [ ] Anything that grew awkward.
 
-## Out of scope for M1
+---
 
-- Property tests (`proptest`) and benchmarks (`criterion`): M2
-- N-body cluster demo, Barnes–Hut, runtime scalar comparison panels: M2
-- Constraints and solvers: M3
+## Out of scope for M2
+
+- Constraints, solvers, and the pendulum duel: M3
+- Fixed point: M8
+- WebGL rendering (`docs/05-roadmap.md` web track): only if a few hundred
+  bodies can't hold 60 Hz on Canvas 2D (M0 measured 100k+ is fine)
 
 ## Known gap
 
