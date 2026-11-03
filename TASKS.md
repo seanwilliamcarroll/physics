@@ -114,20 +114,13 @@ modules; crate roots use `src/tests.rs`). `tests/common/mod.rs` became
 the repo has no `mod.rs` and no `dead_code` allowance. Edition 2024
 reserves `gen`, so the generators module is `worlds`.
 
-## 2½. `clap` for xtask (PR, raised during M2.2)
+## ✅ 2½. `clap` for xtask (done)
 
-Before section 3, so `bench-wasm` gets real argument parsing from the start.
-
-- [ ] `clap` 4.6.7 (`derive`) in `[workspace.dependencies]`, used by
-      `xtask` only (dev tooling; never in the engine or the shipped wasm).
-      Dependency-policy entry in `docs/00-scope.md`.
-- [ ] Replace the hand-written `parse` with `#[derive(Parser)]` +
-      subcommands; keep the unit tests via `Cli::try_parse_from` (port
-      range checked by `value_parser!(u16).range(1..)`).
-- [ ] Doc comments become `--help` text, so `xtask` allows
-      `clippy::doc_markdown` (backticks would print literally), as the
-      original lint block noted.
-- [ ] Measure the cost: clean-build time of `xtask` before and after.
+`clap` 4.6.7 (`derive`) via `[workspace.dependencies]`, `xtask` only. The
+hand-written parser is gone; gains are typo suggestions, range-checked
+`--port`, per-subcommand help, and `debug_assert` of the definition in
+tests. `xtask` allows `doc_markdown` (doc comments are `--help` text).
+Cost: clean build 0.38 s → 2.35 s, incremental 0.16 s.
 
 ## 3. Benchmarks (PR)
 

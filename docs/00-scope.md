@@ -79,6 +79,11 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   `proptest` 1.12.0 (re-checked M2: `proptest-rs` org, active) without
   default features: its `fork`/`timeout` need subprocesses, which WASI
   lacks.
+- `clap` 4.6.7 (`derive`; `clap-rs` org, the most widely used Rust CLI
+  parser), **`xtask` only**: argument parsing for the dev CLI (typo
+  suggestions, range-checked options, generated help). Never in the
+  engine or the shipped wasm. Measured cost: a clean `xtask` build goes
+  from 0.38 s to 2.35 s (18 crates); incremental rebuilds 0.16 s.
 - `typescript` (npm, dev-only, M1): type-checks `site/`'s plain `.js`
   through JSDoc annotations and `site/js/engine.d.ts` (`tsc --noEmit`).
   Nothing it produces ships to browsers. Microsoft-maintained, very widely
