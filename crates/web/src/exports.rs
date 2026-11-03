@@ -14,7 +14,7 @@ use core::num::NonZeroU32;
 use core::ptr;
 
 use crate::demo::{Demo, DemoKind, ScalarKind, integrator_from_code};
-use engine::Softening;
+use engine::{OpeningAngle, Softening};
 
 /// Creates a demo of `n` particles. `kind` and `scalar` are codes from
 /// [`crate::abi`]. Returns null for an unknown code or invalid scene.
@@ -128,6 +128,22 @@ pub(crate) unsafe extern "C" fn demo_set_softening(d: *mut Demo, eps: f64) -> u3
         return 0;
     };
     u32::from(d.set_softening(eps))
+}
+
+/// Runs a gravity scene's force as Barnes–Hut with opening angle `theta`
+/// (from the next step; it stays on through softening changes). Returns 1
+/// on success; 0 for a negative or NaN `theta` (parsed into
+/// `OpeningAngle` here), the fountain, or a null handle. θ = 0 is exact.
+///
+/// # Safety
+/// `d` must be null or a live handle from [`demo_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_theta(d: *mut Demo, theta: f64) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let (Some(d), Some(theta)) = (unsafe { d.as_mut() }, OpeningAngle::new(theta)) else {
+        return 0;
+    };
+    u32::from(d.set_theta(theta))
 }
 
 /// Total energy in joules, or NaN where it isn't defined (the fountain) or

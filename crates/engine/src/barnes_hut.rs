@@ -3,7 +3,7 @@
 //! Design, accuracy, and what it gives up (momentum): `docs/barnes-hut.md`.
 //! Reference: Barnes & Hut (1986), <https://doi.org/10.1038/324446a0>.
 
-use crate::{Force, Particles, Scalar, Softening, Vec2};
+use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
 /// Quadtree levels resolved by the Morton key: two bits per level in a
 /// `u64`. Bodies still sharing a cell at this depth (closer than
@@ -40,7 +40,7 @@ impl<S: Scalar> OpeningAngle<S> {
     }
 }
 
-/// Same physics as [`PairwiseGravity`](crate::PairwiseGravity) (softened
+/// Same physics as [`PairwiseGravity`] (softened
 /// Newtonian gravity between dynamic particles), but a group of bodies far
 /// enough away is felt as one point mass at its center of mass.
 ///
@@ -69,6 +69,19 @@ impl<S: Scalar> BarnesHut<S> {
         Self {
             g_const,
             softening_sq: softening.squared(),
+            theta_sq: theta.0 * theta.0,
+        }
+    }
+
+    /// The tree approximation of `exact`: same G and softening (already
+    /// checked when `exact` was built), opening angle `theta`. How a scene
+    /// switches its force to Barnes–Hut while keeping `exact` for energy
+    /// readouts.
+    #[must_use]
+    pub fn approximating(exact: &PairwiseGravity<S>, theta: OpeningAngle<S>) -> Self {
+        Self {
+            g_const: exact.g_const(),
+            softening_sq: exact.softening_sq(),
             theta_sq: theta.0 * theta.0,
         }
     }

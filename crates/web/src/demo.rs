@@ -10,7 +10,9 @@ use engine::scenarios::{
     Fountain, ORBIT_CIRCULAR, cluster, cluster_gravity, collapse, disk, gravity, orbit,
     orbit_gravity,
 };
-use engine::{ConfigError, Integrator, PairwiseGravity, Scalar, Softening, World};
+use engine::{
+    BarnesHut, ConfigError, Integrator, OpeningAngle, PairwiseGravity, Scalar, Softening, World,
+};
 
 use crate::abi;
 use crate::fixed_step::FixedStep;
@@ -89,12 +91,15 @@ pub(crate) const fn integrator_from_code(code: u32) -> Option<Integrator> {
     }
 }
 
-/// A world and, for the gravity scenes, a copy of the force it runs under:
-/// energy readouts need the force, and `World` owns its forces as
-/// `dyn Force`, so it can't hand a `PairwiseGravity` back.
+/// A world and, for the gravity scenes, a copy of its exact force:
+/// energy readouts need it, and `World` owns its forces as `dyn Force`,
+/// so it can't hand a `PairwiseGravity` back. With `theta` set, the world
+/// runs Barnes–Hut approximating `gravity` instead; energy is still read
+/// out exactly, so the readout shows what the approximation costs.
 struct Sim<S: Scalar> {
     world: World<S>,
     gravity: Option<PairwiseGravity<S>>,
+    theta: Option<OpeningAngle<S>>,
 }
 
 impl<S: Scalar> Sim<S> {
@@ -102,6 +107,7 @@ impl<S: Scalar> Sim<S> {
         Self {
             world,
             gravity: None,
+            theta: None,
         }
     }
 
@@ -109,7 +115,30 @@ impl<S: Scalar> Sim<S> {
         Self {
             world,
             gravity: Some(gravity),
+            theta: None,
         }
+    }
+
+    /// Makes the world's force match `gravity` and `theta`. A scene with
+    /// gravity has no other force, so clearing loses nothing.
+    fn install(&mut self) {
+        let Some(g) = self.gravity else { return };
+        self.world.clear_forces();
+        match self.theta {
+            None => self.world.add_force(g),
+            Some(t) => self.world.add_force(BarnesHut::approximating(&g, t)),
+        }
+    }
+
+    /// Runs the gravity as Barnes–Hut with opening angle `theta`. `false`,
+    /// changing nothing, for a scene without gravity.
+    fn set_theta(&mut self, theta: OpeningAngle<S>) -> bool {
+        if self.gravity.is_none() {
+            return false;
+        }
+        self.theta = Some(theta);
+        self.install();
+        true
     }
 
     /// Replaces the gravity (and only it: a scene with gravity has no
@@ -119,10 +148,8 @@ impl<S: Scalar> Sim<S> {
         if self.gravity.is_none() {
             return false;
         }
-        let g = gravity(eps);
-        self.world.clear_forces();
-        self.world.add_force(g);
-        self.gravity = Some(g);
+        self.gravity = Some(gravity(eps));
+        self.install();
         true
     }
 
@@ -262,6 +289,26 @@ impl Demo {
         match &mut self.world {
             AnyWorld::F32(s) => s.set_softening(eps.cast()),
             AnyWorld::F64(s) => s.set_softening(eps),
+        }
+    }
+
+    /// Switches a gravity scene to Barnes–Hut with opening angle `theta`
+    /// (parsed at the boundary in `f64`, cast like `set_softening`'s ε);
+    /// it stays on through softening changes. `false`, changing nothing,
+    /// for the fountain.
+    pub(crate) fn set_theta(&mut self, theta: OpeningAngle<f64>) -> bool {
+        match &mut self.world {
+            AnyWorld::F32(s) => s.set_theta(theta.cast()),
+            AnyWorld::F64(s) => s.set_theta(theta),
+        }
+    }
+
+    /// Test-only: θ if Barnes–Hut is on, as `f64`.
+    #[cfg(test)]
+    pub(crate) fn theta(&self) -> Option<f64> {
+        match &self.world {
+            AnyWorld::F32(s) => s.theta.map(|t| t.get().to_f64()),
+            AnyWorld::F64(s) => s.theta.map(OpeningAngle::get),
         }
     }
 

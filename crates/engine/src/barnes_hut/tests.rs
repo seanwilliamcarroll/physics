@@ -204,3 +204,13 @@ fn same_input_gives_bit_identical_output() {
     };
     assert_eq!(bits(accel(&p, &f)), bits(accel(&p, &f)));
 }
+
+#[test]
+fn approximating_takes_g_and_softening_from_the_pairwise_force() {
+    let exact = PairwiseGravity::new(G, eps(EPS));
+    let theta = OpeningAngle::new(0.7).unwrap();
+    assert_eq!(
+        BarnesHut::approximating(&exact, theta),
+        BarnesHut::new(G, eps(EPS), theta)
+    );
+}
