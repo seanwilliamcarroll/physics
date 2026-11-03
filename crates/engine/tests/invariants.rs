@@ -5,7 +5,7 @@
 
 use engine::diagnostics::{center_of_mass, momentum};
 use engine::scenarios::{ORBIT_SEPARATION, cluster, orbit, orbit_period};
-use engine::{ConfigError, Integrator, Particles, Scalar, UniformGravity, Vec2, World};
+use engine::{ConfigError, Integrator, Mass, Particles, Scalar, UniformGravity, Vec2, World};
 use test_support::{
     Tol, bits, energy_errors, envelope, for_each_scalar, momentum_drift_bound, s, steps_for, v,
 };
@@ -21,7 +21,7 @@ fn falling_world<S: Tol>(
 ) -> World<S> {
     let mut w = World::new(integrator, substeps).unwrap();
     w.add_force(UniformGravity::new(v(0.0, G)));
-    w.particles.add(x0, v0, s(1.0));
+    w.particles.add(x0, v0, Mass::ONE);
     w
 }
 

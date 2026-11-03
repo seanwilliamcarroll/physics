@@ -1,4 +1,5 @@
 use super::{BarnesHut, OpeningAngle};
+use crate::mass::kg;
 use crate::rng::SplitMix64;
 use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
@@ -35,7 +36,7 @@ fn cloud<S: Scalar>() -> Particles<S> {
     for _ in 0..40 {
         let (x, y) = (rng.range(-2.0, 2.0), rng.range(-2.0, 2.0));
         let m = rng.range(0.5e10, 1.5e10);
-        p.add(v(x, y), Vec2::ZERO, S::from_f64(m));
+        p.add(v(x, y), Vec2::ZERO, kg(m));
     }
     p.add_static(v(0.05, -0.03));
     p
@@ -91,11 +92,11 @@ fn distant_cluster_acts_as_its_center_of_mass() {
     let masses = [1.0e10, 2.0e10, 3.0e10, 4.0e10];
     let offsets = [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)];
     let mut p = Particles::<f64>::new();
-    p.add(Vec2::ZERO, Vec2::ZERO, 1.0);
+    p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
     let (mut mx, mut my, mut m_total) = (0.0, 0.0, 0.0);
     for (&m, &(dx, dy)) in masses.iter().zip(&offsets) {
         let (x, y) = (1000.0 + dx, dy);
-        p.add(Vec2::new(x, y), Vec2::ZERO, m);
+        p.add(Vec2::new(x, y), Vec2::ZERO, kg(m));
         mx += m * x;
         my += m * y;
         m_total += m;
@@ -118,7 +119,7 @@ fn distant_cluster_acts_as_its_center_of_mass() {
 #[test]
 fn static_particles_neither_pull_nor_are_pulled() {
     let mut p = Particles::new();
-    p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10);
+    p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0e10));
     p.add_static(Vec2::new(1.0, 0.0));
     assert_eq!(accel(&p, &bh(EPS, 0.5)), [Vec2::ZERO, Vec2::ZERO]);
 
@@ -130,7 +131,7 @@ fn static_particles_neither_pull_nor_are_pulled() {
     let c = cloud::<f64>();
     for ((&x, &vel), &w) in c.pos().iter().zip(c.vel()).zip(c.inv_mass()) {
         if w != 0.0 {
-            without.add(x, vel, 1.0 / w);
+            without.add(x, vel, kg(1.0 / w));
         }
     }
     let without = accel(&without, &bh(EPS, 0.7));
@@ -142,15 +143,15 @@ fn coincident_bodies_without_softening_stay_finite() {
     // ε = 0 and r = 0: no direction. Also exercises the depth-limit bucket
     // (the two can never be split) and a root of zero size.
     let mut p = Particles::new();
-    p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, 1.0e10);
-    p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, 1.0e10);
+    p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, kg(1.0e10));
+    p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, kg(1.0e10));
     assert_eq!(accel(&p, &bh(0.0, 0.5)), [Vec2::ZERO, Vec2::ZERO]);
 
     // A coincident pair inside a crowd, for every θ: still finite, and the
     // pair is pulled identically.
     let mut p = cloud::<f64>();
-    p.add(Vec2::new(0.3, 0.3), Vec2::ZERO, 1.0e10);
-    p.add(Vec2::new(0.3, 0.3), Vec2::ZERO, 1.0e10);
+    p.add(Vec2::new(0.3, 0.3), Vec2::ZERO, kg(1.0e10));
+    p.add(Vec2::new(0.3, 0.3), Vec2::ZERO, kg(1.0e10));
     for theta in [0.0, 0.5, 1.0, 2.0] {
         let a = accel(&p, &bh(0.0, theta));
         assert!(a.iter().all(|a| a.x.is_finite() && a.y.is_finite()));
@@ -162,7 +163,7 @@ fn coincident_bodies_without_softening_stay_finite() {
 #[test]
 fn adds_into_acc_rather_than_overwrite() {
     let mut p = Particles::<f64>::new();
-    p.add(Vec2::ZERO, Vec2::ZERO, 1.0e10);
+    p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0e10));
     let mut acc = vec![Vec2::new(1.0, 2.0)];
     bh(EPS, 0.5).accumulate(&p, &mut acc);
     // A lone body feels nothing (no self-force), and acc is kept.
@@ -186,7 +187,7 @@ fn huge_theta_still_excludes_self() {
     // root (containing it) must be opened, and the forces cancel.
     let mut p = Particles::new();
     for x in [-1.0, 0.0, 1.0] {
-        p.add(Vec2::new(x, 0.0), Vec2::ZERO, 1.0e10);
+        p.add(Vec2::new(x, 0.0), Vec2::ZERO, kg(1.0e10));
     }
     let a = accel(&p, &bh(0.0, 100.0));
     assert!(a[1].length() <= 1e-15, "{:?}", a[1]);

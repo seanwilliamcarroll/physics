@@ -3,7 +3,7 @@
 
 use crate::rng::SplitMix64;
 use crate::{
-    ConfigError, Integrator, PairwiseGravity, Scalar, Softening, UniformGravity, Vec2, World,
+    ConfigError, Integrator, Mass, PairwiseGravity, Scalar, Softening, UniformGravity, Vec2, World,
 };
 
 /// Standard gravity g₀, m/s²: a magnitude, applied downward (y is up) as
@@ -57,7 +57,7 @@ impl Fountain {
         )));
         for _ in 0..n {
             let vel = self.launch_velocity();
-            w.particles.add(Vec2::ZERO, vel, S::ONE);
+            w.particles.add(Vec2::ZERO, vel, Mass::ONE);
         }
         Ok(w)
     }
@@ -129,6 +129,11 @@ fn softening<S: Scalar>(eps: f64) -> Result<Softening<S>, ConfigError> {
     Softening::new(S::from_f64(eps)).ok_or(ConfigError::InvalidSoftening)
 }
 
+/// Checks a scene's computed mass once, in `S`.
+fn mass<S: Scalar>(m: f64) -> Result<Mass<S>, ConfigError> {
+    Mass::new(S::from_f64(m)).ok_or(ConfigError::InvalidMass)
+}
+
 /// The force [`cluster`] adds: [`gravity`] with [`CLUSTER_SOFTENING`].
 /// Public so energy readouts use exactly the scene's force (like
 /// [`orbit_gravity`]).
@@ -151,13 +156,14 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive).
+/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive, and
+/// the masses positive and far from `S`'s range limits).
 pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
     w.add_force(cluster_gravity()?);
     let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
-    for (pos, vel, mass) in cluster_bodies(n, seed) {
-        w.particles.add(vec(pos), vec(vel), S::from_f64(mass));
+    for (pos, vel, m) in cluster_bodies(n, seed) {
+        w.particles.add(vec(pos), vec(vel), mass(m)?);
     }
     Ok(w)
 }
@@ -233,13 +239,14 @@ pub const DISK_ORBITERS_TOTAL_MASS: f64 = 1.0e10;
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive).
+/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive, and
+/// the masses positive and far from `S`'s range limits).
 pub fn disk<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
     w.add_force(cluster_gravity()?);
     let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
-    for (pos, vel, mass) in disk_bodies(n, seed) {
-        w.particles.add(vec(pos), vec(vel), S::from_f64(mass));
+    for (pos, vel, m) in disk_bodies(n, seed) {
+        w.particles.add(vec(pos), vec(vel), mass(m)?);
     }
     Ok(w)
 }
@@ -315,7 +322,8 @@ pub const COLLAPSE_TOTAL_MASS: f64 = 3.0e10;
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive).
+/// [`CLUSTER_SUBSTEPS`] is nonzero, [`CLUSTER_SOFTENING`] positive, and
+/// the masses positive and far from `S`'s range limits).
 pub fn collapse<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS)?;
     w.add_force(cluster_gravity()?);
@@ -323,7 +331,7 @@ pub fn collapse<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError>
         clippy::cast_precision_loss,
         reason = "body counts are far below 2^53, so the conversion is exact"
     )]
-    let m = S::from_f64(COLLAPSE_TOTAL_MASS / n.max(1) as f64);
+    let m = mass(COLLAPSE_TOTAL_MASS / n.max(1) as f64)?;
     let mut rng = SplitMix64::new(seed);
     for _ in 0..n {
         let (x, y) = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
@@ -408,7 +416,8 @@ pub fn orbit_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:
-/// [`ORBIT_SUBSTEPS`] is nonzero, [`ORBIT_SOFTENING`] positive).
+/// [`ORBIT_SUBSTEPS`] is nonzero, [`ORBIT_SOFTENING`] positive, and
+/// the masses positive and far from `S`'s range limits).
 pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<World<S>, ConfigError> {
     let mut w = World::new(integrator, ORBIT_SUBSTEPS)?;
     w.add_force(orbit_gravity()?);
@@ -426,12 +435,12 @@ pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<Worl
     w.particles.add(
         vec(-d * star_share, 0.0),
         vec(0.0, -v_rel * star_share),
-        S::from_f64(star_mass),
+        mass(star_mass)?,
     );
     w.particles.add(
         vec(d * planet_share, 0.0),
         vec(0.0, v_rel * planet_share),
-        S::from_f64(planet_mass),
+        mass(planet_mass)?,
     );
     Ok(w)
 }

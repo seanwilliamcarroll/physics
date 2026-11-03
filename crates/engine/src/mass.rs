@@ -67,5 +67,13 @@ impl<S: Scalar> Mass<S> {
     }
 }
 
+/// `Mass::new(m)` for a mass known to be valid: shorthand for unit tests.
+/// (`test-support` has its own copy for integration tests; unit tests
+/// can't use that crate, see its crate docs.)
+#[cfg(test)]
+pub(crate) fn kg<S: Scalar>(m: f64) -> Mass<S> {
+    Mass::new(S::from_f64(m)).unwrap()
+}
+
 #[cfg(test)]
 mod tests;

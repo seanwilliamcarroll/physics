@@ -1,7 +1,7 @@
 //! [`Particles<S>`]: struct-of-arrays storage for point masses, and
 //! [`ParticleId`], the handle `add` returns.
 
-use crate::{Scalar, Vec2};
+use crate::{Mass, Scalar, Vec2};
 
 /// Names one particle: its slot in [`Particles`].
 ///
@@ -45,11 +45,11 @@ impl<S: Scalar> Particles<S> {
         }
     }
 
-    /// Adds a dynamic particle. `mass` must be positive: it's inverted here,
-    /// and `1 / 0` has no fixed-point representation. Use
-    /// [`add_static`](Self::add_static) for immovable particles.
-    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: S) -> ParticleId {
-        self.push(pos, vel, S::ONE / mass)
+    /// Adds a dynamic particle, storing `1 / mass` (checked finite and
+    /// positive by [`Mass::new`]). Use [`add_static`](Self::add_static) for
+    /// immovable particles.
+    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: Mass<S>) -> ParticleId {
+        self.push(pos, vel, mass.inv())
     }
 
     /// Adds an immovable particle (`inv_mass = 0`, zero velocity).
