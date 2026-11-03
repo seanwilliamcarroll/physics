@@ -110,3 +110,42 @@ fn total_energy_is_kinetic_plus_potential() {
     let sum = kinetic_energy(&p) + gravity_potential(&p, &g);
     assert_eq!(total_energy(&p, &g).to_bits(), sum.to_bits());
 }
+
+#[test]
+fn uniform_potential_is_m_g_h_over_dynamic_particles() {
+    use super::uniform_gravity_potential;
+    use crate::UniformGravity;
+    let p = two_dynamic_one_static();
+    let mut p2 = p.clone();
+    p2.add(Vec2::new(0.0, 3.0), Vec2::ZERO, kg(2.0));
+    let g = UniformGravity::new(Vec2::new(0.0, -10.0));
+    // The first two sit at the origin (no potential), the static one is
+    // excluded, the new one is 2 kg at 3 m: 2 * 10 * 3 = 60 J.
+    assert_eq!(uniform_gravity_potential(&p, &g), 0.0);
+    assert_eq!(uniform_gravity_potential(&p2, &g), 60.0);
+}
+
+#[test]
+fn constraint_error_is_max_and_rms_of_c() {
+    use super::constraint_error;
+    use crate::DistanceConstraint;
+    let mut p = Particles::<f64>::new();
+    let a = p.add_static(Vec2::ZERO);
+    let b = p.add(Vec2::new(1.0, 0.0), Vec2::ZERO, kg(1.0));
+    let c = p.add(Vec2::new(0.0, 2.0), Vec2::ZERO, kg(1.0));
+    let rods = [
+        DistanceConstraint::between(&p, a, b).unwrap(),
+        DistanceConstraint::between(&p, a, c).unwrap(),
+    ];
+    assert_eq!(constraint_error(&p, &rods), Some((0.0, 0.0)));
+    // Stretch the first rod by 3 cm and compress the second by 4 cm.
+    p.pos[1] = Vec2::new(1.03, 0.0);
+    p.pos[2] = Vec2::new(0.0, 1.96);
+    let (max, rms) = constraint_error(&p, &rods).unwrap();
+    assert!((max - 0.04).abs() < 1e-12);
+    assert!((rms - f64::midpoint(0.03 * 0.03, 0.04 * 0.04).sqrt()).abs() < 1e-12);
+    assert_eq!(
+        constraint_error::<f64, DistanceConstraint<f64>>(&p, &[]),
+        None
+    );
+}

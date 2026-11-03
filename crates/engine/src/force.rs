@@ -29,6 +29,11 @@ impl<S: Scalar> UniformGravity<S> {
     pub const fn new(g: Vec2<S>) -> Self {
         Self { g }
     }
+
+    /// The acceleration, m/s².
+    pub const fn g(&self) -> Vec2<S> {
+        self.g
+    }
 }
 
 impl<S: Scalar> Force<S> for UniformGravity<S> {
