@@ -167,13 +167,15 @@ gains energy). Goldens for both solvers, native and wasm.
 NaN without constraints). The pendulum's energy readout uses its uniform
 gravity. `.wasm` 90,194 B (gzip 29,209).
 
-## 6. Site: the M3 page (PR)
+## ✅ 6. Site: the M3 page (done; manual check pending)
 
-- [ ] `site/demos/m3-pendulum/`: XPBD and impulse panels, rod drawn,
-      rod-error and energy plots, controls (β, substeps, iterations,
-      scalar, rate, reset), presets for each row of the `01` table, smoke
-      cases, gallery link.
-- [ ] Manual check against **Done when** (yours).
+`site/demos/m3-pendulum/`: XPBD and impulse panels under shared settings
+(β, substeps, iterations, rate, scalar), so each row of `01`'s table is one
+preset (plus "f32, 100 substeps" for the M3.4 finding). Each panel draws
+the pin, rod, bob with a trail, and a faint rest-length circle, so stretch
+is visible. Rod-error (log) and energy-lost (linear, J) plots.
+`drawSegment`/`drawCircle` in `canvas.ts`. Two smoke cases; gallery link.
+**Still to do: your manual check against Done when.**
 
 ## 7. M3 cleanup (PR, if needed)
 
