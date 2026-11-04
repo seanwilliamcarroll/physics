@@ -175,18 +175,52 @@ position correction: inelastic. Müller et al. (2020) restore the bounce
 with a velocity pass after the derive, per contact that was active:
 
 ```
+n     = the contact's current normal
 v_n   = n · (v_b − v_a)        (after the derive)
-v_n⁻  = n · (v_b − v_a)        (at the start of the substep)
+v_n⁻  = n · (v̄_b − v̄_a)       (v̄: saved before the solve, after the kick)
 Δv    = −v_n + max(−e v_n⁻, 0)
 v_a −= w_a / (w_a + w_b) · n Δv,  v_b += w_b / (w_a + w_b) · n Δv
 ```
+
+Both normal velocities are measured along the **same, current** normal.
 
 ### The resting threshold, in both
 
 At rest, gravity makes every resting contact approach at `g h` per
 substep, and restitution would bounce it back, forever. Both solvers use
 `e = 0` when the approach speed is below `2 |g| h` (Müller et al. 2020's
-threshold), so resting balls settle.
+threshold), so resting balls settle. **As built:** `2 |a_b − a_a| h`, the
+contact's relative acceleration from the forces: the same as `2 |g| h`
+against a wall, but it needs no knowledge of which force is gravity
+(forces are opaque `dyn Force`), and two balls falling together get 0.
+
+### As built (M6.5, XPBD; `tests/contacts.rs`)
+
+Analytic head-on (1 kg at +1 m/s into 3 kg at −1 m/s): `v₁′ = −2`,
+`v₂′ = 0` to 1e-13 at `e = 1`, both at −0.5 m/s at `e = 0`. A dropped ball
+bounces to `e² h` (0.49932 of 0.5 m at `e = 1`, sampled per frame) and
+never enters the floor: the speculative contact catches it a substep
+early. Momentum through a six-ball pileup: drift 1.6e-13. Two findings:
+
+- **Measure `v_n⁻` along the current normal.** The first version took it
+  along the normal from when the contact was found, and applied the
+  bounce along the current one. In a glancing hit those differ by an
+  angle proportional to `h`, so every elastic glancing collision *gained*
+  energy: +1.4% over the pileup at 10 substeps, +0.35% at 40, +0.14% at
+  100; iterations didn't matter, head-on hits were exact. Saving the
+  pre-solve velocities and projecting them on the current normal, as
+  Müller et al. do, makes the largest step-to-step rise 2e-13 J
+  (rounding) at every `e`.
+- **A contact margin.** A ball resting on another has a gap of ~0 and no
+  approach speed (both fall at the same rate), so the speculative test
+  said "no contact". During that substep the lower ball is held up while
+  the upper one falls, so they overlap by `g h²`, get pushed apart,
+  separate by a hair, and miss each other again: stacks of three or more
+  jittered forever (six balls at ~5 cm/s, with more iterations only
+  delaying it). `CONTACT_MARGIN` = 1 mm keeps near neighbors as contacts;
+  every stack measured settles to exactly zero velocity, overlap 0.11 mm.
+  The broadphase cell grows by the margin, so its superset guarantee
+  holds.
 
 ## `Restitution`
 

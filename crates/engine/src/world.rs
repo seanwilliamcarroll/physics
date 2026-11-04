@@ -208,7 +208,10 @@ impl<S: Scalar> World<S> {
     /// them alike, and after XPBD derives its velocities, so the next
     /// substep starts from a clamped position *and* velocity.
     fn substep(&mut self, h: S) {
-        if self.constraints.is_empty() {
+        let collision = self
+            .collides()
+            .then_some((self.walls.as_slice(), self.restitution));
+        if self.constraints.is_empty() && collision.is_none() {
             self.integrator.substep(
                 &self.forces,
                 &mut self.particles,
@@ -217,8 +220,13 @@ impl<S: Scalar> World<S> {
                 h,
             );
         } else {
-            self.constraints
-                .substep(&self.forces, &mut self.particles, &mut self.acc, h);
+            self.constraints.substep(
+                &self.forces,
+                &mut self.particles,
+                &mut self.acc,
+                collision,
+                h,
+            );
         }
         if let Some(y) = self.ground {
             ground::clamp(&mut self.particles, y);

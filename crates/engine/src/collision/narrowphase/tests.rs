@@ -117,3 +117,13 @@ fn contacts_come_in_a_deterministic_order() {
         ]
     );
 }
+
+#[test]
+fn resting_neighbors_within_the_margin_are_contacts() {
+    // Half a millimeter apart, not moving: inside CONTACT_MARGIN (1 mm).
+    let near = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.2005, 0.0), (0.0, 0.0))]);
+    assert_eq!(contacts(&near, &[]).len(), 1);
+    // Two millimeters: not.
+    let far = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.202, 0.0), (0.0, 0.0))]);
+    assert_eq!(contacts(&far, &[]).len(), 0);
+}

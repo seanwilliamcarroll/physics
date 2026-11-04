@@ -3,12 +3,15 @@
 //! One file per solver (`solver/xpbd.rs`, `solver/impulse.rs`); this hub
 //! holds what they share.
 
+mod contacts;
 mod impulse;
 mod xpbd;
 
 use core::num::NonZeroU32;
 
-use crate::{Baumgarte, Force, Particles, Scalar, Vec2};
+pub(crate) use contacts::Contacts;
+
+use crate::{Baumgarte, Force, Particles, Restitution, Scalar, Vec2, Wall};
 
 /// How a world with constraints is stepped.
 ///
@@ -116,6 +119,13 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     pub(crate) order: Order,
     pub(crate) baumgarte: Baumgarte<S>,
     pub(crate) stabilization: Stabilization,
+    /// Whether to look for contacts at all (`World::collides`): a world
+    /// that can't collide skips the search, and its results are
+    /// bit-identical to M5's.
+    pub(crate) collides: bool,
+    pub(crate) contacts: &'a mut Contacts<S>,
+    pub(crate) walls: &'a [Wall<S>],
+    pub(crate) restitution: Restitution<S>,
 }
 
 #[cfg(test)]
