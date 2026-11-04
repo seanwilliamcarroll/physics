@@ -53,6 +53,7 @@ physics/
 │   │   │   └── properties.proptest-regressions  # committed
 │   │   └── benches/step.rs
 │   │
+│   ├── acoustic/           # A1+: Karplus–Strong string, offline pitch/T60 measurement
 │   ├── test-support/       # dev-dep: shared integration-test helpers
 │   │   └── src/            # tol, orbit, hash, worlds (proptest)
 │   │

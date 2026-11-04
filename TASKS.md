@@ -164,11 +164,15 @@ excitation (noise minus its mean); 8 voices, gain ¼, clamp counted;
 pitch by autocorrelation in cents, `T₆₀` by envelope fit. References:
 Karplus & Strong 1983 (DOI checked), Web Audio API 1.1.
 
-## 2. `acoustic` crate: the string (PR)
+## ✅ 2. `acoustic` crate: the string (done)
 
-- [ ] `DelayLine`, the KS string (integer loop: averaging lowpass, loss),
-      offline rendering; the pitch and T60 measurement helpers. Tests:
-      pitch of the integer loop matches `fs / (N + ½)`; T60.
+`DelayLine` (ring buffer), `KsString` (integer loop, average, loss ρ;
+`pluck(f)`, `render`), `measure::{pitch, t60, cents}`; tests in both
+scalars, both rates, and on wasm (`test-wasm` now includes `acoustic`).
+The integer loop measures `fs / (N + ½)` within 0.09 cents, and `T₆₀`
+the loop formula to four digits. **Found:** three measurement mistakes
+(total RMS isn't the fundamental's decay; one short period interpolates
+badly; many periods need a good first guess), fixed and recorded in `12`.
 
 ## 3. Tuning and decay (PR)
 

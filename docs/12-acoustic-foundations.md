@@ -160,16 +160,37 @@ counted in tests, which keep it at 0 for a chord at the default gain).
 
 Tests render audio with no browser and measure it:
 
-- **Pitch, by autocorrelation.** Skip the first few periods (the noise
-  transient), compute the normalized autocorrelation over lags near the
-  expected period, take the peak, and refine it by parabolic
-  interpolation to a fraction of a sample. Error in **cents**,
+- **Pitch, by autocorrelation.** Skip the attack (at least four periods
+  and 2048 samples), compute the normalized autocorrelation over lags
+  near the expected period, take the peak, and refine it by parabolic
+  interpolation to a fraction of a sample; then refine again over `m`
+  periods (the fewest spanning 512 samples), searched within less than
+  half a period of `m` coarse periods. Error in **cents**,
   `1200 · log₂(f_measured / f_target)`; a cent is a hundredth of a
   semitone, and a few cents is the threshold of hearing for most
   listeners. Checked across the 88 keys at 44.1 and 48 kHz.
-- **Decay, by envelope.** RMS over consecutive windows of whole periods;
-  fit the slope of its log against time; `T₆₀` is where that line falls
-  60 dB.
+- **Decay, of the fundamental.** Its amplitude per window (a
+  Hann-windowed DFT at `f₀`, one bin, over 16 periods); fit a line to its
+  level in dB against time; `T₆₀` is where that line falls 60 dB.
+
+**As built (A1.2,** `acoustic::measure`**):** three things measured wrong
+first, each fixed and recorded in the code:
+
+- **Total RMS isn't the fundamental's decay.** A noise pluck excites ~100
+  partials, and each higher one decays faster (the average cuts more at
+  higher frequencies), so the mixture's level falls faster than the
+  formula predicts for `f₀`: 6.19 s against 7.65 s. One DFT bin at `f₀`
+  measures 7.6482 s, the formula to four digits.
+- **One short period interpolates badly.** At a 12.5-sample period the
+  parabola's vertex is off by a fraction of a sample: −0.85 cents. Hence
+  the refinement over many periods, which divides the error by `m`.
+- **But many periods need a good first guess.** Searching ±6% around 41
+  periods spans ±2.5 periods and picked 40 or 42 (+43 cents); hence the
+  two stages.
+
+With those, the integer loop measures `fs / (N + ½)` within 0.09 cents
+from 55 Hz to 3.5 kHz, at both rates, in `f32` and `f64` alike (and on
+wasm).
 - **Determinism.** A golden hash of rendered audio (a chord from seeded
   noise), checked native and on wasm (`cargo xtask test-wasm`), as the
   engine's scenes are.
