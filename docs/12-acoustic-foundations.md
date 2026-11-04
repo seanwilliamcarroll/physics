@@ -193,6 +193,19 @@ with 8 noise-plucked strings at full level the sum can exceed 1, so the
 gain defaults to ¼ and the output is clamped to ±1 (and clamping is
 counted in tests, which keep it at 0 for a chord at the default gain).
 
+**As built (A1.4,** `Voices`**):** note on runs on the audio thread too
+(the worklet handles messages between render calls), so it mustn't
+allocate either. Every voice's delay line is allocated once, sized for A0
+at the current rate, and a note *re-strings* a voice in place
+(`Vec::clear` + `resize` within capacity). Noise comes from one seeded
+`SplitMix64` (moved from `engine` to `math`, shared), so a performance is
+reproducible: its golden hash is the same native and on wasm (the
+coefficients use `libm`). Release multiplies the loop's taps by an extra
+loss for a 0.1 s `T₆₀`, so the pitch holds while it fades; the voice frees
+after 80 dB. A seven-note chord at gain ¼ peaks at 0.824: no clipping.
+Every MIDI key from A0 up is playable at 44.1 and 48 kHz (G9's loop is
+3.8 samples, `N = 3` plus the allpass).
+
 ## Measuring, offline, in Rust
 
 Tests render audio with no browser and measure it:

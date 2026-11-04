@@ -186,10 +186,14 @@ loop's known failure −75.5 / +71.1 cents at C8, 40–41 keys audibly off
 partials fool the autocorrelation (−41 cents at C8), hence
 `measure::partial` (the fundamental's DFT phase advance).
 
-## 4. Excitation and voices (PR)
+## ✅ 4. Excitation and voices (done)
 
-- [ ] Seeded noise and triangle excitation; the voice pool (8, oldest
-      stolen); golden hashes of rendered audio, native and wasm.
+`Excitation::{Noise, Triangle { peak }}` (zero-mean); `Voices` (8
+strings preallocated for A0, re-strung in place so note on never
+allocates; oldest stolen; release by an extra loss, pitch held; gain ¼,
+clamp counted). `SplitMix64` moved to `math` (engine goldens unchanged).
+Golden hash of a 1 s performance (chord, triangle melody, release, a
+stolen voice): the same native and on wasm; peak 0.824, nothing clipped.
 
 ## 5. `acoustic-web` (PR)
 
