@@ -187,7 +187,7 @@ What fills the delay line at note on:
 
 ## Voices
 
-A fixed pool of 8 voices, each a string. Note on takes a free voice, or
+A fixed pool of 8 voices (16 since A1.9), each a string. Note on takes a free voice, or
 steals the oldest. All are summed into one output, times a master gain;
 with 8 noise-plucked strings at full level the sum can exceed 1, so the
 gain defaults to ¼ and the output is clamped to ±1 (and clamping is
@@ -209,8 +209,9 @@ Every MIDI key from A0 up is playable at 44.1 and 48 kHz (G9's loop is
 ## The module (A1.5)
 
 `crates/acoustic-web`, a `cdylib` of its own, built by `cargo xtask site`
-into `site/pkg/acoustic.wasm`: **50,890 B (21,473 B gzip -9)**, against
-the engine's 192,680 B. One import, `env.console_error` (the panic hook);
+into `site/pkg/acoustic.wasm`: **50,890 B (21,473 B gzip -9)** at A1.5
+(53,121 B at A1.9, with `synth_latest_cents`), against the engine's
+192,680 B. One import, `env.console_error` (the panic hook);
 twelve exports:
 
 | Export | Does |
@@ -269,6 +270,22 @@ visual. Smoke renders the start of Hot Cross Buns offline, finds each
 note's onset in the audio (5 ms RMS windows), and requires every one
 within 10 ms of its schedule: measured, 3 of 3, worst 5.0 ms (the
 detector's own resolution).
+
+**Two harder pieces (A1.9):** the opening of **Für Elise** (Beethoven,
+3/8 in sixteenths) and the introduction and first strain of **The
+Entertainer** (Joplin, 1902; 20 bars, 341 notes, chords in both hands).
+Both need two hands that overlap (a held melody note over moving
+arpeggios), so a song is now a list of **tracks**, each a sequence of
+steps, merged into one timeline. The Entertainer isn't from memory: it
+was converted from the Mutopia Project's LilyPond engraving of the 1902
+original edition (public domain, piece 263) by a script that resolves
+LilyPond's relative octaves and checks that every bar adds up to 2/4
+(it caught two parser mistakes, and a bar line the source omits). A
+second, auto-converted LilyPond file found first had a garbled bar; the
+Mutopia engraving settled it. It needs 11 voices at its busiest (with
+release tails), so the pool is now 16. Played through the real module
+in Node, scheduled as the worklet does: no song clips (The Entertainer
+peaks at 0.79).
 
 What automation can't check: that it *sounds* right, and the latency of a
 real `AudioContext`. That's the listening check.

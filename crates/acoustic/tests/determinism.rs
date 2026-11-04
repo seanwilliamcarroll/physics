@@ -23,8 +23,8 @@ fn fnv1a(bytes: impl Iterator<Item = u8>) -> u64 {
     bytes.fold(OFFSET, |h, b| (h ^ u64::from(b)).wrapping_mul(PRIME))
 }
 
-/// A short performance, 1 s: a C major chord (noise), a triangle-plucked
-/// melody note, a release, and a ninth note that steals a voice. Returns
+/// A short performance, 1 s: a seven-note chord (noise), a
+/// triangle-plucked melody note, a release, and one more note. Returns
 /// the samples and how many were clipped.
 fn perform<S: Scalar>() -> (Vec<S>, u64) {
     let mut v = Voices::<S>::new(FS, 7).unwrap();

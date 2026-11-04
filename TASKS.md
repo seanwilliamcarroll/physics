@@ -239,6 +239,15 @@ depend on the main thread; play/stop buttons, keys light up. Smoke now
 renders the start of a song and checks its onsets: 3 of 3, worst 5.0 ms
 (the harness allows 10).
 
+## ✅ 9. Für Elise and The Entertainer (your request; done)
+
+Songs are tracks (hands that overlap). Für Elise's opening, and The
+Entertainer's intro and first strain converted from Mutopia's public-
+domain LilyPond of the 1902 edition (relative octaves resolved, every
+bar checked: 20 bars, 341 notes). Voices 8 → 16 (The Entertainer needs
+11 with releases); golden unchanged. Every song played through the real
+module: none clips.
+
 ---
 
 ## Out of scope for A1
