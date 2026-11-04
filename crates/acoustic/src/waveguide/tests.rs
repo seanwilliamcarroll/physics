@@ -77,8 +77,7 @@ fn a_pluck_puts_its_shape_on_the_string_split_between_the_rails() {
     let shape: Vec<f64> = wg.shape().collect();
     assert_eq!(shape.len(), 60);
     for (c, &y) in shape.iter().enumerate() {
-        #[expect(clippy::cast_precision_loss, reason = "test sizes")]
-        let s = (c as f64 + 0.5) / 60.0;
+        let s = wg.position(c);
         let want = if s < 0.25 { s / 0.25 } else { (1.0 - s) / 0.75 };
         assert!((y - want).abs() < 1e-12, "cell {c}: {y} vs {want}");
     }
@@ -102,4 +101,23 @@ fn the_ends_reflect_inverted() {
     // The classic average halves a lone pulse into two samples.
     assert!((first - 0.5).abs() < 1e-15, "{first}");
     assert!(wg.left_newest() < 0.0, "inverted at the bridge");
+}
+
+#[test]
+fn positions_span_the_effective_length() {
+    // 48000 / 400 = 120 samples: the untuned classic loop is N = 120 with
+    // the average's half sample, so P = 120.5 and the effective length is
+    // 60.25 cells; cell 0's center is 0.25 + ½ cells from the bridge.
+    let lossless = Voicing {
+        tuned: false,
+        decay: Decay::Loss(1.0),
+    };
+    let wg = Waveguide::<f64>::new(FS, 400.0, lossless).unwrap();
+    let length = FS / (2.0 * wg.pitch());
+    assert!((length - 60.25).abs() < 1e-12, "{length}");
+    assert!((wg.position(0) - 0.75 / 60.25).abs() < 1e-12);
+    assert!(
+        (wg.position(59) - 59.75 / 60.25).abs() < 1e-12,
+        "the last cell's center is half a cell from the nut"
+    );
 }

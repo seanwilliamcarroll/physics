@@ -203,10 +203,15 @@ notes, odd and even, tuned and not, both scalars). 88 keys within
 ±0.0073 cents, `T₆₀` within 0.1%, as the loop. Positions measured from
 the bridge.
 
-## 4. Pluck and pickup positions (PR)
+## ✅ 4. Pluck and pickup positions (done)
 
-- [ ] Triangle pluck at β, interpolated pickup at p; the missing-harmonic
-      tests and the `sin(kπβ)/k²` shape; golden hash.
+`measure::amplitude`; positions on the **effective length** (`fs / 2f₀`
+cells: the bridge's delay lengthens the string by `τ_b / 2`). **Found:**
+on the bare `M` cells "1/n" missed the node by ~0.004 of the length and
+the nulls only reached −40 dB; on the effective length, −73 dB. Tests,
+both scalars: pluck or pickup moved onto 1/n drops harmonic n by 45–51 dB
+(bound 30); harmonics 2–6 within 0.5 dB of `sin(kπβ) sin(kπp)/k²` (bound
+1.5); waveguide golden native = wasm.
 
 ## 5. Voices and the web layer (PR)
 

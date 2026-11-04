@@ -110,6 +110,28 @@ plucked by the bridge.
 Noise stays available as an excitation: it has no position (every cell
 random), so it excites every mode, and sounds like A1.
 
+**As built (A2.4,** `tests/positions.rs`**): the effective length.** The
+first measurements put the nulls at only about −40 dB under the
+fundamental, and moving the pluck 0.05 off `1/n` raised the harmonic only
+10–20 dB: something filled them in. The bridge. Its filters (the
+lowpass's half sample, the allpass's `Δ`, the odd sample) delay the
+reflection, so to the waves the string is longer than its `M` cells: a
+round trip costs `τ_b` extra samples, as if the string reached `τ_b / 2`
+cells past the bridge. Measuring "1/n" on the bare cells put it a few
+thousandths of the length off the real node (≈ 0.004 at `n = 2`), enough
+to leave −40 dB. The effective length is exactly half the loop's period,
+`fs / 2f₀` cells; with positions measured on it, the nulls fall to about
+**−73 dB**, moving onto `1/n` drops harmonic `n` by **45–46 dB** (pluck)
+and **50–51 dB** (pickup) against `1/n ± 0.05`, `n` = 2–5, and the first
+harmonics follow `sin(kπβ) sin(kπp) / k²` within **0.5 dB** (β = 0.2,
+p = 0.1; the remainder is the bridge taking a little more from the
+higher ones). Both scalars alike; a golden hash of a waveguide render
+matches on wasm.
+
+(A measurement lesson on the way: `partial` must span several periods of
+the *fundamental*, not of the harmonic, or the Hann window's main lobe
+can't separate partials `f₀` apart.)
+
 ## Listening at a point
 
 The output is the **displacement at the pickup**, `p`: `r(p) + l(p)`,

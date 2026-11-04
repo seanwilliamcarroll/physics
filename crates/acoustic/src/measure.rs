@@ -126,6 +126,20 @@ pub fn partial(signal: &[f64], fs: f64, estimate: f64, periods: f64) -> Option<f
     Some(estimate + error * fs / (tau * hop))
 }
 
+/// The amplitude of `signal`'s component at `f` Hz: a Hann-windowed DFT
+/// at exactly `f` (one bin, not the FFT's grid), scaled so a sine of
+/// amplitude `a` reads `a`. The window should span many periods of `f`
+/// and of its neighbors, so they don't leak in.
+#[must_use]
+pub fn amplitude(signal: &[f64], fs: f64, f: f64) -> f64 {
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "window sizes are far below 2^53"
+    )]
+    let n = signal.len() as f64;
+    bin(signal, fs, f).map_or(0.0, |(re, im)| re.hypot(im) * 4.0 / n)
+}
+
 /// The Hann-windowed DFT of `chunk` at `f` Hz: `(re, im)`, or `None` if
 /// it's zero.
 fn bin(chunk: &[f64], fs: f64, f: f64) -> Option<(f64, f64)> {

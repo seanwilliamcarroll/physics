@@ -1,4 +1,4 @@
-use super::{cents, pitch, t60};
+use super::{amplitude, cents, pitch, t60};
 use core::f64::consts::TAU;
 
 const FS: f64 = 48_000.0;
@@ -46,4 +46,24 @@ fn t60_of_a_known_decay() {
     // 30 dB/s: T60 = 2 s.
     let got = t60(&tone(220.0, 30.0, 3.0), FS, 220.0, 16.0, 0.2, 2.5).unwrap();
     assert!((got - 2.0).abs() < 0.01, "{got}");
+}
+
+#[test]
+fn amplitude_reads_a_sine_between_bins() {
+    // 0.3 at 441.3 Hz plus 0.1 at its octave, 0.2 s.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "test lengths"
+    )]
+    let n = (0.2 * FS) as usize;
+    let x: Vec<f64> = (0..n)
+        .map(|i| {
+            #[expect(clippy::cast_precision_loss, reason = "test indices")]
+            let t = i as f64 / FS;
+            0.3 * (TAU * 441.3 * t).sin() + 0.1 * (TAU * 882.6 * t).sin()
+        })
+        .collect();
+    assert!((amplitude(&x, FS, 441.3) - 0.3).abs() < 1e-3);
+    assert!((amplitude(&x, FS, 882.6) - 0.1).abs() < 1e-3);
 }
