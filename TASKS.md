@@ -1,20 +1,22 @@
-# TASKS — A1: Plucked string (Karplus–Strong)
+# TASKS — A2: Waveguide string
 
-Source: `docs/05-roadmap.md` (A1), `docs/00-scope.md` ("Acoustic
-track"), `docs/03-wasm-shell.md` ("Not now": wasm-bindgen),
-`docs/hosting.md` (cross-origin isolation; secure context).
+Source: `docs/05-roadmap.md` (A2), `docs/12-acoustic-foundations.md`
+(the loop, tuning, decay, voices, the worklet), Smith, *Physical Audio
+Signal Processing* (digital waveguides; Karplus–Strong as a special
+case).
 
-**Goal:** the 2015 Piano Gloves core, redone properly: a delay line and a
-lowpass make a convincing plucked string, tuned to the cent by a
-fractional delay, with its decay under control and its buffer drawn live.
+**Goal:** the string, not just its loop. Two traveling waves on a string
+with fixed ends; where you pluck it and where you listen change the
+timbre, and you can see why: harmonics go missing, as the spectrum shows.
+And Karplus–Strong falls out as the same model, collapsed.
 
-**Done when:** an on-screen keyboard plays in tune, and a toggle that
-turns the fractional delay off makes the integer-delay detuning audible
-(and measured).
+**Done when:** moving the pluck to 1/n of the string visibly and audibly
+removes every nth harmonic (and the pickup does the same), and a
+waveguide reproduces A1's Karplus–Strong output sample for sample.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`a1/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`a2/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -107,154 +109,116 @@ is Poisson restitution. Sections 7–10 (scenes, web, pages, cleanup)
 remain; M6's cleanup should also trim its sorts (`engine.wasm` +65 KB,
 26.7 KB of it sorting: `03-wasm-shell.md`).
 
+## ✅ A1: Plucked string, Karplus–Strong (done, PRs #84–#93)
+
+`docs/12-acoustic-foundations.md`; the `acoustic` crate (delay line,
+`KsString`, `Voicing` with the allpass exact at `f₀` and `T₆₀` by loss or
+stretching, `Excitation`, 16 `Voices` that never allocate on the audio
+thread) and its offline measurements (`pitch`, `partial`, `t60`, each
+corrected once); `libm` (your call) so rendered audio is bit-identical on
+wasm; `acoustic-web` → `acoustic.wasm` (53 KB) behind `synth_*`; the A1
+page (worklet with the module in `processorOptions`, computer and
+on-screen keyboard, tuning toggle with the synth's own cents readout,
+five songs scheduled to the frame in the worklet, Mutopia's Entertainer
+included). Measured: 88 keys within ±0.006 cents tuned; the integer loop
+±75 cents at C8, 40 keys audibly off; `T₆₀` within 0.1%. Listening check:
+yours, "looks good".
+
 ---
 
 ## Decisions to review before starting
 
-1. **Two new crates.** `acoustic` (library: delay line, string, voices,
-   offline rendering; generic over `math::Scalar`, so f32 and f64 get the
-   same tests now and fixed point can follow in M8) and `acoustic-web`
-   (a `cdylib`, its own small `.wasm`). The audio module stays
-   independent of the engine and tiny; the engine's `.wasm` is untouched.
-2. **No wasm-bindgen.** The same raw C ABI as `web` (`03-wasm-shell.md`):
-   exports over pointers into wasm memory. The roadmap guessed audio would
-   be where wasm-bindgen arrives; it isn't needed for A1.
-3. **Loading wasm into the worklet.** `AudioWorkletGlobalScope` has no
-   `fetch`, so the page compiles the `WebAssembly.Module` and posts it to
-   the worklet (a `Module` is structured-cloneable), which instantiates it
-   synchronously. The worklet calls one export per 128-frame render
-   quantum, writing into a buffer in wasm memory that it copies out.
-4. **`postMessage`, not shared memory.** Notes and settings go in, and
-   delay-line snapshots come out at display rate, over the worklet's
-   `port`. No `SharedArrayBuffer`, so no cross-origin isolation headers on
-   the host (`hosting.md` deferred the choice to A1).
-5. **f32 at run time**, both scalars in tests. The sample rate is
-   whatever the `AudioContext` reports (44.1 or 48 kHz); delay lengths are
-   computed from it, and tests run at both.
-6. **The Karplus–Strong loop** (Jaffe & Smith 1983): delay line of `N`
-   samples, two-point averaging lowpass (half a sample of delay), and a
-   first-order allpass for the fractional remainder, so the loop is
-   exactly `fs / f0` samples. Decay control by the loss factor (and decay
-   stretching for the high notes, which otherwise die too fast). The
-   fractional delay can be switched off, back to the integer loop.
-7. **Tests measure, offline, in Rust:** the fundamental by
-   autocorrelation (with interpolation) within a cents bound across the
-   keyboard, with the integer loop's error recorded as a known failure;
-   decay time (T60) against its setting; both scalars, both rates.
-8. **Determinism:** the noise excitation is seeded (the engine's
-   `SplitMix64` pattern), and a golden hash of rendered audio is checked
-   native and on wasm (`test-wasm`), like the engine's.
-9. **Polyphony:** a fixed pool of voices (8) with oldest-note stealing;
-   on-screen keyboard plus the computer keyboard.
-10. **Excitation:** a seeded noise burst, or the Piano Gloves triangle
-    (a hammer shape placed near one end of the delay line).
-11. **Browser smoke test** with `OfflineAudioContext`: render a second of
-    audio with no speakers, check it's audible and finite (headless Chrome
-    can't be trusted to play real-time audio).
+1. **The model** (Smith, *PASP*): two delay lines ("rails"), the
+   right-going and left-going displacement waves, `N` samples in all
+   (the round trip), split `⌈N/2⌉` / `⌊N/2⌋`. Each end reflects with −1
+   (a fixed end). Displacement at a point is the sum of the two rails
+   there, so the page draws the **string's shape**, not A1's loop.
+2. **Losses and tuning lumped at one end** (the bridge): A1's lowpass,
+   loss, and allpass fractional delay, unchanged, in the reflection. The
+   loop budget is A1's (`N + τ_lowpass + Δ = fs / f₀`), so tuning and
+   `T₆₀` carry over, and the 88-key and decay tests run again on the
+   waveguide.
+3. **Karplus–Strong is the special case, tested exactly:** a waveguide
+   started from the state of an A1 loop (one rail its first half, the
+   other its second half negated and reversed) reproduces the loop's
+   output at the bridge **sample for sample** (bit-identical, both
+   scalars). The claim becomes a test.
+4. **Pluck position β** (a fraction of the length): the initial shape is
+   a triangle peaked at β, zero velocity, split equally between the
+   rails. Predicted harmonic amplitudes ∝ `sin(kπβ)/k²`, so β = 1/n
+   removes every nth. Noise stays available as an excitation (it has no
+   position).
+5. **Pickup position p**: output is the displacement at p, read with
+   linear interpolation between samples (positions are continuous on
+   the page). Harmonics weighted by `sin(kπp)`.
+6. **The showcase tests:** pluck (and pickup) at 1/n for several n and
+   notes; harmonic n measured (A1's `partial`, at `n f₀`) at least a
+   measured margin below its neighbors, both scalars, both rates. And
+   `sin(kπβ)/k²` checked as a shape across the first harmonics.
+7. **An FFT we write ourselves** (`acoustic::fft`): radix-2
+   Cooley–Tukey, in place, generic over `Scalar`; tested against a naive
+   DFT and on known tones. Used by the page's spectrum (and available to
+   tests).
+8. **The spectrum comes from the audio thread:** the synth keeps its last
+   4096 output samples; on snapshot, a Hann-windowed FFT → dB magnitudes,
+   sent with the string shape (same ping-pong buffers). The page draws
+   0–5 kHz with ticks at the harmonics and the predicted missing ones
+   marked.
+9. **One synth, two models:** a voice holds either A1's `KsString` or
+   the new `Waveguide` (an enum), chosen by `synth_set_model`; the A1
+   page keeps the loop, the A2 page uses the waveguide. The keyboard and
+   songs (`ks.ts`, `songs.ts`) are reused as they are.
+10. **Determinism:** a golden hash of a waveguide performance, native and
+    wasm, as A1's.
 
 ---
 
-## ✅ 1. `docs/12-acoustic-foundations.md` (done)
+## 1. `docs/13-waveguide.md` (PR)
 
-How wasm makes sound (worklet, render quantum: 128 frames by default but
-read from the buffer, `renderSizeHint` exists; module posted to the
-worklet; ping-ponged snapshot buffers; autoplay); the loop (`N + ½`
-samples; the integer loop is ~75 cents off at C8); allpass tuning with
-`Δ ∈ [0.1, 1.1)`; decay (`T₆₀` from `ρ` and stretching `S`); release;
-excitation (noise minus its mean); 8 voices, gain ¼, clamp counted;
-pitch by autocorrelation in cents, `T₆₀` by envelope fit. References:
-Karplus & Strong 1983 (DOI checked), Web Audio API 1.1.
+- [ ] The rails, terminations, the lumped bridge filter, pluck and pickup
+      positions and their harmonic predictions, the KS equivalence, the
+      FFT and the spectrum. Decisions above, as adopted.
 
-## ✅ 2. `acoustic` crate: the string (done)
+## 2. FFT (PR)
 
-`DelayLine` (ring buffer), `KsString` (integer loop, average, loss ρ;
-`pluck(f)`, `render`), `measure::{pitch, t60, cents}`; tests in both
-scalars, both rates, and on wasm (`test-wasm` now includes `acoustic`).
-The integer loop measures `fs / (N + ½)` within 0.09 cents, and `T₆₀`
-the loop formula to four digits. **Found:** three measurement mistakes
-(total RMS isn't the fundamental's decay; one short period interpolates
-badly; many periods need a good first guess), fixed and recorded in `12`.
+- [ ] `acoustic::fft` (radix-2, in place); tests against a naive DFT and
+      known tones; a measured cost for 4096 points.
 
-## ✅ 3. Tuning and decay (done)
+## 3. The waveguide string (PR)
 
-`Voicing { tuned, decay: Loss(ρ) | T60(s) }`: the allpass coefficient
-exact at `f₀` (`sin((1−Δ)w/2) / sin((1+Δ)w/2)`), the lowpass's exact
-phase delay in the budget; `T₆₀` by `ρ` (shorten) or stretching `S`
-(lengthen). `libm` adopted (your call) so coefficients are bit-identical
-on wasm. Measured: 88 keys within **±0.006 cents** tuned; the integer
-loop's known failure −75.5 / +71.1 cents at C8, 40–41 keys audibly off
-(> 3 cents, from G3 up); `T₆₀` within **0.1%**. **Found:** inharmonic
-partials fool the autocorrelation (−41 cents at C8), hence
-`measure::partial` (the fundamental's DFT phase advance).
+- [ ] Rails, reflections, the bridge filter, tuning; the KS equivalence
+      test (bit-identical); the 88-key tuning and `T₆₀` tests on the
+      waveguide.
 
-## ✅ 4. Excitation and voices (done)
+## 4. Pluck and pickup positions (PR)
 
-`Excitation::{Noise, Triangle { peak }}` (zero-mean); `Voices` (8
-strings preallocated for A0, re-strung in place so note on never
-allocates; oldest stolen; release by an extra loss, pitch held; gain ¼,
-clamp counted). `SplitMix64` moved to `math` (engine goldens unchanged).
-Golden hash of a 1 s performance (chord, triangle melody, release, a
-stolen voice): the same native and on wasm; peak 0.824, nothing clipped.
+- [ ] Triangle pluck at β, interpolated pickup at p; the missing-harmonic
+      tests and the `sin(kπβ)/k²` shape; golden hash.
 
-## ✅ 5. `acoustic-web` (done)
+## 5. Voices and the web layer (PR)
 
-`Synth` (safe, tested natively: voices, settings, preallocated output
-and snapshot buffers) behind twelve `synth_*` exports; the panic hook;
-`xtask site` builds `site/pkg/acoustic.wasm` (**50,890 B, 21,473 gzip**);
-pre-commit lints it as wasm. Played from Node against the real module.
-**Found:** `engine.wasm` is 192,680 B, +65 KB over M5.6 from M6's
-collision code, unexplained so far (section 7).
+- [ ] The voice enum (loop or waveguide); `synth_set_model`,
+      `_set_pluck_position`, `_set_pickup`; the output history and
+      spectrum; the string shape in the snapshot.
 
-## ✅ 6. Site: the A1 page (done, listening check pending)
+## 6. Site: the A2 page (PR)
 
-`site/demos/a1-string/` (`worklet.ts`: the module arrives in
-`processorOptions`, instantiated synchronously; `process` allocates
-nothing; snapshots ping-pong). Computer keyboard (`ks.ts`, node-tested)
-and an on-screen piano; tuning toggle with a readout from the synth
-(`synth_latest_cents`, new: the error depends on the decay filter);
-decay, pluck, volume; the live loop drawn. Smoke `a1`
-(`Check::Sounds`, offline render: peak 0.52). Gallery: a "Sound" section.
-
+- [ ] `a2-waveguide`: the string's shape with pluck and pickup markers,
+      the spectrum with predicted missing harmonics, position sliders,
+      the A1 keyboard and songs; smoke; gallery.
 - [ ] Listening check against **Done when** (yours).
 
-## ✅ 7. A1 cleanup (done)
+## 7. A2 cleanup (PR, if needed)
 
-Page numbers named (`WAVE_FILL`, `BLACK_KEY_WIDTH`, slider steps,
-`MS_PER_SECOND`); `types.md` gets an `acoustic` section; triggers
-re-checked (`type-invariants.md`: A1's settings are checked once at the
-boundary, no newtype); no file over ~310 lines. **`engine.wasm`'s +65 KB
-explained** (`03-wasm-shell.md`, from the module's `name` section):
-sorting +26.7 KB (six instantiations, one per element type, the warm
-start's twice), stepping +16.9 KB, `Contacts::find` +11.5 KB. Fix left for
-M6's cleanup (candidates listed there).
+- [ ] Magic numbers, triggers, `docs/types.md`, small files.
 
 ---
 
-## ✅ 8. Songs (your request; done)
+## Out of scope for A2
 
-Hot Cross Buns, Mary Had a Little Lamb, Chopsticks' opening as data
-(`songs.ts`, node-tested); scheduled to the frame in the worklet
-(`currentFrame` + 50 ms lead; exact to a quantum), so the rhythm doesn't
-depend on the main thread; play/stop buttons, keys light up. Smoke now
-renders the start of a song and checks its onsets: 3 of 3, worst 5.0 ms
-(the harness allows 10).
-
-## ✅ 9. Für Elise and The Entertainer (your request; done)
-
-Songs are tracks (hands that overlap). Für Elise's opening, and The
-Entertainer's intro and first strain converted from Mutopia's public-
-domain LilyPond of the 1902 edition (relative octaves resolved, every
-bar checked: 20 bars, 341 notes). Voices 8 → 16 (The Entertainer needs
-11 with releases); golden unchanged. Every song played through the real
-module: none clips.
-
----
-
-## Out of scope for A1
-
-- Pluck and pickup position, waveguides, spectra (A2).
-- Stiffness, hammers, string groups (A3).
-- SIMD and throughput benchmarks (A4/A5 and later).
+- String stiffness and dispersion, a hammer, string groups, a body (A3).
+- Two-dimensional strings and drums (A4–A5).
+- Velocity or acceleration pickups (displacement only).
 
 ## Known gaps
 
