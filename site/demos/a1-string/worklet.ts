@@ -12,6 +12,8 @@ import type { AcousticExports, SynthHandle } from "../../js/acoustic";
 // The AudioWorkletGlobalScope's globals, which TypeScript's DOM library
 // doesn't describe. Declared here, not globally, so pages can't use them.
 declare const sampleRate: number;
+/** The frame (sample index) the next render quantum starts at. */
+declare const currentFrame: number;
 declare class AudioWorkletProcessor {
   readonly port: MessagePort;
   constructor(options?: AudioWorkletNodeOptions);
@@ -21,8 +23,13 @@ declare function registerProcessor(
   ctor: new (options: AudioWorkletNodeOptions) => AudioWorkletProcessor,
 ): void;
 
-/** What the page passes at construction. */
-export type ProcessorInit = { module: WebAssembly.Module; seed: number; notes: number[] };
+/** A key event `at` seconds from a song's start. */
+export type TimedKey = { at: number; on: boolean; key: number };
+
+/** What the page passes at construction: the module, the noise seed,
+ *  notes to start at once, and optionally a song to schedule (smoke mode
+ *  renders one offline to check the timing). */
+export type ProcessorInit = { module: WebAssembly.Module; seed: number; notes: number[]; song?: TimedKey[] };
 
 /** Messages from the page. */
 export type ToWorklet =
@@ -32,7 +39,11 @@ export type ToWorklet =
   | { type: "t60"; seconds: number }
   | { type: "excitation"; code: number; peak: number }
   | { type: "gain"; gain: number }
-  | { type: "buffer"; buf: ArrayBuffer };
+  | { type: "buffer"; buf: ArrayBuffer }
+  /** A song: key events `at` seconds from now (plus a short lead),
+   *  scheduled to the frame. Replaces any song playing. */
+  | { type: "play"; events: TimedKey[] }
+  | { type: "stop" };
 
 /** Messages to the page. */
 export type FromWorklet =
@@ -42,6 +53,13 @@ export type FromWorklet =
 
 /** Snapshots per second (display rate; the page draws each one). */
 const SNAPSHOTS_PER_SECOND = 30;
+
+/** A song starts this long after the message arrives, s: room for the
+ *  first quantum, so its first note isn't late. */
+const SONG_LEAD_S = 0.05;
+
+/** A scheduled key event, in frames. */
+type Scheduled = { frame: number; on: boolean; key: number };
 
 class KsProcessor extends AudioWorkletProcessor {
   private readonly x: AcousticExports;
@@ -53,6 +71,11 @@ class KsProcessor extends AudioWorkletProcessor {
    *  quantum size changes, so `process` allocates nothing. */
   private view: Float32Array | null = null;
   private viewPtr = 0;
+  /** The song playing: its events by frame, the next one's index, and the
+   *  keys it holds down (released if it's stopped mid-note). */
+  private song: Scheduled[] = [];
+  private songNext = 0;
+  private readonly songHeld = new Set<number>();
 
   constructor(options: AudioWorkletNodeOptions) {
     super(options);
@@ -73,6 +96,7 @@ class KsProcessor extends AudioWorkletProcessor {
     memory.buffer = this.x.memory.buffer;
     this.synth = this.x.synth_new(sampleRate, init.seed);
     for (const key of init.notes) this.x.synth_note_on(this.synth, key);
+    if (init.song !== undefined) this.play(init.song);
     this.port.onmessage = (e: MessageEvent<ToWorklet>) => this.handle(e.data);
     this.port.postMessage({ type: "ready", sampleRate } satisfies FromWorklet);
   }
@@ -87,6 +111,37 @@ class KsProcessor extends AudioWorkletProcessor {
       case "excitation": x.synth_set_excitation(synth, m.code, m.peak); break;
       case "gain": x.synth_set_gain(synth, m.gain); break;
       case "buffer": this.pool.push(m.buf); break;
+      case "play": this.play(m.events); break;
+      case "stop": this.stopSong(); break;
+    }
+  }
+
+  private play(events: TimedKey[]): void {
+    this.stopSong();
+    const start = currentFrame + SONG_LEAD_S * sampleRate;
+    this.song = events.map((e) => ({ frame: Math.round(start + e.at * sampleRate), on: e.on, key: e.key }));
+    this.songNext = 0;
+  }
+
+  private stopSong(): void {
+    for (const key of this.songHeld) this.x.synth_note_off(this.synth, key);
+    this.songHeld.clear();
+    this.song = [];
+    this.songNext = 0;
+  }
+
+  /** Applies the song's events that fall in the quantum starting now: at
+   *  its start, so to within one quantum (2.7 ms at 128 frames). */
+  private runSong(frames: number): void {
+    const end = currentFrame + frames;
+    for (let e = this.song[this.songNext]; e !== undefined && e.frame < end; e = this.song[++this.songNext]) {
+      if (e.on) {
+        this.x.synth_note_on(this.synth, e.key);
+        this.songHeld.add(e.key);
+      } else {
+        this.x.synth_note_off(this.synth, e.key);
+        this.songHeld.delete(e.key);
+      }
     }
   }
 
@@ -95,6 +150,7 @@ class KsProcessor extends AudioWorkletProcessor {
     const first = channels?.[0];
     if (first === undefined) return true;
     const frames = first.length;
+    this.runSong(frames);
     const ptr = this.x.synth_render(this.synth, frames);
     if (ptr === 0) {
       first.fill(0);

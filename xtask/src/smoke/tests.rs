@@ -100,3 +100,14 @@ fn audio_reports_need_an_audible_unclipped_peak() {
     );
     assert!(judge_audio(&line("error non-finite sample")).is_err());
 }
+
+#[test]
+fn a_rendered_song_must_be_on_time() {
+    let line = |msg: &str| console(&format!("SMOKE {msg}"));
+    let ok = "ok audio_peak=0.2 samples=120000 song_notes=3 onsets=3 onset_worst_ms=5.0";
+    assert!(judge_audio(&line(ok)).unwrap().contains("onset_worst_ms=5"));
+    let late = "ok audio_peak=0.2 samples=120000 song_notes=3 onsets=3 onset_worst_ms=25.0";
+    assert!(judge_audio(&line(late)).is_err(), "late");
+    let missing = "ok audio_peak=0.2 samples=120000 song_notes=3 onsets=2 onset_worst_ms=5.0";
+    assert!(judge_audio(&line(missing)).is_err(), "a note never sounded");
+}

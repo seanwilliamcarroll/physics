@@ -255,6 +255,21 @@ page.
   `processorOptions`) and reports its peak: headless Chrome ran the real
   worklet and module, peak 0.52.
 
+**Songs (A1.8, your request):** Hot Cross Buns, Mary Had a Little Lamb
+and the opening of Chopsticks, as data (`site/js/songs.ts`: keys and
+beats per step, a tempo; each note releases at 90% of its length so a
+repeated key re-plucks). They play **in the worklet**: the page sends the
+song's events in seconds, and the worklet turns them into frames from its
+`currentFrame` clock (plus a 50 ms lead, so the first note isn't late) and
+applies each at the start of the quantum it falls in: exact to one
+quantum, 2.7 ms. Scheduling from the page with `setTimeout` would drift by
+10 ms or more whenever the main thread is busy, which you'd hear as an
+uneven rhythm. The page's key highlights do use timers; they're only
+visual. Smoke renders the start of Hot Cross Buns offline, finds each
+note's onset in the audio (5 ms RMS windows), and requires every one
+within 10 ms of its schedule: measured, 3 of 3, worst 5.0 ms (the
+detector's own resolution).
+
 What automation can't check: that it *sounds* right, and the latency of a
 real `AudioContext`. That's the listening check.
 

@@ -230,6 +230,17 @@ M6's cleanup (candidates listed there).
 
 ---
 
+## ✅ 8. Songs (your request; done)
+
+Hot Cross Buns, Mary Had a Little Lamb, Chopsticks' opening as data
+(`songs.ts`, node-tested); scheduled to the frame in the worklet
+(`currentFrame` + 50 ms lead; exact to a quantum), so the rhythm doesn't
+depend on the main thread; play/stop buttons, keys light up. Smoke now
+renders the start of a song and checks its onsets: 3 of 3, worst 5.0 ms
+(the harness allows 10).
+
+---
+
 ## Out of scope for A1
 
 - Pluck and pickup position, waveguides, spectra (A2).
