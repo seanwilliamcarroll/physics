@@ -217,8 +217,10 @@ momentum conserved through collisions; `e = 0` produces sticking; no
 penetration beyond tolerance at rest; broadphase returns a superset of
 true overlapping pairs (proptest against brute force).
 
-**Done when:** a box of bouncing balls keeps a flat momentum plot, and the
-Newton's cradle panel behaves (or misbehaves) per solver.
+**Done when:** a box of bouncing balls keeps its energy at `e = 1` (walls
+push, so its momentum isn't conserved: corrected in M6, `08-collision.md`),
+a free-space collision keeps a flat momentum plot, and the Newton's
+cradle panel behaves (or misbehaves) per solver.
 
 **Docs:** `08-collision.md`: shapes, broadphase, contact generation,
 contact constraint form.

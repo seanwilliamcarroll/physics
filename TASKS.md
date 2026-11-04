@@ -150,11 +150,18 @@ freezes on the last sane frame. **Before M6 (#73):** CI, `UnitVec2`.
 
 ---
 
-## 1. `docs/08-collision.md` (PR)
+## ✅ 1. `docs/08-collision.md` (done)
 
-- [ ] Shapes, walls, contact generation, the contact constraint form
-      (inequality, accumulated clamp), restitution in both solvers,
-      warm starting, the broadphase. Decisions above, as adopted.
+Decisions as adopted, plus three the code forced: **the solver steps any
+world that collides** (radius > 0 or walls, not only constraints);
+**contacts are their own type** (a wall contact has one body, the
+`Constraint` trait two), solved in the same passes after the rods;
+**speculative contacts** in the impulse solver (a contact exists when the
+gap is less than the pair can close this substep; `v_target = −C/h`), and
+so **restitution is a separate pass** after the iterations in both solvers,
+from the approach speed recorded before the solve (a speculative contact
+stops the ball exactly at the surface, so the next substep sees no
+approach). Roadmap "done when" corrected.
 
 ## 2. Radius, walls, `Restitution` (PR)
 
