@@ -12,7 +12,7 @@ fn pool() -> Voices<f64> {
 }
 
 #[test]
-fn the_ninth_note_steals_the_oldest() {
+fn a_note_past_the_pool_steals_the_oldest() {
     let mut v = pool();
     for key in 60..60 + u8::try_from(VOICES).unwrap() {
         assert!(v.note_on(key, VOICING, Excitation::Noise));

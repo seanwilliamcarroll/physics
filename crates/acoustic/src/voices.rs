@@ -5,14 +5,18 @@ use math::SplitMix64;
 
 use crate::{Excitation, KsString, Scalar, Voicing};
 
-/// How many notes sound at once; the ninth steals the oldest.
-pub const VOICES: usize = 8;
+/// How many notes sound at once; one more steals the oldest. 16 since
+/// A1.9: The Entertainer has three-note chords in both hands and needs 11
+/// at its busiest (counting releases), and stealing a still-ringing voice
+/// restarts its delay line mid-note. A voice is one preallocated line
+/// (~7 KB at 48 kHz), and only sounding ones cost time.
+pub const VOICES: usize = 16;
 
 /// The lowest note a voice is sized for, Hz: A0, the piano's bottom key.
 pub const LOWEST_HZ: f64 = 27.5;
 
-/// Output gain by default: with up to 8 noise-plucked strings at ±1, ¼
-/// keeps a chord off the ±1 clamp.
+/// Output gain by default: ¼ keeps a seven-note chord of noise-plucked
+/// strings off the ±1 clamp (peak 0.824, `tests/determinism.rs`).
 pub const DEFAULT_GAIN: f64 = 0.25;
 
 /// Note off: the fundamental falls 60 dB in about this long, s, instead
