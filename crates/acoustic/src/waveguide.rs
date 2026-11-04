@@ -120,7 +120,11 @@ impl<S: Scalar> Waveguide<S> {
 
     /// Plucks the string into `shape(s)` (`s` from the bridge, 0 to 1),
     /// at rest: a displacement with zero velocity is two equal traveling
-    /// waves, each half the shape. Clears the bridge's memory.
+    /// waves, each half the shape. `shape` is called once per cell and both
+    /// rails take that value, so a random shape (noise) is still at rest.
+    /// The loop then holds `R` and `−L`, which cancel: no DC to remove
+    /// (unlike A1's loop, which subtracts its mean). Clears the bridge's
+    /// memory.
     pub fn pluck(&mut self, mut shape: impl FnMut(f64) -> S) {
         let m = self.right.len();
         let (length, first) = (self.length, self.first);
@@ -131,20 +135,14 @@ impl<S: Scalar> Waveguide<S> {
         let at = |c: usize| (c as f64 + first) / length;
         let half = S::from_f64(0.5);
         self.right.fill(|c| shape(at(c)) * half);
-        // The left rail runs the other way: its front is the cell nearest
-        // the nut.
-        self.left.fill(|j| shape(at(m - 1 - j)) * half);
+        // The left rail runs the other way (its front is the cell nearest
+        // the nut), and takes the right rail's value at each cell.
+        let right = &self.right;
+        self.left.fill(|j| right.at(m - 1 - j));
         if let Some(e) = self.odd.as_mut() {
             *e = S::ZERO;
         }
         self.bridge.clear();
-    }
-
-    /// Subtracts each rail's mean (the loop passes DC; see
-    /// [`DelayLine::remove_mean`]).
-    pub fn remove_mean(&mut self) {
-        self.right.remove_mean();
-        self.left.remove_mean();
     }
 
     /// Advances one sample and returns the bridge's output (the loop
@@ -254,6 +252,13 @@ impl<S: Scalar> Waveguide<S> {
         self.right
             .fill(|i| right.get(i).copied().unwrap_or(S::ZERO));
         self.left.fill(|i| left.get(i).copied().unwrap_or(S::ZERO));
+    }
+
+    /// The right and left rails' values at cell `c`.
+    #[cfg(test)]
+    pub(crate) fn rails_at(&self, c: usize) -> (S, S) {
+        let m = self.right.len();
+        (self.right.at(c), self.left.at(m - 1 - c))
     }
 
     /// The left rail's newest sample (just reflected at the bridge).

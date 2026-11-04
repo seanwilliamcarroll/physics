@@ -3,7 +3,7 @@
 
 use math::SplitMix64;
 
-use crate::{KsString, Scalar};
+use crate::{KsString, Scalar, Waveguide};
 
 /// The shape a pluck leaves in the loop.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -46,6 +46,26 @@ impl Excitation {
             }
         }
         string.remove_mean();
+    }
+
+    /// Plucks a [`Waveguide`] with this shape, at rest: noise is random
+    /// displacement in ±1 (each cell once), the triangle peaks at `peak`
+    /// along the string from the bridge (`docs/13-waveguide.md`, "Plucking
+    /// at a point"). No mean to remove: the loop's content cancels.
+    pub fn excite_waveguide<S: Scalar>(self, string: &mut Waveguide<S>, rng: &mut SplitMix64) {
+        match self {
+            Self::Noise => string.pluck(|_| S::from_f64(rng.range(-1.0, 1.0))),
+            Self::Triangle { peak } => {
+                let peak = peak.clamp(PEAK_MARGIN, 1.0 - PEAK_MARGIN);
+                string.pluck(|s| {
+                    S::from_f64(if s < peak {
+                        s / peak
+                    } else {
+                        (1.0 - s) / (1.0 - peak)
+                    })
+                });
+            }
+        }
     }
 }
 

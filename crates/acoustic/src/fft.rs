@@ -135,6 +135,13 @@ impl<S: Scalar> Spectrum<S> {
         })
     }
 
+    /// The magnitudes the last [`analyze`](Self::analyze) computed (zeros
+    /// before the first).
+    #[must_use]
+    pub fn last(&self) -> &[S] {
+        &self.db
+    }
+
     /// The dB magnitudes of `signal` (exactly `n` samples), bin `k` at
     /// `k fs / n` Hz; `None` for the wrong length.
     pub fn analyze(&mut self, signal: &[S]) -> Option<&[S]> {

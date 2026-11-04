@@ -144,6 +144,49 @@ pub(crate) unsafe extern "C" fn synth_snapshot_ptr(s: *const Synth) -> *const f3
     unsafe { s.as_ref() }.map_or(ptr::null(), Synth::snapshot_ptr)
 }
 
+/// The model new notes play (`abi::MODEL_*`).
+///
+/// # Safety
+/// `s` must be null or a live handle from [`synth_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn synth_set_model(s: *mut Synth, code: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
+    status(unsafe { s.as_mut() }.is_some_and(|s| s.set_model(code)))
+}
+
+/// Every waveguide's pickup, from the bridge (0 to 1), live.
+///
+/// # Safety
+/// `s` must be null or a live handle from [`synth_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn synth_set_pickup(s: *mut Synth, pickup: f64) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
+    status(unsafe { s.as_mut() }.is_some_and(|s| s.set_pickup(pickup)))
+}
+
+/// Computes the spectrum of the last 4096 output samples; returns its
+/// length in bins (dB, `f32`; 0 for null). Read it at the pointer from
+/// [`synth_spectrum_ptr`].
+///
+/// # Safety
+/// `s` must be null or a live handle from [`synth_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn synth_spectrum(s: *mut Synth) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
+    unsafe { s.as_mut() }.map_or(0, |s| u32::try_from(s.spectrum().len()).unwrap_or(0))
+}
+
+/// Pointer to the spectrum [`synth_spectrum`] last computed (null for null).
+///
+/// # Safety
+/// `s` must be null or a live handle from [`synth_new`]; call it right
+/// after [`synth_spectrum`] (the buffer is the analyzer's).
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn synth_spectrum_ptr(s: *const Synth) -> *const f32 {
+    // SAFETY: per the contract, null (-> None) or a live Synth.
+    unsafe { s.as_ref() }.map_or(ptr::null(), Synth::spectrum_ptr)
+}
+
 /// How far the latest note's loop is from its pitch, cents: 0 tuned, the
 /// integer loop's error untuned (the page's readout). 0 for null.
 ///

@@ -3,7 +3,7 @@
 
 use math::SplitMix64;
 
-use crate::{Excitation, KsString, Scalar, Voicing};
+use crate::{Excitation, KsString, Scalar, Voicing, Waveguide};
 
 /// How many notes sound at once; one more steals the oldest. 16 since
 /// A1.9: The Entertainer has three-note chords in both hands and needs 11
@@ -27,10 +27,25 @@ pub const RELEASE_T60: f64 = 0.1;
 /// down: below audibility).
 const RELEASE_FREE_FACTOR: f64 = 80.0 / 60.0;
 
-/// One string and what it's playing.
+/// Which string model plays a note (`docs/13-waveguide.md`, "One synth,
+/// two models").
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum Model {
+    /// A1's Karplus–Strong loop.
+    #[default]
+    Loop,
+    /// A2's waveguide: two traveling waves, a pluck and a pickup position.
+    Waveguide,
+}
+
+/// One string and what it's playing. Both models are allocated up front,
+/// so a note can use either without allocating; `model` says which one
+/// this note plays.
 #[derive(Clone, Debug)]
 struct Voice<S> {
     string: KsString<S>,
+    guide: Waveguide<S>,
+    model: Model,
     /// MIDI key, while sounding.
     key: Option<u8>,
     /// The pitch asked for, Hz (the string's own pitch differs from it
@@ -58,6 +73,10 @@ pub struct Voices<S> {
     clipped: u64,
     /// The voice last played: what the page draws.
     latest: Option<usize>,
+    /// The model new notes play.
+    model: Model,
+    /// Every waveguide's pickup, from the bridge.
+    pickup: f64,
 }
 
 impl<S: Scalar> Voices<S> {
@@ -81,8 +100,11 @@ impl<S: Scalar> Voices<S> {
             0
         };
         let string = KsString::with_capacity(fs, LOWEST_HZ, probe, cap)?;
+        let guide = Waveguide::with_capacity(fs, LOWEST_HZ, probe, cap)?;
         let voice = Voice {
             string,
+            guide,
+            model: Model::Loop,
             key: None,
             target: LOWEST_HZ,
             started: 0,
@@ -96,7 +118,23 @@ impl<S: Scalar> Voices<S> {
             notes: 0,
             clipped: 0,
             latest: None,
+            model: Model::Loop,
+            pickup: crate::DEFAULT_PICKUP,
         })
+    }
+
+    /// The model new notes play (ringing notes keep theirs).
+    pub const fn set_model(&mut self, model: Model) {
+        self.model = model;
+    }
+
+    /// Moves every waveguide's pickup to `s` (from the bridge, 0 to 1),
+    /// live: a ringing note's timbre changes as it moves.
+    pub fn set_pickup(&mut self, s: f64) {
+        self.pickup = s.clamp(0.0, 1.0);
+        for v in &mut self.pool {
+            v.guide.set_pickup(self.pickup);
+        }
     }
 
     /// Starts MIDI `key` (equal temperament, A4 = 440 Hz) with `voicing`
@@ -120,10 +158,21 @@ impl<S: Scalar> Voices<S> {
         let Some(v) = slot.and_then(|i| self.pool.get_mut(i)) else {
             return false;
         };
-        if !v.string.restring(self.fs, f0, voicing) {
+        let ok = match self.model {
+            Model::Loop => v.string.restring(self.fs, f0, voicing),
+            Model::Waveguide => v.guide.restring(self.fs, f0, voicing),
+        };
+        if !ok {
             return false;
         }
-        excitation.excite(&mut v.string, &mut self.rng);
+        match self.model {
+            Model::Loop => excitation.excite(&mut v.string, &mut self.rng),
+            Model::Waveguide => {
+                v.guide.set_pickup(self.pickup);
+                excitation.excite_waveguide(&mut v.guide, &mut self.rng);
+            }
+        }
+        v.model = self.model;
         self.notes += 1;
         v.key = Some(key);
         v.target = f0;
@@ -139,7 +188,10 @@ impl<S: Scalar> Voices<S> {
         let fs = self.fs;
         for v in &mut self.pool {
             if v.key == Some(key) && v.releasing.is_none() {
-                v.string.damp(RELEASE_T60);
+                match v.model {
+                    Model::Loop => v.string.damp(RELEASE_T60),
+                    Model::Waveguide => v.guide.damp(RELEASE_T60),
+                }
                 #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
@@ -159,8 +211,17 @@ impl<S: Scalar> Voices<S> {
             if v.key.is_none() {
                 continue;
             }
-            for s in out.iter_mut() {
-                *s += v.string.next_sample();
+            match v.model {
+                Model::Loop => {
+                    for s in out.iter_mut() {
+                        *s += v.string.next_sample();
+                    }
+                }
+                Model::Waveguide => {
+                    for s in out.iter_mut() {
+                        *s += v.guide.next_sample();
+                    }
+                }
             }
             if let Some(left) = v.releasing.as_mut() {
                 *left = left.saturating_sub(out.len() as u64);
@@ -212,15 +273,25 @@ impl<S: Scalar> Voices<S> {
     #[must_use]
     pub fn latest_detune(&self) -> Option<f64> {
         let v = self.latest.and_then(|i| self.pool.get(i))?;
-        Some(1200.0 * libm::log2(v.string.pitch() / v.target))
+        let pitch = match v.model {
+            Model::Loop => v.string.pitch(),
+            Model::Waveguide => v.guide.pitch(),
+        };
+        Some(1200.0 * libm::log2(pitch / v.target))
     }
 
-    /// The string last played (what the page draws), if any.
-    #[must_use]
-    pub fn latest(&self) -> Option<&KsString<S>> {
-        self.latest
-            .and_then(|i| self.pool.get(i))
-            .map(|v| &v.string)
+    /// Appends what the page draws of the last note to `out`: the loop's
+    /// delay line (A1), or the waveguide's shape, cell by cell from the
+    /// bridge (A2). Nothing before any note. `out` should have room for
+    /// the longest (it doesn't allocate then).
+    pub fn latest_shape(&self, out: &mut Vec<S>) {
+        let Some(v) = self.latest.and_then(|i| self.pool.get(i)) else {
+            return;
+        };
+        match v.model {
+            Model::Loop => out.extend(v.string.samples()),
+            Model::Waveguide => out.extend(v.guide.shape()),
+        }
     }
 }
 

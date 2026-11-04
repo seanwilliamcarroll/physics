@@ -1,4 +1,4 @@
-use super::{RELEASE_T60, VOICES, Voices};
+use super::{Model, RELEASE_T60, VOICES, Voices};
 use crate::{Decay, Excitation, Voicing};
 
 const FS: f64 = 48_000.0;
@@ -85,4 +85,30 @@ fn latest_detune_is_zero_tuned_and_the_loop_error_untuned() {
     // C8, stretched (S ≈ 0.02): the Rust tuning test measured +71.1.
     let cents = v.latest_detune().unwrap();
     assert!((cents - 71.1).abs() < 0.5, "{cents}");
+}
+
+#[test]
+fn a_note_keeps_its_model_and_the_pickup_moves_live() {
+    let mut v = pool();
+    v.set_model(Model::Waveguide);
+    v.note_on(57, VOICING, Excitation::Triangle { peak: 0.2 });
+    v.set_model(Model::Loop);
+    let mut shape = Vec::new();
+    v.latest_shape(&mut shape);
+    // A3 at 48 kHz, tuned: a 217-sample loop (⌊218.18 − ½ − 0.1⌋), odd, so
+    // two rails of 108 cells and the bridge's extra sample (the loop's own
+    // line would be 217 long).
+    assert_eq!(shape.len(), 108, "still the waveguide");
+    // Moving the pickup changes the sound of the ringing note.
+    let mut a = vec![0.0; 256];
+    let mut b = vec![0.0; 256];
+    let mut w = v.clone();
+    v.set_pickup(0.1);
+    v.render(&mut a);
+    w.set_pickup(0.37);
+    w.render(&mut b);
+    assert!(
+        a.iter().zip(&b).any(|(x, y)| (x - y).abs() > 1e-3),
+        "the pickup moved"
+    );
 }

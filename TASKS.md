@@ -213,11 +213,18 @@ both scalars: pluck or pickup moved onto 1/n drops harmonic n by 45–51 dB
 (bound 30); harmonics 2–6 within 0.5 dB of `sin(kπβ) sin(kπp)/k²` (bound
 1.5); waveguide golden native = wasm.
 
-## 5. Voices and the web layer (PR)
+## ✅ 5. Voices and the web layer (done)
 
-- [ ] The voice enum (loop or waveguide); `synth_set_model`,
-      `_set_pluck_position`, `_set_pickup`; the output history and
-      spectrum; the string shape in the snapshot.
+`Model { Loop, Waveguide }`; each voice preallocates both, model chosen
+per note; live pickup across voices; the pluck position is the triangle's
+peak (no separate setter needed). `Waveguide::pluck` draws each cell once
+for both rails (noise starts at rest); **found** on the way: with that,
+noise on a 5-cell string can leave almost no fundamental, so the 88-key
+sweep plucks a triangle (now ±0.0009 cents). Synth: 4096-sample history,
+spectrum on request; `synth_set_model`, `synth_set_pickup`,
+`synth_spectrum`, `_ptr`; the waveguide's shape in the snapshot. A4
+plucked at 1/2: 2nd harmonic 55 dB under its neighbors. Waveguide
+performance golden, native = wasm. `acoustic.wasm` 58,164 B.
 
 ## 6. Site: the A2 page (PR)
 

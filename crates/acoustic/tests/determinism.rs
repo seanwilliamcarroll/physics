@@ -4,7 +4,7 @@
 //! (`docs/12-acoustic-foundations.md`, "Measuring").
 #![cfg(test)]
 
-use acoustic::{Decay, Excitation, Scalar, Voices, Voicing};
+use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing};
 
 const FS: f64 = 48_000.0;
 const BLOCK: usize = 128;
@@ -27,7 +27,13 @@ fn fnv1a(bytes: impl Iterator<Item = u8>) -> u64 {
 /// triangle-plucked melody note, a release, and one more note. Returns
 /// the samples and how many were clipped.
 fn perform<S: Scalar>() -> (Vec<S>, u64) {
+    perform_with::<S>(Model::Loop)
+}
+
+/// The same performance played by `model`.
+fn perform_with<S: Scalar>(model: Model) -> (Vec<S>, u64) {
     let mut v = Voices::<S>::new(FS, 7).unwrap();
+    v.set_model(model);
     let mut out = Vec::new();
     let mut block = vec![S::ZERO; BLOCK];
     for b in 0..BLOCKS {
@@ -91,4 +97,23 @@ fn a_chord_at_the_default_gain_is_not_clipped() {
     let peak = samples.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
     assert_eq!(clipped, 0, "peak {peak}");
     assert!(peak < 0.9, "{peak}");
+}
+
+/// Golden hashes of the performance played by A2's waveguide (pickup at
+/// the default): (f32, f64), native and on wasm.
+const WAVEGUIDE_GOLDEN: (u64, u64) = (0xc21e_f26b_b228_f133, 0x60bd_e8a0_80ca_e6b6);
+
+#[test]
+fn waveguide_performance_golden_hashes_are_unchanged() {
+    let got = (
+        hash(&perform_with::<f32>(Model::Waveguide).0),
+        hash(&perform_with::<f64>(Model::Waveguide).0),
+    );
+    let (_, clipped) = perform_with::<f64>(Model::Waveguide);
+    assert_eq!(clipped, 0, "the waveguide performance doesn't clip");
+    assert_eq!(
+        got, WAVEGUIDE_GOLDEN,
+        "golden hashes changed: ({:#018x}, {:#018x})",
+        got.0, got.1
+    );
 }

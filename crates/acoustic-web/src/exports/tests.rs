@@ -2,10 +2,10 @@ use core::ptr;
 
 use super::{
     synth_clipped, synth_free, synth_new, synth_note_off, synth_note_on, synth_render,
-    synth_set_excitation, synth_set_gain, synth_set_t60, synth_set_tuned, synth_snapshot,
-    synth_snapshot_ptr,
+    synth_set_excitation, synth_set_gain, synth_set_model, synth_set_pickup, synth_set_t60,
+    synth_set_tuned, synth_snapshot, synth_snapshot_ptr, synth_spectrum, synth_spectrum_ptr,
 };
-use crate::abi::{EXCITATION_TRIANGLE, STATUS_OK, STATUS_REFUSED};
+use crate::abi::{EXCITATION_TRIANGLE, MODEL_WAVEGUIDE, STATUS_OK, STATUS_REFUSED};
 
 #[test]
 fn round_trip_through_the_c_abi() {
@@ -29,6 +29,11 @@ fn round_trip_through_the_c_abi() {
         synth_note_off(s, 60);
         assert_eq!(synth_clipped(s), 0.0);
         assert!(synth_render(s, 1 << 20).is_null(), "over MAX_FRAMES");
+        assert_eq!(synth_set_model(s, MODEL_WAVEGUIDE), STATUS_OK);
+        assert_eq!(synth_set_pickup(s, 0.3), STATUS_OK);
+        assert_eq!(synth_set_pickup(s, 2.0), STATUS_REFUSED);
+        assert_eq!(synth_spectrum(s), 2048);
+        assert!(!synth_spectrum_ptr(s).is_null());
         synth_free(s);
     }
 }
@@ -45,6 +50,9 @@ fn null_handles_are_harmless() {
         assert_eq!(synth_snapshot(null), 0);
         assert!(synth_snapshot_ptr(null).is_null());
         assert_eq!(synth_clipped(null), 0.0);
+        assert_eq!(synth_spectrum(null), 0);
+        assert!(synth_spectrum_ptr(null).is_null());
+        assert_eq!(synth_set_model(null, MODEL_WAVEGUIDE), STATUS_REFUSED);
         synth_free(null);
     }
 }

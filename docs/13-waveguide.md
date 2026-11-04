@@ -83,7 +83,11 @@ waveguide reproduces the loop **bit for bit** over 20,000 samples for
 five notes (55 Hz to 1 kHz, odd and even loops, tuned and untuned), in
 both scalars. And A1's bar, rerun on the waveguide read at a pickup: all
 88 keys within **±0.0073 cents** (the loop: ±0.0056), `T₆₀` within
-**0.1%** at every note tried. Positions are fractions of the length
+**0.1%** at every note tried. (Since A2.5 the waveguide sweep plucks a
+triangle, not noise: once a pluck correctly starts at rest, random values
+on a 5-cell string can leave almost no fundamental, and the pitch measure
+locked onto a neighbor, −104 cents at B7. With a triangle at 0.13: worst
+**±0.0009 cents**.) Positions are fractions of the length
 measured **from the bridge** (so "near the bridge" is small, as players
 say it); the physics is symmetric (`|sin kπβ| = |sin kπ(1 − β)|`).
 
@@ -179,6 +183,21 @@ A voice holds either A1's `KsString` or the new `Waveguide` (an enum),
 set by `synth_set_model`. The A1 page keeps the loop; the A2 page uses the
 waveguide. Voicing (tuning, decay), voices, the worklet, the keyboard and
 the songs are shared as they are.
+
+**As built (A2.5):** each voice preallocates both models (a loop and a
+waveguide, sized for A0), so switching never allocates; the model is
+chosen per note (a ringing note keeps its model). The pickup is a voices
+setting applied to every waveguide **live**, so moving it changes a
+sustained note's timbre; the pluck position is the triangle excitation's
+peak, from the next note. A pluck draws each cell once and both rails
+share the value, so even noise starts at rest (the loop's content `R`,
+`−L` cancels: no DC to remove, unlike A1's loop). The synth keeps a 4096-
+sample history and computes the spectrum only when asked
+(`synth_spectrum`): A4 plucked at 1/2 reads −26 / −81 / −37 dB for its
+first three harmonics, the 2nd 55 dB under its neighbors. New exports:
+`synth_set_model`, `synth_set_pickup`, `synth_spectrum`,
+`synth_spectrum_ptr` (17 in all); `acoustic.wasm` 58,164 B. A waveguide
+performance has its own golden hash, native and wasm.
 
 ## Tests
 

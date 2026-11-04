@@ -1,5 +1,5 @@
-use super::{MAX_FRAMES, Synth};
-use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE};
+use super::{MAX_FRAMES, SPECTRUM_SIZE, Synth};
+use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_WAVEGUIDE};
 
 const FS: f64 = 48_000.0;
 
@@ -49,4 +49,45 @@ fn setters_refuse_bad_values() {
         "noise ignores the peak"
     );
     assert!(Synth::new(0.0, 1).is_none());
+}
+
+#[test]
+fn the_spectrum_peaks_at_the_notes_harmonics() {
+    // A4 on the waveguide, plucked at 1/2: odd harmonics only.
+    let mut s = Synth::new(FS, 1).unwrap();
+    assert!(s.set_model(MODEL_WAVEGUIDE));
+    assert!(s.set_excitation(EXCITATION_TRIANGLE, 0.5));
+    assert!(s.set_pickup(0.1));
+    s.note_on(69);
+    for _ in 0..(SPECTRUM_SIZE / 128) {
+        s.render(128);
+    }
+    let db = s.spectrum().to_vec();
+    assert_eq!(db.len(), SPECTRUM_SIZE / 2);
+    // Bin k is k · 48000 / 4096 Hz: 440 Hz is bin 37.5, 880 Hz bin 75.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss,
+        reason = "test bins"
+    )]
+    let near = |hz: f64| -> f32 {
+        let k = (hz * SPECTRUM_SIZE as f64 / FS).round() as usize;
+        db[k - 2..=k + 2].iter().copied().fold(f32::MIN, f32::max)
+    };
+    let (first, second, third) = (near(440.0), near(880.0), near(1320.0));
+    println!("harmonics 1-3: {first:.1} / {second:.1} / {third:.1} dB");
+    assert!(
+        first > second + 30.0,
+        "the 2nd is missing: {first} vs {second}"
+    );
+    assert!(third > second + 20.0, "the 3rd isn't: {third} vs {second}");
+}
+
+#[test]
+fn model_and_pickup_setters_refuse_bad_values() {
+    let mut s = Synth::new(FS, 1).unwrap();
+    assert!(s.set_model(MODEL_LOOP) && s.set_model(MODEL_WAVEGUIDE));
+    assert!(!s.set_model(7));
+    assert!(s.set_pickup(0.5) && !s.set_pickup(1.5) && !s.set_pickup(f64::NAN));
 }
