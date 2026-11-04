@@ -222,6 +222,55 @@ early. Momentum through a six-ball pileup: drift 1.6e-13. Two findings:
   The broadphase cell grows by the margin, so its superset guarantee
   holds.
 
+### As built (M6.6, impulse; `tests/contacts.rs`)
+
+The same tests pass on both solvers: head-on exact (`v₁′ = −2.0`,
+`v₂′ = −1e-16`), momentum through the pileup 1.6e-16, the pileup's energy
+flat at `e = 1` (largest rise 9e-16 J), a stack at rest, `e²` bounces.
+A crowded box (9 balls, three walls, gravity, `e = 1`, 20 s) found two
+orderings that matter, and one limit:
+
+- **Restitute after positions move** (`Box2D` v3's order). Before the
+  drift, the ball rebounded from where it started the impact substep,
+  never travelling the gap to the surface: a dropped ball bounced 2%
+  above its release height, and the box *gained* 26% in 20 s at 10
+  substeps. After it, a lone bounce is energy-neutral (0.49932 of
+  0.5 m, within the per-frame sampling of the apex), the same as XPBD.
+- **Remember impulses before restituting.** A bounced pair usually
+  stays inside `CONTACT_MARGIN` for the next substep, so warm-starting
+  with the bounce impulse re-applied the bounce; on a ball with a second
+  contact (against a wall) one pass can't take it back. Step-to-step
+  energy rises over 20 s dropped from 14 J to 4 J.
+- **Chain impacts lose energy, in both solvers.** A ball landing on balls
+  that rest on the floor: the iterations treat every contact as
+  inelastic, then the restitution pass bounces each contact by its *own*
+  approach speed before the solve, and the resting floor contact's was
+  ~0 (under the resting threshold). The impact pushed down the chain is
+  absorbed: one step lost 3.8 J. It's Newton's cradle with a floor, the
+  same mechanism the cradle panel shows, and `Box2D`'s single restitution
+  pass shares it. As balls lose height more of them rest, so the loss
+  accelerates. Measured, box energy after 20 s at `e = 1`:
+
+  | substeps | XPBD | impulse |
+  |---|---|---|
+  | 10 | −41% | −30% |
+  | 40 | −15% | −17% |
+  | 100 | −1.3% | −1.2% |
+
+  Accepted as measured (your call): the box shows it, linked to the
+  cradle. The remaining small rises (4 J at 10 substeps, 0.4 J at 100,
+  in both) are the same simultaneous contacts, run the other way.
+
+**Tried and reverted: a time-of-impact correction.** After a bounce,
+push the pair apart by what it would have rebounded since the moment of
+impact, `e (|v_in| h − gap₀)`. It overshot a lone bounce (0.50404 m,
++0.8%: the bounce was already neutral, since being late at the surface
+only delays the ball, and the push adds height on top), tripled the
+rises (11 J), and made the box erratic (−47% at 40 substeps, −15% at
+100): a push of a few millimeters in a crowd makes new overlaps. The
+hypothesis behind it, that the box's loss came from where the ball sits
+after a bounce, was wrong; the chain impacts above are the loss.
+
 ## `Restitution`
 
 A new parameter type, `Restitution<S>`, `e ∈ [0, 1]` (`checked_param!`):

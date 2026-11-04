@@ -9,9 +9,11 @@ to inelastic by a restitution slider, in both solvers; and **Newton's
 cradle**, which exposes how sequential solvers handle simultaneous
 contacts.
 
-**Done when:** a box of bouncing balls keeps its energy at `e = 1` (and
-loses it as `e` drops), a free-space collision keeps a flat momentum plot,
-and the cradle behaves (or misbehaves) per solver.
+**Done when:** a box of bouncing balls at `e = 1` stays within a measured
+energy bound at the page's default substeps (chain impacts lose energy in
+both solvers, less with more substeps; section 6), and loses more as `e`
+drops; a free-space collision keeps a flat momentum plot; and the cradle
+behaves (or misbehaves) per solver.
 
 ## Workflow
 
@@ -204,10 +206,19 @@ settles every stack to exactly zero. Tests: analytic head-on (1e-13),
 inelastic, momentum (1.6e-13), `e²` bounce, energy never rises, a stack
 rests.
 
-## 6. Contacts in the impulse solver (PR)
+## ✅ 6. Contacts in the impulse solver (done)
 
-- [ ] Accumulated clamp, warm starting by pair, restitution target,
-      split impulses. The same tests as section 5.
+Warm start by pair (sorted `(a, b, λ)`, binary search), accumulated clamp,
+speculative targets, a one-sided split pseudo-impulse, the restitution
+pass; the contact tests run on both solvers. **Found** in a box at
+`e = 1`: restitute *after* positions move (`Box2D` v3's order; before, a
+bounce gained 2%), and remember impulses *before* restituting (warm-
+starting the bounce re-applied it: 14 J of rises → 4 J). **Tried and
+reverted** (your call to try it): a time-of-impact correction; it
+overshot and made the box erratic. **Accepted** (your call): chain
+impacts through resting balls lose energy in both solvers (−30 to −40%
+over 20 s at 10 substeps, −1.2% at 100), Newton's cradle with a floor;
+the box page shows it, linked to the cradle.
 
 ## 7. Scenes (PR)
 

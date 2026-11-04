@@ -102,6 +102,7 @@ impl<S: Scalar> Constraints<S> {
     pub(super) fn set_solver(&mut self, solver: Solver) {
         self.solver = solver;
         self.lambda.fill(S::ZERO);
+        self.contacts.clear();
     }
 
     /// One substep of length `h` by the current solver. `collision` is
@@ -116,8 +117,7 @@ impl<S: Scalar> Constraints<S> {
     ) {
         let (walls, restitution) = collision.unwrap_or((&[], Restitution::INELASTIC));
         if collision.is_none() {
-            self.contacts.list.clear();
-            self.contacts.lambda.clear();
+            self.contacts.clear();
         }
         let step = Step {
             forces,
