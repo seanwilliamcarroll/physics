@@ -375,7 +375,9 @@ song rendered by an `OfflineAudioContext` through the real worklet and
 `acoustic.wasm`; `Check::Sounds` wants finite samples with an audible,
 unclipped peak, and, for a song, an onset found for every scheduled note
 within 10 ms: `SMOKE ok audio_peak=… samples=… song_notes=… onsets=…
-onset_worst_ms=…`).
+onset_worst_ms=…`), and A2 (A4 on the waveguide plucked at ½: the 2nd
+harmonic, measured in the rendered audio, must sit at least 20 dB under
+its neighbors: `missing_db=…`).
 The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs

@@ -226,11 +226,15 @@ spectrum on request; `synth_set_model`, `synth_set_pickup`,
 plucked at 1/2: 2nd harmonic 55 dB under its neighbors. Waveguide
 performance golden, native = wasm. `acoustic.wasm` 58,164 B.
 
-## 6. Site: the A2 page (PR)
+## ✅ 6. Site: the A2 page (done, listening check pending)
 
-- [ ] `a2-waveguide`: the string's shape with pluck and pickup markers,
-      the spectrum with predicted missing harmonics, position sliders,
-      the A1 keyboard and songs; smoke; gallery.
+`a2-waveguide`: the string's shape with pluck and pickup lines, the
+spectrum with the silenced harmonics in red, pluck presets ½…⅕, live
+pickup, A1's keyboard and songs. Shared modules first (`synth-worklet`,
+`synth-live`, `piano-ui`, `audio-draw`, `tone`): A1's page 401 → 184
+lines, smoke unchanged. Smoke `a2`: the 2nd harmonic of a ½ pluck 43.4 dB
+under its neighbors in the rendered audio (harness: 20). Gallery.
+
 - [ ] Listening check against **Done when** (yours).
 
 ## 7. A2 cleanup (PR, if needed)

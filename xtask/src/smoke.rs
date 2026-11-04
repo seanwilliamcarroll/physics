@@ -88,6 +88,11 @@ const AUDIBLE_PEAK: f64 = 0.01;
 /// itself is exact to one 2.7 ms render quantum).
 const ONSET_TOLERANCE_MS: f64 = 10.0;
 
+/// How far under its neighbors a harmonic the pluck should silence must
+/// sit in the rendered audio, dB (A2: a string plucked at ½ has no 2nd
+/// harmonic; the engine's own tests measure 45–55 dB).
+const MIN_MISSING_DB: f64 = 20.0;
+
 /// Judges an audio load: the page rendered samples, all finite (it reports
 /// `error` otherwise), with a peak that's audible and unclipped. Pure, so
 /// it's unit-tested.
@@ -122,6 +127,16 @@ pub(crate) fn judge_audio(stderr: &str) -> Result<String, String> {
             return Err(format!("song: an onset {worst} ms off its schedule"));
         }
         let _ = write!(summary, " song_notes={notes} onset_worst_ms={worst}");
+    }
+    // A silenced harmonic, if the page measured one: really missing.
+    if fields.contains("missing_db=") {
+        let missing = get("missing_db")?;
+        if missing < MIN_MISSING_DB {
+            return Err(format!(
+                "the silenced harmonic is only {missing} dB under its neighbors"
+            ));
+        }
+        let _ = write!(summary, " missing_db={missing}");
     }
     Ok(summary)
 }

@@ -111,3 +111,10 @@ fn a_rendered_song_must_be_on_time() {
     let missing = "ok audio_peak=0.2 samples=120000 song_notes=3 onsets=2 onset_worst_ms=5.0";
     assert!(judge_audio(&line(missing)).is_err(), "a note never sounded");
 }
+
+#[test]
+fn a_silenced_harmonic_must_be_missing() {
+    let line = |msg: &str| console(&format!("SMOKE {msg}"));
+    assert!(judge_audio(&line("ok audio_peak=0.2 samples=24000 missing_db=48.0")).is_ok());
+    assert!(judge_audio(&line("ok audio_peak=0.2 samples=24000 missing_db=6.0")).is_err());
+}
