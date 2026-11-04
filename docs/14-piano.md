@@ -1,6 +1,6 @@
 # 14 — Piano Voice
 
-Status: **Adopted** (A3.1). Depends on `12-acoustic-foundations.md` (the
+Status: **Adopted** (A3.1; dispersion as built, A3.2). Depends on `12-acoustic-foundations.md` (the
 loop filter, tuning) and `13-waveguide.md` (the waveguide, positions on
 the effective length, the FFT).
 
@@ -71,17 +71,52 @@ faster**, so a round trip takes less time at higher frequencies. Partial
 the tuning allpass (`12`); stiffness adds a **dispersion filter** whose
 phase delay falls with frequency, at the bridge with the others.
 
-**A cascade of identical first-order allpasses** (Van Duyne & Smith
-1994): each section `(a + z⁻¹) / (1 + a z⁻¹)` has a phase delay that
-falls with frequency for `a < 0`, and `M` of them in series give a
-smooth, monotonic dispersion with two numbers to choose. Rauhala &
-Välimäki (2006) give closed-form designs tunable by `B`; we fit `(a, M)`
-numerically at note on instead (a few dozen evaluations in `f64`, with
-`libm`: still bit-identical on wasm), minimizing the error of the first
-partials against `f_k`, so the filter is checked against the formula it's
-meant to reproduce. All its delay at `f₀` goes into the **tuning budget**
+**A cascade of second-order allpasses** (A3.2), each a pole pair
+`r e^{±jθ}`, `H = (r² − 2r cos θ z⁻¹ + z⁻²) / (1 − 2r cos θ z⁻¹ + r² z⁻²)`,
+at most 16, designed in two steps:
+
+1. **Placement** (Abel, Välimäki & Smith 2010; CCRMA's `adf.m`, ported
+   line for line): the string needs a phase lag in excess of a pure
+   delay; one biquad per 2π of it, each pole's angle where the excess
+   reaches π, 3π, 5π, …, its radius from the spacing to its neighbors
+   (their smoothing factor 0.85). Placement decides how many biquads and
+   roughly where.
+2. **Refinement** (ours): damped Gauss–Newton (Levenberg–Marquardt) on
+   every pole's angle and radius, minimizing the first 30 partials'
+   round-trip delays' errors, in cents, against `f_k`, with the loop's
+   lowpass included. A fixed iteration limit and `libm`: the same bits on
+   every platform (a stiff golden checks it on wasm).
+
+Why not the simpler designs (measured on a prototype first):
+
+- **Identical first-order sections** (Van Duyne & Smith 1994; Rauhala &
+  Välimäki 2006 make them tunable by `B`): two numbers, `(a, M)`, can't
+  fit 30 partials: 16 sections were 40–78 cents off at some partial.
+- **Independent first-order sections:** no better. A first-order
+  allpass's delay always peaks at DC, so they can't put delay mid-band.
+- **Placement alone:** 10–200 cents off in our port. Its one-step
+  approximations need the refinement.
+
+**Measured:** designs within 0.66 cents over 30 partials from A0 to C6,
+with 4–14 biquads; rendered partials (`measure::partial`, one by one)
+within 0.20 cents of `k F₀ √(1 + B k²)` while they run up to 84 cents
+sharp of `k f₁` (A4's 12th). Placement can give very few biquads where
+`B` is smallest (C2 got 2, refined only to 1.6 cents), so it starts from
+at least 4.
+
+The cascade's delay at `f₀` goes into the **tuning budget**
 (`N + τ_lowpass + τ_dispersion + Δ = fs / f₀`), so the fundamental stays
-in tune: the 88-key sweep runs again with stiffness on.
+in tune: with stiffness on, all 88 keys measure within 0.026 cents
+(`f32`, both rates). A short treble loop can't hold a large cascade, so
+the dispersion gets at most half the loop; where it would take more
+(A4: 14 biquads, 60 samples, in a 109-sample loop), it keeps the count
+that fits and refines again. With fewer than two partials below 0.4 `fs`
+(the top of the keyboard) there's no cascade at all.
+
+**Cost:** designing takes 2–14 ms a key natively (about 200 ms for all
+88), far beyond a note on's budget (a render quantum is 2.7 ms), so the
+piano designs each key once, when it starts (section 5, measured on
+wasm). Running it costs a biquad (5 multiplies) per section per sample.
 
 A toggle turns stiffness off (`B = 0`: A2's waveguide).
 
@@ -151,8 +186,8 @@ measured body response folded into the excitation) is out of scope.
 
 ## Cost
 
-Per voice: up to three strings, each a waveguide with `M` allpass
-sections more than A2; the hammer while in contact; the body. 16 voices
+Per voice: up to three strings, each a waveguide with up to 16 biquads
+more than A2; the hammer while in contact; the body. 16 voices
 × 3 strings is measured in a bench before the page, against a 128-frame
 render quantum.
 
@@ -186,9 +221,12 @@ Full entries in `references.md`.
 - Dalmont (2021), *Piano bass strings with reduced inharmonicity*:
   the order of `B` in the bass.
 - Van Duyne & Smith (1994), *A Simplified Approach to Modeling Dispersion
-  Caused by Stiffness in Strings and Plates*: the allpass cascade.
+  Caused by Stiffness in Strings and Plates*: the first-order cascade.
 - Rauhala & Välimäki (2006), *Tunable Dispersion Filter Design for Piano
   Synthesis*.
+- Abel, Välimäki & Smith (2010), *Robust, Efficient Design of Allpass
+  Filters for Dispersive String Sound Synthesis*: the biquads' placement
+  (`adf.m`).
 - Chaigne & Askenfelt (1994), *Numerical Simulations of Piano Strings*,
   parts I and II: the hammer model.
 - Russell, *The piano hammer as a nonlinear spring* (Penn State): `p`'s

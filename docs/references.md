@@ -142,6 +142,13 @@ Aarhus. The allpass cascade (A3).
 Piano Synthesis.* IEEE Signal Processing Letters 13(5):253–256 (A3).
 - DOI: https://doi.org/10.1109/LSP.2006.870376
 
+**Abel, J. S., Välimäki, V., Smith, J. O. (2010).** *Robust, Efficient
+Design of Allpass Filters for Dispersive String Sound Synthesis.* IEEE
+Signal Processing Letters 17(4):406–409. The biquad cascade's placement
+(A3.2), from its Matlab, `adf.m`, on the CCRMA wiki.
+- DOI: https://doi.org/10.1109/LSP.2010.2040924
+- `adf.m`: https://ccrma.stanford.edu/wiki/Dispersion_Filter_Design
+
 **Weinreich, G. (1977).** *Coupled Piano Strings.* J. Acoust. Soc. Am.
 62(6):1474–1484. Double decay and polarization from coupling at the bridge
 (A3, out of scope).
