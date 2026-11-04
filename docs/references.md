@@ -73,6 +73,12 @@ algorithm.* Nature 324:446–449. (M2 stretch: Barnes–Hut quadtree;
 
 ## Acoustic track (A1–A5)
 
+**Karplus, K., Strong, A. (1983).** *Digital Synthesis of Plucked-String and
+Drum Timbres.* Computer Music Journal 7(2):43–55.
+The original loop: noise in a delay line, fed back through a two-point
+average (A1).
+- DOI: https://doi.org/10.2307/3680062
+
 **Jaffe, D. A., Smith, J. O. (1983).** *Extensions of the Karplus-Strong
 Plucked-String Algorithm.* Computer Music Journal 7(2):56–69.
 Fractional-delay tuning, decay stretching, dynamics, pick position (A1).
@@ -108,6 +114,11 @@ with the Finite Difference Method.* arXiv:physics/0009068.
 Leapfrog scheme, Courant criterion, 1D and 2D. Assigned reading in Land's
 ECE 5760; the basis of the drum lab (A4).
 - arXiv: https://arxiv.org/abs/physics/0009068
+
+**W3C. *Web Audio API 1.1*.** Working Draft (September 2026 when checked).
+`AudioContext`, `AudioWorklet`, the render quantum (128 frames by
+default; `renderSizeHint`) (A1, `12-acoustic-foundations.md`).
+- https://www.w3.org/TR/webaudio/
 
 ## Course material (Bruce Land, Cornell)
 
