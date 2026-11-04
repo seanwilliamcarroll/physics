@@ -29,17 +29,17 @@ pub struct Voicing {
 
 /// The loop's coefficients for one note.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(super) struct Coefficients {
+pub(crate) struct Coefficients {
     /// Delay line length, samples.
-    pub(super) n: usize,
+    pub(crate) n: usize,
     /// Loss per trip.
-    pub(super) rho: f64,
+    pub(crate) rho: f64,
     /// The lowpass `(1 − S) + S z⁻¹`'s `S`.
-    pub(super) stretch: f64,
+    pub(crate) stretch: f64,
     /// The allpass coefficient `C`, if tuned.
-    pub(super) allpass: Option<f64>,
+    pub(crate) allpass: Option<f64>,
     /// The pitch the loop plays, Hz.
-    pub(super) pitch: f64,
+    pub(crate) pitch: f64,
 }
 
 /// The smallest fractional delay the allpass is asked for, samples: as
@@ -59,7 +59,7 @@ impl Voicing {
     /// The coefficients for pitch `f0` Hz at sample rate `fs` Hz, or `None`
     /// for invalid settings (non-positive or non-finite rates, `ρ` outside
     /// `(0, 1]`, `T₆₀ ≤ 0`, a loop under 2 samples).
-    pub(super) fn coefficients(self, fs: f64, f0: f64) -> Option<Coefficients> {
+    pub(crate) fn coefficients(self, fs: f64, f0: f64) -> Option<Coefficients> {
         let valid = fs > 0.0 && f0 > 0.0 && fs.is_finite() && f0.is_finite() && f0 < fs / 2.0;
         if !valid {
             return None;

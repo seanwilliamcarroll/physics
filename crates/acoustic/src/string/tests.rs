@@ -1,6 +1,6 @@
-use super::{Decay, KsString, Voicing};
 use crate::Scalar;
 use crate::measure::{cents, pitch, t60};
+use crate::{Decay, KsString, Voicing};
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
 
