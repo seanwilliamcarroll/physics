@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A2 · Waveguide string: where you pluck, where you listen</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Waveguide string: where you pluck, where you listen</h1>
+    <p class="muted">
+      A string is two waves: one running toward the bridge, one toward the
+      nut, each turning upside down where the string is held. Their sum is
+      the string's shape, drawn below (the bridge at the left). Pluck it at
+      a point and listen at a point, and the harmonics follow
+      sin(kπβ)·sin(kπp): <b>pluck at ½ and every even harmonic is gone</b>
+      (a node sits exactly where you pulled), at ⅓ every third, and the
+      same for the pickup. Watch the spectrum: the red ticks are the
+      harmonics the physics says should be missing. A1's Karplus–Strong
+      loop is this same string folded up and heard at the bridge.
+    </p>
+    <p class="muted">
+      Play with the keyboard (home row and the row above, <kbd>Z</kbd> /
+      <kbd>X</kbd> for octaves) or the keys below. The pluck position takes
+      effect from the next note; drag the <b>pickup</b> while a note rings
+      and hear its tone change.
+    </p>
+    <button class="start" id="start">Start audio</button>
+    <div class="controls" id="controls"></div>
+    <div class="controls" id="presets"></div>
+    <div class="controls" id="songs"></div>
+    <div class="piano" id="piano"></div>
+    <h2>The string</h2>
+    <div class="plot"><canvas id="string"></canvas></div>
+    <h2>Spectrum</h2>
+    <div class="plot"><canvas id="spectrum"></canvas></div>
+    <div class="hud-line" id="hud">audio off: click Start, or press a key</div>
+  </main>
+</body>
+</html>

@@ -29,14 +29,19 @@ export function harmonicWeight(k: number, beta: number, pickup: number): number 
 /** Below this |sin| a harmonic counts as silenced on the page. */
 const SILENT = 0.05;
 
-/** The harmonics up to `count` that the pluck or the pickup silences. */
-export function silenced(count: number, beta: number, pickup: number): number[] {
+/** The harmonics up to `count` that a node at any of `positions` (from
+ *  the bridge: plucks, pickups) silences. */
+export function silencedBy(count: number, positions: number[]): number[] {
   const out: number[] = [];
   for (let k = 1; k <= count; k++) {
-    const quiet = Math.abs(Math.sin(k * Math.PI * beta)) < SILENT || Math.abs(Math.sin(k * Math.PI * pickup)) < SILENT;
-    if (quiet) out.push(k);
+    if (positions.some((x) => Math.abs(Math.sin(k * Math.PI * x)) < SILENT)) out.push(k);
   }
   return out;
+}
+
+/** The harmonics up to `count` that the pluck or the pickup silences. */
+export function silenced(count: number, beta: number, pickup: number): number[] {
+  return silencedBy(count, [beta, pickup]);
 }
 
 /** Onset detection: RMS over 5 ms windows; an onset is a window at least

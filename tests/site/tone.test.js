@@ -1,7 +1,7 @@
 // Unit tests for site/js/tone.ts: the acoustic pages' pure measurements.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { amplitudeAt, harmonicWeight, onsets, silenced } from "../../site/js/tone.ts";
+import { amplitudeAt, harmonicWeight, onsets, silenced, silencedBy } from "../../site/js/tone.ts";
 
 const RATE = 48000;
 
@@ -20,6 +20,7 @@ test("a pluck or pickup at 1/n silences every nth harmonic", () => {
   assert.deepEqual(silenced(10, 0.5, 0.13), [2, 4, 6, 8, 10]);
   assert.deepEqual(silenced(10, 0.13, 1 / 3), [3, 6, 9]);
   assert.deepEqual(silenced(6, 0.13, 0.37), []);
+  assert.deepEqual(silencedBy(9, [1 / 3]), [3, 6, 9], "one position: a pickup alone");
 });
 
 test("onsets finds where the level jumps", () => {
