@@ -8,6 +8,8 @@ pub(super) enum Check {
     Draws,
     /// A deliberate Rust panic reached the console via the hook ([`judge_panic`](super::judge_panic)).
     PanicReported,
+    /// Audio rendered offline is finite and audible ([`judge_audio`](super::judge_audio)).
+    Sounds,
 }
 
 /// One page load to check: a name (for the screenshot), the page (relative
@@ -26,6 +28,7 @@ const M3: &str = "demos/m3-pendulum/";
 const M4_CHAIN: &str = "demos/m4-chain/";
 const M5: &str = "demos/m5-jelly/";
 const M4_DP: &str = "demos/m4-double-pendulum/";
+const A1: &str = "demos/a1-string/";
 
 /// M0: default settings, the other scalar, the size that once rendered a
 /// blank canvas (one path over Chrome's ~16 MiB draw-command limit), and
@@ -35,7 +38,7 @@ const M4_DP: &str = "demos/m4-double-pendulum/";
 /// a heavier cluster. M3: both solver panels, default and the f32 stress
 /// case (100 substeps). M4: the chain (both solver panels) and the double
 /// pendulum in both comparison modes.
-pub(super) const CASES: [Case; 17] = [
+pub(super) const CASES: [Case; 18] = [
     Case {
         name: "default",
         page: M0,
@@ -139,5 +142,13 @@ pub(super) const CASES: [Case; 17] = [
         page: M5,
         query: "?smoke&logk=rigid&grid=4",
         check: Check::Draws,
+    },
+    // A1: one second rendered offline (OfflineAudioContext): the worklet
+    // loads the module from processorOptions and plays three notes.
+    Case {
+        name: "a1",
+        page: A1,
+        query: "?smoke",
+        check: Check::Sounds,
     },
 ];

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A1 · Plucked string: Karplus–Strong</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Plucked string: Karplus–Strong</h1>
+    <p class="muted">
+      A delay line full of noise, fed back through a two-point average: each
+      trip round the loop repeats the noise (a pitch) and smooths it a little
+      (the decay, faster for the high partials, like a real string). That's
+      the whole instrument, computed in Rust, compiled to WebAssembly, and
+      run on the browser's audio thread. The picture below is the loop
+      itself: watch the noise of each pluck smooth into a tone.
+    </p>
+    <p class="muted">
+      <b>Play with your computer keyboard</b>: the home row
+      (<kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> … <kbd>;</kbd>) is the white
+      keys, the row above (<kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> …) the
+      black ones, <kbd>Z</kbd> / <kbd>X</kbd> shift an octave; or click the
+      keys. Then turn off the <b>fractional delay</b>: the loop can only be
+      a whole number of samples long, and from about G3 up most notes go
+      audibly out of tune (the readout says by how much).
+    </p>
+    <button class="start" id="start">Start audio</button>
+    <div class="controls" id="controls"></div>
+    <div class="piano" id="piano"></div>
+    <div class="plot"><canvas id="loop"></canvas></div>
+    <div class="hud-line" id="hud">audio off: click Start, or press a key</div>
+  </main>
+</body>
+</html>
