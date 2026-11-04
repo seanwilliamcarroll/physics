@@ -204,11 +204,16 @@ pre-commit lints it as wasm. Played from Node against the real module.
 **Found:** `engine.wasm` is 192,680 B, +65 KB over M5.6 from M6's
 collision code, unexplained so far (section 7).
 
-## 6. Site: the A1 page (PR)
+## ✅ 6. Site: the A1 page (done, listening check pending)
 
-- [ ] Worklet host (module handed over by the page), keyboard (screen and
-      computer), tuning toggle, excitation choice, decay, the live delay
-      line; `OfflineAudioContext` smoke case; gallery.
+`site/demos/a1-string/` (`worklet.ts`: the module arrives in
+`processorOptions`, instantiated synchronously; `process` allocates
+nothing; snapshots ping-pong). Computer keyboard (`ks.ts`, node-tested)
+and an on-screen piano; tuning toggle with a readout from the synth
+(`synth_latest_cents`, new: the error depends on the decay filter);
+decay, pluck, volume; the live loop drawn. Smoke `a1`
+(`Check::Sounds`, offline render: peak 0.52). Gallery: a "Sound" section.
+
 - [ ] Listening check against **Done when** (yours).
 
 ## 7. A1 cleanup (PR, if needed)

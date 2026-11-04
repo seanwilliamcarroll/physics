@@ -228,6 +228,36 @@ both buffers; `exports` is the only `unsafe`, as in `web`. Checked from
 Node against the real module: one second of A4 peaks at 0.23, with the
 108-sample loop the native tests predict.
 
+## The page (A1.6)
+
+`site/demos/a1-string/`: `worklet.ts` is the processor, `main.ts` the
+page.
+
+- **The module goes in `processorOptions`.** The page compiles
+  `acoustic.wasm` and passes the `WebAssembly.Module` when it creates the
+  `AudioWorkletNode`; options are structured-cloned into the processor's
+  constructor, which instantiates it synchronously. No "ready" handshake,
+  and no window where a note could reach a synth that doesn't exist yet.
+- **`process` allocates nothing**: one `synth_render`, one `set` into the
+  output, through a cached view rebuilt only if wasm memory grows or the
+  quantum size changes. The worklet declares the few globals it uses
+  (`sampleRate`, `AudioWorkletProcessor`, `registerProcessor`) in its own
+  file: TypeScript's DOM library has none of them, and declaring them
+  globally would let pages use them by mistake.
+- **The tuning readout comes from the synth** (`synth_latest_cents`), not
+  the page: the integer loop's error depends on the decay setting (decay
+  stretching changes the lowpass's delay from ½ toward `S`), so only the
+  code that voices the note knows it.
+- **Keys** are `KeyboardEvent.code`s (physical positions, any layout);
+  held keys remember their note, so an octave shift mid-note releases the
+  right one; auto-repeat is ignored.
+- **Smoke** renders one second offline (three notes from
+  `processorOptions`) and reports its peak: headless Chrome ran the real
+  worklet and module, peak 0.52.
+
+What automation can't check: that it *sounds* right, and the latency of a
+real `AudioContext`. That's the listening check.
+
 ## Measuring, offline, in Rust
 
 Tests render audio with no browser and measure it:

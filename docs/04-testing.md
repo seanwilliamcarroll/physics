@@ -370,7 +370,11 @@ M3 (both solver panels: the default, and f32 at 100 substeps), and M4
 (the chain's two solver panels; the double pendulum in both comparison
 modes), and M5
 (the jelly's three panels at the default k, and at rigid on a 4 × 4 grid,
-where the force panel keeps its finite default). The
+where the force panel keeps its finite default), and A1 (one second of
+three plucked notes rendered by an `OfflineAudioContext` through the real
+worklet and `acoustic.wasm`; `Check::Sounds` wants finite samples with an
+audible, unclipped peak, and reports `SMOKE ok audio_peak=… samples=…`).
+The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs
 `SMOKE ok steps=N particle_px=N`.
