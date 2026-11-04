@@ -1,22 +1,23 @@
-# TASKS — A2: Waveguide string
+# TASKS — A3: Piano voice
 
-Source: `docs/05-roadmap.md` (A2), `docs/12-acoustic-foundations.md`
-(the loop, tuning, decay, voices, the worklet), Smith, *Physical Audio
-Signal Processing* (digital waveguides; Karplus–Strong as a special
-case).
+Source: `docs/05-roadmap.md` (A3), `docs/00-scope.md` (Piano Gloves'
+known limits), `docs/12-acoustic-foundations.md` and
+`docs/13-waveguide.md` (the loop filter, the waveguide, positions, the
+FFT).
 
-**Goal:** the string, not just its loop. Two traveling waves on a string
-with fixed ends; where you pluck it and where you listen change the
-timbre, and you can see why: harmonics go missing, as the spectrum shows.
-And Karplus–Strong falls out as the same model, collapsed.
+**Goal:** what Piano Gloves couldn't do: stiff strings whose overtones
+run sharp, a felt hammer that strikes and interacts with the string,
+two or three detuned strings per key, and a body. A piano note, not a
+plucked string.
 
-**Done when:** moving the pluck to 1/n of the string visibly and audibly
-removes every nth harmonic (and the pickup does the same), and a
-waveguide reproduces A1's Karplus–Strong output sample for sample.
+**Done when:** low notes' partials are measurably stretched as the
+stiffness predicts (and you can toggle it and hear the bass change), a
+harder strike sounds brighter, not only louder, and a chord sounds like
+a piano.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`a2/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`a3/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -124,133 +125,120 @@ included). Measured: 88 keys within ±0.006 cents tuned; the integer loop
 ±75 cents at C8, 40 keys audibly off; `T₆₀` within 0.1%. Listening check:
 yours, "looks good".
 
+## ✅ A2: Waveguide string (done, PRs #95–#102)
+
+`docs/13-waveguide.md`; our FFT (`acoustic::fft`, 4096-point spectrum
+26 µs); A1's loop filter as a shared `Bridge`; `Waveguide` (two rails,
+inverting ends, the odd sample in the bridge), **bit-exact** to A1's loop
+from the same state; positions on the **effective length** `fs / 2f₀`
+(the bridge's delay lengthens the string: on the bare cells the nulls
+only reached −40 dB, on the effective length −73); pluck or pickup at 1/n
+removes harmonic n by 45–51 dB, harmonics within 0.5 dB of
+`sin(kπβ) sin(kπp)/k²`; both models per voice, live pickup, spectrum on
+request; the A2 page and the acoustic pages' shared modules (A1's page
+401 → 184 lines). Listening check: yours, "sounds good". Merged by me at
+your request (`gh stack merge`, atomic).
+
 ---
 
 ## Decisions to review before starting
 
-1. **The model** (Smith, *PASP*): two delay lines ("rails"), the
-   right-going and left-going displacement waves, `N` samples in all
-   (the round trip), split `⌈N/2⌉` / `⌊N/2⌋`. Each end reflects with −1
-   (a fixed end). Displacement at a point is the sum of the two rails
-   there, so the page draws the **string's shape**, not A1's loop.
-2. **Losses and tuning lumped at one end** (the bridge): A1's lowpass,
-   loss, and allpass fractional delay, unchanged, in the reflection. The
-   loop budget is A1's (`N + τ_lowpass + Δ = fs / f₀`), so tuning and
-   `T₆₀` carry over, and the 88-key and decay tests run again on the
-   waveguide.
-3. **Karplus–Strong is the special case, tested exactly:** a waveguide
-   started from the state of an A1 loop (one rail its first half, the
-   other its second half negated and reversed) reproduces the loop's
-   output at the bridge **sample for sample** (bit-identical, both
-   scalars). The claim becomes a test.
-4. **Pluck position β** (a fraction of the length): the initial shape is
-   a triangle peaked at β, zero velocity, split equally between the
-   rails. Predicted harmonic amplitudes ∝ `sin(kπβ)/k²`, so β = 1/n
-   removes every nth. Noise stays available as an excitation (it has no
-   position).
-5. **Pickup position p**: output is the displacement at p, read with
-   linear interpolation between samples (positions are continuous on
-   the page). Harmonics weighted by `sin(kπp)`.
-6. **The showcase tests:** pluck (and pickup) at 1/n for several n and
-   notes; harmonic n measured (A1's `partial`, at `n f₀`) at least a
-   measured margin below its neighbors, both scalars, both rates. And
-   `sin(kπβ)/k²` checked as a shape across the first harmonics.
-7. **An FFT we write ourselves** (`acoustic::fft`): radix-2
-   Cooley–Tukey, in place, generic over `Scalar`; tested against a naive
-   DFT and on known tones. Used by the page's spectrum (and available to
-   tests).
-8. **The spectrum comes from the audio thread:** the synth keeps its last
-   4096 output samples; on snapshot, a Hann-windowed FFT → dB magnitudes,
-   sent with the string shape (same ping-pong buffers). The page draws
-   0–5 kHz with ticks at the harmonics and the predicted missing ones
-   marked.
-9. **One synth, two models:** a voice holds either A1's `KsString` or
-   the new `Waveguide` (an enum), chosen by `synth_set_model`; the A1
-   page keeps the loop, the A2 page uses the waveguide. The keyboard and
-   songs (`ks.ts`, `songs.ts`) are reused as they are.
-10. **Determinism:** a golden hash of a waveguide performance, native and
-    wasm, as A1's.
+1. **Inharmonicity by dispersion filters in the loop.** A stiff string's
+   partials sit at `f_k = k f₀ √(1 + B k²)`: higher partials travel
+   faster, so the loop needs a frequency-dependent delay. A cascade of
+   allpass filters at the bridge (Van Duyne & Smith 1994; Rauhala &
+   Välimäki 2006 for tunable designs; both to verify in section 1), in
+   the same place as A1's tuning allpass, so the waveguide, its positions
+   and its tests carry over. The alternative, a finite-difference
+   stiff-string scheme, is left for A4's drum, which needs finite
+   differences anyway.
+2. **The tuning budget includes the dispersion filter's delay at `f₀`**
+   (as A1's included the lowpass's), so the fundamental stays in tune:
+   the 88-key sweep runs again, now with stiffness.
+3. **`B` per key from measurements of real pianos** (Fletcher 1964;
+   Young 1952 for `B` across the keyboard; to verify), not one global
+   setting: `B` is smallest in the low middle and grows toward the treble.
+   A toggle turns it off to hear what it does.
+4. **The hammer: a mass on a nonlinear felt spring** (Chaigne & Askenfelt
+   1994): force `F = K |compression|ᵖ` (p around 2.5), stepped each
+   sample against the string's displacement at the strike point, until
+   it leaves the string. The force enters the waveguide at that point as
+   equal waves both ways. Hammer mass, `K` and `p` per register from the
+   paper; strike position near 1/8 of the string, as pianos are built.
+5. **Velocity is the hammer's speed.** The on-screen piano reads it from
+   where you press a key (lower is harder, as on a real key); the
+   computer keyboard uses a velocity slider. Web MIDI (true velocity)
+   stays deferred, your call from A1.
+6. **String groups: 1, 2 or 3 strings per key by register** (bass 1,
+   tenor 2, the rest 3), detuned by a few cents, summed. **Not coupled**
+   through the bridge in A3: uncoupled strings beat but don't give the
+   true "double decay", which comes from coupling (Weinreich 1977, to
+   verify). Coupling is a stretch, measured if attempted.
+7. **The body: a few fixed resonances** (biquads at soundboard-like
+   frequencies) on the summed output. Commuted synthesis (a measured body
+   response folded into the excitation) is out of scope.
+8. **A new model, `Model::Piano`**, beside the loop and the waveguide:
+   strings, hammer and body per voice, preallocated as before, so the A1
+   and A2 pages are unchanged.
+9. **Polyphony cost measured:** 16 voices × up to 3 strings, each with
+   its dispersion chain, plus the hammer; a bench before the page, to
+   confirm it fits a render quantum with room.
+10. **Tests:** partials of low notes at the stretched frequencies (A1's
+    `partial` per harmonic, within cents); the fundamental in tune at
+    every key; hammer contact time shorter for harder strikes, and
+    brightness (the share of energy above the first few partials)
+    rising monotonically with velocity; beats at the detuning's rate; the
+    body filter's response peaking at its modes; goldens, native and
+    wasm.
 
 ---
 
-## ✅ 1. `docs/13-waveguide.md` (done)
+## 1. `docs/14-piano.md` (PR)
 
-Decisions as adopted, plus one the plan left open: **odd loop lengths.**
-Both rails get `⌊N/2⌋` samples and, when `N` is odd, the extra sample is a
-one-sample delay inside the bridge, so positions map symmetrically onto
-both rails and the loop is still exactly `N`. Also written down: why the
-waveguide is the exact sampled solution of the ideal wave equation (no
-numerical dispersion, unlike A4's finite differences), why lumping the
-filters at the bridge is exact (they commute), and how the KS equivalence
-pins the shared machinery. Reference: Cooley & Tukey 1965 (DOI checked).
+- [ ] Stiff strings and `B` (with measured values per key), the
+      dispersion filter design, the hammer model and its parameters,
+      string groups and detuning, the body; every source and number
+      checked. Decisions above, as adopted.
 
-## ✅ 2. FFT (done)
+## 2. Dispersion (PR)
 
-`acoustic::fft::{Fft, Spectrum}`: radix-2 Cooley–Tukey in place
-(index-free butterflies), everything precomputed so analysis never
-allocates, `libm` twiddles. Against the naive DFT: 9.6e-12 (f64), 5.7e-6
-(f32) at 1024 points; a tone lands in its bin; the spectrum reads a
-full-scale sine at 0 dB. Bench: 4096-point spectrum 26.1 µs natively.
+- [ ] The allpass chain for a target `B`; the tuning budget; tests:
+      stretched partials within cents, 88 keys in tune with stiffness on.
 
-## ✅ 3. The waveguide string (done)
+## 3. The hammer (PR)
 
-A1's loop filter extracted as `Bridge` (shared; A1's golden unchanged);
-`voicing` moved to the crate root. `Waveguide`: two rails, inverting
-ends, the bridge filter at one end, the odd sample inside it, pluck by
-shape, linearly interpolated pickup, the string's shape for drawing.
-**Bit-exact** to A1's loop from the same state (20,000 samples, five
-notes, odd and even, tuned and not, both scalars). 88 keys within
-±0.0073 cents, `T₆₀` within 0.1%, as the loop. Positions measured from
-the bridge.
+- [ ] Mass and nonlinear felt in the waveguide; tests: contact time vs
+      velocity, brightness monotonic in velocity, no energy from nowhere.
 
-## ✅ 4. Pluck and pickup positions (done)
+## 4. String groups and the body (PR)
 
-`measure::amplitude`; positions on the **effective length** (`fs / 2f₀`
-cells: the bridge's delay lengthens the string by `τ_b / 2`). **Found:**
-on the bare `M` cells "1/n" missed the node by ~0.004 of the length and
-the nulls only reached −40 dB; on the effective length, −73 dB. Tests,
-both scalars: pluck or pickup moved onto 1/n drops harmonic n by 45–51 dB
-(bound 30); harmonics 2–6 within 0.5 dB of `sin(kπβ) sin(kπp)/k²` (bound
-1.5); waveguide golden native = wasm.
+- [ ] 1–3 detuned strings per key; the body resonances; tests: beat
+      rate, the body's response.
 
-## ✅ 5. Voices and the web layer (done)
+## 5. The piano in voices and the web layer (PR)
 
-`Model { Loop, Waveguide }`; each voice preallocates both, model chosen
-per note; live pickup across voices; the pluck position is the triangle's
-peak (no separate setter needed). `Waveguide::pluck` draws each cell once
-for both rails (noise starts at rest); **found** on the way: with that,
-noise on a 5-cell string can leave almost no fundamental, so the 88-key
-sweep plucks a triangle (now ±0.0009 cents). Synth: 4096-sample history,
-spectrum on request; `synth_set_model`, `synth_set_pickup`,
-`synth_spectrum`, `_ptr`; the waveguide's shape in the snapshot. A4
-plucked at 1/2: 2nd harmonic 55 dB under its neighbors. Waveguide
-performance golden, native = wasm. `acoustic.wasm` 58,164 B.
+- [ ] `Model::Piano`, velocity in note on (ABI), the stiffness toggle,
+      hammer hardness; the cost bench; goldens.
 
-## ✅ 6. Site: the A2 page (done, listening check pending)
+## 6. Site: the A3 page (PR)
 
-`a2-waveguide`: the string's shape with pluck and pickup lines, the
-spectrum with the silenced harmonics in red, pluck presets ½…⅕, live
-pickup, A1's keyboard and songs. Shared modules first (`synth-worklet`,
-`synth-live`, `piano-ui`, `audio-draw`, `tone`): A1's page 401 → 184
-lines, smoke unchanged. Smoke `a2`: the 2nd harmonic of a ½ pluck 43.4 dB
-under its neighbors in the rendered audio (harness: 20). Gallery.
-
+- [ ] `a3-piano`: keyboard with velocity, the stiffness toggle, strings
+      per key, the spectrum with harmonic and stretched-partial ticks,
+      the hammer force of the last strike; smoke; gallery.
 - [ ] Listening check against **Done when** (yours).
 
-## ✅ 7. A2 cleanup (done)
+## 7. A3 cleanup (PR, if needed)
 
-Drawing labels' numbers named; `types.md` gets `Waveguide`, `Model`,
-`Fft`/`Spectrum`, `Live` (and the worklet types' new home); no file over
-~300 lines; triggers: no new runtime parameter without a single checked
-entry point (`Synth`'s setters).
+- [ ] Magic numbers, triggers, `docs/types.md`, small files.
 
 ---
 
-## Out of scope for A2
+## Out of scope for A3
 
-- String stiffness and dispersion, a hammer, string groups, a body (A3).
-- Two-dimensional strings and drums (A4–A5).
-- Velocity or acceleration pickups (displacement only).
+- Coupled strings through the bridge (a stretch, decision 6).
+- Commuted synthesis, sympathetic resonance, the damper pedal.
+- Web MIDI (deferred, your call in A1).
+- Finite-difference strings (A4–A5).
 
 ## Known gaps
 
