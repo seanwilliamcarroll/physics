@@ -144,6 +144,17 @@ pub(crate) unsafe extern "C" fn synth_snapshot_ptr(s: *const Synth) -> *const f3
     unsafe { s.as_ref() }.map_or(ptr::null(), Synth::snapshot_ptr)
 }
 
+/// How far the latest note's loop is from its pitch, cents: 0 tuned, the
+/// integer loop's error untuned (the page's readout). 0 for null.
+///
+/// # Safety
+/// `s` must be null or a live handle from [`synth_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn synth_latest_cents(s: *const Synth) -> f64 {
+    // SAFETY: per the contract, null (-> None) or a live Synth.
+    unsafe { s.as_ref() }.map_or(0.0, Synth::latest_cents)
+}
+
 /// Samples clamped to ±1 so far (as `f64`: JS has no `u64`), 0 for null.
 ///
 /// # Safety

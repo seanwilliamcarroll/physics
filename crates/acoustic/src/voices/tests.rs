@@ -67,3 +67,22 @@ fn keys_below_a0_are_refused_and_the_top_plays() {
     // the allpass. Every MIDI key from A0 up is playable.
     assert!(v.note_on(127, VOICING, Excitation::Noise));
 }
+
+#[test]
+fn latest_detune_is_zero_tuned_and_the_loop_error_untuned() {
+    let mut v = pool();
+    assert_eq!(v.latest_detune(), None);
+    v.note_on(108, VOICING, Excitation::Noise);
+    assert!(
+        v.latest_detune().unwrap().abs() < 1e-9,
+        "tuned: in tune by construction"
+    );
+    let integer = Voicing {
+        tuned: false,
+        decay: Decay::T60(2.0),
+    };
+    v.note_on(108, integer, Excitation::Noise);
+    // C8, stretched (S ≈ 0.02): the Rust tuning test measured +71.1.
+    let cents = v.latest_detune().unwrap();
+    assert!((cents - 71.1).abs() < 0.5, "{cents}");
+}

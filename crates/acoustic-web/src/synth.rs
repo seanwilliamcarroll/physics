@@ -142,6 +142,13 @@ impl Synth {
         self.snapshot.as_ptr()
     }
 
+    /// How far the latest note's loop is from its pitch, cents (0 tuned);
+    /// 0 before any note.
+    #[must_use]
+    pub fn latest_cents(&self) -> f64 {
+        self.voices.latest_detune().unwrap_or(0.0)
+    }
+
     /// Samples clamped to ±1 so far.
     #[must_use]
     pub const fn clipped(&self) -> u64 {

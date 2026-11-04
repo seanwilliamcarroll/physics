@@ -29,6 +29,9 @@ struct Voice<S> {
     string: KsString<S>,
     /// MIDI key, while sounding.
     key: Option<u8>,
+    /// The pitch asked for, Hz (the string's own pitch differs from it
+    /// when the loop is untuned).
+    target: f64,
     /// Note-on order: the smallest is the oldest, stolen first.
     started: u64,
     /// Samples left before a released voice is free.
@@ -77,6 +80,7 @@ impl<S: Scalar> Voices<S> {
         let voice = Voice {
             string,
             key: None,
+            target: LOWEST_HZ,
             started: 0,
             releasing: None,
         };
@@ -118,6 +122,7 @@ impl<S: Scalar> Voices<S> {
         excitation.excite(&mut v.string, &mut self.rng);
         self.notes += 1;
         v.key = Some(key);
+        v.target = f0;
         v.started = self.notes;
         v.releasing = None;
         self.latest = slot;
@@ -195,6 +200,15 @@ impl<S: Scalar> Voices<S> {
     /// The keys sounding, by voice (`None` for a free voice).
     pub fn keys(&self) -> impl Iterator<Item = Option<u8>> + '_ {
         self.pool.iter().map(|v| v.key)
+    }
+
+    /// How far the last note's loop is from the pitch asked for, cents
+    /// (`1200 log₂(played / asked)`): 0 tuned, up to ~75 untuned (the
+    /// page's readout for the tuning toggle). `None` before any note.
+    #[must_use]
+    pub fn latest_detune(&self) -> Option<f64> {
+        let v = self.latest.and_then(|i| self.pool.get(i))?;
+        Some(1200.0 * libm::log2(v.string.pitch() / v.target))
     }
 
     /// The string last played (what the page draws), if any.
