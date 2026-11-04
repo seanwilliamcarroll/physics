@@ -15,11 +15,18 @@ use crate::{DelayLine, Scalar, Voicing};
 /// positions map symmetrically onto both rails, and the tuning and decay
 /// carry over exactly.
 ///
-/// Positions are fractions of the length **measured from the bridge**:
-/// cell `c` (0 nearest the bridge) is the string at `s = (c + ½) / M`. The
-/// right rail's front (the sample about to reach the bridge) is cell 0;
-/// the left rail's front (about to reach the nut) is cell `M − 1`. The
-/// displacement at a cell is the sum of the two rails there.
+/// Positions are fractions of the length **measured from the bridge**,
+/// along the string's *effective* length: the bridge's filters delay the
+/// reflection (the lowpass, the allpass, the odd sample: `τ_b` samples a
+/// round trip), so to the waves the string reaches `τ_b / 2` cells past
+/// cell 0. The effective length is half the loop's period, `fs / (2 f₀)`
+/// cells, and cell `c` (0 nearest the bridge) is at
+/// `s = (c + ½ + τ_b / 2) / (fs / 2f₀)`. (Measuring on the `M` cells alone
+/// put "1/n" a few thousandths of the length off the real node, and the
+/// missing harmonics only fell to about −40 dB; A2.4.) The right rail's
+/// front (about to reach the bridge) is cell 0; the left rail's front
+/// (about to reach the nut) is cell `M − 1`. The displacement at a cell is
+/// the sum of the two rails there.
 #[derive(Clone, Debug)]
 pub struct Waveguide<S> {
     right: DelayLine<S>,
@@ -30,6 +37,10 @@ pub struct Waveguide<S> {
     odd: Option<S>,
     /// Where the output is read, from the bridge.
     pickup: f64,
+    /// The effective length, cells (`fs / 2f₀`), and how far cell 0's
+    /// center is from the effective bridge (`½ + τ_b / 2`).
+    length: f64,
+    first: f64,
 }
 
 /// Where a new string's pickup sits, from the bridge: near it, as on a
@@ -52,12 +63,15 @@ impl<S: Scalar> Waveguide<S> {
         let c = voicing.coefficients(fs, f0)?;
         let rail_cap = cap / 2;
         let m = c.n / 2;
+        let (length, first) = geometry(fs, c.pitch, m);
         Some(Self {
             right: DelayLine::with_capacity(m, rail_cap)?,
             left: DelayLine::with_capacity(m, rail_cap)?,
             odd: (c.n % 2 == 1).then_some(S::ZERO),
             bridge: Bridge::new(c),
             pickup: DEFAULT_PICKUP,
+            length,
+            first,
         })
     }
 
@@ -76,6 +90,7 @@ impl<S: Scalar> Waveguide<S> {
         self.right.reset(m);
         self.left.reset(m);
         self.odd = (c.n % 2 == 1).then_some(S::ZERO);
+        (self.length, self.first) = geometry(fs, c.pitch, m);
         self.bridge.apply(c);
         true
     }
@@ -108,11 +123,12 @@ impl<S: Scalar> Waveguide<S> {
     /// waves, each half the shape. Clears the bridge's memory.
     pub fn pluck(&mut self, mut shape: impl FnMut(f64) -> S) {
         let m = self.right.len();
+        let (length, first) = (self.length, self.first);
         #[expect(
             clippy::cast_precision_loss,
             reason = "rail lengths are far below 2^53"
         )]
-        let at = |c: usize| (c as f64 + 0.5) / m as f64;
+        let at = |c: usize| (c as f64 + first) / length;
         let half = S::from_f64(0.5);
         self.right.fill(|c| shape(at(c)) * half);
         // The left rail runs the other way: its front is the cell nearest
@@ -156,11 +172,12 @@ impl<S: Scalar> Waveguide<S> {
     #[must_use]
     pub fn displacement(&self) -> S {
         let m = self.right.len();
+        // The pickup's cell coordinate (cell c's center is at c).
         #[expect(
             clippy::cast_precision_loss,
             reason = "rail lengths are far below 2^53"
         )]
-        let x = (self.pickup * m as f64 - 0.5).clamp(0.0, (m - 1) as f64);
+        let x = (self.pickup * self.length - self.first).clamp(0.0, (m - 1) as f64);
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -194,6 +211,18 @@ impl<S: Scalar> Waveguide<S> {
         for s in out {
             *s = self.next_sample();
         }
+    }
+
+    /// Where cell `c`'s center is, from the bridge (0 to 1 of the
+    /// effective length).
+    #[must_use]
+    pub fn position(&self, c: usize) -> f64 {
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "rail lengths are far below 2^53"
+        )]
+        let c = c as f64;
+        (c + self.first) / self.length
     }
 
     /// The string's shape, cell by cell from the bridge: what the page
@@ -231,6 +260,26 @@ impl<S: Scalar> Waveguide<S> {
     #[cfg(test)]
     pub(crate) fn left_newest(&self) -> S {
         self.left.back()
+    }
+}
+
+/// The effective length in cells, `fs / 2f₀` (half the loop's period),
+/// and cell 0's center's distance from the effective bridge: the length
+/// minus the `M` cells' own, plus half a cell. Falls back to the bare
+/// rail (`M`, `½`) for a pitch that isn't positive.
+fn geometry(fs: f64, pitch: f64, m: usize) -> (f64, f64) {
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "rail lengths are far below 2^53"
+    )]
+    let m = m as f64;
+    let length = fs / (2.0 * pitch);
+    // `length > 0` is false for NaN too.
+    let usable = length > 0.0 && length.is_finite();
+    if usable {
+        (length, length - m + 0.5)
+    } else {
+        (m, 0.5)
     }
 }
 
