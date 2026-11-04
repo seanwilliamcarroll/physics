@@ -153,12 +153,16 @@ remain.
 
 ---
 
-## 1. `docs/12-acoustic-foundations.md` (PR)
+## ✅ 1. `docs/12-acoustic-foundations.md` (done)
 
-- [ ] Audio threading (worklet, render quantum, buffer handoff), sample
-      rates, the KS loop's delay budget, the allpass coefficient, decay
-      control, how pitch and T60 are measured. Decisions above, as
-      adopted.
+How wasm makes sound (worklet, render quantum: 128 frames by default but
+read from the buffer, `renderSizeHint` exists; module posted to the
+worklet; ping-ponged snapshot buffers; autoplay); the loop (`N + ½`
+samples; the integer loop is ~75 cents off at C8); allpass tuning with
+`Δ ∈ [0.1, 1.1)`; decay (`T₆₀` from `ρ` and stretching `S`); release;
+excitation (noise minus its mean); 8 voices, gain ¼, clamp counted;
+pitch by autocorrelation in cents, `T₆₀` by envelope fit. References:
+Karplus & Strong 1983 (DOI checked), Web Audio API 1.1.
 
 ## 2. `acoustic` crate: the string (PR)
 
