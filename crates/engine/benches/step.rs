@@ -13,6 +13,7 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use engine::collision::candidate_pairs;
 use engine::scenarios::{CLUSTER_SOFTENING, GRAVITATIONAL_CONSTANT, cluster, cluster_gravity};
 use engine::{BarnesHut, Force, Integrator, OpeningAngle, Scalar, Softening, Vec2};
 
@@ -112,7 +113,53 @@ fn body_vec<S: Scalar>(c: &mut Criterion, scalar: &str) {
     group.finish();
 }
 
+/// Broadphase circles: radius 5 cm, centers on a square lattice 12 cm
+/// apart, each nudged by up to 2 cm, so neighbors nearly touch (a full
+/// box). Constant density: the cost should grow like N log N (the sort).
+const BALL_RADIUS: f64 = 0.05;
+const BALL_SPACING: f64 = 0.12;
+const BALL_JITTER: f64 = 0.02;
+
+/// `collision::candidate_pairs` on N circles (M6.3).
+fn broadphase(c: &mut Criterion) {
+    let mut group = c.benchmark_group("broadphase_f64");
+    for n in TREE_SIZES {
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss,
+            reason = "small bench sizes: the side is a few dozen, exact"
+        )]
+        let side = (n as f64).sqrt().ceil() as usize;
+        let pos: Vec<Vec2<f64>> = (0..n)
+            .map(|i| {
+                let (col, row) = (i % side, i / side);
+                // A fixed, cheap jitter pattern: enough to break symmetry.
+                let j = |k: usize| {
+                    BALL_JITTER * (f64::from(u32::try_from(k * 7919 % 101).unwrap()) / 100.0 - 0.5)
+                };
+                #[expect(clippy::cast_precision_loss, reason = "small grid indices, exact")]
+                let (x, y) = (
+                    col as f64 * BALL_SPACING + j(i),
+                    row as f64 * BALL_SPACING + j(i + 1),
+                );
+                Vec2::new(x, y)
+            })
+            .collect();
+        let radius = vec![BALL_RADIUS; n];
+        let mut out = Vec::new();
+        group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
+            b.iter(|| {
+                candidate_pairs(black_box(&pos), &radius, 2.0 * BALL_RADIUS, &mut out);
+                black_box(out.len())
+            });
+        });
+    }
+    group.finish();
+}
+
 fn benches(c: &mut Criterion) {
+    broadphase(c);
     step::<f32>(c, "f32");
     step::<f64>(c, "f64");
     pairwise::<f32>(c, "f32");
