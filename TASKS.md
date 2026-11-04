@@ -237,9 +237,12 @@ under its neighbors in the rendered audio (harness: 20). Gallery.
 
 - [ ] Listening check against **Done when** (yours).
 
-## 7. A2 cleanup (PR, if needed)
+## ✅ 7. A2 cleanup (done)
 
-- [ ] Magic numbers, triggers, `docs/types.md`, small files.
+Drawing labels' numbers named; `types.md` gets `Waveguide`, `Model`,
+`Fft`/`Spectrum`, `Live` (and the worklet types' new home); no file over
+~300 lines; triggers: no new runtime parameter without a single checked
+entry point (`Synth`'s setters).
 
 ---
 

@@ -6,6 +6,15 @@ export type DrawColors = { background: string; line: string; grid: string; text:
 
 /** The waveform's ±1 fills this much of the canvas's half height. */
 const WAVE_FILL = 0.9;
+/** Labels: font size, and their offset from a mark or the corner, CSS px. */
+const LABEL_PX = 12;
+const LABEL_BASELINE_PX = 14;
+const LABEL_INSET_PX = 4;
+const HZ_PER_KHZ = 1000;
+
+function labelFont(ctx: CanvasRenderingContext2D): void {
+  ctx.font = `${LABEL_PX * window.devicePixelRatio}px sans-serif`;
+}
 
 function background(ctx: CanvasRenderingContext2D, c: DrawColors): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -30,8 +39,9 @@ export function drawWave(ctx: CanvasRenderingContext2D, samples: Float32Array, c
   }
   ctx.stroke();
   ctx.fillStyle = c.text;
-  ctx.font = `${12 * window.devicePixelRatio}px sans-serif`;
-  for (const m of marks) ctx.fillText(m.label, m.at * w + 4, 14 * window.devicePixelRatio);
+  labelFont(ctx);
+  const dpr = window.devicePixelRatio;
+  for (const m of marks) ctx.fillText(m.label, m.at * w + LABEL_INSET_PX * dpr, LABEL_BASELINE_PX * dpr);
   if (samples.length < 2) return;
   ctx.strokeStyle = c.line;
   ctx.beginPath();
@@ -78,6 +88,7 @@ export function drawSpectrum(
   }
   ctx.stroke();
   ctx.fillStyle = c.text;
-  ctx.font = `${12 * window.devicePixelRatio}px sans-serif`;
-  ctx.fillText(`0–${MAX_HZ / 1000} kHz, ${MIN_DB}…0 dB`, 4, h - 6);
+  labelFont(ctx);
+  const dpr = window.devicePixelRatio;
+  ctx.fillText(`0–${MAX_HZ / HZ_PER_KHZ} kHz, ${MIN_DB}…0 dB`, LABEL_INSET_PX * dpr, h - LABEL_INSET_PX * dpr);
 }
