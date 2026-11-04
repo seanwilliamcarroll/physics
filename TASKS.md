@@ -193,12 +193,19 @@ your request (`gh stack merge`, atomic).
 
 ---
 
-## 1. `docs/14-piano.md` (PR)
+## ✅ 1. `docs/14-piano.md` (done)
 
-- [ ] Stiff strings and `B` (with measured values per key), the
-      dispersion filter design, the hammer model and its parameters,
-      string groups and detuning, the body; every source and number
-      checked. Decisions above, as adopted.
+Every source checked (Crossref for DOIs; one remembered DOI was wrong:
+Rauhala & Välimäki's is `10.1109/LSP.2006.870376`). **`B`:** Rigaud et
+al. 2011's model; the treble line as measured on five pianos, the bass
+line **our choice** anchored at A0 = 2 · 10⁻⁴ (a Steinway grand,
+Ortiz-Berenguer et al. 2004) and consistent with Dalmont 2021.
+**Hammer:** the open literature gives `p`'s range (2.2–3.5; ~2 → ~4 bass
+to treble) and contact times (~4 ms bass → < 1 ms treble, ±20 % p→ff) but
+not masses or `K` (Chaigne & Askenfelt's table isn't open), so `M_h`
+and `K` are **chosen to reproduce the measured contact times**, and the
+tests check them. Strike point, velocity range, string groups and body:
+marked as our choices.
 
 ## 2. Dispersion (PR)
 
