@@ -199,6 +199,30 @@ first three harmonics, the 2nd 55 dB under its neighbors. New exports:
 `synth_spectrum_ptr` (17 in all); `acoustic.wasm` 58,164 B. A waveguide
 performance has its own golden hash, native and wasm.
 
+## The page (A2.6)
+
+`site/demos/a2-waveguide/`: the string's shape (cell by cell, the bridge
+at the left) with lines at the pluck and the pickup, and the spectrum
+0–5 kHz with a tick at every harmonic of the last note, red where the
+pluck or the pickup should silence it. Pluck position (from the next
+note) with quick buttons at ½ … ⅕; the pickup moves live on a ringing
+note. The keyboard and songs are A1's.
+
+To get there without copying A1's page, the acoustic pages now share
+modules: `synth-worklet.ts` (moved out of the A1 demo, plus model,
+pickup and spectrum messages; a snapshot carries the shape and the
+spectrum in one transferred buffer), `synth-live.ts` (starting audio,
+the buffer pool, offline rendering), `piano-ui.ts` (piano, computer
+keyboard, songs), `audio-draw.ts`, and `tone.ts` (a partial's amplitude,
+onsets, `silencedBy`; node-tested). A1's page went from 401 lines to 184
+with its smoke result unchanged (same peak, same onsets).
+
+Smoke `a2`: A4 plucked at ½ rendered offline through the real worklet;
+the page measures harmonics 1–3 in the audio and reports how far the 2nd
+sits under its neighbors: **43.4 dB** (the harness wants 20). Its screen
+shows the output at the pickup: a trapezoid, the textbook waveform of a
+string plucked in the middle.
+
 ## Tests
 
 - **KS equivalence**: bit-identical to A1's loop from the same state, both

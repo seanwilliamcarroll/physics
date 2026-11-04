@@ -89,6 +89,10 @@ physics/
     │   ├── stiffness.ts    # M5 log stiffness slider (rigid stop), k_crit hint
     │   ├── ks.ts           # A1: MIDI, note names, computer-keyboard piano layout
     │   ├── acoustic.d.ts   # types for acoustic.wasm's exports
+    │   ├── synth-worklet.ts # the AudioWorklet processor (A1, A2)
+    │   ├── synth-live.ts   # starting audio, snapshot buffers, offline render
+    │   ├── piano-ui.ts     # on-screen piano, computer keyboard, songs
+    │   ├── tone.ts         # amplitude, onsets, silenced harmonics (pure)
     │   ├── …               # abi, dom, options, ring, smoke, trail
     │   └── engine.d.ts     # types for the wasm exports/imports
     ├── demos/
@@ -99,7 +103,8 @@ physics/
     │   ├── m4-chain/
     │   ├── m4-double-pendulum/
     │   ├── m5-jelly/
-    │   └── a1-string/      # + worklet.ts: the AudioWorklet processor
+    │   ├── a1-string/
+    │   └── a2-waveguide/
     └── pkg/                # build output (gitignored): engine.wasm, acoustic.wasm
 ```
 
