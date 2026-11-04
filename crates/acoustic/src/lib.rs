@@ -12,4 +12,4 @@ mod string;
 
 pub use delay_line::DelayLine;
 pub use math::Scalar;
-pub use string::KsString;
+pub use string::{Decay, KsString, Voicing};
