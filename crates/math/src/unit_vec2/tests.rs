@@ -1,5 +1,5 @@
 use crate::test_util::s;
-use crate::{Scalar, Vec2};
+use crate::{Scalar, UnitVec2, Vec2};
 
 fn v<S: Scalar>(x: f64, y: f64) -> Vec2<S> {
     Vec2::new(s(x), s(y))
@@ -41,3 +41,9 @@ fn scales_and_negates<S: Scalar>() {
     assert_eq!(dir.dot(v(5.0, 7.0)), s(7.0));
 }
 for_each_scalar!(scales_and_negates);
+
+fn axes_are_unit<S: Scalar>() {
+    assert_eq!(UnitVec2::<S>::X.get(), v(1.0, 0.0));
+    assert_eq!(UnitVec2::<S>::Y.get(), v(0.0, 1.0));
+}
+for_each_scalar!(axes_are_unit);

@@ -180,10 +180,14 @@ deterministic order), each cell against itself and four neighbors. Proptest:
 a superset of brute force, sorted, each pair once. Bench: 12.6 µs / 158 µs
 / 802 µs at 128 / 1,024 / 4,096 circles.
 
-## 4. Narrowphase: contacts (PR)
+## ✅ 4. Narrowphase: contacts (done)
 
-- [ ] Circle–circle, circle–wall → `Contact` (normal, depth); coincident
-      centers handled (no direction: `UnitVec2` makes it explicit).
+`collision::find_contacts(particles, walls, h, pairs, out)` →
+`Contact { a, b: Body (Particle | Wall), normal: UnitVec2 (a → b), gap }`:
+broadphase cell `2 r_max + 2 v_max h`, kept when `gap ≤ max(0, −v_n) h`
+(so touching at rest counts: the cradle), static pairs and points skipped,
+coincident centers along `UnitVec2::X` (new, with `::Y`). Order: pairs
+sorted, then walls by particle (deterministic). `ParticleId: Ord`.
 
 ## 5. Contacts in XPBD (PR)
 

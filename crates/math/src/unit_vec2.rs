@@ -18,6 +18,11 @@ use crate::{Scalar, Vec2};
 pub struct UnitVec2<S>(Vec2<S>);
 
 impl<S: Scalar> UnitVec2<S> {
+    /// `+x`, exactly unit length in every scalar type.
+    pub const X: Self = Self(Vec2::new(S::ONE, S::ZERO));
+    /// `+y`, exactly unit length in every scalar type.
+    pub const Y: Self = Self(Vec2::new(S::ZERO, S::ONE));
+
     /// The direction as a plain vector.
     pub const fn get(self) -> Vec2<S> {
         self.0

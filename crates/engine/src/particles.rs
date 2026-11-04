@@ -10,7 +10,9 @@ use crate::{Mass, Radius, Scalar, Vec2};
 /// trigger for a generational handle). Only [`Particles`] creates ids, so
 /// every id is a slot that exists in the `Particles` it came from.
 /// Not `#[must_use]`: most scenes add particles without naming them.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+/// Ordered by slot, so contacts can be sorted and looked up by their
+/// bodies (M6).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ParticleId(pub(crate) usize);
 
 impl ParticleId {
