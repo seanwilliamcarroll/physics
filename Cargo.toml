@@ -20,6 +20,13 @@ proptest = { version = "1.12.0", default-features = false, features = ["std"] }
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 # CLI parsing for xtask (dev tooling only; never in the engine or wasm).
 clap = { version = "4.6.7", features = ["derive"] }
+# Transcendental functions (sin, cos, atan, log10, exp10) for the acoustic
+# crate's note-on coefficients. std's call each platform's math library
+# (Apple's natively, musl's on wasm), which may differ in the last bit; a
+# pure-Rust port computes the same bits everywhere, so rendered audio's
+# golden hash holds native and on wasm. Maintained by the Rust project
+# (rust-lang/compiler-builtins), MIT, no dependencies (A1.3).
+libm = "0.2.16"
 
 [profile.release]
 opt-level = 3   # try "s"/"z" later and measure size vs speed

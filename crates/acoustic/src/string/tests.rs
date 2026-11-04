@@ -1,4 +1,4 @@
-use super::KsString;
+use super::{Decay, KsString, Voicing};
 use crate::Scalar;
 use crate::measure::{cents, pitch, t60};
 
@@ -20,7 +20,11 @@ fn hash_noise(i: usize) -> f64 {
 }
 
 fn render<S: Scalar>(fs: f64, f0: f64, rho: f64, secs: f64) -> (KsString<S>, Vec<f64>) {
-    let mut s = KsString::<S>::new(fs, f0, rho).unwrap();
+    let voicing = Voicing {
+        tuned: false,
+        decay: Decay::Loss(rho),
+    };
+    let mut s = KsString::<S>::new(fs, f0, voicing).unwrap();
     s.pluck(|i, _| S::from_f64(hash_noise(i)));
     #[expect(
         clippy::cast_possible_truncation,
@@ -38,7 +42,7 @@ fn integer_loop_pitch_is_fs_over_n_plus_half<S: Scalar>() {
     for fs in RATES {
         for f0 in [55.0, 220.0, 880.0, 3520.0] {
             let (s, sig) = render::<S>(fs, f0, 1.0, 0.5);
-            let want = s.pitch(fs);
+            let want = s.pitch();
             #[expect(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,
@@ -73,7 +77,7 @@ fn t60_matches_the_loop_gain<S: Scalar>() {
     let fs = 48_000.0;
     for (f0, rho) in [(220.0, 0.996), (880.0, 1.0)] {
         let (s, sig) = render::<S>(fs, f0, rho, 3.0);
-        let f = s.pitch(fs);
+        let f = s.pitch();
         let g = rho * (core::f64::consts::PI * f / fs).cos();
         let want = -3.0 / (f * g.log10());
         // The fundamental's decay, fit away from the attack and the end.
@@ -96,14 +100,39 @@ fn t60_f64() {
     t60_matches_the_loop_gain::<f64>();
 }
 
+const LOSSLESS: Voicing = Voicing {
+    tuned: false,
+    decay: Decay::Loss(1.0),
+};
+
+const fn loss(rho: f64) -> Voicing {
+    Voicing {
+        tuned: false,
+        decay: Decay::Loss(rho),
+    }
+}
+
 #[test]
 fn bad_settings_are_refused() {
-    assert!(KsString::<f64>::new(48_000.0, 0.0, 1.0).is_none());
-    assert!(KsString::<f64>::new(48_000.0, 440.0, 1.01).is_none());
-    assert!(KsString::<f64>::new(48_000.0, 440.0, 0.0).is_none());
+    assert!(KsString::<f64>::new(48_000.0, 0.0, LOSSLESS).is_none());
+    assert!(KsString::<f64>::new(48_000.0, 440.0, loss(1.01)).is_none());
+    assert!(KsString::<f64>::new(48_000.0, 440.0, loss(0.0)).is_none());
     assert!(
-        KsString::<f64>::new(48_000.0, 30_000.0, 1.0).is_none(),
-        "loop too short"
+        KsString::<f64>::new(48_000.0, 24_000.0, LOSSLESS).is_none(),
+        "at Nyquist"
     );
-    assert!(KsString::<f64>::new(f64::NAN, 440.0, 1.0).is_none());
+    let tuned = Voicing {
+        tuned: true,
+        decay: Decay::Loss(1.0),
+    };
+    assert!(
+        KsString::<f64>::new(48_000.0, 20_000.0, tuned).is_none(),
+        "tuned loop too short: N = ⌊2.4 − ½ − 0.1⌋ = 1"
+    );
+    let no_decay = Voicing {
+        tuned: true,
+        decay: Decay::T60(0.0),
+    };
+    assert!(KsString::<f64>::new(48_000.0, 440.0, no_decay).is_none());
+    assert!(KsString::<f64>::new(f64::NAN, 440.0, LOSSLESS).is_none());
 }

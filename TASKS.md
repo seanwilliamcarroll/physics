@@ -174,11 +174,17 @@ the loop formula to four digits. **Found:** three measurement mistakes
 (total RMS isn't the fundamental's decay; one short period interpolates
 badly; many periods need a good first guess), fixed and recorded in `12`.
 
-## 3. Tuning and decay (PR)
+## ✅ 3. Tuning and decay (done)
 
-- [ ] Allpass fractional delay; tuned within cents across the keyboard at
-      44.1 and 48 kHz (the integer loop's error as a known failure); decay
-      control and stretching.
+`Voicing { tuned, decay: Loss(ρ) | T60(s) }`: the allpass coefficient
+exact at `f₀` (`sin((1−Δ)w/2) / sin((1+Δ)w/2)`), the lowpass's exact
+phase delay in the budget; `T₆₀` by `ρ` (shorten) or stretching `S`
+(lengthen). `libm` adopted (your call) so coefficients are bit-identical
+on wasm. Measured: 88 keys within **±0.006 cents** tuned; the integer
+loop's known failure −75.5 / +71.1 cents at C8, 40–41 keys audibly off
+(> 3 cents, from G3 up); `T₆₀` within **0.1%**. **Found:** inharmonic
+partials fool the autocorrelation (−41 cents at C8), hence
+`measure::partial` (the fundamental's DFT phase advance).
 
 ## 4. Excitation and voices (PR)
 

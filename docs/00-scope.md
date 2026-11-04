@@ -79,6 +79,14 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   `proptest` 1.12.0 (re-checked M2: `proptest-rs` org, active) without
   default features: its `fork`/`timeout` need subprocesses, which WASI
   lacks.
+- `libm` 0.2.16 (A1.3; Rust project, `rust-lang/compiler-builtins`, MIT,
+  no dependencies), **`acoustic` only**: `sin`, `cos`, `atan2`, `exp10`
+  for a string's note-on coefficients. Necessary for determinism, not
+  convenience: std's versions call each platform's math library (Apple's
+  natively, musl's on wasm), which may differ in the last bit, and that
+  would break the golden hash of rendered audio between native and wasm.
+  A pure-Rust port computes the same bits everywhere. The engine still
+  avoids transcendentals entirely (`docs/12-acoustic-foundations.md`).
 - `clap` 4.6.7 (`derive`; `clap-rs` org, the most widely used Rust CLI
   parser), **`xtask` only**: argument parsing for the dev CLI (typo
   suggestions, range-checked options, generated help). Never in the

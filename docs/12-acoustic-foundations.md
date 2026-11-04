@@ -95,7 +95,22 @@ H(z) = (C + z⁻¹) / (1 + C z⁻¹)          y[n] = C x[n] + x[n − 1] − C y
 C = (1 − Δ) / (1 + Δ)                    delay ≈ Δ samples at low frequencies
 ```
 
-For a target period `P = fs / f₀`: `N + ½ + Δ = P`. As `Δ → 0`, `C → 1`,
+For a target period `P = fs / f₀`: `N + ½ + Δ = P`.
+
+**As built (A1.3): exact at the fundamental.** `C = (1 − Δ)/(1 + Δ)` is
+the allpass's delay only as frequency → 0. Solving its phase delay at
+`w = 2π f₀ / fs` exactly gives
+
+```
+C = sin((1 − Δ) w/2) / sin((1 + Δ) w/2)
+```
+
+(the low-frequency formula is its limit). With it, and the lowpass's own
+exact phase delay at `w` (`atan2(S sin w, 1 − S + S cos w) / w`, exactly
+½ for `S = ½`), the loop's phase delay at `f₀` is exactly `P`, so the
+fundamental is in tune by construction, top keys included. The note-on
+math uses `libm` (`00-scope.md`, dependency policy), so the coefficients,
+and the rendered audio, are bit-identical native and on wasm. As `Δ → 0`, `C → 1`,
 which puts the allpass's pole (at `z = −C`) next to the unit circle, where
 it rings at high frequencies (Jaffe & Smith); so we keep `Δ ≥ 0.1`:
 `N = ⌊P − ½ − 0.1⌋`, giving `Δ ∈ [0.1, 1.1)` and `C ∈ (−0.05, 0.82]`. The allpass delay is exact only as frequency → 0; at
@@ -131,6 +146,28 @@ Two problems, both in Jaffe & Smith:
 fundamental). From it: `ρ` where the natural decay is too long, `S`
 where it's too short, each computed at note on. The tests check the
 measured `T₆₀` against the setting.
+
+**As built (A1.3,** `tests/tuning.rs`**):** the per-trip gain must be
+`g = 10^(−3 / (f₀ T₆₀))`. If `g ≤ cos(w/2)` (the classic average's gain):
+`ρ = g / cos(w/2)`, `S = ½`. Otherwise `ρ = 1` and `S (1 − S) =
+(1 − g²) / (4 sin²(w/2))`, the smaller root (floored at 0.001, which caps
+how long the top notes can ring). Measured: within **0.1%** of the target
+(0.5 s and 2 s) from 55 Hz to 3.5 kHz.
+
+**Tuning, measured:** all 88 keys (A0–C8), 44.1 and 48 kHz, `f32` and
+`f64`: worst **±0.006 cents** tuned. The integer loop (the known failure):
+worst −75.5 cents at C8 (44.1 kHz) and +71.1 (48 kHz), and **40–41 of the
+88 keys off by more than 3 cents**: everything from about G3 up, not just
+the extremes. That's what the page's toggle lets you hear.
+
+Measuring it needed a fourth tool. With stretching and the allpass, each
+filter delays each frequency differently, so the partials aren't exact
+multiples of `f₀`; the waveform doesn't quite repeat, and the
+autocorrelation averages the partials' drift (it read −41 cents at C8 for
+a loop in tune by construction). `measure::partial` measures the
+fundamental alone: its phase in two consecutive Hann-windowed DFT frames,
+whose advance gives the frequency (the phase-vocoder trick), starting
+from the autocorrelation's coarse estimate.
 
 ### Release
 
