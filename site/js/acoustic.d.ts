@@ -24,4 +24,11 @@ export interface AcousticExports {
   synth_clipped(s: SynthHandle): number;
   /** The latest note's loop vs its pitch, cents (0 tuned). */
   synth_latest_cents(s: SynthHandle): number;
+  /** Code: acoustic-abi.ts MODEL_*; for the next notes. */
+  synth_set_model(s: SynthHandle, code: number): Status;
+  /** Every waveguide's pickup, 0..1 from the bridge, live. */
+  synth_set_pickup(s: SynthHandle, at: number): Status;
+  /** Computes the last 4096 samples' spectrum; returns its bins (dB). */
+  synth_spectrum(s: SynthHandle): number;
+  synth_spectrum_ptr(s: SynthHandle): number;
 }

@@ -1,5 +1,6 @@
-// The A1 audio worklet: runs acoustic.wasm on the browser's audio thread
-// (docs/12-acoustic-foundations.md, "How wasm makes sound").
+// The acoustic pages' audio worklet: runs acoustic.wasm on the browser's
+// audio thread (docs/12-acoustic-foundations.md, "How wasm makes sound";
+// A2's waveguide, pickup and spectrum: docs/13-waveguide.md).
 //
 // Self-contained (no imports): loaded with audioWorklet.addModule, into a
 // global scope that has no DOM, no fetch, and (in some browsers) no
@@ -7,7 +8,7 @@
 // processorOptions, so the constructor instantiates it synchronously:
 // no handshake, no window where a note could arrive before the synth.
 
-import type { AcousticExports, SynthHandle } from "../../js/acoustic";
+import type { AcousticExports, SynthHandle } from "./acoustic";
 
 // The AudioWorkletGlobalScope's globals, which TypeScript's DOM library
 // doesn't describe. Declared here, not globally, so pages can't use them.
@@ -29,7 +30,16 @@ export type TimedKey = { at: number; on: boolean; key: number };
 /** What the page passes at construction: the module, the noise seed,
  *  notes to start at once, and optionally a song to schedule (smoke mode
  *  renders one offline to check the timing). */
-export type ProcessorInit = { module: WebAssembly.Module; seed: number; notes: number[]; song?: TimedKey[] };
+export type ProcessorInit = {
+  module: WebAssembly.Module;
+  seed: number;
+  notes: number[];
+  song?: TimedKey[];
+  /** Set before the notes (smoke renders a waveguide offline). */
+  model?: number;
+  excitation?: { code: number; peak: number };
+  pickup?: number;
+};
 
 /** Messages from the page. */
 export type ToWorklet =
@@ -43,12 +53,18 @@ export type ToWorklet =
   /** A song: key events `at` seconds from now (plus a short lead),
    *  scheduled to the frame. Replaces any song playing. */
   | { type: "play"; events: TimedKey[] }
-  | { type: "stop" };
+  | { type: "stop" }
+  | { type: "model"; code: number }
+  | { type: "pickup"; at: number }
+  /** Include the output's spectrum in each snapshot (A2). */
+  | { type: "spectrum"; on: boolean };
 
 /** Messages to the page. */
 export type FromWorklet =
   | { type: "ready"; sampleRate: number }
-  | { type: "snapshot"; buf: ArrayBuffer; len: number; clipped: number; cents: number; frames: number }
+  /** `buf` holds the string's samples (`len`), then, if asked for, the
+   *  spectrum's dB bins (`bins`, 0 otherwise). */
+  | { type: "snapshot"; buf: ArrayBuffer; len: number; bins: number; clipped: number; cents: number; frames: number }
   | { type: "error"; message: string };
 
 /** Snapshots per second (display rate; the page draws each one). */
@@ -76,6 +92,7 @@ class KsProcessor extends AudioWorkletProcessor {
   private song: Scheduled[] = [];
   private songNext = 0;
   private readonly songHeld = new Set<number>();
+  private spectrumOn = false;
 
   constructor(options: AudioWorkletNodeOptions) {
     super(options);
@@ -95,6 +112,9 @@ class KsProcessor extends AudioWorkletProcessor {
     this.x = instance.exports as unknown as AcousticExports;
     memory.buffer = this.x.memory.buffer;
     this.synth = this.x.synth_new(sampleRate, init.seed);
+    if (init.model !== undefined) this.x.synth_set_model(this.synth, init.model);
+    if (init.excitation !== undefined) this.x.synth_set_excitation(this.synth, init.excitation.code, init.excitation.peak);
+    if (init.pickup !== undefined) this.x.synth_set_pickup(this.synth, init.pickup);
     for (const key of init.notes) this.x.synth_note_on(this.synth, key);
     if (init.song !== undefined) this.play(init.song);
     this.port.onmessage = (e: MessageEvent<ToWorklet>) => this.handle(e.data);
@@ -113,6 +133,9 @@ class KsProcessor extends AudioWorkletProcessor {
       case "buffer": this.pool.push(m.buf); break;
       case "play": this.play(m.events); break;
       case "stop": this.stopSong(); break;
+      case "model": x.synth_set_model(synth, m.code); break;
+      case "pickup": x.synth_set_pickup(synth, m.at); break;
+      case "spectrum": this.spectrumOn = m.on; break;
     }
   }
 
@@ -175,13 +198,18 @@ class KsProcessor extends AudioWorkletProcessor {
     this.sinceSnapshot = 0;
     const { x, synth } = this;
     const len = x.synth_snapshot(synth);
-    if (len * Float32Array.BYTES_PER_ELEMENT > buf.byteLength) {
+    const bins = this.spectrumOn ? x.synth_spectrum(synth) : 0;
+    if ((len + bins) * Float32Array.BYTES_PER_ELEMENT > buf.byteLength) {
       this.pool.push(buf);
       return;
     }
     new Float32Array(buf, 0, len).set(new Float32Array(x.memory.buffer, x.synth_snapshot_ptr(synth), len));
+    if (bins > 0) {
+      new Float32Array(buf, len * Float32Array.BYTES_PER_ELEMENT, bins)
+        .set(new Float32Array(x.memory.buffer, x.synth_spectrum_ptr(synth), bins));
+    }
     const msg: FromWorklet = {
-      type: "snapshot", buf, len, frames,
+      type: "snapshot", buf, len, bins, frames,
       clipped: x.synth_clipped(synth),
       cents: x.synth_latest_cents(synth),
     };
