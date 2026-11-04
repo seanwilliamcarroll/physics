@@ -75,6 +75,18 @@ scalars. It isn't a design constraint: it pins down the shared machinery
 sample). With that checked, whatever sounds different when you move the
 pluck or the pickup comes from position, the new physics, not a bug.
 
+**As built (A2.3,** `acoustic::Waveguide`**):** A1's loop filter became a
+shared `Bridge` type that both models call (A1's golden hash unchanged by
+the refactor, native and wasm), so the equivalent configuration really is
+the same arithmetic in the same order. Measured: from a loop's state, the
+waveguide reproduces the loop **bit for bit** over 20,000 samples for
+five notes (55 Hz to 1 kHz, odd and even loops, tuned and untuned), in
+both scalars. And A1's bar, rerun on the waveguide read at a pickup: all
+88 keys within **±0.0073 cents** (the loop: ±0.0056), `T₆₀` within
+**0.1%** at every note tried. Positions are fractions of the length
+measured **from the bridge** (so "near the bridge" is small, as players
+say it); the physics is symmetric (`|sin kπβ| = |sin kπ(1 − β)|`).
+
 ## Plucking at a point
 
 A pluck pulls the string aside at `βL` and lets go: the initial

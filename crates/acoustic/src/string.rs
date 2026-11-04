@@ -1,38 +1,23 @@
 //! [`KsString`]: the Karplus–Strong loop (`docs/12-acoustic-foundations.md`,
 //! "The Karplus–Strong loop"), tuned and voiced by [`Voicing`].
 
-mod voicing;
+use crate::bridge::Bridge;
+use crate::{DelayLine, Scalar, Voicing};
 
-pub use voicing::{Decay, Voicing};
-
-use crate::{DelayLine, Scalar};
-
-/// A plucked string: a delay line of `N` samples fed back through a loss
-/// `ρ`, a two-point lowpass `(1 − S) + S z⁻¹` (`S = ½` is Karplus &
-/// Strong's average), and, when tuned, a first-order allpass for the
-/// fractional delay:
+/// A plucked string: a delay line of `N` samples fed back through the
+/// loop filter (the crate's `Bridge`: a loss `ρ`, a two-point lowpass
+/// `(1 − S) + S z⁻¹` with `S = ½` Karplus & Strong's average, and, when
+/// tuned, a first-order allpass for the fractional delay):
 ///
 /// ```text
-/// l[n] = ρ ((1 − S) y[n − N] + S y[n − N − 1])
-/// y[n] = C l[n] + l[n − 1] − C y'[n − 1]      (tuned; else y[n] = l[n])
+/// y[n] = bridge(y[n − N])
 /// ```
 ///
 /// The coefficients come from the [`Voicing`] at note on.
 #[derive(Clone, Debug)]
 pub struct KsString<S> {
     line: DelayLine<S>,
-    /// `y[n − N − 1]`: the previous sample out of the line.
-    prev: S,
-    /// `ρ (1 − S)` and `ρ S`: the lowpass's taps with the loss folded in.
-    tap_now: S,
-    tap_prev: S,
-    /// The allpass coefficient `C`, if tuned, and its state (last input
-    /// and output).
-    allpass: Option<S>,
-    ap_in: S,
-    ap_out: S,
-    /// The pitch the loop plays, Hz.
-    pitch: f64,
+    bridge: Bridge<S>,
 }
 
 impl<S: Scalar> KsString<S> {
@@ -54,18 +39,10 @@ impl<S: Scalar> KsString<S> {
     #[must_use]
     pub fn with_capacity(fs: f64, f0: f64, voicing: Voicing, cap: usize) -> Option<Self> {
         let c = voicing.coefficients(fs, f0)?;
-        let mut s = Self {
+        Some(Self {
             line: DelayLine::with_capacity(c.n, cap)?,
-            prev: S::ZERO,
-            tap_now: S::ZERO,
-            tap_prev: S::ZERO,
-            allpass: None,
-            ap_in: S::ZERO,
-            ap_out: S::ZERO,
-            pitch: 0.0,
-        };
-        s.apply(c);
-        Some(s)
+            bridge: Bridge::new(c),
+        })
     }
 
     /// Re-voices this string for a new note, silent, reusing its delay
@@ -78,20 +55,8 @@ impl<S: Scalar> KsString<S> {
         if !self.line.reset(c.n) {
             return false;
         }
-        self.apply(c);
+        self.bridge.apply(c);
         true
-    }
-
-    /// Takes the coefficients (the line already has length `c.n`) and
-    /// clears the filters' memory.
-    fn apply(&mut self, c: voicing::Coefficients) {
-        self.tap_now = S::from_f64(c.rho * (1.0 - c.stretch));
-        self.tap_prev = S::from_f64(c.rho * c.stretch);
-        self.allpass = c.allpass.map(S::from_f64);
-        self.pitch = c.pitch;
-        self.prev = S::ZERO;
-        self.ap_in = S::ZERO;
-        self.ap_out = S::ZERO;
     }
 
     /// Adds a loss on top of the voicing's, so the note's fundamental falls
@@ -99,14 +64,7 @@ impl<S: Scalar> KsString<S> {
     /// pitch doesn't change (only the taps' gain does). Ignored unless
     /// `t60 > 0`.
     pub fn damp(&mut self, t60: f64) {
-        // `t60 > 0` is false for NaN too.
-        let positive = t60 > 0.0;
-        if !positive {
-            return;
-        }
-        let r = S::from_f64(libm::exp10(-3.0 / (self.pitch * t60)));
-        self.tap_now = self.tap_now * r;
-        self.tap_prev = self.tap_prev * r;
+        self.bridge.damp(t60);
     }
 
     /// Subtracts the delay line's mean (see [`DelayLine::remove_mean`]).
@@ -124,7 +82,7 @@ impl<S: Scalar> KsString<S> {
     /// integer loop can do otherwise.
     #[must_use]
     pub const fn pitch(&self) -> f64 {
-        self.pitch
+        self.bridge.pitch()
     }
 
     /// Fills the delay line with `f(i, N)` for slot `i` (0 = oldest): the
@@ -133,25 +91,12 @@ impl<S: Scalar> KsString<S> {
     pub fn pluck(&mut self, mut f: impl FnMut(usize, usize) -> S) {
         let n = self.line.len();
         self.line.fill(|i| f(i, n));
-        self.prev = S::ZERO;
-        self.ap_in = S::ZERO;
-        self.ap_out = S::ZERO;
+        self.bridge.clear();
     }
 
     /// The next output sample.
     pub fn next_sample(&mut self) -> S {
-        let out = self.line.front();
-        let low = self.tap_now * out + self.tap_prev * self.prev;
-        self.prev = out;
-        let y = match self.allpass {
-            Some(c) => {
-                let y = c * low + self.ap_in - c * self.ap_out;
-                self.ap_in = low;
-                self.ap_out = y;
-                y
-            }
-            None => low,
-        };
+        let y = self.bridge.process(self.line.front());
         self.line.push(y);
         y
     }

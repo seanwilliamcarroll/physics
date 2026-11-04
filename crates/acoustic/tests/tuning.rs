@@ -4,7 +4,7 @@
 #![cfg(test)]
 
 use acoustic::measure::{cents, partial, pitch, t60};
-use acoustic::{Decay, KsString, Scalar, Voicing};
+use acoustic::{Decay, KsString, Scalar, Voicing, Waveguide};
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
 /// The 88 keys: MIDI notes 21 (A0) to 108 (C8).
@@ -27,21 +27,43 @@ fn hash_noise(i: usize) -> f64 {
     h as f64 / 32768.0 - 1.0
 }
 
-fn render<S: Scalar>(fs: f64, f0: f64, voicing: Voicing, secs: f64) -> Vec<f64> {
-    let mut s = KsString::<S>::new(fs, f0, voicing).unwrap();
-    s.pluck(|i, _| S::from_f64(hash_noise(i)));
+/// Which string model renders: A1's loop, or A2's waveguide (read at its
+/// default pickup). Tuning and decay are the loop's, so both must pass
+/// the same tests (`docs/13-waveguide.md`).
+#[derive(Copy, Clone, Debug)]
+enum Model {
+    Loop,
+    Waveguide,
+}
+
+fn render<S: Scalar>(model: Model, fs: f64, f0: f64, voicing: Voicing, secs: f64) -> Vec<f64> {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "test lengths"
     )]
     let mut out = vec![S::ZERO; (fs * secs) as usize];
-    s.render(&mut out);
+    match model {
+        Model::Loop => {
+            let mut s = KsString::<S>::new(fs, f0, voicing).unwrap();
+            s.pluck(|i, _| S::from_f64(hash_noise(i)));
+            s.render(&mut out);
+        }
+        Model::Waveguide => {
+            let mut s = Waveguide::<S>::new(fs, f0, voicing).unwrap();
+            let mut i = 0;
+            s.pluck(|_| {
+                i += 1;
+                S::from_f64(hash_noise(i))
+            });
+            s.render(&mut out);
+        }
+    }
     out.iter().map(|x| x.to_f64()).collect()
 }
 
 /// Every key's error in cents (MIDI, error), measured on the fundamental.
-fn errors<S: Scalar>(fs: f64, tuned: bool) -> Vec<(u8, f64)> {
+fn errors<S: Scalar>(model: Model, fs: f64, tuned: bool) -> Vec<(u8, f64)> {
     let voicing = Voicing {
         tuned,
         decay: Decay::T60(SWEEP_T60),
@@ -51,7 +73,7 @@ fn errors<S: Scalar>(fs: f64, tuned: bool) -> Vec<(u8, f64)> {
         // The attack, then two DFT windows, with room to spare.
         #[expect(clippy::cast_precision_loss, reason = "ATTACK is small")]
         let secs = (ATTACK as f64 / fs + 2.5 * PARTIAL_PERIODS / f0).max(0.5);
-        let sig = render::<S>(fs, f0, voicing, secs);
+        let sig = render::<S>(model, fs, f0, voicing, secs);
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -80,11 +102,11 @@ const TUNED_TOL_CENTS: f64 = 0.05;
 const AUDIBLE_CENTS: f64 = 3.0;
 
 /// Every one of the 88 keys is in tune with the allpass.
-fn tuned_keys_are_in_tune<S: Scalar>() {
+fn tuned_keys_are_in_tune<S: Scalar>(model: Model) {
     for fs in RATES {
-        let (key, err) = worst(&errors::<S>(fs, true));
+        let (key, err) = worst(&errors::<S>(model, fs, true));
         println!(
-            "{} {fs} Hz: tuned worst {err:+.4} cents (MIDI {key})",
+            "{model:?} {} {fs} Hz: tuned worst {err:+.4} cents (MIDI {key})",
             core::any::type_name::<S>()
         );
         assert!(err.abs() < TUNED_TOL_CENTS, "{fs}: MIDI {key} {err} cents");
@@ -93,12 +115,22 @@ fn tuned_keys_are_in_tune<S: Scalar>() {
 
 #[test]
 fn tuned_keys_are_in_tune_f32() {
-    tuned_keys_are_in_tune::<f32>();
+    tuned_keys_are_in_tune::<f32>(Model::Loop);
 }
 
 #[test]
 fn tuned_keys_are_in_tune_f64() {
-    tuned_keys_are_in_tune::<f64>();
+    tuned_keys_are_in_tune::<f64>(Model::Loop);
+}
+
+#[test]
+fn waveguide_keys_are_in_tune_f32() {
+    tuned_keys_are_in_tune::<f32>(Model::Waveguide);
+}
+
+#[test]
+fn waveguide_keys_are_in_tune_f64() {
+    tuned_keys_are_in_tune::<f64>(Model::Waveguide);
 }
 
 /// Known failure, kept as a demo (the page's toggle): the integer loop
@@ -108,7 +140,7 @@ fn tuned_keys_are_in_tune_f64() {
 #[test]
 fn integer_loop_is_out_of_tune_at_the_top() {
     for fs in RATES {
-        let errs = errors::<f64>(fs, false);
+        let errs = errors::<f64>(Model::Loop, fs, false);
         let (key, err) = worst(&errs);
         let audible: Vec<u8> = errs
             .iter()
@@ -133,7 +165,7 @@ const DECAY_TOL: f64 = 0.01;
 
 /// The fundamental's measured T₆₀ against the target, for notes that need
 /// shortening (low) and stretching (high).
-fn decay<S: Scalar>() {
+fn decay<S: Scalar>(model: Model) {
     let fs = 48_000.0;
     for key in [33_u8, 57, 81, 96, 105] {
         for target in [0.5, 2.0] {
@@ -142,12 +174,12 @@ fn decay<S: Scalar>() {
                 tuned: true,
                 decay: Decay::T60(target),
             };
-            let sig = render::<S>(fs, f0, voicing, target);
+            let sig = render::<S>(model, fs, f0, voicing, target);
             // Windows of ~40 ms (at least 4 periods): several in the span.
             let periods = (0.04 * f0).max(4.0).round();
             let got = t60(&sig, fs, f0, periods, 0.05 * target, 0.7 * target).unwrap();
             println!(
-                "{} MIDI {key} ({f0:.1} Hz) target {target} s: {got:.4} s ({:+.2}%)",
+                "{model:?} {} MIDI {key} ({f0:.1} Hz) target {target} s: {got:.4} s ({:+.2}%)",
                 core::any::type_name::<S>(),
                 100.0 * (got / target - 1.0)
             );
@@ -161,10 +193,20 @@ fn decay<S: Scalar>() {
 
 #[test]
 fn decay_f32() {
-    decay::<f32>();
+    decay::<f32>(Model::Loop);
 }
 
 #[test]
 fn decay_f64() {
-    decay::<f64>();
+    decay::<f64>(Model::Loop);
+}
+
+#[test]
+fn waveguide_decay_f32() {
+    decay::<f32>(Model::Waveguide);
+}
+
+#[test]
+fn waveguide_decay_f64() {
+    decay::<f64>(Model::Waveguide);
 }

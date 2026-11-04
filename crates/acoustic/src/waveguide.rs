@@ -1,0 +1,238 @@
+//! [`Waveguide`]: a string as two traveling waves (`docs/13-waveguide.md`).
+
+use crate::bridge::Bridge;
+use crate::{DelayLine, Scalar, Voicing};
+
+/// A string of length `L` with fixed ends, as two delay lines ("rails")
+/// of `M` samples: `right`, the wave traveling toward the bridge, and
+/// `left`, the wave traveling toward the nut. Each sample, every value
+/// moves one cell; at each end the arriving wave reflects inverted (a
+/// fixed end), and at the bridge it also passes the loop filter
+/// (the crate's `Bridge`: loss, lowpass, allpass, from the note's [`Voicing`]).
+///
+/// The loop is A1's: `N` samples, split `⌊N/2⌋` per rail, and when `N` is
+/// odd the extra sample is a one-sample delay inside the bridge. So
+/// positions map symmetrically onto both rails, and the tuning and decay
+/// carry over exactly.
+///
+/// Positions are fractions of the length **measured from the bridge**:
+/// cell `c` (0 nearest the bridge) is the string at `s = (c + ½) / M`. The
+/// right rail's front (the sample about to reach the bridge) is cell 0;
+/// the left rail's front (about to reach the nut) is cell `M − 1`. The
+/// displacement at a cell is the sum of the two rails there.
+#[derive(Clone, Debug)]
+pub struct Waveguide<S> {
+    right: DelayLine<S>,
+    left: DelayLine<S>,
+    bridge: Bridge<S>,
+    /// The bridge's extra sample when the loop is odd: its filter output,
+    /// waiting one step to enter the left rail.
+    odd: Option<S>,
+    /// Where the output is read, from the bridge.
+    pickup: f64,
+}
+
+/// Where a new string's pickup sits, from the bridge: near it, as on a
+/// guitar (`set_pickup` moves it).
+pub const DEFAULT_PICKUP: f64 = 0.1;
+
+impl<S: Scalar> Waveguide<S> {
+    /// A silent string for pitch `f0` Hz at `fs` Hz, voiced by `voicing`;
+    /// `None` for settings it can't play (as [`KsString`](crate::KsString)).
+    #[must_use]
+    pub fn new(fs: f64, f0: f64, voicing: Voicing) -> Option<Self> {
+        let n = voicing.coefficients(fs, f0)?.n;
+        Self::with_capacity(fs, f0, voicing, n)
+    }
+
+    /// As [`new`](Self::new), with room for a loop of `cap` samples, so
+    /// [`restring`](Self::restring) up to it never allocates.
+    #[must_use]
+    pub fn with_capacity(fs: f64, f0: f64, voicing: Voicing, cap: usize) -> Option<Self> {
+        let c = voicing.coefficients(fs, f0)?;
+        let rail_cap = cap / 2;
+        let m = c.n / 2;
+        Some(Self {
+            right: DelayLine::with_capacity(m, rail_cap)?,
+            left: DelayLine::with_capacity(m, rail_cap)?,
+            odd: (c.n % 2 == 1).then_some(S::ZERO),
+            bridge: Bridge::new(c),
+            pickup: DEFAULT_PICKUP,
+        })
+    }
+
+    /// Re-voices this string for a new note, silent, reusing its rails.
+    /// `false`, changing nothing, for settings it can't play or a note
+    /// longer than the capacity.
+    pub fn restring(&mut self, fs: f64, f0: f64, voicing: Voicing) -> bool {
+        let Some(c) = voicing.coefficients(fs, f0) else {
+            return false;
+        };
+        let m = c.n / 2;
+        let fits = m <= self.right.capacity() && m <= self.left.capacity() && m > 0;
+        if !fits {
+            return false;
+        }
+        self.right.reset(m);
+        self.left.reset(m);
+        self.odd = (c.n % 2 == 1).then_some(S::ZERO);
+        self.bridge.apply(c);
+        true
+    }
+
+    /// The loop's length `N`, samples (`2M`, plus 1 when odd).
+    #[must_use]
+    pub fn delay(&self) -> usize {
+        2 * self.right.len() + usize::from(self.odd.is_some())
+    }
+
+    /// Each rail's length `M`, samples.
+    #[must_use]
+    pub fn rail(&self) -> usize {
+        self.right.len()
+    }
+
+    /// The pitch this string plays, Hz.
+    #[must_use]
+    pub const fn pitch(&self) -> f64 {
+        self.bridge.pitch()
+    }
+
+    /// The release: see [`KsString::damp`](crate::KsString::damp).
+    pub fn damp(&mut self, t60: f64) {
+        self.bridge.damp(t60);
+    }
+
+    /// Plucks the string into `shape(s)` (`s` from the bridge, 0 to 1),
+    /// at rest: a displacement with zero velocity is two equal traveling
+    /// waves, each half the shape. Clears the bridge's memory.
+    pub fn pluck(&mut self, mut shape: impl FnMut(f64) -> S) {
+        let m = self.right.len();
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "rail lengths are far below 2^53"
+        )]
+        let at = |c: usize| (c as f64 + 0.5) / m as f64;
+        let half = S::from_f64(0.5);
+        self.right.fill(|c| shape(at(c)) * half);
+        // The left rail runs the other way: its front is the cell nearest
+        // the nut.
+        self.left.fill(|j| shape(at(m - 1 - j)) * half);
+        if let Some(e) = self.odd.as_mut() {
+            *e = S::ZERO;
+        }
+        self.bridge.clear();
+    }
+
+    /// Subtracts each rail's mean (the loop passes DC; see
+    /// [`DelayLine::remove_mean`]).
+    pub fn remove_mean(&mut self) {
+        self.right.remove_mean();
+        self.left.remove_mean();
+    }
+
+    /// Advances one sample and returns the bridge's output (the loop
+    /// filter's): the signal A1's loop produces from the same state.
+    pub fn step(&mut self) -> S {
+        let at_bridge = self.right.front();
+        let at_nut = self.left.front();
+        let y = self.bridge.process(at_bridge);
+        // The odd loop's extra sample: this output waits a step.
+        let out = match self.odd.as_mut() {
+            Some(e) => core::mem::replace(e, y),
+            None => y,
+        };
+        self.right.push(-at_nut);
+        self.left.push(-out);
+        y
+    }
+
+    /// Moves the pickup to `s` (from the bridge, clamped to 0..1).
+    pub const fn set_pickup(&mut self, s: f64) {
+        self.pickup = s.clamp(0.0, 1.0);
+    }
+
+    /// The displacement at the pickup, read between cells linearly.
+    #[must_use]
+    pub fn displacement(&self) -> S {
+        let m = self.right.len();
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "rail lengths are far below 2^53"
+        )]
+        let x = (self.pickup * m as f64 - 0.5).clamp(0.0, (m - 1) as f64);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "x is clamped to the rail"
+        )]
+        let c0 = x as usize;
+        let c1 = (c0 + 1).min(m - 1);
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "rail lengths are far below 2^53"
+        )]
+        let frac = S::from_f64(x - c0 as f64);
+        let a = self.cell(c0);
+        a + (self.cell(c1) - a) * frac
+    }
+
+    /// The displacement at cell `c` (0 nearest the bridge).
+    fn cell(&self, c: usize) -> S {
+        let m = self.right.len();
+        self.right.at(c) + self.left.at(m - 1 - c)
+    }
+
+    /// The next output: advance one sample, read the pickup.
+    pub fn next_sample(&mut self) -> S {
+        self.step();
+        self.displacement()
+    }
+
+    /// Fills `out` with the next samples.
+    pub fn render(&mut self, out: &mut [S]) {
+        for s in out {
+            *s = self.next_sample();
+        }
+    }
+
+    /// The string's shape, cell by cell from the bridge: what the page
+    /// draws.
+    pub fn shape(&self) -> impl Iterator<Item = S> + '_ {
+        (0..self.right.len()).map(|c| self.cell(c))
+    }
+
+    /// Lays out an A1 loop's delay line (oldest first) on this string so
+    /// the bridge sees the same samples in the same order: its first `M`
+    /// on the right rail, the next `M` negated on the left (the nut
+    /// inverts them on the way), the last in the bridge when odd. The
+    /// Karplus–Strong equivalence test.
+    #[cfg(test)]
+    pub(crate) fn load_loop(&mut self, line: &[S]) {
+        let m = self.right.len();
+        let get = |i: usize| line.get(i).copied().unwrap_or(S::ZERO);
+        self.right.fill(get);
+        self.left.fill(|j| -get(m + j));
+        if let Some(e) = self.odd.as_mut() {
+            *e = get(2 * m);
+        }
+        self.bridge.clear();
+    }
+
+    /// Sets the rails directly, front first (missing samples 0).
+    #[cfg(test)]
+    pub(crate) fn load_rails(&mut self, right: &[S], left: &[S]) {
+        self.right
+            .fill(|i| right.get(i).copied().unwrap_or(S::ZERO));
+        self.left.fill(|i| left.get(i).copied().unwrap_or(S::ZERO));
+    }
+
+    /// The left rail's newest sample (just reflected at the bridge).
+    #[cfg(test)]
+    pub(crate) fn left_newest(&self) -> S {
+        self.left.back()
+    }
+}
+
+#[cfg(test)]
+mod tests;

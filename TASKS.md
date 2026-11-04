@@ -192,11 +192,16 @@ allocates, `libm` twiddles. Against the naive DFT: 9.6e-12 (f64), 5.7e-6
 (f32) at 1024 points; a tone lands in its bin; the spectrum reads a
 full-scale sine at 0 dB. Bench: 4096-point spectrum 26.1 µs natively.
 
-## 3. The waveguide string (PR)
+## ✅ 3. The waveguide string (done)
 
-- [ ] Rails, reflections, the bridge filter, tuning; the KS equivalence
-      test (bit-identical); the 88-key tuning and `T₆₀` tests on the
-      waveguide.
+A1's loop filter extracted as `Bridge` (shared; A1's golden unchanged);
+`voicing` moved to the crate root. `Waveguide`: two rails, inverting
+ends, the bridge filter at one end, the odd sample inside it, pluck by
+shape, linearly interpolated pickup, the string's shape for drawing.
+**Bit-exact** to A1's loop from the same state (20,000 samples, five
+notes, odd and even, tuned and not, both scalars). 88 keys within
+±0.0073 cents, `T₆₀` within 0.1%, as the loop. Positions measured from
+the bridge.
 
 ## 4. Pluck and pickup positions (PR)
 

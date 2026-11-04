@@ -6,15 +6,20 @@
 //! and `f64` in tests. Independent of the physics engine; shares only
 //! `math`.
 
+mod bridge;
 mod delay_line;
 mod excitation;
 pub mod fft;
 pub mod measure;
 mod string;
 mod voices;
+mod voicing;
+mod waveguide;
 
 pub use delay_line::DelayLine;
 pub use excitation::Excitation;
 pub use math::Scalar;
-pub use string::{Decay, KsString, Voicing};
+pub use string::KsString;
 pub use voices::{DEFAULT_GAIN, LOWEST_HZ, RELEASE_T60, VOICES, Voices};
+pub use voicing::{Decay, Voicing};
+pub use waveguide::{DEFAULT_PICKUP, Waveguide};
