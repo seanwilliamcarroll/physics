@@ -103,6 +103,59 @@ I. A physical model for a struck string using finite difference methods.*
 J. Acoust. Soc. Am. 95(2):1112–1118. Nonlinear felt hammer, stiff string (A3).
 - DOI: https://doi.org/10.1121/1.408459
 
+**Chaigne, A., Askenfelt, A. (1994).** *Numerical simulations of piano strings.
+II. Comparisons with measurements and systematic exploration of some hammer-string
+parameters.* J. Acoust. Soc. Am. 95(3):1631–1640 (A3).
+- DOI: https://doi.org/10.1121/1.408549
+
+**Fletcher, H. (1964).** *Normal Vibration Frequencies of a Stiff Piano String.*
+J. Acoust. Soc. Am. 36(1):203–209. `f_k = k F₀ √(1 + B k²)` (A3,
+`14-piano.md`).
+- DOI: https://doi.org/10.1121/1.1918933
+
+**Young, R. W. (1952).** *Inharmonicity of Plain Wire Piano Strings.* J.
+Acoust. Soc. Am. 24(3):267–273 (A3).
+- DOI: https://doi.org/10.1121/1.1906888
+
+**Rigaud, F., David, B., Daudet, L. (2011).** *A Parametric Model of Piano
+Tuning.* Proc. DAFx-11, Paris, pp. 393–399. `B` along the keyboard as two
+log-linear asymptotes; the treble line's constants (A3).
+- PDF: https://www.dafx.de/paper-archive/2011/Papers/53_e.pdf
+- HAL: https://hal.science/hal-00727395
+
+**Ortiz-Berenguer, L. I., Casajús-Quirós, F. J., Torres-Guijarro, M.,
+Beracoechea, J. A. (2004).** *Piano Transcription Using Pattern Recognition:
+Aspects on Parameter Extraction.* Proc. DAFx-04, Naples. `B` ≈ 2 · 10⁻⁴ for A0
+on a Steinway & Sons grand (A3).
+- PDF: https://dafx.de/paper-archive/2004/P_212.PDF
+
+**Dalmont, J.-P. (2021).** *Piano bass strings with reduced inharmonicity:
+theory and experiments.* Acta Acustica 5:9. The order of `B` in the bass (A3).
+- DOI: https://doi.org/10.1051/aacus/2021002
+
+**Van Duyne, S. A., Smith, J. O. (1994).** *A Simplified Approach to Modeling
+Dispersion Caused by Stiffness in Strings and Plates.* Proc. ICMC 1994,
+Aarhus. The allpass cascade (A3).
+- https://quod.lib.umich.edu/i/icmc/bbp2372.1994.105
+
+**Rauhala, J., Välimäki, V. (2006).** *Tunable Dispersion Filter Design for
+Piano Synthesis.* IEEE Signal Processing Letters 13(5):253–256 (A3).
+- DOI: https://doi.org/10.1109/LSP.2006.870376
+
+**Weinreich, G. (1977).** *Coupled Piano Strings.* J. Acoust. Soc. Am.
+62(6):1474–1484. Double decay and polarization from coupling at the bridge
+(A3, out of scope).
+- DOI: https://doi.org/10.1121/1.381677
+
+**Russell, D. A.** *The piano hammer as a nonlinear spring.* Acoustics and
+Vibration Animations, Penn State. Measured ranges of the felt exponent `p`
+(A3).
+- https://www.acs.psu.edu/drussell/piano/nonlinearhammer.html
+
+**Askenfelt, A.** *From touch to string vibrations* (lecture notes, KTH Speech,
+Music and Hearing). Hammer–string contact times by register and dynamic (A3).
+- https://www.speech.kth.se/music/5_lectures/askenflt/stricont.html
+
 **Bilbao, S. (2009).** *Numerical Sound Synthesis: Finite Difference Schemes
 and Simulation in Musical Acoustics.* Wiley. ISBN 978-0-470-51046-9.
 Ch. 6 (1D wave), Ch. 11 (2D wave, incl. waveguide meshes and lumped
