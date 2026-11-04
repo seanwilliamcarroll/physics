@@ -1,23 +1,20 @@
-# TASKS — M6: Colliding masses
+# TASKS — A1: Plucked string (Karplus–Strong)
 
-Source: `docs/05-roadmap.md` (M6), `docs/06-constraints.md` (both
-solvers, warm starting, split impulses), `docs/07-soft-bodies.md` (the
-ground clamp contacts replace).
+Source: `docs/05-roadmap.md` (A1), `docs/00-scope.md` ("Acoustic
+track"), `docs/03-wasm-shell.md` ("Not now": wasm-bindgen),
+`docs/hosting.md` (cross-origin isolation; secure context).
 
-**Goal:** momentum exchange in collisions. Circles that collide, elastic
-to inelastic by a restitution slider, in both solvers; and **Newton's
-cradle**, which exposes how sequential solvers handle simultaneous
-contacts.
+**Goal:** the 2015 Piano Gloves core, redone properly: a delay line and a
+lowpass make a convincing plucked string, tuned to the cent by a
+fractional delay, with its decay under control and its buffer drawn live.
 
-**Done when:** a box of bouncing balls at `e = 1` stays within a measured
-energy bound at the page's default substeps (chain impacts lose energy in
-both solvers, less with more substeps; section 6), and loses more as `e`
-drops; a free-space collision keeps a flat momentum plot; and the cradle
-behaves (or misbehaves) per solver.
+**Done when:** an on-screen keyboard plays in tune, and a toggle that
+turns the fractional delay off makes the integer-delay detuning audible
+(and measured).
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m6/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`a1/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -94,161 +91,115 @@ compliant constraints damp at backward Euler's rate by themselves; an
 exploding force jelly leaves the view within a frame or two, so the page
 freezes on the last sane frame. **Before M6 (#73):** CI, `UnitVec2`.
 
+## ⏸ M6: Colliding masses (paused after section 6, PRs #76–#82)
+
+`docs/08-collision.md`; `Radius`, `Restitution`, walls; a sorted-cell-
+list broadphase (proptest superset of brute force); the narrowphase
+(speculative contacts, `CONTACT_MARGIN`); contacts in XPBD and the
+impulse solver (accumulated clamp, warm start by pair, split pseudo-
+impulse, restitution pass), tested on both: analytic head-on, momentum to
+rounding, `e²` bounces, stacks at rest. **Paused (your call)** at the
+scenes: Newton restitution with simultaneous contacts loses energy
+through touching chains (a touching rack keeps 18–62%) and gains it when
+one ball hits two (a gapped rack keeps 115–136%). The scenes and the
+measurements are a local WIP commit on `m6/7-scenes`; the candidate fix
+is Poisson restitution. Sections 7–10 (scenes, web, pages, cleanup)
+remain.
+
 ---
 
 ## Decisions to review before starting
 
-1. **The roadmap's "done when" needs a fix: walls don't conserve
-   momentum.** A box's walls push back, so a box of balls' momentum isn't
-   flat (it's not supposed to be). So two showcases: **energy** in the
-   box (flat at `e = 1`, falling below it), and **momentum** in a
-   wall-free, gravity-free scene (a cue ball fired into a cluster),
-   flat to rounding in both solvers.
-2. **Circles are particles with a radius.** A `radius` column in
-   `Particles` (SoA, like `inv_mass`), 0 meaning a point that never
-   collides, so every existing scene is unchanged (goldens). No rotation
-   in M6 (circles without friction don't need it; M7's spin decides).
-3. **Walls are static half-planes** `{ normal: UnitVec2, offset }` in the
-   `World`. The M5 ground clamp stays for the jelly (its goldens), and
-   isn't how M6's floor works.
-4. **Contacts are transient constraints, rebuilt every substep.** A
-   `Contact { a, b (particle or wall), normal: UnitVec2, depth }` with
-   `C = |x_b − x_a| − (r_a + r_b) ≥ 0`: an *inequality*. XPBD applies a
-   correction only while `C < 0`; the impulse solver clamps the
-   *accumulated* impulse at ≥ 0 (Catto 2006: clamping each delta
-   instead breaks stacks). Detection per substep is the simple, correct
-   choice (Macklin 2019 detects once per step with a margin, an
-   optimization to measure later).
-5. **Warm starting for contacts** in the impulse solver, matched by
-   `(a, b)` from the previous substep: M4/M5 kept rigid constraints
-   warm-started for exactly this (stacks settle without it only with
-   many iterations). XPBD needs none.
-6. **Restitution `e` in [0, 1]**, a new `Restitution` param, one per
-   world in M6 (per material in M7). Impulse: target normal velocity
-   `−e · v_n` from *before* the solve. XPBD: Müller et al. 2020's velocity
-   pass after positions settle. Both skip restitution below a small
-   approach speed (`~2 g h`), or resting balls jitter forever.
-7. **Broadphase: a uniform grid**, cell size the largest diameter,
-   rebuilt each substep; tested by proptest as a **superset** of the
-   true overlapping pairs (brute force). Sweep-and-prune stays a later
-   comparison.
-8. **Split impulses for contacts too** (M4's default): penetration is
-   corrected positionally, so it doesn't turn into bounce. Classic
-   Baumgarte remains selectable (the pendulum lesson again: here it shows
-   as balls popping out of each other).
-9. **Newton's cradle**: five balls on rods (M3's `DistanceConstraint`,
-   rigid), just touching. A sequential solver with one iteration spreads
-   the impact (several balls swing out); more iterations or substeps get
-   closer to "one in, one out". Shown per solver, with an iterations
-   slider; tests record the measured behavior rather than demand the
-   ideal (as M4 did for chains).
-10. **Pages: two**, as in M4. `m6-collisions`: the box (restitution,
-    ball count, a broadphase overlay of grid cells and candidate pairs,
-    energy plot) and the free-space momentum shot. `m6-cradle`: the
-    cradle, XPBD vs impulse side by side.
-11. **Out of M6:** friction, segments and pockets (M7), tunneling
-    measurement (M7: M6's speeds are low enough with substeps), polygons
-    and rotation (deferred).
+1. **Two new crates.** `acoustic` (library: delay line, string, voices,
+   offline rendering; generic over `math::Scalar`, so f32 and f64 get the
+   same tests now and fixed point can follow in M8) and `acoustic-web`
+   (a `cdylib`, its own small `.wasm`). The audio module stays
+   independent of the engine and tiny; the engine's `.wasm` is untouched.
+2. **No wasm-bindgen.** The same raw C ABI as `web` (`03-wasm-shell.md`):
+   exports over pointers into wasm memory. The roadmap guessed audio would
+   be where wasm-bindgen arrives; it isn't needed for A1.
+3. **Loading wasm into the worklet.** `AudioWorkletGlobalScope` has no
+   `fetch`, so the page compiles the `WebAssembly.Module` and posts it to
+   the worklet (a `Module` is structured-cloneable), which instantiates it
+   synchronously. The worklet calls one export per 128-frame render
+   quantum, writing into a buffer in wasm memory that it copies out.
+4. **`postMessage`, not shared memory.** Notes and settings go in, and
+   delay-line snapshots come out at display rate, over the worklet's
+   `port`. No `SharedArrayBuffer`, so no cross-origin isolation headers on
+   the host (`hosting.md` deferred the choice to A1).
+5. **f32 at run time**, both scalars in tests. The sample rate is
+   whatever the `AudioContext` reports (44.1 or 48 kHz); delay lengths are
+   computed from it, and tests run at both.
+6. **The Karplus–Strong loop** (Jaffe & Smith 1983): delay line of `N`
+   samples, two-point averaging lowpass (half a sample of delay), and a
+   first-order allpass for the fractional remainder, so the loop is
+   exactly `fs / f0` samples. Decay control by the loss factor (and decay
+   stretching for the high notes, which otherwise die too fast). The
+   fractional delay can be switched off, back to the integer loop.
+7. **Tests measure, offline, in Rust:** the fundamental by
+   autocorrelation (with interpolation) within a cents bound across the
+   keyboard, with the integer loop's error recorded as a known failure;
+   decay time (T60) against its setting; both scalars, both rates.
+8. **Determinism:** the noise excitation is seeded (the engine's
+   `SplitMix64` pattern), and a golden hash of rendered audio is checked
+   native and on wasm (`test-wasm`), like the engine's.
+9. **Polyphony:** a fixed pool of voices (8) with oldest-note stealing;
+   on-screen keyboard plus the computer keyboard.
+10. **Excitation:** a seeded noise burst, or the Piano Gloves triangle
+    (a hammer shape placed near one end of the delay line).
+11. **Browser smoke test** with `OfflineAudioContext`: render a second of
+    audio with no speakers, check it's audible and finite (headless Chrome
+    can't be trusted to play real-time audio).
 
 ---
 
-## ✅ 1. `docs/08-collision.md` (done)
+## 1. `docs/12-acoustic-foundations.md` (PR)
 
-Decisions as adopted, plus three the code forced: **the solver steps any
-world that collides** (radius > 0 or walls, not only constraints);
-**contacts are their own type** (a wall contact has one body, the
-`Constraint` trait two), solved in the same passes after the rods;
-**speculative contacts** in the impulse solver (a contact exists when the
-gap is less than the pair can close this substep; `v_target = −C/h`), and
-so **restitution is a separate pass** after the iterations in both solvers,
-from the approach speed recorded before the solve (a speculative contact
-stops the ball exactly at the surface, so the next substep sees no
-approach). Roadmap "done when" corrected.
+- [ ] Audio threading (worklet, render quantum, buffer handoff), sample
+      rates, the KS loop's delay budget, the allpass coefficient, decay
+      control, how pitch and T60 are measured. Decisions above, as
+      adopted.
 
-## ✅ 2. Radius, walls, `Restitution` (done)
+## 2. `acoustic` crate: the string (PR)
 
-`Radius` (r > 0, finite; written out, fallible `cast`), `Restitution`
-(`checked_param!`, `INELASTIC` default, `ELASTIC`); `Particles::add_circle`,
-`radius()`, `max_radius()` (kept on add and pop; the broadphase's cell
-size); `collision::Wall` (`through(point, normal)`, signed `distance`);
-`World::add_wall/walls/restitution/set_restitution/collides`. Data only:
-nothing steps differently yet (goldens unchanged).
+- [ ] `DelayLine`, the KS string (integer loop: averaging lowpass, loss),
+      offline rendering; the pitch and T60 measurement helpers. Tests:
+      pitch of the integer loop matches `fs / (N + ½)`; T60.
 
-## ✅ 3. Broadphase: uniform grid (done)
+## 3. Tuning and decay (PR)
 
-`collision::candidate_pairs(pos, radius, cell, out)` (`collision` is now a
-public module): a sorted cell list (memory per circle, not per area;
-deterministic order), each cell against itself and four neighbors. Proptest:
-a superset of brute force, sorted, each pair once. Bench: 12.6 µs / 158 µs
-/ 802 µs at 128 / 1,024 / 4,096 circles.
+- [ ] Allpass fractional delay; tuned within cents across the keyboard at
+      44.1 and 48 kHz (the integer loop's error as a known failure); decay
+      control and stretching.
 
-## ✅ 4. Narrowphase: contacts (done)
+## 4. Excitation and voices (PR)
 
-`collision::find_contacts(particles, walls, h, pairs, out)` →
-`Contact { a, b: Body (Particle | Wall), normal: UnitVec2 (a → b), gap }`:
-broadphase cell `2 r_max + 2 v_max h`, kept when `gap ≤ max(0, −v_n) h`
-(so touching at rest counts: the cradle), static pairs and points skipped,
-coincident centers along `UnitVec2::X` (new, with `::Y`). Order: pairs
-sorted, then walls by particle (deterministic). `ParticleId: Ord`.
+- [ ] Seeded noise and triangle excitation; the voice pool (8, oldest
+      stolen); golden hashes of rendered audio, native and wasm.
 
-## ✅ 5. Contacts in XPBD (done)
+## 5. `acoustic-web` (PR)
 
-`solver::Contacts` (list, λ, saved velocities, resting thresholds) in
-the world's solver state; the solver steps any world that `collides()`
-(others skip the search: goldens unchanged). Contacts found after the
-kick, projected after the rods each pass (one-sided, current normal),
-then Müller's velocity pass. Resting threshold `2 |a_b − a_a| h` (any
-force, not just gravity). **Found:** measuring `v_n⁻` along the
-found-time normal gained energy on glancing elastic hits (+1.4% at 10
-substeps, ∝ h); now along the current normal (2e-13 J). Stacks of 3+
-jittered forever (missed resting contacts); `CONTACT_MARGIN` = 1 mm
-settles every stack to exactly zero. Tests: analytic head-on (1e-13),
-inelastic, momentum (1.6e-13), `e²` bounce, energy never rises, a stack
-rests.
+- [ ] C ABI exports (render a block, note on/off, settings, snapshot);
+      `xtask` builds the second `.wasm`; size recorded.
 
-## ✅ 6. Contacts in the impulse solver (done)
+## 6. Site: the A1 page (PR)
 
-Warm start by pair (sorted `(a, b, λ)`, binary search), accumulated clamp,
-speculative targets, a one-sided split pseudo-impulse, the restitution
-pass; the contact tests run on both solvers. **Found** in a box at
-`e = 1`: restitute *after* positions move (`Box2D` v3's order; before, a
-bounce gained 2%), and remember impulses *before* restituting (warm-
-starting the bounce re-applied it: 14 J of rises → 4 J). **Tried and
-reverted** (your call to try it): a time-of-impact correction; it
-overshot and made the box erratic. **Accepted** (your call): chain
-impacts through resting balls lose energy in both solvers (−30 to −40%
-over 20 s at 10 substeps, −1.2% at 100), Newton's cradle with a floor;
-the box page shows it, linked to the cradle.
+- [ ] Worklet host (module handed over by the page), keyboard (screen and
+      computer), tuning toggle, excitation choice, decay, the live delay
+      line; `OfflineAudioContext` smoke case; gallery.
+- [ ] Listening check against **Done when** (yours).
 
-## 7. Scenes (PR)
-
-- [ ] Box of balls, free-space break, Newton's cradle; goldens; energy
-      and momentum tests per scene; the cradle's measured behavior per
-      solver and iteration count.
-
-## 8. Web layer (PR)
-
-- [ ] Scene constructors, radii and walls for drawing, live
-      restitution, broadphase debug buffers (cells, candidate pairs).
-
-## 9. Site: two pages (PR)
-
-- [ ] `m6-collisions` (box + overlay, momentum shot) and `m6-cradle`;
-      smoke cases; gallery.
-- [ ] Manual check against **Done when** (yours).
-
-## 10. M6 cleanup (PR, if needed)
+## 7. A1 cleanup (PR, if needed)
 
 - [ ] Magic numbers, triggers, `docs/types.md`, small files.
 
 ---
 
-## Out of scope for M6
+## Out of scope for A1
 
-- Friction, cushions (segments), pockets, a cue (M7).
-- Tunneling measurement (M7).
-- Rotation, polygons, CCD (deferred).
-- Web Workers (known gap below).
+- Pluck and pickup position, waveguides, spectra (A2).
+- Stiffness, hammers, string groups (A3).
+- SIMD and throughput benchmarks (A4/A5 and later).
 
 ## Known gaps
 
