@@ -195,10 +195,14 @@ clamp counted). `SplitMix64` moved to `math` (engine goldens unchanged).
 Golden hash of a 1 s performance (chord, triangle melody, release, a
 stolen voice): the same native and on wasm; peak 0.824, nothing clipped.
 
-## 5. `acoustic-web` (PR)
+## ✅ 5. `acoustic-web` (done)
 
-- [ ] C ABI exports (render a block, note on/off, settings, snapshot);
-      `xtask` builds the second `.wasm`; size recorded.
+`Synth` (safe, tested natively: voices, settings, preallocated output
+and snapshot buffers) behind twelve `synth_*` exports; the panic hook;
+`xtask site` builds `site/pkg/acoustic.wasm` (**50,890 B, 21,473 gzip**);
+pre-commit lints it as wasm. Played from Node against the real module.
+**Found:** `engine.wasm` is 192,680 B, +65 KB over M5.6 from M6's
+collision code, unexplained so far (section 7).
 
 ## 6. Site: the A1 page (PR)
 
@@ -210,6 +214,7 @@ stolen voice): the same native and on wasm; peak 0.824, nothing clipped.
 ## 7. A1 cleanup (PR, if needed)
 
 - [ ] Magic numbers, triggers, `docs/types.md`, small files.
+- [ ] Why `engine.wasm` grew 65 KB with M6 (`03-wasm-shell.md`).
 
 ---
 
