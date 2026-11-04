@@ -23,6 +23,7 @@ fn reproduces_the_loop<S: Scalar>() {
         let voicing = Voicing {
             tuned,
             decay: Decay::T60(1.5),
+            inharmonicity: 0.0,
         };
         let mut ks = KsString::<S>::new(FS, f0, voicing).unwrap();
         ks.pluck(|i, _| S::from_f64(hash_noise(i)));
@@ -57,6 +58,7 @@ fn odd_and_even_loops_split_their_rails() {
     let lossless = Voicing {
         tuned: false,
         decay: Decay::Loss(1.0),
+        inharmonicity: 0.0,
     };
     // 48000 / 440 = 109.09: N = 109 (odd); 48000 / 400 = 120: N = 120.
     let odd = Waveguide::<f64>::new(FS, 440.0, lossless).unwrap();
@@ -70,6 +72,7 @@ fn a_pluck_puts_its_shape_on_the_string_split_between_the_rails() {
     let lossless = Voicing {
         tuned: false,
         decay: Decay::Loss(1.0),
+        inharmonicity: 0.0,
     };
     let mut wg = Waveguide::<f64>::new(FS, 400.0, lossless).unwrap();
     // A triangle peaked a quarter of the way from the bridge.
@@ -94,6 +97,7 @@ fn the_ends_reflect_inverted() {
     let lossless = Voicing {
         tuned: false,
         decay: Decay::Loss(1.0),
+        inharmonicity: 0.0,
     };
     let mut wg = Waveguide::<f64>::new(FS, 400.0, lossless).unwrap();
     wg.load_rails(&[1.0], &[]);
@@ -111,6 +115,7 @@ fn positions_span_the_effective_length() {
     let lossless = Voicing {
         tuned: false,
         decay: Decay::Loss(1.0),
+        inharmonicity: 0.0,
     };
     let wg = Waveguide::<f64>::new(FS, 400.0, lossless).unwrap();
     let length = FS / (2.0 * wg.pitch());
@@ -130,6 +135,7 @@ fn a_random_pluck_starts_at_rest() {
     let lossless = Voicing {
         tuned: false,
         decay: Decay::Loss(1.0),
+        inharmonicity: 0.0,
     };
     let mut wg = Waveguide::<f64>::new(FS, 440.0, lossless).unwrap();
     let mut i = 0;

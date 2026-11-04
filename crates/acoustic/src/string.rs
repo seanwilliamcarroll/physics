@@ -41,7 +41,7 @@ impl<S: Scalar> KsString<S> {
         let c = voicing.coefficients(fs, f0)?;
         Some(Self {
             line: DelayLine::with_capacity(c.n, cap)?,
-            bridge: Bridge::new(c),
+            bridge: Bridge::new(&c),
         })
     }
 
@@ -55,7 +55,7 @@ impl<S: Scalar> KsString<S> {
         if !self.line.reset(c.n) {
             return false;
         }
-        self.bridge.apply(c);
+        self.bridge.apply(&c);
         true
     }
 

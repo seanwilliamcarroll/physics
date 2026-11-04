@@ -4,7 +4,7 @@
 //! (`docs/12-acoustic-foundations.md`, "Measuring").
 #![cfg(test)]
 
-use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing};
+use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing, inharmonicity};
 
 const FS: f64 = 48_000.0;
 const BLOCK: usize = 128;
@@ -13,6 +13,7 @@ const BLOCKS: usize = 375;
 const VOICING: Voicing = Voicing {
     tuned: true,
     decay: Decay::T60(1.5),
+    inharmonicity: 0.0,
 };
 
 /// FNV-1a, 64-bit (as the engine's `test-support`): small, fixed, and
@@ -32,6 +33,11 @@ fn perform<S: Scalar>() -> (Vec<S>, u64) {
 
 /// The same performance played by `model`.
 fn perform_with<S: Scalar>(model: Model) -> (Vec<S>, u64) {
+    perform_voiced::<S>(model, |_| VOICING)
+}
+
+/// The same performance, each key voiced by `voicing`.
+fn perform_voiced<S: Scalar>(model: Model, voicing: impl Fn(u8) -> Voicing) -> (Vec<S>, u64) {
     let mut v = Voices::<S>::new(FS, 7).unwrap();
     v.set_model(model);
     let mut out = Vec::new();
@@ -40,15 +46,15 @@ fn perform_with<S: Scalar>(model: Model) -> (Vec<S>, u64) {
         match b {
             0 => {
                 for key in [48, 52, 55, 60, 64, 67, 72] {
-                    v.note_on(key, VOICING, Excitation::Noise);
+                    v.note_on(key, voicing(key), Excitation::Noise);
                 }
             }
             40 => {
-                v.note_on(76, VOICING, Excitation::Triangle { peak: 0.1 });
+                v.note_on(76, voicing(76), Excitation::Triangle { peak: 0.1 });
             }
             100 => v.note_off(48),
             200 => {
-                v.note_on(79, VOICING, Excitation::Noise);
+                v.note_on(79, voicing(79), Excitation::Noise);
             }
             _ => {}
         }
@@ -113,6 +119,29 @@ fn waveguide_performance_golden_hashes_are_unchanged() {
     assert_eq!(clipped, 0, "the waveguide performance doesn't clip");
     assert_eq!(
         got, WAVEGUIDE_GOLDEN,
+        "golden hashes changed: ({:#018x}, {:#018x})",
+        got.0, got.1
+    );
+}
+
+/// Golden hashes of the waveguide performance with each key's stiffness
+/// (`docs/14-piano.md`): the dispersion design (placement, refinement) is
+/// `libm` and fixed iteration counts, so the same bits on wasm.
+const STIFF_GOLDEN: (u64, u64) = (0x6f7b_5dda_1957_54ec, 0xac18_5183_2a98_f7d8);
+
+#[test]
+fn stiff_performance_golden_hashes_are_unchanged() {
+    let stiff = |key| Voicing {
+        inharmonicity: inharmonicity(key),
+        ..VOICING
+    };
+    let got = (
+        hash(&perform_voiced::<f32>(Model::Waveguide, stiff).0),
+        hash(&perform_voiced::<f64>(Model::Waveguide, stiff).0),
+    );
+    assert_ne!(got, WAVEGUIDE_GOLDEN, "stiffness changes the sound");
+    assert_eq!(
+        got, STIFF_GOLDEN,
         "golden hashes changed: ({:#018x}, {:#018x})",
         got.0, got.1
     );

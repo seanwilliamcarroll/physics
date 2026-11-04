@@ -4,7 +4,7 @@
 #![cfg(test)]
 
 use acoustic::measure::{cents, partial, pitch, t60};
-use acoustic::{Decay, KsString, Scalar, Voicing, Waveguide};
+use acoustic::{Decay, KsString, Scalar, Voicing, Waveguide, inharmonicity};
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
 /// The 88 keys: MIDI notes 21 (A0) to 108 (C8).
@@ -72,13 +72,15 @@ fn render<S: Scalar>(model: Model, fs: f64, f0: f64, voicing: Voicing, secs: f64
     out.iter().map(|x| x.to_f64()).collect()
 }
 
-/// Every key's error in cents (MIDI, error), measured on the fundamental.
-fn errors<S: Scalar>(model: Model, fs: f64, tuned: bool) -> Vec<(u8, f64)> {
-    let voicing = Voicing {
-        tuned,
-        decay: Decay::T60(SWEEP_T60),
-    };
+/// Every key's error in cents (MIDI, error), measured on the fundamental;
+/// `stiff` gives each key the keyboard's `B` (`docs/14-piano.md`).
+fn errors<S: Scalar>(model: Model, fs: f64, tuned: bool, stiff: bool) -> Vec<(u8, f64)> {
     KEYS.map(|key| {
+        let voicing = Voicing {
+            tuned,
+            decay: Decay::T60(SWEEP_T60),
+            inharmonicity: if stiff { inharmonicity(key) } else { 0.0 },
+        };
         let f0 = frequency(key);
         // The attack, then two DFT windows, with room to spare.
         #[expect(clippy::cast_precision_loss, reason = "ATTACK is small")]
@@ -112,12 +114,13 @@ const TUNED_TOL_CENTS: f64 = 0.05;
 const AUDIBLE_CENTS: f64 = 3.0;
 
 /// Every one of the 88 keys is in tune with the allpass.
-fn tuned_keys_are_in_tune<S: Scalar>(model: Model) {
+fn tuned_keys_are_in_tune<S: Scalar>(model: Model, stiff: bool) {
     for fs in RATES {
-        let (key, err) = worst(&errors::<S>(model, fs, true));
+        let (key, err) = worst(&errors::<S>(model, fs, true, stiff));
         println!(
-            "{model:?} {} {fs} Hz: tuned worst {err:+.4} cents (MIDI {key})",
-            core::any::type_name::<S>()
+            "{model:?} {} {fs} Hz{}: tuned worst {err:+.4} cents (MIDI {key})",
+            core::any::type_name::<S>(),
+            if stiff { ", stiff" } else { "" }
         );
         assert!(err.abs() < TUNED_TOL_CENTS, "{fs}: MIDI {key} {err} cents");
     }
@@ -125,22 +128,82 @@ fn tuned_keys_are_in_tune<S: Scalar>(model: Model) {
 
 #[test]
 fn tuned_keys_are_in_tune_f32() {
-    tuned_keys_are_in_tune::<f32>(Model::Loop);
+    tuned_keys_are_in_tune::<f32>(Model::Loop, false);
 }
 
 #[test]
 fn tuned_keys_are_in_tune_f64() {
-    tuned_keys_are_in_tune::<f64>(Model::Loop);
+    tuned_keys_are_in_tune::<f64>(Model::Loop, false);
 }
 
 #[test]
 fn waveguide_keys_are_in_tune_f32() {
-    tuned_keys_are_in_tune::<f32>(Model::Waveguide);
+    tuned_keys_are_in_tune::<f32>(Model::Waveguide, false);
 }
 
 #[test]
 fn waveguide_keys_are_in_tune_f64() {
-    tuned_keys_are_in_tune::<f64>(Model::Waveguide);
+    tuned_keys_are_in_tune::<f64>(Model::Waveguide, false);
+}
+
+/// Stiffness on (`docs/14-piano.md`): the dispersion cascade's delay at
+/// `f₀` is in the tuning budget, so the fundamental stays in tune.
+#[test]
+fn stiff_keys_are_in_tune_f32() {
+    tuned_keys_are_in_tune::<f32>(Model::Waveguide, true);
+}
+
+#[test]
+fn stiff_keys_are_in_tune_f64() {
+    tuned_keys_are_in_tune::<f64>(Model::Waveguide, true);
+}
+
+/// Measured (A3.2): the worst partial 0.20 cents (C2's 12th, which runs
+/// 8 cents sharp; A4's runs 84). ~5x.
+const STRETCH_TOL_CENTS: f64 = 1.0;
+/// Partials measured per key, from the 2nd.
+const STRETCH_PARTIALS: u32 = 12;
+/// The DFT window, in fundamental periods: neighbors are `f₀` apart.
+const STRETCH_PERIODS: f64 = 16.0;
+
+/// A stiff string's partials, rendered and measured one by one, sit at
+/// `k F₀ √(1 + B k²)`: sharp of `k f₀` by what the stiffness says.
+#[test]
+fn stiff_partials_run_sharp() {
+    let fs = 48_000.0;
+    for key in [21_u8, 36, 48, 60, 69] {
+        let (f1, b) = (frequency(key), inharmonicity(key));
+        let voicing = Voicing {
+            tuned: true,
+            decay: Decay::T60(4.0),
+            inharmonicity: b,
+        };
+        let f0 = f1 / (1.0 + b).sqrt();
+        let secs = 0.1 + 2.5 * STRETCH_PERIODS / f1;
+        let sig = render::<f64>(Model::Waveguide, fs, f1, voicing, secs);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "test lengths"
+        )]
+        let skip = (0.1 * fs) as usize;
+        let mut worst = 0.0_f64;
+        for n in 2..=STRETCH_PARTIALS {
+            let k = f64::from(n);
+            let want = k * f0 * (1.0 + b * k * k).sqrt();
+            let got = partial(&sig[skip..], fs, want, STRETCH_PERIODS * k).unwrap();
+            let err = cents(got, want);
+            if n == 2 || n == STRETCH_PARTIALS {
+                println!(
+                    "MIDI {key} partial {k}: {:+.2} cents sharp of k·f1, error {err:+.3}",
+                    cents(want, k * f1)
+                );
+            }
+            worst = if err.abs() > worst.abs() { err } else { worst };
+        }
+        println!("MIDI {key} (B = {b:.2e}): worst partial {worst:+.3} cents");
+        assert!(worst.abs() < STRETCH_TOL_CENTS, "MIDI {key}: {worst}");
+    }
 }
 
 /// Known failure, kept as a demo (the page's toggle): the integer loop
@@ -150,7 +213,7 @@ fn waveguide_keys_are_in_tune_f64() {
 #[test]
 fn integer_loop_is_out_of_tune_at_the_top() {
     for fs in RATES {
-        let errs = errors::<f64>(Model::Loop, fs, false);
+        let errs = errors::<f64>(Model::Loop, fs, false, false);
         let (key, err) = worst(&errs);
         let audible: Vec<u8> = errs
             .iter()
@@ -183,6 +246,7 @@ fn decay<S: Scalar>(model: Model) {
             let voicing = Voicing {
                 tuned: true,
                 decay: Decay::T60(target),
+                inharmonicity: 0.0,
             };
             let sig = render::<S>(model, fs, f0, voicing, target);
             // Windows of ~40 ms (at least 4 periods): several in the span.

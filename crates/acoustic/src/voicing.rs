@@ -25,6 +25,11 @@ pub struct Voicing {
     /// integer loop (the nearest `N`).
     pub tuned: bool,
     pub decay: Decay,
+    /// The string's inharmonicity coefficient `B` (`docs/14-piano.md`): 0
+    /// is A1/A2's ideal string; above, a dispersion cascade at the bridge
+    /// makes partial `k` run at `k F₀ √(1 + B k²)`, the key's pitch being
+    /// the lowest partial.
+    pub inharmonicity: f64,
 }
 
 /// The loop's coefficients for one note.
@@ -38,6 +43,8 @@ pub(crate) struct Coefficients {
     pub(crate) stretch: f64,
     /// The allpass coefficient `C`, if tuned.
     pub(crate) allpass: Option<f64>,
+    /// The dispersion cascade, if the string is stiff.
+    pub(crate) dispersion: Option<crate::dispersion::Dispersion>,
     /// The pitch the loop plays, Hz.
     pub(crate) pitch: f64,
 }
@@ -73,7 +80,11 @@ impl Voicing {
             Decay::T60(t60) => decay_for(t60, f0, w)?,
         };
         let period = fs / f0;
-        let lowpass = phase_delay_lowpass(stretch, w);
+        // The dispersion cascade gets at most half the loop, leaving the
+        // delay line and the other filters room.
+        let dispersion =
+            crate::dispersion::design(fs, f0, self.inharmonicity, stretch, period / 2.0);
+        let lowpass = phase_delay_lowpass(stretch, w) + dispersion.map_or(0.0, |d| d.delay(w));
         let (n, allpass, pitch) = if self.tuned {
             let n = libm::floor(period - lowpass - MIN_FRACTION);
             let fraction = period - lowpass - n;
@@ -98,6 +109,7 @@ impl Voicing {
             rho,
             stretch,
             allpass,
+            dispersion,
             pitch,
         })
     }

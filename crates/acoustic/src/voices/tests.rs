@@ -5,6 +5,7 @@ const FS: f64 = 48_000.0;
 const VOICING: Voicing = Voicing {
     tuned: true,
     decay: Decay::T60(2.0),
+    inharmonicity: 0.0,
 };
 
 fn pool() -> Voices<f64> {
@@ -80,6 +81,7 @@ fn latest_detune_is_zero_tuned_and_the_loop_error_untuned() {
     let integer = Voicing {
         tuned: false,
         decay: Decay::T60(2.0),
+        inharmonicity: 0.0,
     };
     v.note_on(108, integer, Excitation::Noise);
     // C8, stretched (S ≈ 0.02): the Rust tuning test measured +71.1.
