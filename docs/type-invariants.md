@@ -82,6 +82,16 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   `demo_set_theta` parses at the boundary in `f64` and `cast`s to the
   engine's scalar.
 
+**Triggers re-checked at the end of A1:** the acoustic crate's runtime
+settings (`T₆₀`, triangle peak, gain, MIDI key) arrive as `f64`/`u32` at
+the `synth_*` boundary and are checked once there (`Synth`'s setters) or
+when a note is voiced (`Voicing::coefficients`, which refuses invalid
+rates and decays). Item 2's trigger (a runtime-settable physical
+parameter) is met in principle; not adopted, because each value has one
+entry point and one use, so a newtype would only move the check. Revisit
+if A2–A3 pass them around (a hammer, pickup positions). `UnitVec2` and
+the rest: unchanged.
+
 **Triggers re-checked at the end of M5:** `Stiffness` and `Damping`
 adopted (item 2, trigger: the stiffness and damping sliders); both reject
 NaN and infinity, and rigid lives only in `Compliance` (α = 0), since a

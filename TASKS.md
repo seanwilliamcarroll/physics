@@ -104,7 +104,8 @@ through touching chains (a touching rack keeps 18–62%) and gains it when
 one ball hits two (a gapped rack keeps 115–136%). The scenes and the
 measurements are a local WIP commit on `m6/7-scenes`; the candidate fix
 is Poisson restitution. Sections 7–10 (scenes, web, pages, cleanup)
-remain.
+remain; M6's cleanup should also trim its sorts (`engine.wasm` +65 KB,
+26.7 KB of it sorting: `03-wasm-shell.md`).
 
 ---
 
@@ -216,10 +217,16 @@ decay, pluck, volume; the live loop drawn. Smoke `a1`
 
 - [ ] Listening check against **Done when** (yours).
 
-## 7. A1 cleanup (PR, if needed)
+## ✅ 7. A1 cleanup (done)
 
-- [ ] Magic numbers, triggers, `docs/types.md`, small files.
-- [ ] Why `engine.wasm` grew 65 KB with M6 (`03-wasm-shell.md`).
+Page numbers named (`WAVE_FILL`, `BLACK_KEY_WIDTH`, slider steps,
+`MS_PER_SECOND`); `types.md` gets an `acoustic` section; triggers
+re-checked (`type-invariants.md`: A1's settings are checked once at the
+boundary, no newtype); no file over ~310 lines. **`engine.wasm`'s +65 KB
+explained** (`03-wasm-shell.md`, from the module's `name` section):
+sorting +26.7 KB (six instantiations, one per element type, the warm
+start's twice), stepping +16.9 KB, `Contacts::find` +11.5 KB. Fix left for
+M6's cleanup (candidates listed there).
 
 ---
 
