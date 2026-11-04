@@ -184,10 +184,13 @@ numerical dispersion, unlike A4's finite differences), why lumping the
 filters at the bridge is exact (they commute), and how the KS equivalence
 pins the shared machinery. Reference: Cooley & Tukey 1965 (DOI checked).
 
-## 2. FFT (PR)
+## ✅ 2. FFT (done)
 
-- [ ] `acoustic::fft` (radix-2, in place); tests against a naive DFT and
-      known tones; a measured cost for 4096 points.
+`acoustic::fft::{Fft, Spectrum}`: radix-2 Cooley–Tukey in place
+(index-free butterflies), everything precomputed so analysis never
+allocates, `libm` twiddles. Against the naive DFT: 9.6e-12 (f64), 5.7e-6
+(f32) at 1024 points; a tone lands in its bin; the spectrum reads a
+full-scale sine at 0 dB. Bench: 4096-point spectrum 26.1 µs natively.
 
 ## 3. The waveguide string (PR)
 
