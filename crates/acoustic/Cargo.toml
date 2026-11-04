@@ -11,5 +11,12 @@ description = "Physical-modeling sound synthesis: the acoustic track (docs/12-ac
 math = { path = "../math" }
 libm.workspace = true
 
+[dev-dependencies]
+criterion.workspace = true
+
 [lints]
 workspace = true
+
+[[bench]]
+name = "fft"
+harness = false  # criterion provides main
