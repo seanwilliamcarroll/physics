@@ -130,9 +130,7 @@ impl Synth {
     /// returns it (empty before any note).
     pub fn snapshot(&mut self) -> &[f32] {
         self.snapshot.clear();
-        if let Some(s) = self.voices.latest() {
-            self.snapshot.extend(s.samples());
-        }
+        self.voices.latest_shape(&mut self.snapshot);
         &self.snapshot
     }
 
