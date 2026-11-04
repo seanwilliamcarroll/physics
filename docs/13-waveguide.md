@@ -184,6 +184,21 @@ set by `synth_set_model`. The A1 page keeps the loop; the A2 page uses the
 waveguide. Voicing (tuning, decay), voices, the worklet, the keyboard and
 the songs are shared as they are.
 
+**As built (A2.5):** each voice preallocates both models (a loop and a
+waveguide, sized for A0), so switching never allocates; the model is
+chosen per note (a ringing note keeps its model). The pickup is a voices
+setting applied to every waveguide **live**, so moving it changes a
+sustained note's timbre; the pluck position is the triangle excitation's
+peak, from the next note. A pluck draws each cell once and both rails
+share the value, so even noise starts at rest (the loop's content `R`,
+`−L` cancels: no DC to remove, unlike A1's loop). The synth keeps a 4096-
+sample history and computes the spectrum only when asked
+(`synth_spectrum`): A4 plucked at 1/2 reads −26 / −81 / −37 dB for its
+first three harmonics, the 2nd 55 dB under its neighbors. New exports:
+`synth_set_model`, `synth_set_pickup`, `synth_spectrum`,
+`synth_spectrum_ptr` (17 in all); `acoustic.wasm` 58,164 B. A waveguide
+performance has its own golden hash, native and wasm.
+
 ## Tests
 
 - **KS equivalence**: bit-identical to A1's loop from the same state, both
