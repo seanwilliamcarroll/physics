@@ -3,6 +3,7 @@
 // (docs/12-acoustic-foundations.md).
 
 import { byId } from "../../js/dom.ts";
+import { MS_PER_SECOND } from "../../js/loop.ts";
 import { cssColor, setupCanvas } from "../../js/canvas.ts";
 import { checkbox, select, slider } from "../../js/controls.ts";
 import { KEY_CODES, OCTAVE_DOWN, OCTAVE_UP, keyToMidi, midiToHz, noteName } from "../../js/ks.ts";
@@ -30,7 +31,17 @@ const OCTAVE = 12;
 /** Settings, and their slider ranges. Decay is a log slider over T60. */
 const settings = { tuned: true, t60: 3, triangle: false, peak: 0.1, gain: 0.25 };
 const T60_LOG_RANGE: [number, number] = [-0.7, 1]; // 0.2 s … 10 s
+const T60_LOG_STEP = 0.05; // 12% per step
 const PEAK_RANGE: [number, number] = [0.02, 0.5];
+const PEAK_STEP = 0.01;
+const GAIN_STEP = 0.05;
+const PERCENT = 100;
+
+/** The waveform's ±1 fills this much of the canvas's half height. */
+const WAVE_FILL = 0.9;
+/** A black key's width as a fraction of a white key's; it's centered on
+ *  the boundary between two white keys. */
+const BLACK_KEY_WIDTH = 0.6;
 
 /** Smoke mode: one second, three notes (A3, E4, A4), rendered offline. */
 const SMOKE_RATE = 48000;
@@ -67,7 +78,7 @@ function drawWave(samples: Float32Array): void {
   ctx2d.beginPath();
   samples.forEach((v, i) => {
     const x = (i / (samples.length - 1)) * w;
-    const y = h / 2 - v * (h / 2) * 0.9;
+    const y = h / 2 - v * (h / 2) * WAVE_FILL;
     if (i === 0) ctx2d.moveTo(x, y);
     else ctx2d.lineTo(x, y);
   });
@@ -150,7 +161,7 @@ function onMessage(m: FromWorklet): void {
     `${noteName(lastMidi)} (${midiToHz(lastMidi).toFixed(1)} Hz): loop ${m.len} samples, ` +
     `${m.cents >= 0 ? "+" : ""}${m.cents.toFixed(2)} cents ${settings.tuned ? "(tuned)" : "(integer loop)"}`;
   hud.textContent =
-    `${sr} Hz · render quantum ${m.frames} frames (${((m.frames / sr) * 1000).toFixed(2)} ms) · ` +
+    `${sr} Hz · render quantum ${m.frames} frames (${((m.frames / sr) * MS_PER_SECOND).toFixed(2)} ms) · ` +
     `${note}${m.clipped > 0 ? ` · clipped ${m.clipped}` : ""}`;
   send({ type: "buffer", buf: m.buf }, [m.buf]);
 }
@@ -191,9 +202,10 @@ function buildPiano(): void {
     el.dataset.midi = String(midi);
     el.textContent = labelFor.get(off) ?? "";
     el.title = noteName(midi);
-    const left = black ? white * whiteWidth - whiteWidth * 0.3 : white * whiteWidth;
+    const width = black ? whiteWidth * BLACK_KEY_WIDTH : whiteWidth;
+    const left = black ? white * whiteWidth - width / 2 : white * whiteWidth;
     el.style.left = `${left}%`;
-    el.style.width = `${black ? whiteWidth * 0.6 : whiteWidth}%`;
+    el.style.width = `${width}%`;
     if (!black) white++;
     el.addEventListener("pointerdown", (e) => {
       el.setPointerCapture(e.pointerId);
@@ -250,7 +262,7 @@ function buildControls(): void {
     label: "decay",
     min: T60_LOG_RANGE[0],
     max: T60_LOG_RANGE[1],
-    step: 0.05,
+    step: T60_LOG_STEP,
     value: Math.log10(settings.t60),
     format: (v) => `T60 ${(10 ** v).toFixed(2)} s`,
     onInput: (v) => {
@@ -271,9 +283,9 @@ function buildControls(): void {
     label: "triangle peak",
     min: PEAK_RANGE[0],
     max: PEAK_RANGE[1],
-    step: 0.01,
+    step: PEAK_STEP,
     value: settings.peak,
-    format: (v) => `${Math.round(v * 100)}% along`,
+    format: (v) => `${Math.round(v * PERCENT)}% along`,
     onInput: (v) => {
       settings.peak = v;
       sendSettings();
@@ -283,9 +295,9 @@ function buildControls(): void {
     label: "volume",
     min: 0,
     max: 1,
-    step: 0.05,
+    step: GAIN_STEP,
     value: settings.gain,
-    format: (v) => `${Math.round(v * 100)}%`,
+    format: (v) => `${Math.round(v * PERCENT)}%`,
     onInput: (v) => {
       settings.gain = v;
       sendSettings();

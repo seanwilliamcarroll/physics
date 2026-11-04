@@ -127,7 +127,23 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M3.5 | `F32`, `F64` | 90,194 B | 29,209 B | + constraints, XPBD and impulse solvers, pendulum, solver controls (each ×2 scalars) |
 | M4.6 | `F32`, `F64` | 102,099 B | 34,099 B | + compliance, iteration order, chain and double-pendulum scenes, drag, links buffer |
 | M5.6 | `F32`, `F64` | 127,655 B | 42,813 B | + springs and damping, ground, the jelly, live stiffness (+25.6 KB over M4.6: springs, the jelly builder and damped forms of both solvers, ×2 scalars) |
-| M6.6 | `F32`, `F64` | 192,680 B | 60,661 B | + collision: broadphase, narrowphase, contacts in both solvers (no M6 page or exports yet; measured at A1.5). **+65 KB over M5.6**, more than M5 added; unexplained so far, a cleanup item (TASKS A1 section 7) |
+| M6.6 | `F32`, `F64` | 192,680 B | 60,661 B | + collision: broadphase, narrowphase, contacts in both solvers (no M6 page or exports yet; measured at A1.5). **+65 KB over M5.6** (below) |
+
+**Where M6's +65 KB went** (A1.7; per-function sizes from the module's
+`name` section, M5.8 against M6.6; the code section grew 59.7 KB):
+
+| | Δ | |
+|---|---|---|
+| sorting | **+26.7 KB** | six new instantiations, each with its own quicksort, heapsort and small-sort: the broadphase's `(i64, i64, usize)` keys, its `(usize, usize)` output pairs, and the warm start's `(ParticleId, Body, S)` entries, the last once per scalar |
+| stepping | +16.9 KB | the substep with contacts, ×2 scalars; big enough that `Demo::advance` is no longer inlined into `demo_advance` (shows as 0 → 33.8 KB there, −16.8 KB here) |
+| `Contacts::find` | +11.5 KB | ×2 scalars |
+| drop glue, other | +4.7 KB | |
+
+Sorting is the lever, as M2 already found (~7–9 KB per element type). Not
+fixed here (M6 is paused); candidates when it resumes: drop the
+broadphase's final sort of pairs (its cell keys are already sorted, so the
+order is deterministic without it), sort the warm-start keys without the
+scalar (one copy, not two), and fold the cell key into one integer.
 
 The acoustic track ships its own module, `acoustic.wasm`
 (`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`.

@@ -108,6 +108,20 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`SliderSpec`, `SelectSpec`, …](../site/js/controls.ts) | Control builders that know nothing of the engine; pages wire them to `demo_set_*`. |
 | [`SmokePanel`](../site/js/smoke.ts) | What `?smoke` mode checks per panel (steps taken, pixels drawn, finite energy). |
 
+## `acoustic` — the plucked string (A1)
+
+| Type | Why it exists |
+|---|---|
+| [`SplitMix64`](../crates/math/src/rng.rs) | The seeded PRNG, in `math` since A1.4 so the engine (scenes) and the acoustic track (noise) share one deterministic generator. |
+| [`DelayLine<S>`](../crates/acoustic/src/delay_line.rs) | A ring buffer of samples; `with_capacity` + `reset` re-length it without allocating, which the audio thread requires. |
+| [`KsString<S>`](../crates/acoustic/src/string.rs) | The Karplus–Strong loop: delay line, lowpass with the loss folded in, optional allpass. `restring` re-voices it in place. |
+| [`Voicing`, `Decay`](../crates/acoustic/src/string/voicing.rs) | A note's tuning (allpass or integer loop) and decay (`Loss(ρ)` or a target `T60`), turned into coefficients once at note on, with `libm` so they're bit-identical on wasm. |
+| [`Excitation`](../crates/acoustic/src/excitation.rs) | What a pluck leaves in the loop (noise, or the Piano Gloves triangle), always zero-mean. |
+| [`Voices<S>`](../crates/acoustic/src/voices.rs) | 8 preallocated strings played by MIDI key: stealing, release, gain and a counted clamp. |
+| [`Synth`](../crates/acoustic-web/src/synth.rs) | The worklet's whole state behind the `synth_*` C ABI: voices, settings, and preallocated output and snapshot buffers. |
+| [`ProcessorInit`, `ToWorklet`, `FromWorklet`](../site/demos/a1-string/worklet.ts) | The messages between page and worklet as a discriminated union, so a misspelled field or type is a compile error on both sides. |
+| [`SynthHandle`](../site/js/acoustic.d.ts) | A branded `*mut Synth`, like the engine's `DemoHandle`. |
+
 ## Test and tooling crates
 
 | Type | Why it exists |
