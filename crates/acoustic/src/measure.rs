@@ -34,6 +34,10 @@ pub fn pitch(signal: &[f64], fs: f64, expected: f64, search: f64) -> Option<f64>
     let period = fs / expected;
     let coarse = peak_lag(signal, period * (1.0 - search), period * (1.0 + search))?;
     let m = (MIN_LAG / coarse).ceil().max(1.0);
+    if m <= 1.0 {
+        // One period already spans MIN_LAG: refining would repeat it.
+        return Some(fs / coarse);
+    }
     let half = REFINE_HALF_WIDTH * coarse;
     let lag = peak_lag(signal, m * coarse - half, m * coarse + half)?;
     Some(m * fs / lag)
@@ -85,6 +89,63 @@ fn peak_lag(signal: &[f64], lo: f64, hi: f64) -> Option<f64> {
     Some(best as f64 + offset)
 }
 
+/// The frequency of `signal`'s component near `estimate` Hz, refined from
+/// its phase: a Hann-windowed DFT at `estimate` over `periods` periods,
+/// in two consecutive windows; the phase advances `2π f H / fs` over the
+/// hop `H` (one window), so the difference from what `estimate` predicts
+/// gives the error. Unambiguous while `estimate` is within `fs / (2H)` of
+/// the truth (`1 / (2 periods)` of a period: 3% at 16 periods).
+///
+/// Measures one partial, not the waveform's repetition: when the partials
+/// aren't exact multiples of the fundamental (a tuned, stretched string's
+/// filters delay each frequency differently), the autocorrelation
+/// ([`pitch`]) averages their drift, and this doesn't (A1.3: −41 cents
+/// against this one's fraction of a cent, at C8). `None` if `signal` is
+/// shorter than two windows, or the component is silent.
+#[must_use]
+pub fn partial(signal: &[f64], fs: f64, estimate: f64, periods: f64) -> Option<f64> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a positive whole number of samples"
+    )]
+    let window = (periods * fs / estimate).round() as usize;
+    let first = bin(signal.get(..window)?, fs, estimate)?;
+    let second = bin(signal.get(window..2 * window)?, fs, estimate)?;
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "window sizes are far below 2^53"
+    )]
+    let hop = window as f64;
+    let tau = core::f64::consts::TAU;
+    let predicted = tau * estimate * hop / fs;
+    let advance = second.1.atan2(second.0) - first.1.atan2(first.0);
+    // The measured advance, unwrapped to the turn nearest the prediction.
+    let error = advance - predicted;
+    let error = error - tau * (error / tau).round();
+    Some(estimate + error * fs / (tau * hop))
+}
+
+/// The Hann-windowed DFT of `chunk` at `f` Hz: `(re, im)`, or `None` if
+/// it's zero.
+fn bin(chunk: &[f64], fs: f64, f: f64) -> Option<(f64, f64)> {
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "window sizes are far below 2^53"
+    )]
+    let w = chunk.len() as f64;
+    let omega = core::f64::consts::TAU * f / fs;
+    let (mut re, mut im) = (0.0, 0.0);
+    for (i, &x) in chunk.iter().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "window indices are small")]
+        let i = i as f64;
+        let hann = 0.5 - 0.5 * (core::f64::consts::TAU * i / w).cos();
+        re += hann * x * (omega * i).cos();
+        im -= hann * x * (omega * i).sin();
+    }
+    (re != 0.0 || im != 0.0).then_some((re, im))
+}
+
 /// The 60 dB decay time of `signal`'s component at `f0` Hz, s.
 ///
 /// The fundamental's amplitude per window (a Hann-windowed DFT at `f0`,
@@ -111,7 +172,6 @@ pub fn t60(signal: &[f64], fs: f64, f0: f64, periods: f64, start: f64, end: f64)
         reason = "window sizes are far below 2^53"
     )]
     let w = window as f64;
-    let omega = core::f64::consts::TAU * f0 / fs;
     let points: Vec<(f64, f64)> = signal
         .chunks_exact(window)
         .enumerate()
@@ -121,14 +181,7 @@ pub fn t60(signal: &[f64], fs: f64, f0: f64, periods: f64, start: f64, end: f64)
                 reason = "sample counts are far below 2^53"
             )]
             let t = (k as f64 + 0.5) * w / fs;
-            let (mut re, mut im) = (0.0, 0.0);
-            for (i, &x) in chunk.iter().enumerate() {
-                #[expect(clippy::cast_precision_loss, reason = "window indices are small")]
-                let i = i as f64;
-                let hann = 0.5 - 0.5 * (core::f64::consts::TAU * i / w).cos();
-                re += hann * x * (omega * i).cos();
-                im -= hann * x * (omega * i).sin();
-            }
+            let (re, im) = bin(chunk, fs, f0).unwrap_or((0.0, 0.0));
             let amp = (re * re + im * im).sqrt();
             (t >= start && t <= end && amp > 0.0).then(|| (t, 20.0 * amp.log10()))
         })
