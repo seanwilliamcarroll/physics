@@ -56,6 +56,47 @@ impl<S: Scalar> DelayLine<S> {
         older.iter().chain(newer).copied()
     }
 
+    /// A line of `len` zeros with room for `cap`
+    /// samples, so [`reset`](Self::reset) up to `cap` never allocates
+    /// (a voice's line, sized once for its lowest note). `None` for
+    /// `len == 0` or `len > cap`.
+    #[must_use]
+    pub fn with_capacity(len: usize, cap: usize) -> Option<Self> {
+        if len == 0 || len > cap {
+            return None;
+        }
+        let mut buf = Vec::with_capacity(cap);
+        buf.resize(len, S::ZERO);
+        Some(Self { buf, head: 0 })
+    }
+
+    /// Makes this a line of `len` zeros, reusing the buffer: no allocation
+    /// while `len` fits the capacity. `false`, changing nothing, for
+    /// `len == 0` or a `len` over the capacity.
+    pub fn reset(&mut self, len: usize) -> bool {
+        if len == 0 || len > self.buf.capacity() {
+            return false;
+        }
+        self.buf.clear();
+        self.buf.resize(len, S::ZERO);
+        self.head = 0;
+        true
+    }
+
+    /// Subtracts the mean from every sample: a pluck's DC offset would sit
+    /// in the loop, which passes DC at full gain, and decay only by `ρ`.
+    pub fn remove_mean(&mut self) {
+        let sum = self.buf.iter().fold(S::ZERO, |a, &x| a + x);
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "line lengths are far below 2^53"
+        )]
+        let mean = sum / S::from_f64(self.buf.len() as f64);
+        for x in &mut self.buf {
+            *x -= mean;
+        }
+    }
+
     /// Sets slot `i` (0 = oldest) to `f(i)`, every slot: a pluck.
     pub fn fill(&mut self, mut f: impl FnMut(usize) -> S) {
         let n = self.buf.len();

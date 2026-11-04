@@ -42,17 +42,76 @@ impl<S: Scalar> KsString<S> {
     /// Nyquist, a loop under 2 samples, `ρ` outside `(0, 1]`, `T₆₀ ≤ 0`.
     #[must_use]
     pub fn new(fs: f64, f0: f64, voicing: Voicing) -> Option<Self> {
+        let n = voicing.coefficients(fs, f0)?.n;
+        Self::with_capacity(fs, f0, voicing, n)
+    }
+
+    /// As [`new`](Self::new), with room in the delay line for `cap`
+    /// samples, so [`restring`](Self::restring) to any note up to that
+    /// length never allocates (the audio thread's rule: a voice is sized
+    /// once for its lowest note). `None` also if the note needs more than
+    /// `cap` samples.
+    #[must_use]
+    pub fn with_capacity(fs: f64, f0: f64, voicing: Voicing, cap: usize) -> Option<Self> {
         let c = voicing.coefficients(fs, f0)?;
-        Some(Self {
-            line: DelayLine::new(c.n)?,
+        let mut s = Self {
+            line: DelayLine::with_capacity(c.n, cap)?,
             prev: S::ZERO,
-            tap_now: S::from_f64(c.rho * (1.0 - c.stretch)),
-            tap_prev: S::from_f64(c.rho * c.stretch),
-            allpass: c.allpass.map(S::from_f64),
+            tap_now: S::ZERO,
+            tap_prev: S::ZERO,
+            allpass: None,
             ap_in: S::ZERO,
             ap_out: S::ZERO,
-            pitch: c.pitch,
-        })
+            pitch: 0.0,
+        };
+        s.apply(c);
+        Some(s)
+    }
+
+    /// Re-voices this string for a new note, silent, reusing its delay
+    /// line. `false`, changing nothing, for settings it can't play or a
+    /// note longer than the line's capacity.
+    pub fn restring(&mut self, fs: f64, f0: f64, voicing: Voicing) -> bool {
+        let Some(c) = voicing.coefficients(fs, f0) else {
+            return false;
+        };
+        if !self.line.reset(c.n) {
+            return false;
+        }
+        self.apply(c);
+        true
+    }
+
+    /// Takes the coefficients (the line already has length `c.n`) and
+    /// clears the filters' memory.
+    fn apply(&mut self, c: voicing::Coefficients) {
+        self.tap_now = S::from_f64(c.rho * (1.0 - c.stretch));
+        self.tap_prev = S::from_f64(c.rho * c.stretch);
+        self.allpass = c.allpass.map(S::from_f64);
+        self.pitch = c.pitch;
+        self.prev = S::ZERO;
+        self.ap_in = S::ZERO;
+        self.ap_out = S::ZERO;
+    }
+
+    /// Adds a loss on top of the voicing's, so the note's fundamental falls
+    /// 60 dB in about `t60` more seconds: the release at note off. The
+    /// pitch doesn't change (only the taps' gain does). Ignored unless
+    /// `t60 > 0`.
+    pub fn damp(&mut self, t60: f64) {
+        // `t60 > 0` is false for NaN too.
+        let positive = t60 > 0.0;
+        if !positive {
+            return;
+        }
+        let r = S::from_f64(libm::exp10(-3.0 / (self.pitch * t60)));
+        self.tap_now = self.tap_now * r;
+        self.tap_prev = self.tap_prev * r;
+    }
+
+    /// Subtracts the delay line's mean (see [`DelayLine::remove_mean`]).
+    pub fn remove_mean(&mut self) {
+        self.line.remove_mean();
     }
 
     /// The delay line's length `N`, samples.

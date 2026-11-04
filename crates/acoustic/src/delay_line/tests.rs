@@ -34,3 +34,23 @@ fn fill_counts_from_the_front() {
 fn an_empty_line_is_refused() {
     assert!(DelayLine::<f64>::new(0).is_none());
 }
+
+#[test]
+fn reset_reuses_the_buffer_up_to_its_capacity() {
+    let mut d = DelayLine::<f64>::with_capacity(3, 10).unwrap();
+    d.push(1.0);
+    assert!(d.reset(10));
+    assert_eq!((d.len(), d.front()), (10, 0.0));
+    assert!(!d.reset(11), "over capacity");
+    assert!(!d.reset(0));
+    assert_eq!(d.len(), 10, "a refused reset changes nothing");
+    assert!(DelayLine::<f64>::with_capacity(5, 4).is_none());
+}
+
+#[test]
+fn remove_mean_leaves_no_dc() {
+    let mut d = DelayLine::<f64>::new(4).unwrap();
+    d.fill(|i| [1.0, 2.0, 3.0, 6.0][i]);
+    d.remove_mean();
+    assert_eq!(d.iter().collect::<Vec<_>>(), vec![-2.0, -1.0, 0.0, 3.0]);
+}
