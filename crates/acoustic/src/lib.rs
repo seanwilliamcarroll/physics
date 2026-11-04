@@ -7,9 +7,13 @@
 //! `math`.
 
 mod delay_line;
+mod excitation;
 pub mod measure;
 mod string;
+mod voices;
 
 pub use delay_line::DelayLine;
+pub use excitation::Excitation;
 pub use math::Scalar;
 pub use string::{Decay, KsString, Voicing};
+pub use voices::{DEFAULT_GAIN, LOWEST_HZ, RELEASE_T60, VOICES, Voices};
