@@ -9,6 +9,7 @@ description = "Physical-modeling sound synthesis: the acoustic track (docs/12-ac
 
 [dependencies]
 math = { path = "../math" }
+libm.workspace = true
 
 [lints]
 workspace = true
