@@ -5,7 +5,9 @@
 import { byId } from "../../js/dom.ts";
 import { MS_PER_SECOND } from "../../js/loop.ts";
 import { cssColor, setupCanvas } from "../../js/canvas.ts";
-import { checkbox, select, slider } from "../../js/controls.ts";
+import { button, checkbox, select, slider } from "../../js/controls.ts";
+import { SONGS, songEvents } from "../../js/songs.ts";
+import type { Song } from "../../js/songs.ts";
 import { KEY_CODES, OCTAVE_DOWN, OCTAVE_UP, keyToMidi, midiToHz, noteName } from "../../js/ks.ts";
 import { EXCITATION_NOISE, EXCITATION_TRIANGLE } from "../../js/acoustic-abi.ts";
 import { errorText, reportSmoke, smokeMode } from "../../js/smoke.ts";
@@ -43,9 +45,18 @@ const WAVE_FILL = 0.9;
  *  the boundary between two white keys. */
 const BLACK_KEY_WIDTH = 0.6;
 
-/** Smoke mode: one second, three notes (A3, E4, A4), rendered offline. */
+/** Smoke mode: the start of the first song, rendered offline; its onsets
+ *  are found in the audio and compared with its schedule. */
 const SMOKE_RATE = 48000;
-const SMOKE_NOTES = [57, 64, 69];
+const SMOKE_SECONDS = 2.5;
+/** Onset detection: RMS over 5 ms windows; an onset is a window at least
+ *  this many times louder than the one before. */
+const ONSET_WINDOW_S = 0.005;
+const ONSET_RISE = 3;
+/** Quieter than this is silence, not an onset. */
+const SILENCE_RMS = 0.01;
+/** worklet.ts SONG_LEAD_S: a song starts this long after it's scheduled. */
+const SONG_LEAD_S = 0.05;
 /** Samples drawn from the offline render, for the screenshot. */
 const SMOKE_DRAWN = 4096;
 
@@ -87,9 +98,13 @@ function drawWave(samples: Float32Array): void {
 
 /** Smoke: render one second offline and report its peak. */
 async function smoke(): Promise<void> {
-  const ctx = new OfflineAudioContext(1, SMOKE_RATE, SMOKE_RATE);
+  const ctx = new OfflineAudioContext(1, SMOKE_RATE * SMOKE_SECONDS, SMOKE_RATE);
   await ctx.audioWorklet.addModule(WORKLET_URL);
-  const init: ProcessorInit = { module: await compileModule(), seed: SEED, notes: SMOKE_NOTES };
+  const song = SONGS[0];
+  if (song === undefined) throw new Error("no songs");
+  // The song's events within the render (an off past the end is moot).
+  const scheduled = songEvents(song).filter((e) => e.at < SMOKE_SECONDS - 0.2);
+  const init: ProcessorInit = { module: await compileModule(), seed: SEED, notes: [], song: scheduled };
   const node = new AudioWorkletNode(ctx, PROCESSOR, {
     numberOfInputs: 0, outputChannelCount: [1], processorOptions: init,
   });
@@ -102,8 +117,34 @@ async function smoke(): Promise<void> {
     peak = Math.max(peak, Math.abs(v));
   }
   drawWave(data.subarray(0, SMOKE_DRAWN));
-  hud.textContent = `offline render: ${data.length} samples, peak ${peak.toFixed(3)}`;
-  reportSmoke(finite ? `ok audio_peak=${peak.toFixed(4)} samples=${data.length}` : "error non-finite sample");
+  const expected = scheduled.filter((e) => e.on).map((e) => SONG_LEAD_S + e.at);
+  const found = onsets(data, SMOKE_RATE);
+  // Each expected onset against the nearest one found, ms.
+  const worstMs = Math.max(...expected.map((t) => Math.min(...found.map((f) => Math.abs(f - t))))) * MS_PER_SECOND;
+  hud.textContent =
+    `offline render: ${data.length} samples, peak ${peak.toFixed(3)}; ${song.name}: ` +
+    `${expected.length} notes scheduled, ${found.length} onsets found, worst ${worstMs.toFixed(1)} ms off`;
+  reportSmoke(
+    finite
+      ? `ok audio_peak=${peak.toFixed(4)} samples=${data.length} song_notes=${expected.length} onsets=${found.length} onset_worst_ms=${worstMs.toFixed(1)}`
+      : "error non-finite sample",
+  );
+}
+
+/** Times (s) where the level jumps: RMS per `ONSET_WINDOW_S` window rising
+ *  `ONSET_RISE` times over the previous window's. */
+function onsets(data: Float32Array, rate: number): number[] {
+  const w = Math.round(ONSET_WINDOW_S * rate);
+  const times: number[] = [];
+  let prev = 0;
+  for (let i = 0; i + w <= data.length; i += w) {
+    let sum = 0;
+    for (let j = i; j < i + w; j++) sum += (data[j] ?? 0) ** 2;
+    const rms = Math.sqrt(sum / w);
+    if (rms > ONSET_RISE * prev && rms > SILENCE_RMS) times.push(i / rate);
+    prev = rms;
+  }
+  return times;
 }
 
 /** The live page: everything after the first click or key. */
@@ -246,6 +287,41 @@ function onKeyUp(e: KeyboardEvent): void {
   noteOff(midi);
 }
 
+// --- Songs: scheduled in the worklet; the page only lights the keys. ---
+
+/** Timers lighting the keys for the song playing (visual only: the sound
+ *  is scheduled to the frame in the worklet). */
+let songTimers: number[] = [];
+/** The worklet starts a song this long after it's asked (worklet.ts
+ *  SONG_LEAD_S), so the key lights wait as long. */
+const SONG_LEAD_MS = SONG_LEAD_S * MS_PER_SECOND;
+
+function stopSong(): void {
+  send({ type: "stop" });
+  for (const t of songTimers) clearTimeout(t);
+  songTimers = [];
+  for (const el of piano.querySelectorAll(".down")) el.classList.remove("down");
+}
+
+async function playSong(song: Song): Promise<void> {
+  await start();
+  stopSong();
+  const events = songEvents(song);
+  send({ type: "play", events });
+  songTimers = events.map((e) =>
+    window.setTimeout(() => {
+      if (e.on) lastMidi = e.key;
+      keyEl(e.key)?.classList.toggle("down", e.on);
+    }, SONG_LEAD_MS + e.at * MS_PER_SECOND),
+  );
+}
+
+function buildSongs(): void {
+  const songs = byId("songs", HTMLElement);
+  for (const song of SONGS) button(songs, { label: `▶ ${song.name}`, onClick: () => void playSong(song) });
+  button(songs, { label: "■ stop", onClick: stopSong });
+}
+
 // --- Controls. ---
 
 function buildControls(): void {
@@ -312,6 +388,7 @@ try {
     await smoke();
   } else {
     buildControls();
+    buildSongs();
     buildPiano();
     byId("start", HTMLButtonElement).addEventListener("click", () => void start());
     window.addEventListener("keydown", onKeyDown);
