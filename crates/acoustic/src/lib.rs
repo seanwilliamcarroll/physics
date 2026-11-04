@@ -8,6 +8,7 @@
 
 mod delay_line;
 mod excitation;
+pub mod fft;
 pub mod measure;
 mod string;
 mod voices;

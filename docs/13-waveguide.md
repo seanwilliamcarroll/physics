@@ -121,6 +121,17 @@ permutation, then `log₂ n` passes of butterflies), generic over `Scalar`,
 with twiddle factors from `libm` (bit-identical on wasm, A1's
 reasoning). Tested against a naive `O(n²)` DFT, and on known tones.
 
+**As built (A2.2,** `acoustic::fft`**):** butterflies through
+`chunks_exact_mut` and `split_at_mut` (each pass's two halves without an
+index); twiddles and the bit-reversal table built once in `Fft::new`, so
+`forward` never allocates. Against the naive DFT at 1024 points: worst
+error 9.6e-12 (f64; much of it the naive DFT's own `cos` of large
+arguments) and 5.7e-6 (f32). Cost (`cargo bench -p acoustic --bench
+fft`, f32, Apple silicon): 4.4 µs at 1024 points, 20.5 µs at 4096,
+101 µs at 16384 (N log N); the page's whole spectrum (window, FFT, dB)
+26.1 µs, so even a few times slower in wasm it's well under a tenth of a
+render quantum.
+
 The synth keeps its last 4096 output samples. When the worklet asks for a
 snapshot, a Hann-windowed FFT turns them into dB magnitudes (11.7 Hz per
 bin at 48 kHz), sent with the string's shape. The page draws 0–5 kHz,
