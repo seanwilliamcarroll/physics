@@ -121,3 +121,25 @@ fn positions_span_the_effective_length() {
         "the last cell's center is half a cell from the nut"
     );
 }
+
+#[test]
+fn a_random_pluck_starts_at_rest() {
+    // Noise as a shape: each cell drawn once, both rails take it, so the
+    // two traveling waves are equal (zero velocity) and the loop's content
+    // (the right rail, then the left negated) sums to zero.
+    let lossless = Voicing {
+        tuned: false,
+        decay: Decay::Loss(1.0),
+    };
+    let mut wg = Waveguide::<f64>::new(FS, 440.0, lossless).unwrap();
+    let mut i = 0;
+    wg.pluck(|_| {
+        i += 1;
+        hash_noise(i)
+    });
+    let m = wg.rail();
+    for c in 0..m {
+        let (r, l) = wg.rails_at(c);
+        assert!(r.to_bits() == l.to_bits(), "cell {c}: {r} vs {l}");
+    }
+}
