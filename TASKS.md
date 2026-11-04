@@ -163,10 +163,14 @@ from the approach speed recorded before the solve (a speculative contact
 stops the ball exactly at the surface, so the next substep sees no
 approach). Roadmap "done when" corrected.
 
-## 2. Radius, walls, `Restitution` (PR)
+## ✅ 2. Radius, walls, `Restitution` (done)
 
-- [ ] `Particles` radius column (0 = no collision; goldens unchanged),
-      `World` walls, `Restitution` param (`checked_param!`, [0, 1]).
+`Radius` (r > 0, finite; written out, fallible `cast`), `Restitution`
+(`checked_param!`, `INELASTIC` default, `ELASTIC`); `Particles::add_circle`,
+`radius()`, `max_radius()` (kept on add and pop; the broadphase's cell
+size); `collision::Wall` (`through(point, normal)`, signed `distance`);
+`World::add_wall/walls/restitution/set_restitution/collides`. Data only:
+nothing steps differently yet (goldens unchanged).
 
 ## 3. Broadphase: uniform grid (PR)
 

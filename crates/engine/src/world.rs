@@ -13,7 +13,7 @@ pub use config_error::ConfigError;
 use constraints::Constraints;
 pub use drag::Grab;
 
-use crate::Baumgarte;
+use crate::{Baumgarte, Restitution, Wall};
 use crate::{
     DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Stabilization, Vec2,
 };
@@ -37,6 +37,10 @@ pub struct World<S: Scalar> {
     /// The ground's height, m, if any: a half-plane clamp after every
     /// substep (`world/ground.rs`).
     ground: Option<S>,
+    /// Static half-planes circles collide with (M6).
+    walls: Vec<Wall<S>>,
+    /// Restitution for every collision (M6: one per world).
+    restitution: Restitution<S>,
 }
 
 impl<S: Scalar> World<S> {
@@ -53,7 +57,38 @@ impl<S: Scalar> World<S> {
             acc_next: Vec::new(),
             constraints: Constraints::new(Baumgarte::default()),
             ground: None,
+            walls: Vec::new(),
+            restitution: Restitution::INELASTIC,
         }
+    }
+
+    /// Adds a static wall; circles collide with it (`docs/08-collision.md`).
+    pub fn add_wall(&mut self, wall: Wall<S>) {
+        self.walls.push(wall);
+    }
+
+    #[must_use]
+    pub fn walls(&self) -> &[Wall<S>] {
+        &self.walls
+    }
+
+    #[must_use]
+    pub const fn restitution(&self) -> Restitution<S> {
+        self.restitution
+    }
+
+    /// Restitution for every collision, from the next step. A new world's
+    /// is [`Restitution::INELASTIC`].
+    pub const fn set_restitution(&mut self, e: Restitution<S>) {
+        self.restitution = e;
+    }
+
+    /// Whether anything can collide: any wall, or any circle (a particle
+    /// with a radius). Such a world is stepped by the solver
+    /// (`docs/08-collision.md`, "Who steps").
+    #[must_use]
+    pub fn collides(&self) -> bool {
+        !self.walls.is_empty() || self.particles.max_radius() > S::ZERO
     }
 
     pub fn add_force(&mut self, force: impl Force<S> + 'static) {
