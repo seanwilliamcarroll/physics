@@ -21,6 +21,9 @@ mod smoke;
 
 /// Where `cargo build` puts the wasm artifact, relative to the target dir.
 const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/web.wasm";
+/// The acoustic track's module (A1.5): `crates/acoustic-web`, served as
+/// `site/pkg/acoustic.wasm`.
+const ACOUSTIC_ARTIFACT: &str = "wasm32-unknown-unknown/release/acoustic_web.wasm";
 
 /// Build, test, and serve helpers for the physics engine and its demo site.
 #[derive(Parser, Debug)]
@@ -38,7 +41,7 @@ struct Cli {
 
 #[derive(Subcommand, Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
-    /// Compile the site TypeScript and build crates/web for wasm32 into site/pkg/engine.wasm
+    /// Compile the site TypeScript and build crates/web and crates/acoustic-web for wasm32 into site/pkg/{engine,acoustic}.wasm
     Site,
     /// Build the site, then serve it with tsc --watch alongside; Ctrl-C stops both
     Serve {
@@ -130,8 +133,8 @@ fn site_ts(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Builds the site: the TypeScript library, then the release wasm, copied
-/// to `site/pkg/engine.wasm`.
+/// Builds the site: the TypeScript library, then both release wasm
+/// modules, copied to `site/pkg/engine.wasm` and `site/pkg/acoustic.wasm`.
 fn site(root: &Path) -> Result<(), String> {
     site_ts(root)?;
     // `cargo run` sets CARGO to the cargo binary running us; reuse it so the
@@ -146,6 +149,8 @@ fn site(root: &Path) -> Result<(), String> {
             "wasm32-unknown-unknown",
             "-p",
             "web",
+            "-p",
+            "acoustic-web",
         ])
         .status()
         .map_err(|e| format!("failed to run cargo: {e}"))?;
@@ -153,12 +158,17 @@ fn site(root: &Path) -> Result<(), String> {
         return Err(format!("wasm build failed ({status})"));
     }
 
-    let src = target_dir(root).join(WASM_ARTIFACT);
     let dest_dir = root.join("site").join("pkg");
-    let dest = dest_dir.join("engine.wasm");
     fs::create_dir_all(&dest_dir).map_err(|e| format!("creating {}: {e}", dest_dir.display()))?;
-    let bytes = fs::copy(&src, &dest).map_err(|e| format!("copying {}: {e}", src.display()))?;
-    println!("wrote {} ({bytes} bytes)", dest.display());
+    for (artifact, name) in [
+        (WASM_ARTIFACT, "engine.wasm"),
+        (ACOUSTIC_ARTIFACT, "acoustic.wasm"),
+    ] {
+        let src = target_dir(root).join(artifact);
+        let dest = dest_dir.join(name);
+        let bytes = fs::copy(&src, &dest).map_err(|e| format!("copying {}: {e}", src.display()))?;
+        println!("wrote {} ({bytes} bytes)", dest.display());
+    }
     Ok(())
 }
 

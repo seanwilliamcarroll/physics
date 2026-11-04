@@ -127,6 +127,10 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M3.5 | `F32`, `F64` | 90,194 B | 29,209 B | + constraints, XPBD and impulse solvers, pendulum, solver controls (each ×2 scalars) |
 | M4.6 | `F32`, `F64` | 102,099 B | 34,099 B | + compliance, iteration order, chain and double-pendulum scenes, drag, links buffer |
 | M5.6 | `F32`, `F64` | 127,655 B | 42,813 B | + springs and damping, ground, the jelly, live stiffness (+25.6 KB over M4.6: springs, the jelly builder and damped forms of both solvers, ×2 scalars) |
+| M6.6 | `F32`, `F64` | 192,680 B | 60,661 B | + collision: broadphase, narrowphase, contacts in both solvers (no M6 page or exports yet; measured at A1.5). **+65 KB over M5.6**, more than M5 added; unexplained so far, a cleanup item (TASKS A1 section 7) |
+
+The acoustic track ships its own module, `acoustic.wasm`
+(`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`.
 
 ### The render buffer
 

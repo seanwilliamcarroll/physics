@@ -54,6 +54,7 @@ physics/
 │   │   └── benches/step.rs
 │   │
 │   ├── acoustic/           # A1+: Karplus–Strong string, offline pitch/T60 measurement
+│   ├── acoustic-web/       # cdylib → acoustic.wasm (the audio worklet's synth)
 │   ├── test-support/       # dev-dep: shared integration-test helpers
 │   │   └── src/            # tol, orbit, hash, worlds (proptest)
 │   │

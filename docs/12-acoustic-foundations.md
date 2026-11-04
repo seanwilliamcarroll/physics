@@ -206,6 +206,28 @@ after 80 dB. A seven-note chord at gain ¼ peaks at 0.824: no clipping.
 Every MIDI key from A0 up is playable at 44.1 and 48 kHz (G9's loop is
 3.8 samples, `N = 3` plus the allpass).
 
+## The module (A1.5)
+
+`crates/acoustic-web`, a `cdylib` of its own, built by `cargo xtask site`
+into `site/pkg/acoustic.wasm`: **50,890 B (21,473 B gzip -9)**, against
+the engine's 192,680 B. One import, `env.console_error` (the panic hook);
+twelve exports:
+
+| Export | Does |
+|---|---|
+| `synth_new(sample_rate, seed) → handle` | 8 voices at the context's rate; null for a bad rate |
+| `synth_free(handle)` | |
+| `synth_render(handle, frames) → *f32` | renders mono samples (up to 4096 frames: the buffer is allocated once) |
+| `synth_note_on(handle, key) → status` / `synth_note_off(handle, key)` | MIDI keys; refused below A0 |
+| `synth_set_tuned / _t60 / _excitation / _gain → status` | settings for the next notes (gain: now) |
+| `synth_snapshot(handle) → len`, `synth_snapshot_ptr(handle) → *f32` | the latest string's delay line, for drawing |
+| `synth_clipped(handle) → f64` | samples clamped to ±1 so far |
+
+`Synth` (safe Rust, tested natively) holds the voices, the settings and
+both buffers; `exports` is the only `unsafe`, as in `web`. Checked from
+Node against the real module: one second of A4 peaks at 0.23, with the
+108-sample loop the native tests predict.
+
 ## Measuring, offline, in Rust
 
 Tests render audio with no browser and measure it:
