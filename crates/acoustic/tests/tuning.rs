@@ -30,6 +30,9 @@ fn hash_noise(i: usize) -> f64 {
 /// Which string model renders: A1's loop, or A2's waveguide (read at its
 /// default pickup). Tuning and decay are the loop's, so both must pass
 /// the same tests (`docs/13-waveguide.md`).
+/// Where the waveguide sweep plucks, from the bridge.
+const PLUCK: f64 = 0.13;
+
 #[derive(Copy, Clone, Debug)]
 enum Model {
     Loop,
@@ -50,11 +53,18 @@ fn render<S: Scalar>(model: Model, fs: f64, f0: f64, voicing: Voicing, secs: f64
             s.render(&mut out);
         }
         Model::Waveguide => {
+            // A triangle, not noise: a pluck at rest from random values can
+            // put almost nothing into the fundamental on a short string
+            // (B7 at 44.1 kHz has 5 cells a rail), and the pitch measure
+            // then locks onto a neighbor (−104 cents, A2.5). The peak at
+            // 0.13 is no small `1/n`, so every low harmonic sounds.
             let mut s = Waveguide::<S>::new(fs, f0, voicing).unwrap();
-            let mut i = 0;
-            s.pluck(|_| {
-                i += 1;
-                S::from_f64(hash_noise(i))
+            s.pluck(|x| {
+                S::from_f64(if x < PLUCK {
+                    x / PLUCK
+                } else {
+                    (1.0 - x) / (1.0 - PLUCK)
+                })
             });
             s.render(&mut out);
         }

@@ -83,7 +83,11 @@ waveguide reproduces the loop **bit for bit** over 20,000 samples for
 five notes (55 Hz to 1 kHz, odd and even loops, tuned and untuned), in
 both scalars. And A1's bar, rerun on the waveguide read at a pickup: all
 88 keys within **±0.0073 cents** (the loop: ±0.0056), `T₆₀` within
-**0.1%** at every note tried. Positions are fractions of the length
+**0.1%** at every note tried. (Since A2.5 the waveguide sweep plucks a
+triangle, not noise: once a pluck correctly starts at rest, random values
+on a 5-cell string can leave almost no fundamental, and the pitch measure
+locked onto a neighbor, −104 cents at B7. With a triangle at 0.13: worst
+**±0.0009 cents**.) Positions are fractions of the length
 measured **from the bridge** (so "near the bridge" is small, as players
 say it); the physics is symmetric (`|sin kπβ| = |sin kπ(1 − β)|`).
 
