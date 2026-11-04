@@ -162,7 +162,7 @@ fn site(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Runs the math and engine test suites compiled to `wasm32-wasip1`,
+/// Runs the math, engine and acoustic test suites compiled to `wasm32-wasip1`,
 /// executed by wasmtime (the runner set in `.cargo/config.toml`). The same
 /// golden hashes then have to match on wasm as natively: the cross-platform
 /// determinism check (`docs/04-testing.md`).
@@ -190,6 +190,8 @@ fn test_wasm(root: &Path) -> Result<(), String> {
             "math",
             "-p",
             "engine",
+            "-p",
+            "acoustic",
             "--target",
             "wasm32-wasip1",
         ])

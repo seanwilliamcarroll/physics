@@ -1,0 +1,14 @@
+[package]
+name = "acoustic"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Physical-modeling sound synthesis: the acoustic track (docs/12-acoustic-foundations.md)."
+
+[dependencies]
+math = { path = "../math" }
+
+[lints]
+workspace = true
