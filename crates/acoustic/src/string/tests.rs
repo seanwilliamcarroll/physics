@@ -23,6 +23,7 @@ fn render<S: Scalar>(fs: f64, f0: f64, rho: f64, secs: f64) -> (KsString<S>, Vec
     let voicing = Voicing {
         tuned: false,
         decay: Decay::Loss(rho),
+        inharmonicity: 0.0,
     };
     let mut s = KsString::<S>::new(fs, f0, voicing).unwrap();
     s.pluck(|i, _| S::from_f64(hash_noise(i)));
@@ -103,12 +104,14 @@ fn t60_f64() {
 const LOSSLESS: Voicing = Voicing {
     tuned: false,
     decay: Decay::Loss(1.0),
+    inharmonicity: 0.0,
 };
 
 const fn loss(rho: f64) -> Voicing {
     Voicing {
         tuned: false,
         decay: Decay::Loss(rho),
+        inharmonicity: 0.0,
     }
 }
 
@@ -124,6 +127,7 @@ fn bad_settings_are_refused() {
     let tuned = Voicing {
         tuned: true,
         decay: Decay::Loss(1.0),
+        inharmonicity: 0.0,
     };
     assert!(
         KsString::<f64>::new(48_000.0, 20_000.0, tuned).is_none(),
@@ -132,6 +136,7 @@ fn bad_settings_are_refused() {
     let no_decay = Voicing {
         tuned: true,
         decay: Decay::T60(0.0),
+        inharmonicity: 0.0,
     };
     assert!(KsString::<f64>::new(48_000.0, 440.0, no_decay).is_none());
     assert!(KsString::<f64>::new(f64::NAN, 440.0, LOSSLESS).is_none());

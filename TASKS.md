@@ -207,10 +207,16 @@ and `K` are **chosen to reproduce the measured contact times**, and the
 tests check them. Strike point, velocity range, string groups and body:
 marked as our choices.
 
-## 2. Dispersion (PR)
+## ✅ 2. Dispersion (done)
 
-- [ ] The allpass chain for a target `B`; the tuning budget; tests:
-      stretched partials within cents, 88 keys in tune with stiffness on.
+**Second-order allpasses, not first-order** (the plan's chain; the
+prototype showed first-order sections can't fit 30 partials, 40–78
+cents off): up to 16 biquads, placed by Abel, Välimäki & Smith 2010
+(`adf.m`) and refined by damped Gauss–Newton. Measured: designs within
+0.66 cents over 30 partials; rendered partials within 0.20; 88 keys in
+tune within 0.026 with stiffness on; a stiff golden, same on wasm.
+**Design cost** 2–14 ms a key (~200 ms for 88, native): too slow for a
+note on, so section 5 designs per key at start (measure on wasm there).
 
 ## 3. The hammer (PR)
 

@@ -58,6 +58,7 @@ impl Synth {
             Voicing {
                 tuned: false,
                 decay: Decay::Loss(1.0),
+                inharmonicity: 0.0,
             },
         )?
         .delay()
@@ -67,6 +68,7 @@ impl Synth {
             voicing: Voicing {
                 tuned: true,
                 decay: Decay::T60(DEFAULT_T60),
+                inharmonicity: 0.0,
             },
             excitation: Excitation::Noise,
             out: vec![0.0; MAX_FRAMES],

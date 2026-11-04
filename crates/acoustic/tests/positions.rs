@@ -14,6 +14,7 @@ const F0: f64 = 220.0;
 const VOICING: Voicing = Voicing {
     tuned: true,
     decay: Decay::T60(10.0),
+    inharmonicity: 0.0,
 };
 /// Skip the first periods, then measure over this long (many periods of
 /// every harmonic measured).

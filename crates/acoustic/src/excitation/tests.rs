@@ -6,6 +6,7 @@ use crate::{Decay, KsString, Voicing};
 const VOICING: Voicing = Voicing {
     tuned: true,
     decay: Decay::Loss(1.0),
+    inharmonicity: 0.0,
 };
 
 fn excited(e: Excitation, seed: u64) -> Vec<f64> {

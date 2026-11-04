@@ -68,7 +68,7 @@ impl<S: Scalar> Waveguide<S> {
             right: DelayLine::with_capacity(m, rail_cap)?,
             left: DelayLine::with_capacity(m, rail_cap)?,
             odd: (c.n % 2 == 1).then_some(S::ZERO),
-            bridge: Bridge::new(c),
+            bridge: Bridge::new(&c),
             pickup: DEFAULT_PICKUP,
             length,
             first,
@@ -91,7 +91,7 @@ impl<S: Scalar> Waveguide<S> {
         self.left.reset(m);
         self.odd = (c.n % 2 == 1).then_some(S::ZERO);
         (self.length, self.first) = geometry(fs, c.pitch, m);
-        self.bridge.apply(c);
+        self.bridge.apply(&c);
         true
     }
 

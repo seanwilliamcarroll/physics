@@ -87,6 +87,7 @@ impl<S: Scalar> Voices<S> {
         let probe = Voicing {
             tuned: true,
             decay: crate::Decay::Loss(1.0),
+            inharmonicity: 0.0,
         };
         let cap = libm::ceil(fs / LOWEST_HZ);
         #[expect(
