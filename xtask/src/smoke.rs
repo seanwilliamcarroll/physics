@@ -3,6 +3,7 @@
 //! canvas. The page side lives in `site/js/smoke.js` (`?smoke` mode).
 
 use std::env;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self};
@@ -82,6 +83,11 @@ pub(crate) fn judge_panic(stderr: &str) -> Result<String, String> {
 /// effectively silence (−40 dBFS).
 const AUDIBLE_PEAK: f64 = 0.01;
 
+/// How far a song's onset, found in the rendered audio, may be from its
+/// schedule, ms: two of the page's 5 ms detection windows (the worklet
+/// itself is exact to one 2.7 ms render quantum).
+const ONSET_TOLERANCE_MS: f64 = 10.0;
+
 /// Judges an audio load: the page rendered samples, all finite (it reports
 /// `error` otherwise), with a peak that's audible and unclipped. Pure, so
 /// it's unit-tested.
@@ -102,7 +108,22 @@ pub(crate) fn judge_audio(stderr: &str) -> Result<String, String> {
     if !(AUDIBLE_PEAK..=1.0).contains(&peak) {
         return Err(format!("peak {peak}: silent or clipped"));
     }
-    Ok(format!("samples={samples} audio_peak={peak}"))
+    let mut summary = format!("samples={samples} audio_peak={peak}");
+    // A scheduled song, if the page rendered one: every note's onset found,
+    // on time.
+    if fields.contains("song_notes=") {
+        let (notes, found, worst) = (get("song_notes")?, get("onsets")?, get("onset_worst_ms")?);
+        if found < notes {
+            return Err(format!(
+                "song: {notes} notes scheduled, {found} onsets heard"
+            ));
+        }
+        if worst > ONSET_TOLERANCE_MS {
+            return Err(format!("song: an onset {worst} ms off its schedule"));
+        }
+        let _ = write!(summary, " song_notes={notes} onset_worst_ms={worst}");
+    }
+    Ok(summary)
 }
 
 /// Judges a drawing load from Chrome's stderr. Pure, so it's unit-tested.
