@@ -40,6 +40,12 @@ function report(text: string): void {
   console.log(`SMOKE ${text}`);
 }
 
+/** Reports a page-specific smoke result (`ok key=value…` or `error …`):
+ *  for pages that aren't particle demos, such as the A1 audio page. */
+export function reportSmoke(text: string): void {
+  report(text);
+}
+
 /** One demo on its own canvas, as the smoke test sees it.
  */
 export type SmokePanel = { demo: DemoHandle; ctx: CanvasRenderingContext2D; draw: () => void };

@@ -132,3 +132,34 @@ main.wide {
   border-radius: 6px;
   background: var(--stage-bg);
 }
+
+/* A1: an on-screen piano. White keys in a row; black keys float between
+   them (positioned by the page). */
+.piano {
+  position: relative;
+  height: 9rem;
+  margin: 1rem 0;
+  user-select: none;
+  touch-action: none;
+}
+.piano .key {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--ground);
+  border-radius: 0 0 4px 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.4rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.piano .white { height: 100%; background: var(--fg); color: var(--bg); }
+.piano .black { height: 60%; background: var(--bg); color: var(--muted); z-index: 1; }
+.piano .key.down { background: var(--accent); color: var(--bg); }
+.start {
+  font-size: 1.1rem;
+  padding: 0.6rem 1.2rem;
+  margin: 0.5rem 0;
+}
