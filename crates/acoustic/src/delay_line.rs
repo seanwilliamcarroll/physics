@@ -30,6 +30,13 @@ impl<S: Scalar> DelayLine<S> {
         self.buf.len()
     }
 
+    /// The longest this line can [`reset`](Self::reset) to without
+    /// allocating.
+    #[must_use]
+    pub fn capacity(&self) -> usize {
+        self.buf.capacity()
+    }
+
     /// Never true: a line has at least one sample (see [`new`](Self::new)).
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -40,6 +47,23 @@ impl<S: Scalar> DelayLine<S> {
     #[must_use]
     pub fn front(&self) -> S {
         self.buf.get(self.head).copied().unwrap_or(S::ZERO)
+    }
+
+    /// Sample `j` counting from the front (0 = the oldest, the next to
+    /// leave); 0 past the end.
+    #[must_use]
+    pub fn at(&self, j: usize) -> S {
+        let n = self.buf.len();
+        self.buf
+            .get((self.head + j) % n)
+            .copied()
+            .unwrap_or(S::ZERO)
+    }
+
+    /// The newest sample (the last pushed).
+    #[must_use]
+    pub fn back(&self) -> S {
+        self.at(self.buf.len() - 1)
     }
 
     /// Replaces the oldest sample with `v`, the newest.

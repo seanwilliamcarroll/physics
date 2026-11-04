@@ -5,7 +5,7 @@ use crate::bridge::Bridge;
 use crate::{DelayLine, Scalar, Voicing};
 
 /// A plucked string: a delay line of `N` samples fed back through the
-/// loop filter ([`Bridge`]: a loss `ρ`, a two-point lowpass
+/// loop filter (the crate's `Bridge`: a loss `ρ`, a two-point lowpass
 /// `(1 − S) + S z⁻¹` with `S = ½` Karplus & Strong's average, and, when
 /// tuned, a first-order allpass for the fractional delay):
 ///
