@@ -119,7 +119,11 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`Excitation`](../crates/acoustic/src/excitation.rs) | What a pluck leaves in the loop (noise, or the Piano Gloves triangle), always zero-mean. |
 | [`Voices<S>`](../crates/acoustic/src/voices.rs) | 8 preallocated strings played by MIDI key: stealing, release, gain and a counted clamp. |
 | [`Synth`](../crates/acoustic-web/src/synth.rs) | The worklet's whole state behind the `synth_*` C ABI: voices, settings, and preallocated output and snapshot buffers. |
-| [`ProcessorInit`, `ToWorklet`, `FromWorklet`](../site/demos/a1-string/worklet.ts) | The messages between page and worklet as a discriminated union, so a misspelled field or type is a compile error on both sides. |
+| [`ProcessorInit`, `ToWorklet`, `FromWorklet`](../site/js/synth-worklet.ts) | The messages between page and worklet as a discriminated union, so a misspelled field or type is a compile error on both sides. Shared by the acoustic pages since A2. |
+| [`Waveguide<S>`](../crates/acoustic/src/waveguide.rs) | A2's string: two rails with inverting ends and A1's loop filter at the bridge; positions on the effective length (`fs / 2f₀`), so a pluck or pickup at 1/n really sits on the node. Bit-exact to A1's loop from the same state. |
+| [`Model`](../crates/acoustic/src/voices.rs) | Which string a note plays (loop or waveguide); every voice preallocates both, so the choice never allocates. |
+| [`Fft<S>`, `Spectrum<S>`](../crates/acoustic/src/fft.rs) | Our radix-2 FFT and the Hann/dB analyzer around it, everything precomputed so analysis on the audio thread never allocates. |
+| [`Live`, `LiveOptions`](../site/js/synth-live.ts) | One way for every acoustic page to start audio and keep the snapshot buffers circulating. |
 | [`SynthHandle`](../site/js/acoustic.d.ts) | A branded `*mut Synth`, like the engine's `DemoHandle`. |
 
 ## Test and tooling crates
