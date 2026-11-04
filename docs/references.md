@@ -87,7 +87,8 @@ Fractional-delay tuning, decay stretching, dynamics, pick position (A1).
 
 **Smith, J. O.** *Physical Audio Signal Processing.* Online book (CCRMA,
 Stanford), 2010 edition; print by W3K Publishing, ISBN 978-0-9745607-2-4.
-Digital waveguides, Karplus–Strong as a waveguide special case, piano models (A1–A3).
+Digital waveguides, Karplus–Strong as a waveguide special case, commuted
+losses, piano models (A1–A3; `13-waveguide.md`).
 - https://ccrma.stanford.edu/~jos/pasp/
 
 **Van Duyne, S. A., Smith, J. O. (1993).** *Physical Modeling with the 2-D
@@ -114,6 +115,12 @@ with the Finite Difference Method.* arXiv:physics/0009068.
 Leapfrog scheme, Courant criterion, 1D and 2D. Assigned reading in Land's
 ECE 5760; the basis of the drum lab (A4).
 - arXiv: https://arxiv.org/abs/physics/0009068
+
+**Cooley, J. W., Tukey, J. W. (1965).** *An Algorithm for the Machine
+Calculation of Complex Fourier Series.* Mathematics of Computation
+19(90):297–301. The radix-2 FFT behind A2's spectrum
+(`13-waveguide.md`).
+- DOI: https://doi.org/10.1090/S0025-5718-1965-0178586-1
 
 **W3C. *Web Audio API 1.1*.** Working Draft (September 2026 when checked).
 `AudioContext`, `AudioWorklet`, the render quantum (128 frames by

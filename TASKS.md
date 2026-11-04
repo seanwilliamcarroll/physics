@@ -173,11 +173,16 @@ yours, "looks good".
 
 ---
 
-## 1. `docs/13-waveguide.md` (PR)
+## ✅ 1. `docs/13-waveguide.md` (done)
 
-- [ ] The rails, terminations, the lumped bridge filter, pluck and pickup
-      positions and their harmonic predictions, the KS equivalence, the
-      FFT and the spectrum. Decisions above, as adopted.
+Decisions as adopted, plus one the plan left open: **odd loop lengths.**
+Both rails get `⌊N/2⌋` samples and, when `N` is odd, the extra sample is a
+one-sample delay inside the bridge, so positions map symmetrically onto
+both rails and the loop is still exactly `N`. Also written down: why the
+waveguide is the exact sampled solution of the ideal wave equation (no
+numerical dispersion, unlike A4's finite differences), why lumping the
+filters at the bridge is exact (they commute), and how the KS equivalence
+pins the shared machinery. Reference: Cooley & Tukey 1965 (DOI checked).
 
 ## 2. FFT (PR)
 
