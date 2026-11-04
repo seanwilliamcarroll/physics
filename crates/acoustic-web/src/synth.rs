@@ -1,9 +1,10 @@
 //! [`Synth`]: the voices plus the page's settings, and the buffers the
 //! worklet reads. Safe Rust, tested natively.
 
-use acoustic::{DEFAULT_GAIN, Decay, Excitation, Voices, Voicing};
+use acoustic::fft::Spectrum;
+use acoustic::{DEFAULT_GAIN, Decay, Excitation, Model, Voices, Voicing};
 
-use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE};
+use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_WAVEGUIDE};
 
 /// The most frames one [`Synth::render`] call produces: the output buffer
 /// is allocated once at this size (no allocation on the audio thread).
@@ -11,6 +12,10 @@ use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE};
 /// for more, and 4096 leaves room (a larger request is refused, not
 /// allocated).
 pub const MAX_FRAMES: usize = 4096;
+
+/// The spectrum's size, samples: 4096 at 48 kHz is 85 ms of output and
+/// 11.7 Hz per bin (`docs/13-waveguide.md`, "The spectrum").
+pub const SPECTRUM_SIZE: usize = 4096;
 
 /// A new synth's settings: tuned, a 3 s decay, noise.
 pub const DEFAULT_T60: f64 = 3.0;
@@ -31,6 +36,13 @@ pub struct Synth {
     out: Vec<f32>,
     /// The latest string's delay line, oldest first: what the page draws.
     snapshot: Vec<f32>,
+    /// The last `SPECTRUM_SIZE` output samples (a ring; `history_at` is
+    /// the oldest), a linear copy of them, and the analyzer: all
+    /// allocated once.
+    history: Vec<f32>,
+    history_at: usize,
+    linear: Vec<f32>,
+    spectrum: Spectrum<f32>,
 }
 
 impl Synth {
@@ -59,6 +71,10 @@ impl Synth {
             excitation: Excitation::Noise,
             out: vec![0.0; MAX_FRAMES],
             snapshot: Vec::with_capacity(longest),
+            history: vec![0.0; SPECTRUM_SIZE],
+            history_at: 0,
+            linear: vec![0.0; SPECTRUM_SIZE],
+            spectrum: Spectrum::new(SPECTRUM_SIZE)?,
         })
     }
 
@@ -67,7 +83,46 @@ impl Synth {
     pub fn render(&mut self, frames: usize) -> Option<&[f32]> {
         let out = self.out.get_mut(..frames)?;
         self.voices.render(out);
+        for &x in out.iter() {
+            if let Some(slot) = self.history.get_mut(self.history_at) {
+                *slot = x;
+            }
+            self.history_at = (self.history_at + 1) % SPECTRUM_SIZE;
+        }
         Some(out)
+    }
+
+    /// The last `SPECTRUM_SIZE` output samples' spectrum, dB (0 dB = a
+    /// full-scale sine), `SPECTRUM_SIZE / 2` bins of `fs / SPECTRUM_SIZE`
+    /// Hz. Computed now, on request (the A1 page never asks).
+    pub fn spectrum(&mut self) -> &[f32] {
+        let (newer, older) = self.history.split_at(self.history_at);
+        for (dst, &x) in self.linear.iter_mut().zip(older.iter().chain(newer)) {
+            *dst = x;
+        }
+        self.spectrum.analyze(&self.linear).unwrap_or_default()
+    }
+
+    /// The model new notes play: a code from [`crate::abi`]; `false` for an
+    /// unknown one.
+    pub fn set_model(&mut self, code: u32) -> bool {
+        let model = match code {
+            MODEL_LOOP => Model::Loop,
+            MODEL_WAVEGUIDE => Model::Waveguide,
+            _ => return false,
+        };
+        self.voices.set_model(model);
+        true
+    }
+
+    /// Every waveguide's pickup, from the bridge, live; `false` outside
+    /// `[0, 1]` (or NaN).
+    pub fn set_pickup(&mut self, s: f64) -> bool {
+        let ok = (0.0..=1.0).contains(&s);
+        if ok {
+            self.voices.set_pickup(s);
+        }
+        ok
     }
 
     /// Plays MIDI `key` with the current settings; `false` if it can't be
@@ -132,6 +187,12 @@ impl Synth {
         self.snapshot.clear();
         self.voices.latest_shape(&mut self.snapshot);
         &self.snapshot
+    }
+
+    /// Where the last spectrum's bins are (for the C ABI).
+    #[must_use]
+    pub fn spectrum_ptr(&self) -> *const f32 {
+        self.spectrum.last().as_ptr()
     }
 
     /// Where the snapshot's samples are (for the C ABI).
