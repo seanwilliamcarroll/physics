@@ -1,4 +1,4 @@
-use super::{Report, judge, judge_panic};
+use super::{Report, judge, judge_audio, judge_panic};
 
 /// Real line shapes from Chrome's `--enable-logging=stderr` output.
 fn console(msg: &str) -> String {
@@ -80,4 +80,23 @@ fn panic_case_needs_both_the_page_report_and_the_console_line() {
             .unwrap_err()
             .contains("no SMOKE line")
     );
+}
+
+#[test]
+fn audio_reports_need_an_audible_unclipped_peak() {
+    let line = |msg: &str| console(&format!("SMOKE {msg}"));
+    assert!(judge_audio(&line("ok audio_peak=0.4210 samples=48000")).is_ok());
+    assert!(
+        judge_audio(&line("ok audio_peak=0.0001 samples=48000")).is_err(),
+        "silent"
+    );
+    assert!(
+        judge_audio(&line("ok audio_peak=1.5 samples=48000")).is_err(),
+        "clipped"
+    );
+    assert!(
+        judge_audio(&line("ok audio_peak=0.5 samples=0")).is_err(),
+        "nothing rendered"
+    );
+    assert!(judge_audio(&line("error non-finite sample")).is_err());
 }

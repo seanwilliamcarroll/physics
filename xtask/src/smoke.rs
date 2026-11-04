@@ -78,6 +78,33 @@ pub(crate) fn judge_panic(stderr: &str) -> Result<String, String> {
     Ok("panic message reached the console".to_owned())
 }
 
+/// The quietest peak an audio smoke case may report: anything below is
+/// effectively silence (−40 dBFS).
+const AUDIBLE_PEAK: f64 = 0.01;
+
+/// Judges an audio load: the page rendered samples, all finite (it reports
+/// `error` otherwise), with a peak that's audible and unclipped. Pure, so
+/// it's unit-tested.
+pub(crate) fn judge_audio(stderr: &str) -> Result<String, String> {
+    let fields = ok_fields(stderr)?;
+    let get = |key: &str| -> Result<f64, String> {
+        fields
+            .split_whitespace()
+            .find_map(|kv| kv.strip_prefix(key)?.strip_prefix('='))
+            .ok_or_else(|| format!("report `{fields}` has no `{key}`"))?
+            .parse()
+            .map_err(|e| format!("report `{fields}`: bad `{key}`: {e}"))
+    };
+    let (peak, samples) = (get("audio_peak")?, get("samples")?);
+    if samples < 1.0 {
+        return Err("no samples rendered".to_owned());
+    }
+    if !(AUDIBLE_PEAK..=1.0).contains(&peak) {
+        return Err(format!("peak {peak}: silent or clipped"));
+    }
+    Ok(format!("samples={samples} audio_peak={peak}"))
+}
+
 /// Judges a drawing load from Chrome's stderr. Pure, so it's unit-tested.
 pub(crate) fn judge(stderr: &str) -> Result<Report, String> {
     let fields = ok_fields(stderr)?;
@@ -123,6 +150,7 @@ pub(crate) fn smoke(root: &Path) -> Result<(), String> {
                 Check::Draws => judge(&stderr)
                     .map(|r| format!("steps={} particle_px={}", r.steps, r.particle_px)),
                 Check::PanicReported => judge_panic(&stderr),
+                Check::Sounds => judge_audio(&stderr),
             });
         match verdict {
             Ok(summary) => println!("smoke {:<8} ok   {summary}", case.name),
