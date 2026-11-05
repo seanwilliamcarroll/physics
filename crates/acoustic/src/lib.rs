@@ -13,6 +13,7 @@ mod excitation;
 pub mod fft;
 pub mod measure;
 mod stiffness;
+mod solve;
 mod string;
 mod voices;
 mod voicing;
