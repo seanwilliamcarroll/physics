@@ -4,7 +4,7 @@
 use acoustic::fft::Spectrum;
 use acoustic::{DEFAULT_GAIN, Decay, Excitation, Model, Voices, Voicing};
 
-use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_WAVEGUIDE};
+use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_PIANO, MODEL_WAVEGUIDE};
 
 /// The most frames one [`Synth::render`] call produces: the output buffer
 /// is allocated once at this size (no allocation on the audio thread).
@@ -111,6 +111,7 @@ impl Synth {
         let model = match code {
             MODEL_LOOP => Model::Loop,
             MODEL_WAVEGUIDE => Model::Waveguide,
+            MODEL_PIANO => Model::Piano,
             _ => return false,
         };
         self.voices.set_model(model);
@@ -132,6 +133,18 @@ impl Synth {
     pub fn note_on(&mut self, key: u32) -> bool {
         u8::try_from(key)
             .is_ok_and(|k| k <= 127 && self.voices.note_on(k, self.voicing, self.excitation))
+    }
+
+    /// Strikes piano key `key` with the hammer at `velocity` m/s (pp 0.5
+    /// to ff 5), whatever the model; `false` off the keyboard or for a
+    /// velocity that isn't positive and finite.
+    pub fn note_on_velocity(&mut self, key: u32, velocity: f64) -> bool {
+        u8::try_from(key).is_ok_and(|k| self.voices.strike(k, velocity))
+    }
+
+    /// Whether the piano's strings are stiff, from the next strike.
+    pub const fn set_stiffness(&mut self, stiff: bool) {
+        self.voices.set_stiffness(stiff);
     }
 
     /// Releases MIDI `key`.

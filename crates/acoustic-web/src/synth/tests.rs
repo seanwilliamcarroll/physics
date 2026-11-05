@@ -1,5 +1,5 @@
 use super::{MAX_FRAMES, SPECTRUM_SIZE, Synth};
-use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_WAVEGUIDE};
+use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_PIANO, MODEL_WAVEGUIDE};
 
 const FS: f64 = 48_000.0;
 
@@ -90,4 +90,37 @@ fn model_and_pickup_setters_refuse_bad_values() {
     assert!(s.set_model(MODEL_LOOP) && s.set_model(MODEL_WAVEGUIDE));
     assert!(!s.set_model(7));
     assert!(s.set_pickup(0.5) && !s.set_pickup(1.5) && !s.set_pickup(f64::NAN));
+}
+
+/// Energy of the next `blocks` quanta.
+fn level(s: &mut Synth, blocks: usize) -> f64 {
+    (0..blocks).map(|_| energy(s.render(128).unwrap())).sum()
+}
+
+#[test]
+fn the_piano_strikes_louder_when_harder() {
+    let mut levels = Vec::new();
+    for velocity in [0.5, 1.58, 5.0] {
+        let mut s = Synth::new(FS, 1).unwrap();
+        assert!(s.set_model(MODEL_PIANO));
+        assert!(s.note_on_velocity(60, velocity));
+        assert_eq!(s.sounding(), 1);
+        levels.push(level(&mut s, 64));
+    }
+    println!("C4 pp, mf, ff energy: {levels:?}");
+    assert!(levels.windows(2).all(|w| w[1] > w[0]), "{levels:?}");
+    assert_eq!(levels.len(), 3);
+}
+
+#[test]
+fn piano_strikes_refuse_bad_keys_and_velocities() {
+    let mut s = Synth::new(FS, 1).unwrap();
+    assert!(s.set_model(MODEL_PIANO));
+    assert!(!s.note_on_velocity(20, 1.0), "below A0");
+    assert!(!s.note_on_velocity(300, 1.0), "not a key");
+    assert!(!s.note_on_velocity(60, 0.0) && !s.note_on_velocity(60, f64::INFINITY));
+    assert!(s.note_on(60), "a plain note on is an mf strike");
+    assert_eq!(s.sounding(), 1);
+    s.set_stiffness(false);
+    assert!(s.note_on_velocity(62, 1.0));
 }
