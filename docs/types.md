@@ -33,9 +33,11 @@ local tuples) are left out.
 
 Each is checked once where the value enters, then trusted
 (`type-invariants.md`). All live in [`params/`](../crates/engine/src/params.rs);
-the interval types share one macro, `checked_param!` (`new -> Option`,
-`get`, `cast`), which is where M5's `Compliance` and M7's `Restitution`
-and `Friction` go.
+every one but `Mass` comes from one macro, `checked_param!`: `new ->
+Option` (finite, and the type's own range), `get`, and `cast`, which
+checks again in the target scalar (narrowing can overflow to ∞). Since
+the audit after A3, no parameter accepts ±∞: an infinite compliance had
+made XPBD compute `∞ · 0 = NaN`.
 
 | Type | Why it exists |
 |---|---|
@@ -43,11 +45,12 @@ and `Friction` go.
 | [`Softening<S>`](../crates/engine/src/params/softening.rs) | ε ≥ 0 (0 allowed: M2 demos it). A negative ε from a slider is reported, not silently squared away. |
 | [`OpeningAngle<S>`](../crates/engine/src/params/opening_angle.rs) | Barnes–Hut θ ≥ 0; became a type when θ got a slider. |
 | [`Compliance<S>`](../crates/engine/src/params/compliance.rs) | α = 1/stiffness ≥ 0 (0 rigid): both solvers read it as the same spring, so the drag's soft pull means the same thing in either panel. |
-| [`Stiffness<S>`](../crates/engine/src/params/stiffness.rs) | A force-based spring's k > 0 and finite (rigid has no force law); `cast` is fallible because narrowing can overflow. |
+| [`Stiffness<S>`](../crates/engine/src/params/stiffness.rs) | A force-based spring's k > 0 and finite (rigid has no force law). |
 | [`Damping<S>`](../crates/engine/src/params/damping.rs) | A damper's c ≥ 0 and finite, the same physical damping in every stepper. |
 | [`Radius<S>`](../crates/engine/src/params/radius.rs) | A circle's r > 0 and finite; particles without one are points that never collide (radius 0 in `Particles`). |
 | [`Restitution<S>`](../crates/engine/src/params/restitution.rs) | e ∈ [0, 1]: 0 inelastic, 1 elastic; above 1 a collision would add energy. |
 | [`Baumgarte<S>`](../crates/engine/src/params/baumgarte.rs) | Impulse solver's β in `[0, 1]`: above 1 the bias overshoots. A world setting, so `Solver` stays a plain enum. |
+| [`TimeStep<S>`](../crates/engine/src/params/time_step.rs) | `World::step`'s dt > 0 and finite: time can't run backward, stand still (XPBD's velocity is `Δx / h`), or turn NaN. `per_second(rate)` for a clock. |
 
 ## `engine` — forces, constraints, stepping
 
