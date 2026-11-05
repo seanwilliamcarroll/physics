@@ -4,6 +4,7 @@
 use math::SplitMix64;
 
 use crate::body::Body;
+use crate::measure::CENTS_PER_OCTAVE;
 use crate::piano::{self, Designs};
 use crate::unison::Unison;
 use crate::{Excitation, KsString, Scalar, Voicing, Waveguide};
@@ -370,10 +371,10 @@ impl<S: Scalar> Voices<S> {
                     .map(|p| libm::log2(p / v.target))
                     .sum::<f64>()
                     / n;
-                return Some(1200.0 * mean);
+                return Some(CENTS_PER_OCTAVE * mean);
             }
         };
-        Some(1200.0 * libm::log2(pitch / v.target))
+        Some(CENTS_PER_OCTAVE * libm::log2(pitch / v.target))
     }
 
     /// Appends what the page draws of the last note to `out`: the loop's

@@ -39,6 +39,9 @@ const SMOKE_KEY = 60;
 const SMOKE_MEASURE: [number, number] = [0.1, 0.65]; // s
 const SMOKE_DRAWN = 2048;
 const DB = 20;
+/** An amplitude floor before taking the log: a silent component reads
+ *  −240 dB, not −∞. */
+const SILENT_AMPLITUDE = 1e-12;
 
 const settings = { stiff: true, velocity: MEZZO_FORTE, gain: 0.25 };
 
@@ -135,7 +138,7 @@ async function smoke(): Promise<void> {
   }
   const part = data.subarray(Math.round(SMOKE_MEASURE[0] * SMOKE_RATE), Math.round(SMOKE_MEASURE[1] * SMOKE_RATE));
   const b = keys?.piano_inharmonicity(SMOKE_KEY) ?? 0;
-  const level = (hz: number) => DB * Math.log10(Math.max(amplitudeAt(part, SMOKE_RATE, hz), 1e-12));
+  const level = (hz: number) => DB * Math.log10(Math.max(amplitudeAt(part, SMOKE_RATE, hz), SILENT_AMPLITUDE));
   const stretched = level(partialHz(SMOKE_KEY, READOUT_PARTIAL, b));
   const harmonic = level(READOUT_PARTIAL * midiToHz(SMOKE_KEY));
   const stretchDb = stretched - harmonic;

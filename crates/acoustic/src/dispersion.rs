@@ -22,6 +22,8 @@
 
 use core::f64::consts::{PI, TAU};
 
+use crate::measure::CENTS_PER_OCTAVE;
+
 /// The most biquads a cascade may have (the bridge keeps state for this
 /// many, so nothing allocates).
 pub(crate) const MAX_BIQUADS: usize = 16;
@@ -119,7 +121,7 @@ pub(crate) fn design(fs: f64, f1: f64, b: f64, s: f64, max_delay: f64) -> Option
             Target {
                 w,
                 want,
-                weight: 1200.0 / core::f64::consts::LN_2 * fk / (k * fs),
+                weight: CENTS_PER_OCTAVE / core::f64::consts::LN_2 * fk / (k * fs),
             }
         })
         .collect();

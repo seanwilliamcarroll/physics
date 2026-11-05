@@ -1,4 +1,5 @@
-use super::fit::{fit, key_coordinate, smooth};
+use super::fit::{fit, smooth};
+use super::keys::key_coordinate;
 use super::{
     FITTED_AT, FORTISSIMO, Felt, Hammer, PIANISSIMO, SPREAD, contact_target, contact_time, felt,
     impedance, mezzo_forte,

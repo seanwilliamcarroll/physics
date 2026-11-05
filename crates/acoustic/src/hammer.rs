@@ -51,7 +51,7 @@ pub fn felt(midi: u8) -> Option<Felt> {
     if !(table::FIRST..=table::LAST).contains(&midi) {
         return None;
     }
-    let t = (f64::from(midi) - 64.5) / 43.5;
+    let t = keys::key_coordinate(midi);
     let cubic = |c: &[f64]| c.iter().rev().fold(0.0, |acc, &a| acc * t + a);
     Some(Felt {
         mass: libm::exp(cubic(&table::MASS)),

@@ -36,6 +36,9 @@ const SMOKE_PLUCK = 0.5;
 const SMOKE_MEASURE: [number, number] = [0.1, 0.45]; // s
 const SMOKE_DRAWN = 2048;
 const DB = 20;
+/** An amplitude floor before taking the log: a silent component reads
+ *  −240 dB, not −∞. */
+const SILENT_AMPLITUDE = 1e-12;
 
 const stringCtx = setupCanvas(byId("string", HTMLCanvasElement));
 const spectrumCtx = setupCanvas(byId("spectrum", HTMLCanvasElement));
@@ -115,7 +118,7 @@ async function smoke(): Promise<void> {
   }
   const part = data.subarray(Math.round(SMOKE_MEASURE[0] * SMOKE_RATE), Math.round(SMOKE_MEASURE[1] * SMOKE_RATE));
   const f0 = midiToHz(SMOKE_KEY);
-  const [h1, h2, h3] = [1, 2, 3].map((k) => DB * Math.log10(Math.max(amplitudeAt(part, SMOKE_RATE, k * f0), 1e-12)));
+  const [h1, h2, h3] = [1, 2, 3].map((k) => DB * Math.log10(Math.max(amplitudeAt(part, SMOKE_RATE, k * f0), SILENT_AMPLITUDE)));
   const missingDb = Math.min(h1 ?? 0, h3 ?? 0) - (h2 ?? 0);
   // The output heard at the pickup (a trapezoid, for a string plucked in
   // the middle), not the string's shape: no position marks.

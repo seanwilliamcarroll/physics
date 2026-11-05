@@ -13,7 +13,8 @@
 
 use super::contact::contact_within;
 use super::keys::{
-    FORTISSIMO, PIANISSIMO, SPREAD, contact_target, exponent, impedance, mezzo_forte,
+    FORTISSIMO, PIANISSIMO, SPREAD, contact_target, exponent, impedance, key_coordinate,
+    mezzo_forte,
 };
 use super::{Felt, contact_time};
 use crate::piano::frequency;
@@ -123,12 +124,6 @@ pub(crate) fn fit(fs: f64, midi: u8) -> Option<Felt> {
 
 /// Polynomial degree of the smoothing.
 const DEGREE: usize = 3;
-
-/// Where `midi` sits on the keyboard, −1 (A0) to 1 (C8): the cubic's
-/// variable, scaled so the least squares are well conditioned.
-pub(super) fn key_coordinate(midi: u8) -> f64 {
-    (f64::from(midi) - 64.5) / 43.5
-}
 
 /// The least-squares cubics through `fits` in `log M` and `log K` against
 /// [`key_coordinate`]: coefficients, constant term first.
