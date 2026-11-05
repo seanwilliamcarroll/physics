@@ -19,7 +19,8 @@ use engine::scenarios::{
     Fountain, ORBIT_CIRCULAR, orbit, orbit_gravity, pendulum, pendulum_gravity,
 };
 use engine::{
-    Baumgarte, ConfigError, Grab, Integrator, OpeningAngle, Scalar, Softening, Solver, World,
+    Baumgarte, ConfigError, Grab, Integrator, OpeningAngle, Scalar, Softening, Solver, TimeStep,
+    World,
 };
 
 use crate::abi;
@@ -234,7 +235,11 @@ impl Demo {
 
 /// Runs `steps` fixed steps of `dt` seconds, with what runs between them.
 fn run_steps<S: Scalar>(w: &mut World<S>, between: &mut BetweenSteps, steps: u32, dt: f64) {
-    let dt = S::from_f64(dt);
+    // `dt` is `1 / rate` for a positive whole rate, so always a valid step;
+    // anything else steps nothing.
+    let Some(dt) = TimeStep::<S>::new(S::from_f64(dt)) else {
+        return;
+    };
     for _ in 0..steps {
         w.step(dt);
         if let BetweenSteps::Respawn(fountain) = between {

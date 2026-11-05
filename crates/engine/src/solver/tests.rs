@@ -1,6 +1,7 @@
 use super::Order;
 use crate::params::kg;
 use crate::scenarios::{pendulum, pendulum_gravity};
+use crate::test_util::time_step;
 use crate::{DistanceConstraint, Integrator, Solver, Vec2, World};
 use core::num::NonZeroU32;
 
@@ -45,7 +46,7 @@ fn order_changes_a_chain_but_not_a_single_rod() {
     for solver in Solver::ALL {
         let run = |mut w: World<f64>| {
             for _ in 0..30 {
-                w.step(1.0 / 60.0);
+                w.step(time_step(1.0 / 60.0));
             }
             w.particles.pos().to_vec()
         };
@@ -57,8 +58,8 @@ fn order_changes_a_chain_but_not_a_single_rod() {
         let mut other = pendulum::<f64>(solver, NonZeroU32::MIN).unwrap();
         other.set_order(Order::Reverse);
         for _ in 0..30 {
-            one.step(1.0 / 60.0);
-            other.step(1.0 / 60.0);
+            one.step(time_step(1.0 / 60.0));
+            other.step(time_step(1.0 / 60.0));
         }
         assert_eq!(one.particles.pos(), other.particles.pos(), "{solver:?}");
     }

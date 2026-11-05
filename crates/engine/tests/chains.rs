@@ -11,7 +11,7 @@
 use engine::diagnostics::constraint_error;
 use engine::scenarios::{CHAIN_LENGTH, CHAIN_LINKS, DoublePendulumStart, chain, double_pendulum};
 use engine::{Constraint, Scalar, Solver, Stabilization, World};
-use test_support::{nonzero, pendulum_energy, s};
+use test_support::{nonzero, pendulum_energy, time_step};
 
 /// 10 s at a 60 Hz frame rate, as `01`'s pendulum table.
 const DT: f64 = 1.0 / 60.0;
@@ -62,7 +62,7 @@ fn chain_run(
     let e0 = pendulum_energy(&w);
     let (mut link_error, mut stretch, mut energy_gain) = (0.0_f64, 0.0_f64, 0.0_f64);
     for _ in 0..CHAIN_STEPS {
-        w.step(DT);
+        w.step(time_step(DT));
         let (max, _) = constraint_error(w.particles(), w.constraints()).unwrap();
         link_error = link_error.max(max);
         stretch = stretch.max((chain_length(&w) - CHAIN_LENGTH).abs());
@@ -210,8 +210,8 @@ fn time_to_separate<A: Scalar, B: Scalar>(
     max_s: u32,
 ) -> Option<f64> {
     for step in 1..=max_s * 60 {
-        a.step(s(DT));
-        b.step(s(DT));
+        a.step(time_step(DT));
+        b.step(time_step(DT));
         if tip_distance(a, b) > 0.01 {
             return Some(f64::from(step) * DT);
         }
@@ -284,7 +284,7 @@ fn impulse_keeps_the_double_pendulums_energy() {
     let e0 = pendulum_energy(&w);
     let mut worst = 0.0_f64;
     for _ in 0..30 * 60 {
-        w.step(DT);
+        w.step(time_step(DT));
         worst = worst.max((pendulum_energy(&w) - e0).abs());
     }
     assert!(worst < 0.4, "{worst} J");

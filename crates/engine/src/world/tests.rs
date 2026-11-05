@@ -1,3 +1,4 @@
+use crate::test_util::time_step;
 use core::num::NonZeroU32;
 
 use super::World;
@@ -13,8 +14,8 @@ fn set_integrator_switches_how_later_steps_integrate() {
     assert_eq!(switched.integrator(), Integrator::VelocityVerlet);
     let mut built = orbit::<f64>(Integrator::VelocityVerlet, 1.0).unwrap();
     for _ in 0..100 {
-        switched.step(1.0 / 60.0);
-        built.step(1.0 / 60.0);
+        switched.step(time_step(1.0 / 60.0));
+        built.step(time_step(1.0 / 60.0));
     }
     assert_eq!(switched.particles.pos(), built.particles.pos());
     assert_eq!(switched.particles.vel(), built.particles.vel());
@@ -35,7 +36,7 @@ fn clear_forces_leaves_particles_coasting() {
     let mut w = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let (x0, v0) = (w.particles.pos().to_vec(), w.particles.vel().to_vec());
     w.clear_forces();
-    w.step(0.5);
+    w.step(time_step(0.5));
     assert_eq!(w.particles.vel(), v0.as_slice());
     for ((x, x0), v0) in w.particles.pos().iter().zip(&x0).zip(&v0) {
         assert_eq!(*x, *x0 + *v0 * 0.5);
@@ -51,8 +52,8 @@ fn forces_re_added_after_clear_apply_again() {
     b.clear_forces();
     b.add_force(crate::scenarios::orbit_gravity().unwrap());
     for _ in 0..10 {
-        a.step(0.01);
-        b.step(0.01);
+        a.step(time_step(0.01));
+        b.step(time_step(0.01));
     }
     assert_eq!(a.particles.pos(), b.particles.pos());
 }

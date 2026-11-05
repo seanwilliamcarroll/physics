@@ -1,6 +1,7 @@
 //! The `01-solvers.md` pendulum run, shared by the solver-table tests and
 //! the known failures.
 
+use crate::time_step;
 use engine::diagnostics::{constraint_error, kinetic_energy, uniform_gravity_potential};
 use engine::scenarios::{pendulum, pendulum_gravity};
 use engine::{Baumgarte, Scalar, Solver, World};
@@ -36,7 +37,7 @@ pub fn pendulum_run<S: Scalar>(solver: Solver, beta: f64, substeps: u32) -> Pend
     let e0 = pendulum_energy(&w);
     let mut max_rod_error = 0.0_f64;
     for _ in 0..PENDULUM_STEPS {
-        w.step(s(PENDULUM_DT));
+        w.step(time_step(PENDULUM_DT));
         let (max, _) = constraint_error(w.particles(), w.constraints()).unwrap();
         max_rod_error = max_rod_error.max(max.to_f64());
     }

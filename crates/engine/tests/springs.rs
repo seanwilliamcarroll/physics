@@ -4,7 +4,7 @@
 
 use engine::diagnostics::{kinetic_energy, momentum};
 use engine::{Damping, Integrator, Spring, SpringForce, Stiffness, Vec2, World};
-use test_support::{kg, nonzero};
+use test_support::{kg, nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
 
@@ -40,7 +40,7 @@ fn spring_period_is_two_pi_root_m_over_k() {
     let (mut w, _) = bob_on_spring(100.0, 0.0, 20, 0.01);
     let (mut first, mut last, mut periods, mut prev) = (None, 0.0, -1.0_f64, 0.01);
     for i in 1..=300_u32 {
-        w.step(DT);
+        w.step(time_step(DT));
         let x = w.particles().pos()[1].x - 1.0;
         if prev < 0.0 && x >= 0.0 {
             let t = f64::from(i) * DT;
@@ -62,7 +62,7 @@ fn damped_spring_loses_energy_at_the_analytic_rate() {
     let (mut w, f) = bob_on_spring(100.0, 0.4, 20, 0.05);
     let e0 = energy(&w, &f);
     for _ in 0..300 {
-        w.step(DT);
+        w.step(time_step(DT));
     }
     let ratio = energy(&w, &f) / e0;
     let want = (-2.0_f64).exp();
@@ -89,7 +89,7 @@ fn spring_conserves_momentum() {
     w.add_force(SpringForce::new(vec![s]));
     let p0 = momentum(w.particles());
     for _ in 0..600 {
-        w.step(DT);
+        w.step(time_step(DT));
     }
     let drift = (momentum(w.particles()) - p0).length();
     // Measured 1.3e-14; bound ~10x.
@@ -102,7 +102,7 @@ fn energy_growth(k: f64) -> f64 {
     let e0 = energy(&w, &f);
     let mut worst = 1.0_f64;
     for _ in 0..600 {
-        w.step(DT);
+        w.step(time_step(DT));
         worst = worst.max(energy(&w, &f) / e0);
     }
     worst

@@ -1,5 +1,5 @@
 use super::{CLUSTER_RADIUS, CLUSTER_SPEED, CLUSTER_TOTAL_MASS, CLUSTER_WEIGHT, cluster};
-use crate::test_util::assert_same_up_to_rounding;
+use crate::test_util::{assert_same_up_to_rounding, time_step};
 use crate::{Force, Integrator, Vec2};
 
 #[test]
@@ -51,7 +51,7 @@ fn cluster_gravity_is_the_force_the_cluster_uses() {
     let mut stepped = cluster::<f64>(8, 3).unwrap();
     stepped.set_integrator(Integrator::ExplicitEuler);
     let v0 = stepped.particles.vel().to_vec();
-    stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
+    stepped.step(time_step(1.0)); // explicit Euler: v1 = v0 + a(x0) * 1
     for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
         assert_same_up_to_rounding(*v1 - *v0, *a, *v0);
     }

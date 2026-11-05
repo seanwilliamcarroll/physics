@@ -62,6 +62,7 @@ mod radius;
 mod restitution;
 mod softening;
 mod stiffness;
+mod time_step;
 
 pub use baumgarte::{Baumgarte, DEFAULT_BAUMGARTE};
 pub use compliance::Compliance;
@@ -74,3 +75,4 @@ pub use radius::Radius;
 pub use restitution::Restitution;
 pub use softening::Softening;
 pub use stiffness::Stiffness;
+pub use time_step::TimeStep;

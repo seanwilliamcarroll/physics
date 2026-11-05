@@ -5,7 +5,7 @@
 use engine::diagnostics::{constraint_error, momentum};
 use engine::scenarios::{PENDULUM_LENGTH, pendulum};
 use engine::{DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
-use test_support::{Tol, for_each_scalar, kg, nonzero, pendulum_energy, s, v};
+use test_support::{Tol, for_each_scalar, kg, nonzero, pendulum_energy, time_step, v};
 
 /// The `01-solvers.md` setup: 10 s at 60 Hz.
 const DT: f64 = 1.0 / 60.0;
@@ -22,7 +22,7 @@ fn xpbd_holds_the_rod_to_rounding<S: Tol>() {
     let mut w = pendulum::<S>(Solver::Xpbd, nonzero(1)).unwrap();
     let mut worst = 0.0_f64;
     for _ in 0..STEPS {
-        w.step(s(DT));
+        w.step(time_step(DT));
         worst = worst.max(max_rod_error(&w));
     }
     let bound = 8.0 * S::EPSILON * PENDULUM_LENGTH;
@@ -35,7 +35,7 @@ for_each_scalar!(xpbd_holds_the_rod_to_rounding);
 fn the_pin_never_moves() {
     let mut w = pendulum::<f64>(Solver::Xpbd, nonzero(4)).unwrap();
     for _ in 0..STEPS {
-        w.step(DT);
+        w.step(time_step(DT));
     }
     assert_eq!(w.particles().pos()[0], Vec2::ZERO);
     assert_eq!(w.particles().vel()[0], Vec2::ZERO);
@@ -50,7 +50,7 @@ fn xpbd_energy_loss_shrinks_with_substeps() {
         let mut w = pendulum::<f64>(Solver::Xpbd, nonzero(substeps)).unwrap();
         let e0 = pendulum_energy(&w);
         for _ in 0..STEPS {
-            w.step(DT);
+            w.step(time_step(DT));
         }
         e0 - pendulum_energy(&w)
     };
@@ -70,7 +70,7 @@ fn free_rod_conserves_momentum<S: Tol>() {
     w.add_constraint(rod).unwrap();
     let p0 = momentum(w.particles());
     for _ in 0..STEPS {
-        w.step(s(DT));
+        w.step(time_step(DT));
     }
     let drift = (momentum(w.particles()) - p0).length().to_f64();
     // Σ m|v| ≈ 7 kg m/s; rounding per step, as M1's momentum law.
@@ -90,7 +90,7 @@ fn integrator_is_ignored_with_constraints() {
         let mut w = pendulum::<f64>(Solver::Xpbd, nonzero(2)).unwrap();
         w.set_integrator(integrator);
         for _ in 0..60 {
-            w.step(DT);
+            w.step(time_step(DT));
         }
         w.particles().pos().to_vec()
     };

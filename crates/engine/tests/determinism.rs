@@ -7,7 +7,7 @@ use engine::scenarios::{
     collapse, disk, double_pendulum, jelly, orbit, pendulum,
 };
 use engine::{Integrator, Scalar, Solver};
-use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, s, state_hash};
+use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, state_hash, time_step};
 
 /// One step: a 60 Hz frame, as the demos use.
 const DT: f64 = 1.0 / 60.0;
@@ -70,7 +70,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
             let mut scene = Fountain::new(1);
             let mut w = scene.world::<S>(100);
             for _ in 0..600 {
-                w.step(s(DT));
+                w.step(time_step(DT));
                 scene.respawn_fallen(&mut w);
             }
             state_hash(w.particles())
@@ -83,7 +83,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
             };
             let mut w = build(16, 1).unwrap();
             for _ in 0..300 {
-                w.step(s(DT));
+                w.step(time_step(DT));
             }
             state_hash(w.particles())
         }
@@ -95,21 +95,21 @@ fn run<S: Scalar>(r: Run) -> u64 {
             };
             let mut j = jelly::<S>(body, nonzero(10), JELLY_COLS, JELLY_ROWS, k, 0.5).unwrap();
             for _ in 0..300 {
-                j.world.step(s(DT));
+                j.world.step(time_step(DT));
             }
             state_hash(j.world.particles())
         }
         Run::Pendulum(solver) => {
             let mut w = pendulum::<S>(solver, nonzero(4)).unwrap();
             for _ in 0..600 {
-                w.step(s(DT));
+                w.step(time_step(DT));
             }
             state_hash(w.particles())
         }
         Run::Chain(solver) => {
             let mut w = chain::<S>(solver, nonzero(4), CHAIN_LINKS, 100.0).unwrap();
             for _ in 0..600 {
-                w.step(s(DT));
+                w.step(time_step(DT));
             }
             state_hash(w.particles())
         }
@@ -122,21 +122,21 @@ fn run<S: Scalar>(r: Run) -> u64 {
             )
             .unwrap();
             for _ in 0..600 {
-                w.step(s(DT));
+                w.step(time_step(DT));
             }
             state_hash(w.particles())
         }
         Run::ClusterBarnesHut => {
             let mut w = cluster_barnes_hut::<S>(64, 1, 0.5);
             for _ in 0..300 {
-                w.step(s(DT));
+                w.step(time_step(DT));
             }
             state_hash(w.particles())
         }
         Run::Orbit(integrator) => {
             let mut w = orbit::<S>(integrator, 1.0).unwrap();
             for _ in 0..600 {
-                w.step(s(DT));
+                w.step(time_step(DT));
             }
             state_hash(w.particles())
         }

@@ -18,7 +18,7 @@ fn cluster_demo_has_n_bodies_and_a_matching_energy() {
     let mut w = cluster::<f64>(40, 5).unwrap();
     for _ in 0..30 {
         d.advance(PHYSICS_DT);
-        w.step(PHYSICS_DT);
+        w.step(engine::TimeStep::new(PHYSICS_DT).unwrap());
     }
     let expect = total_energy(w.particles(), &cluster_gravity().unwrap());
     assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));

@@ -26,7 +26,7 @@ pub use integrate::Integrator;
 pub use math::{Scalar, UnitVec2, Vec2};
 pub use params::{
     Baumgarte, Compliance, DEFAULT_BAUMGARTE, Damping, Mass, OpeningAngle, Radius, Restitution,
-    Softening, Stiffness,
+    Softening, Stiffness, TimeStep,
 };
 pub use particles::{ParticleId, Particles};
 pub use solver::{Order, Solver, Stabilization};

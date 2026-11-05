@@ -5,7 +5,7 @@
 use engine::diagnostics::constraint_error;
 use engine::scenarios::{CHAIN_LINKS, chain};
 use engine::{Compliance, Solver, Vec2, World};
-use test_support::nonzero;
+use test_support::{nonzero, time_step};
 
 /// The page's drag stiffness: k = 1/α = 1000 N/m.
 const SOFT: f64 = 1e-3;
@@ -32,7 +32,7 @@ fn drag_bob(solver: Solver) -> (f64, f64) {
     for i in 1..=TOTAL_STEPS {
         let t = (f64::from(i) / RAMP_STEPS).min(1.0);
         w.drag(&g, bob + (target - bob) * t);
-        w.step(DT);
+        w.step(time_step(DT));
         let links = &w.constraints()[..CHAIN_LINKS];
         worst = worst.max(constraint_error(w.particles(), links).unwrap().0);
     }

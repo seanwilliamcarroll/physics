@@ -10,7 +10,7 @@ use engine::diagnostics::constraint_error;
 use engine::scenarios::pendulum_gravity;
 use engine::{DistanceConstraint, Integrator, Solver, Vec2, World};
 use proptest::prelude::*;
-use test_support::{kg, nonzero, proptest_config};
+use test_support::{kg, nonzero, proptest_config, time_step};
 
 /// One link: length (m), direction (rad), mass of the particle at its end (kg).
 type LinkSpec = (f64, f64, f64);
@@ -71,7 +71,7 @@ fn run(links: &[LinkSpec], order: &[usize], solver: Solver, steps: u32) -> (Vec<
     }
     let mut worst = 0.0_f64;
     for _ in 0..steps {
-        w.step(DT);
+        w.step(time_step(DT));
         worst = worst.max(constraint_error(w.particles(), w.constraints()).unwrap().0);
     }
     (w.particles().pos().to_vec(), worst)

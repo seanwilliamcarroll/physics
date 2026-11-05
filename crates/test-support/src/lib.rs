@@ -36,7 +36,7 @@ pub use pendulum::{PENDULUM_DT, PENDULUM_STEPS, PendulumRun, pendulum_energy, pe
 pub use tol::{Tol, momentum_drift_bound, momentum_scale};
 pub use worlds::*;
 
-use engine::{Mass, Scalar, Vec2};
+use engine::{Mass, Scalar, TimeStep, Vec2};
 
 /// Runs a generic test body `fn name<S: Tol>()` once per scalar type.
 #[macro_export]
@@ -84,4 +84,11 @@ pub fn kg<S: Scalar>(m: f64) -> Mass<S> {
 /// in `S` (`==` would also accept `-0.0 == 0.0`).
 pub fn bits<S: Scalar>(p: Vec2<S>) -> (u64, u64) {
     (p.x.to_f64().to_bits(), p.y.to_f64().to_bits())
+}
+
+/// `dt` (s) as a [`TimeStep`], for tests' fixed literals (a bad one fails
+/// the test).
+#[must_use]
+pub fn time_step<S: Scalar>(dt: f64) -> TimeStep<S> {
+    TimeStep::new(S::from_f64(dt)).unwrap()
 }
