@@ -99,8 +99,7 @@ pub(crate) unsafe extern "C" fn demo_set_beta(d: *mut Demo, beta: f64) -> u32 {
     let (Some(d), Some(beta)) = (unsafe { d.as_mut() }, Baumgarte::new(beta)) else {
         return 0;
     };
-    d.set_baumgarte(beta);
-    1
+    u32::from(d.set_baumgarte(beta))
 }
 
 /// Substeps per physics step. Returns 1, or 0 for 0 (parsed into

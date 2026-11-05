@@ -76,3 +76,22 @@ fn stiffness_is_parsed_per_realization() {
         "an empty grid has no mass to share"
     );
 }
+
+/// `α = 1/k`: a `k` so small its inverse overflows (in `f32` below about
+/// 3e-39, in `f64` at subnormals) is refused, not turned into an infinite
+/// compliance (which XPBD made NaN, audit after A3); `k = ∞` is rigid.
+#[test]
+fn a_stiffness_whose_compliance_overflows_is_refused() {
+    use super::compliance_for;
+    use crate::{Compliance, ConfigError};
+    assert_eq!(
+        compliance_for::<f32>(1e-39),
+        Err(ConfigError::InvalidStiffness)
+    );
+    assert_eq!(
+        compliance_for::<f64>(1e-310),
+        Err(ConfigError::InvalidStiffness)
+    );
+    assert_eq!(compliance_for::<f64>(f64::INFINITY), Ok(Compliance::RIGID));
+    assert!(compliance_for::<f32>(1e3).is_ok());
+}
