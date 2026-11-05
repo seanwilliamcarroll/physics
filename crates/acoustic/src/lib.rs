@@ -28,6 +28,8 @@ pub use excitation::Excitation;
 pub use math::Scalar;
 pub use stiffness::inharmonicity;
 pub use string::KsString;
-pub use voices::{DEFAULT_GAIN, LOWEST_HZ, Model, PIANO_SCALE, RELEASE_T60, VOICES, Voices};
+pub use voices::{
+    DEFAULT_GAIN, LOWEST_HZ, Model, PIANO_SCALE, RELEASE_T60, TRACE_SECONDS, VOICES, Voices,
+};
 pub use voicing::{Decay, Voicing};
 pub use waveguide::{DEFAULT_PICKUP, Waveguide};

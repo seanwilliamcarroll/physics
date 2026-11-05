@@ -246,5 +246,49 @@ pub(crate) unsafe extern "C" fn synth_clipped(s: *const Synth) -> f64 {
     unsafe { s.as_ref() }.map_or(0.0, |s| s.clipped() as f64)
 }
 
+/// Copies the latest strike's hammer force (N, one per sample from
+/// impact, up to 12 ms) into the trace buffer; returns its length (0 for
+/// null or before any strike). Read it at [`synth_strike_trace_ptr`].
+///
+/// # Safety
+/// `s` must be null or a live handle from [`synth_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn synth_strike_trace(s: *mut Synth) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
+    unsafe { s.as_mut() }.map_or(0, |s| u32::try_from(s.strike_trace().len()).unwrap_or(0))
+}
+
+/// Where the trace's samples are (null for null).
+///
+/// # Safety
+/// `s` must be null or a live handle from [`synth_new`].
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn synth_strike_trace_ptr(s: *const Synth) -> *const f32 {
+    // SAFETY: per the contract, null (-> None) or a live Synth.
+    unsafe { s.as_ref() }.map_or(ptr::null(), Synth::trace_ptr)
+}
+
+/// Piano key `key`'s inharmonicity `B` (`docs/14-piano.md`); 0 off the
+/// keyboard. For the page's ticks and readout: no synth needed.
+#[unsafe(no_mangle)]
+pub(crate) extern "C" fn piano_inharmonicity(key: u32) -> f64 {
+    on_keyboard(key).map_or(0.0, acoustic::inharmonicity)
+}
+
+/// How many strings piano key `key` has (1–3); 0 off the keyboard.
+#[unsafe(no_mangle)]
+pub(crate) extern "C" fn piano_strings(key: u32) -> u32 {
+    on_keyboard(key).map_or(0, |k| {
+        u32::try_from(acoustic::unison::strings(k)).unwrap_or(0)
+    })
+}
+
+/// `key` as a piano key (A0 to C8), if it is one.
+fn on_keyboard(key: u32) -> Option<u8> {
+    u8::try_from(key)
+        .ok()
+        .filter(|k| (acoustic::piano::FIRST_KEY..=acoustic::piano::LAST_KEY).contains(k))
+}
+
 #[cfg(test)]
 mod tests;
