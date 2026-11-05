@@ -14,10 +14,10 @@ mod server;
 use cases::{CASES, Check};
 use server::Server;
 
-/// The most Chrome waits for the page to load: it takes its screenshot
-/// (and exits) at the `load` event, measured at about 0.5 s a page, or at
-/// this. Smoke mode is synchronous, so loading is all it covers.
-const CHROME_TIMEOUT_MS: u32 = 3000;
+/// The longest a page may take to report its `SMOKE` line
+/// (`xtask/smoke_page.mjs` waits for it, then takes the screenshot): pages
+/// report in under a second, so this only bounds a hung one.
+const SMOKE_WAIT_MS: u32 = 10_000;
 
 /// Window size for screenshots, CSS pixels.
 const WINDOW_SIZE: &str = "1000,900";
@@ -94,6 +94,11 @@ const ONSET_TOLERANCE_MS: f64 = 10.0;
 /// harmonic; the engine's own tests measure 45–55 dB).
 const MIN_MISSING_DB: f64 = 20.0;
 
+/// How much louder a stiff string's partial must be at its stretched
+/// frequency than at the harmonic one, dB (A3: C4's 10th, 26 cents or 40
+/// Hz apart).
+const MIN_STRETCH_DB: f64 = 10.0;
+
 /// Judges an audio load: the page rendered samples, all finite (it reports
 /// `error` otherwise), with a peak that's audible and unclipped. Pure, so
 /// it's unit-tested.
@@ -139,6 +144,16 @@ pub(crate) fn judge_audio(stderr: &str) -> Result<String, String> {
         }
         let _ = write!(summary, " missing_db={missing}");
     }
+    // A stretched partial, if the page measured one: really stretched.
+    if fields.contains("stretch_db=") {
+        let stretch = get("stretch_db")?;
+        if stretch < MIN_STRETCH_DB {
+            return Err(format!(
+                "the stretched partial is only {stretch} dB over the harmonic frequency"
+            ));
+        }
+        let _ = write!(summary, " stretch_db={stretch}");
+    }
     Ok(summary)
 }
 
@@ -182,13 +197,13 @@ pub(crate) fn smoke(root: &Path) -> Result<(), String> {
             server.port, case.page, case.query
         );
         let shot = shots.join(format!("{}.png", case.name));
-        let verdict =
-            run_chrome(&chrome, &url, &shot, case.name).and_then(|stderr| match case.check {
-                Check::Draws => judge(&stderr)
-                    .map(|r| format!("steps={} particle_px={}", r.steps, r.particle_px)),
-                Check::PanicReported => judge_panic(&stderr),
-                Check::Sounds => judge_audio(&stderr),
-            });
+        let verdict = run_chrome(root, &chrome, &url, &shot).and_then(|stderr| match case.check {
+            Check::Draws => {
+                judge(&stderr).map(|r| format!("steps={} particle_px={}", r.steps, r.particle_px))
+            }
+            Check::PanicReported => judge_panic(&stderr),
+            Check::Sounds => judge_audio(&stderr),
+        });
         match verdict {
             Ok(summary) => println!("smoke {:<8} ok   {summary}", case.name),
             Err(e) => {
@@ -205,25 +220,30 @@ pub(crate) fn smoke(root: &Path) -> Result<(), String> {
     }
 }
 
-/// Runs headless Chrome once with a fresh profile (a reused profile can
-/// serve stale JS from cache) and returns its stderr.
-fn run_chrome(chrome: &Path, url: &str, shot: &Path, name: &str) -> Result<String, String> {
-    let profile = env::temp_dir().join(format!("physics-smoke-{}-{name}", process::id()));
-    // Absent is fine: this only clears leftovers from an interrupted run.
-    let _ = fs::remove_dir_all(&profile);
-    let output = process::Command::new(chrome)
-        .arg("--headless=new")
-        .arg(format!("--user-data-dir={}", profile.display()))
-        .arg(format!("--window-size={WINDOW_SIZE}"))
-        .arg("--hide-scrollbars")
-        .arg(format!("--timeout={CHROME_TIMEOUT_MS}"))
-        .args(["--enable-logging=stderr", "--v=0"])
-        .arg(format!("--screenshot={}", shot.display()))
+/// Loads `url` once in headless Chrome, driven over DevTools by
+/// `xtask/smoke_page.mjs` (a fresh profile; it waits for the page's
+/// `SMOKE` line, then screenshots), and returns its log: the page's console
+/// lines as Chrome prints them, then Chrome's own.
+fn run_chrome(root: &Path, chrome: &Path, url: &str, shot: &Path) -> Result<String, String> {
+    let output = process::Command::new("node")
+        .arg(root.join("xtask").join("smoke_page.mjs"))
+        .arg(chrome)
         .arg(url)
+        .arg(shot)
+        .arg(SMOKE_WAIT_MS.to_string())
+        .arg(WINDOW_SIZE)
         .output()
-        .map_err(|e| format!("failed to run {}: {e}", chrome.display()))?;
-    let _ = fs::remove_dir_all(&profile);
-    Ok(String::from_utf8_lossy(&output.stderr).into_owned())
+        .map_err(|e| format!("failed to run node xtask/smoke_page.mjs: {e}"))?;
+    let log = String::from_utf8_lossy(&output.stderr).into_owned();
+    if output.status.success() {
+        Ok(log)
+    } else {
+        let why = log
+            .lines()
+            .find(|l| l.starts_with("smoke_page.mjs:"))
+            .unwrap_or("it failed");
+        Err(format!("driving Chrome: {why}"))
+    }
 }
 
 /// `$CHROME` if set, else the usual install paths, else `$PATH`.
