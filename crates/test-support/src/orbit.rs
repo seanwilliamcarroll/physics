@@ -9,13 +9,13 @@ use math::convert::f64_to_usize;
 /// Total energy of a `scenarios::orbit` world, under the scene's own force.
 #[must_use]
 pub fn orbit_energy<S: Scalar>(w: &World<S>) -> f64 {
-    total_energy(&w.particles, &orbit_gravity().unwrap()).to_f64()
+    total_energy(w.particles(), &orbit_gravity().unwrap()).to_f64()
 }
 
 /// Distance between the two bodies of an orbit world, m.
 #[must_use]
 pub fn separation<S: Scalar>(w: &World<S>) -> f64 {
-    let p = w.particles.pos();
+    let p = w.particles().pos();
     (p[1] - p[0]).length().to_f64()
 }
 

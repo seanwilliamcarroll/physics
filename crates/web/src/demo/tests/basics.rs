@@ -45,7 +45,7 @@ fn orbit_energy_matches_diagnostics_on_the_same_world() {
         d.advance(PHYSICS_DT);
         w.step(PHYSICS_DT);
     }
-    let expect = total_energy(&w.particles, &orbit_gravity().unwrap());
+    let expect = total_energy(w.particles(), &orbit_gravity().unwrap());
     assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));
 }
 

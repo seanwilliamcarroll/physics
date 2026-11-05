@@ -22,6 +22,9 @@ pub enum ConfigError {
     /// A damping coefficient must be `≥ 0` and finite; see
     /// [`crate::Damping`].
     InvalidDamping,
+    /// An update tried to change which particles a constraint joins
+    /// ([`crate::World::update_constraints`]); nothing was changed.
+    ChangedBodies,
 }
 
 impl fmt::Display for ConfigError {
@@ -36,6 +39,9 @@ impl fmt::Display for ConfigError {
                 f.write_str("stiffness must be positive (and finite for springs)")
             }
             Self::InvalidDamping => f.write_str("damping must be at least 0 and finite"),
+            Self::ChangedBodies => {
+                f.write_str("an update can't change which particles a constraint joins")
+            }
         }
     }
 }

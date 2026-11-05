@@ -61,7 +61,7 @@ fn substeps_are_the_ones_given() {
         0.0,
     )
     .unwrap();
-    assert_eq!(w.substeps(), 20);
+    assert_eq!(w.substeps().get(), 20);
 }
 
 #[test]

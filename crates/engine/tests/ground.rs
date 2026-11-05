@@ -24,9 +24,7 @@ const DROP_HEIGHT: f64 = 1.0;
 fn dropped_particle<S: Scalar>(integrator: Integrator) -> World<S> {
     let mut w = World::new(integrator, nonzero(SUBSTEPS));
     w.add_force(pendulum_gravity());
-    let _ = w
-        .particles
-        .add(v(0.0, GROUND + DROP_HEIGHT), Vec2::ZERO, kg(1.0));
+    let _ = w.add_particle(v(0.0, GROUND + DROP_HEIGHT), Vec2::ZERO, kg(1.0));
     w.set_ground(Some(s(GROUND)));
     w
 }
@@ -37,11 +35,9 @@ fn dropped_rod<S: Scalar>(solver: Solver) -> World<S> {
     let mut w = World::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
     w.add_force(pendulum_gravity());
     let low = GROUND + DROP_HEIGHT;
-    let a = w.particles.add(v(0.0, low), Vec2::ZERO, kg(1.0));
-    let b = w
-        .particles
-        .add(v(0.75_f64.sqrt(), low + 0.5), Vec2::ZERO, kg(1.0));
-    let rod = DistanceConstraint::between(&w.particles, a, b).unwrap();
+    let a = w.add_particle(v(0.0, low), Vec2::ZERO, kg(1.0));
+    let b = w.add_particle(v(0.75_f64.sqrt(), low + 0.5), Vec2::ZERO, kg(1.0));
+    let rod = DistanceConstraint::between(w.particles(), a, b).unwrap();
     w.add_constraint(rod).unwrap();
     w.set_solver(solver);
     w.set_ground(Some(s(GROUND)));
@@ -64,7 +60,7 @@ fn max_energy_gain<S: Scalar>(w: &mut World<S>) -> f64 {
 
 /// Largest `|y − ground|` and largest speed over the particles.
 fn rest_error<S: Scalar>(w: &World<S>) -> (f64, f64) {
-    let p = &w.particles;
+    let p = w.particles();
     let gap = p.pos().iter().map(|x| (x.y.to_f64() - GROUND).abs());
     let speed = p.vel().iter().map(|u| u.length().to_f64());
     (gap.fold(0.0, f64::max), speed.fold(0.0, f64::max))
@@ -83,8 +79,8 @@ fn a_dropped_particle_lands_and_rests<S: Scalar>() {
         for _ in 0..STEPS {
             w.step(s(DT));
         }
-        assert_eq!(w.particles.pos(), &[v(0.0, GROUND)], "{integrator:?}");
-        assert_eq!(w.particles.vel(), &[Vec2::ZERO], "{integrator:?}");
+        assert_eq!(w.particles().pos(), &[v(0.0, GROUND)], "{integrator:?}");
+        assert_eq!(w.particles().vel(), &[Vec2::ZERO], "{integrator:?}");
     }
 }
 for_each_scalar!(a_dropped_particle_lands_and_rests);
@@ -156,27 +152,31 @@ fn static_particles_below_the_ground_are_not_moved() {
     for integrator in Integrator::ALL {
         let mut w = World::<f64>::new(integrator, nonzero(SUBSTEPS));
         w.add_force(pendulum_gravity());
-        let pin = w.particles.add_static(v(0.0, GROUND));
+        let pin = w.add_static(v(0.0, GROUND));
         w.set_ground(Some(GROUND + ABOVE));
         for _ in 0..STEPS {
             w.step(DT);
         }
         assert_eq!(
-            w.particles.pos()[pin.index()],
+            w.particles().pos()[pin.index()],
             v(0.0, GROUND),
             "{integrator:?}"
         );
-        assert_eq!(w.particles.vel()[pin.index()], Vec2::ZERO, "{integrator:?}");
+        assert_eq!(
+            w.particles().vel()[pin.index()],
+            Vec2::ZERO,
+            "{integrator:?}"
+        );
     }
     for solver in Solver::ALL {
         let mut w = pendulum::<f64>(solver, nonzero(SUBSTEPS)).unwrap();
-        let pin = w.particles.pos()[0];
+        let pin = w.particles().pos()[0];
         w.set_ground(Some(pin.y + ABOVE));
         for _ in 0..STEPS {
             w.step(DT);
         }
-        assert_eq!(w.particles.pos()[0], pin, "{solver:?}");
-        assert_eq!(w.particles.vel()[0], Vec2::ZERO, "{solver:?}");
+        assert_eq!(w.particles().pos()[0], pin, "{solver:?}");
+        assert_eq!(w.particles().vel()[0], Vec2::ZERO, "{solver:?}");
     }
 }
 
@@ -197,7 +197,7 @@ fn no_ground_or_an_unreached_one_changes_nothing() {
             for _ in 0..STEPS {
                 w.step(DT);
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         };
         let never = run(None);
         assert_eq!(run(Some(None)), never, "{solver:?}: set then removed");

@@ -24,7 +24,7 @@ const TOTAL_STEPS: u32 = 120;
 /// drag rod itself is excluded from the link error.
 fn drag_bob(solver: Solver) -> (f64, f64) {
     let mut w: World<f64> = chain(solver, nonzero(SUBSTEPS), CHAIN_LINKS, 100.0).unwrap();
-    let bob = w.particles.pos()[CHAIN_LINKS];
+    let bob = w.particles().pos()[CHAIN_LINKS];
     let g = w.grab(bob, 0.1, Compliance::new(SOFT).unwrap()).unwrap();
     assert_eq!(g.particle().index(), CHAIN_LINKS);
     let mut worst = 0.0_f64;
@@ -34,9 +34,9 @@ fn drag_bob(solver: Solver) -> (f64, f64) {
         w.drag(&g, bob + (target - bob) * t);
         w.step(DT);
         let links = &w.constraints()[..CHAIN_LINKS];
-        worst = worst.max(constraint_error(&w.particles, links).unwrap().0);
+        worst = worst.max(constraint_error(w.particles(), links).unwrap().0);
     }
-    let gap = (w.particles.pos()[CHAIN_LINKS] - target).length();
+    let gap = (w.particles().pos()[CHAIN_LINKS] - target).length();
     assert_eq!(w.release(g), Ok(()));
     assert_eq!(
         w.constraints().len(),

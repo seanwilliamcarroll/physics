@@ -67,7 +67,7 @@ const COARSE_MAX_SEPARATION: f64 = 1.05;
 /// periapsis and is fixed for an exact Kepler orbit. (Uses `atan2`: fine in
 /// a test, never in the engine.)
 fn periapsis_angle<S: Scalar>(w: &World<S>) -> f64 {
-    let (p, v) = (w.particles.pos(), w.particles.vel());
+    let (p, v) = (w.particles().pos(), w.particles().vel());
     let (r, u) = (p[1] - p[0], v[1] - v[0]);
     let (rx, ry, ux, uy) = (r.x.to_f64(), r.y.to_f64(), u.x.to_f64(), u.y.to_f64());
     let mu = GRAVITATIONAL_CONSTANT * ORBIT_TOTAL_MASS;
@@ -127,12 +127,12 @@ fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     w.add_force(newtonian(Softening::new(s::<S>(softening)).unwrap()));
     let vec = |x: f64, y: f64| Vec2::from_f64(x, y);
     let half_b = PASS_IMPACT_M / 2.0;
-    w.particles.add(
+    w.add_particle(
         vec(-PASS_HALF_GAP_M, half_b),
         vec(PASS_SPEED, 0.0),
         kg(PASS_MASS_KG),
     );
-    w.particles.add(
+    w.add_particle(
         vec(PASS_HALF_GAP_M, -half_b),
         vec(-PASS_SPEED, 0.0),
         kg(PASS_MASS_KG),
@@ -140,7 +140,7 @@ fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     let mut peak = 0.0_f64;
     for _ in 0..PASS_STEPS {
         w.step(s(FINE_DT));
-        for v in w.particles.vel() {
+        for v in w.particles().vel() {
             peak = peak.max(v.length().to_f64());
         }
     }

@@ -138,7 +138,7 @@ impl Demo {
     /// ~2.4e-7 m. `None` past the last particle.
     #[must_use]
     pub(crate) fn particle_position(&self, i: usize) -> Option<(f64, f64)> {
-        each_scalar!(&self.world, s => s.world.particles.pos().get(i).map(|p| (p.x.to_f64(), p.y.to_f64())))
+        each_scalar!(&self.world, s => s.world.particles().pos().get(i).map(|p| (p.x.to_f64(), p.y.to_f64())))
     }
 
     /// Interleaved particle positions, `f32`, in meters.

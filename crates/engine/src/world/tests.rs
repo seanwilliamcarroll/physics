@@ -62,7 +62,9 @@ fn config_errors_explain_themselves() {
     use super::ConfigError;
     assert!(ConfigError::InvalidMass.to_string().contains("mass"));
     assert_eq!(
-        World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::new(3).unwrap()).substeps(),
+        World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::new(3).unwrap())
+            .substeps()
+            .get(),
         3
     );
 }
@@ -97,7 +99,7 @@ fn substeps_and_iterations_are_settable() {
     assert_eq!(w.iterations().get(), 1);
     w.set_substeps(NonZeroU32::new(20).unwrap());
     w.set_iterations(NonZeroU32::new(3).unwrap());
-    assert_eq!((w.substeps(), w.iterations().get()), (20, 3));
+    assert_eq!((w.substeps().get(), w.iterations().get()), (20, 3));
 }
 
 #[test]

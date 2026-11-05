@@ -77,17 +77,31 @@ impl<S: Scalar> Constraints<S> {
         true
     }
 
-    /// Replaces every constraint but the one at `skip` with `f` of itself.
+    /// Replaces every constraint but the one at `skip` with `f` of itself,
+    /// if `f` keeps every one's bodies (so each still names particles that
+    /// exist, and λ stays aligned); otherwise changes nothing. Two passes,
+    /// so a refusal leaves no constraint half-updated: `f` is called twice
+    /// per constraint, so it should be pure.
     pub(super) fn update(
         &mut self,
         skip: Option<usize>,
         f: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
-    ) {
+    ) -> Result<(), ConfigError> {
+        let others = || {
+            self.list
+                .iter()
+                .enumerate()
+                .filter(|&(i, _)| Some(i) != skip)
+        };
+        if others().any(|(_, c)| f(*c).bodies() != c.bodies()) {
+            return Err(ConfigError::ChangedBodies);
+        }
         for (i, c) in self.list.iter_mut().enumerate() {
             if Some(i) != skip {
                 *c = f(*c);
             }
         }
+        Ok(())
     }
 
     pub(super) fn list(&self) -> &[DistanceConstraint<S>] {

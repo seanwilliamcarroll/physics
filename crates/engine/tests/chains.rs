@@ -38,7 +38,7 @@ struct ChainRun {
 
 /// Total length of the chain's links, m.
 fn chain_length<S: Scalar>(w: &World<S>) -> f64 {
-    let p = w.particles.pos();
+    let p = w.particles().pos();
     w.constraints()
         .iter()
         .map(|c| {
@@ -63,7 +63,7 @@ fn chain_run(
     let (mut link_error, mut stretch, mut energy_gain) = (0.0_f64, 0.0_f64, 0.0_f64);
     for _ in 0..CHAIN_STEPS {
         w.step(DT);
-        let (max, _) = constraint_error(&w.particles, w.constraints()).unwrap();
+        let (max, _) = constraint_error(w.particles(), w.constraints()).unwrap();
         link_error = link_error.max(max);
         stretch = stretch.max((chain_length(&w) - CHAIN_LENGTH).abs());
         energy_gain = energy_gain.max(pendulum_energy(&w) - e0);
@@ -197,7 +197,7 @@ const CHAOS_SUBSTEPS: u32 = 20;
 /// Distance between the tips (particle 2) of two double pendulums, m,
 /// compared in f64.
 fn tip_distance<A: Scalar, B: Scalar>(a: &World<A>, b: &World<B>) -> f64 {
-    let (pa, pb) = (a.particles.pos()[2], b.particles.pos()[2]);
+    let (pa, pb) = (a.particles().pos()[2], b.particles().pos()[2]);
     let (dx, dy) = (pa.x.to_f64() - pb.x.to_f64(), pa.y.to_f64() - pb.y.to_f64());
     dx.hypot(dy)
 }

@@ -2,10 +2,23 @@
 
 use crate::demo::Demo;
 
+/// 1 if the demo's world can be grabbed, 0 if not (or `d` is null): a
+/// world its integrator steps (no constraints, nothing colliding) refuses,
+/// since a grab's rod would hand it to a solver while held
+/// (`docs/06-constraints.md`, "Dragging"). For the page to say so.
+///
+/// # Safety
+/// `d` must be null or a live handle from a `demo_new*` export.
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_grabbable(d: *const Demo) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live Demo.
+    u32::from(unsafe { d.as_ref() }.is_some_and(Demo::grabbable))
+}
+
 /// Grabs the dynamic particle nearest to world point `(x, y)` (m) within
 /// `radius` (m), releasing any earlier grab. Returns its index, or −1 if
-/// nothing dynamic is that close, the radius is negative or NaN, or `d` is
-/// null. The grab adds an anchor particle and a rod, so re-read positions
+/// nothing dynamic is that close, the world can't be grabbed
+/// ([`demo_grabbable`]), the radius is negative or NaN, or `d` is null. The grab adds an anchor particle and a rod, so re-read positions
 /// and links afterwards.
 ///
 /// # Safety

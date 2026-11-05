@@ -139,8 +139,10 @@ impl<S: Scalar> Sim<S> {
             let Ok(alpha) = compliance_for::<S>(k) else {
                 return false;
             };
-            self.world
-                .update_constraints(grab, |c| c.with_compliance(alpha));
+            return self
+                .world
+                .update_constraints(grab, |c| c.with_compliance(alpha))
+                .is_ok();
         }
         true
     }
@@ -157,15 +159,17 @@ impl<S: Scalar> Sim<S> {
             *force = force.with_damping(damping);
             reinstall(&mut self.world, *gravity, force);
         } else {
-            self.world
-                .update_constraints(grab, |rod| rod.with_damping(damping));
+            return self
+                .world
+                .update_constraints(grab, |rod| rod.with_damping(damping))
+                .is_ok();
         }
         true
     }
 
     /// Total energy under the scene's exact force, or `None`.
     pub(super) fn energy(&self) -> Option<f64> {
-        let p = &self.world.particles;
+        let p = self.world.particles();
         match &self.force {
             SceneForce::Unmeasured => None,
             SceneForce::Jelly { gravity, springs } => {
@@ -200,7 +204,7 @@ impl<S: Scalar> Sim<S> {
         let kept = all
             .get(..all.len().saturating_sub(skip))
             .unwrap_or_default();
-        constraint_error(&self.world.particles, kept).map(|(max, _)| max.to_f64())
+        constraint_error(self.world.particles(), kept).map(|(max, _)| max.to_f64())
     }
 }
 

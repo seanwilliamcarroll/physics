@@ -299,7 +299,14 @@ not the ordering, so the comparison uses the short horizon.
 
 ### Dragging
 
-A grab is two temporary additions, a release removes them:
+A grab is two temporary additions, a release removes them. **Only a world
+a solver already steps can be grabbed** (`World::grabbable`: it has
+constraints, or something collides). A grab is a rod, and a rod in a world
+its integrator steps would hand the whole world to a solver for as long as
+it's held ("Who steps", above): M5's force-spring jelly would stop being
+stepped by symplectic Euler, which is the thing that panel demonstrates
+(audit, after A3). Such a world refuses the grab, and its page says so
+(`demo_grabbable`: a not-allowed cursor, a tooltip, the panel's readout).
 
 1. **Grab** at a world point: pick the nearest dynamic particle within a
    radius; add a **static anchor** particle at the point and a compliant

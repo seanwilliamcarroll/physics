@@ -21,12 +21,10 @@ const STEPS: u32 = 300;
 /// Measured period from upward zero crossings of the stretch, averaged.
 fn measured_period(solver: Solver) -> f64 {
     let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
-    let pin = w.particles.add_static(Vec2::ZERO);
-    let bob = w
-        .particles
-        .add(Vec2::new(REST + STRETCH, 0.0), Vec2::ZERO, kg(MASS));
+    let pin = w.add_static(Vec2::ZERO);
+    let bob = w.add_particle(Vec2::new(REST + STRETCH, 0.0), Vec2::ZERO, kg(MASS));
     let rod = DistanceConstraint::with_length(
-        &w.particles,
+        w.particles(),
         pin,
         bob,
         REST,
@@ -40,7 +38,7 @@ fn measured_period(solver: Solver) -> f64 {
     let mut prev = STRETCH;
     for i in 0..STEPS {
         w.step(DT);
-        let stretch = w.particles.pos()[1].x - REST;
+        let stretch = w.particles().pos()[1].x - REST;
         if prev < 0.0 && stretch >= 0.0 {
             let t = f64::from(i + 1) * DT;
             first.get_or_insert(t);
@@ -87,12 +85,10 @@ fn energy_ratio(solver: Solver, c: f64) -> f64 {
     use engine::Damping;
     use engine::diagnostics::kinetic_energy;
     let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
-    let pin = w.particles.add_static(Vec2::ZERO);
-    let bob = w
-        .particles
-        .add(Vec2::new(REST + 0.05, 0.0), Vec2::ZERO, kg(MASS));
+    let pin = w.add_static(Vec2::ZERO);
+    let bob = w.add_particle(Vec2::new(REST + 0.05, 0.0), Vec2::ZERO, kg(MASS));
     let rod = DistanceConstraint::with_length(
-        &w.particles,
+        w.particles(),
         pin,
         bob,
         REST,
@@ -104,8 +100,8 @@ fn energy_ratio(solver: Solver, c: f64) -> f64 {
     w.set_solver(solver);
     // Spring energy ½ k x² = ½ x² / α plus kinetic.
     let energy = |w: &World<f64>| {
-        let x = w.particles.pos()[1].x - REST;
-        kinetic_energy(&w.particles) + 0.5 * x * x / ALPHA
+        let x = w.particles().pos()[1].x - REST;
+        kinetic_energy(w.particles()) + 0.5 * x * x / ALPHA
     };
     let e0 = energy(&w);
     for _ in 0..300 {

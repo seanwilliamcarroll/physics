@@ -221,7 +221,8 @@ try {
   const readout = (p: Panel): string => {
     if (p.exploded) return `exploded at ${stiffnessLabel(p.k)}: lower k and reset`;
     const refused = p.k !== wantedK() ? " (springs can't be rigid)" : "";
-    return `${stiffnessLabel(p.k)}${refused} · kinetic ${p.ke.toExponential(2)} J`;
+    const fixed = engine.demo_grabbable(demoHandle(p)) === 1 ? "" : " · can't be grabbed";
+    return `${stiffnessLabel(p.k)}${refused} · kinetic ${p.ke.toExponential(2)} J${fixed}`;
   };
 
   for (const p of panels) enableDrag(engine, p.ctx.canvas, VIEW, () => demoHandle(p));
