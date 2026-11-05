@@ -54,9 +54,7 @@ pub fn chain<S: Scalar>(
         )]
         let x = CHAIN_LENGTH * i as f64 / links as f64;
         let m = if i == links { bob_mass } else { link_mass };
-        let next = w
-            .particles
-            .add(Vec2::new(S::from_f64(x), S::ZERO), Vec2::ZERO, m);
+        let next = w.particles.add(Vec2::from_f64(x, 0.0), Vec2::ZERO, m);
         let rod = DistanceConstraint::between(&w.particles, prev, next)
             .ok_or(ConfigError::UnknownParticle)?;
         w.add_constraint(rod)?;

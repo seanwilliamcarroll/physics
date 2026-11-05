@@ -1,12 +1,14 @@
 //! Shared math types for the physics engine and the acoustic track:
 //! the [`Scalar`] trait, [`Vec2<S>`](Vec2), [`UnitVec2<S>`](UnitVec2), and
-//! the [`SplitMix64`] PRNG and the [`Fnv1a`] hash (determinism tooling).
+//! the [`SplitMix64`] PRNG and the [`Fnv1a`] hash (determinism tooling),
+//! and checked numeric conversions ([`convert`]).
 
 // Declared first: `#[macro_use]` makes its macros visible to the modules below.
 #[cfg(test)]
 #[macro_use]
 mod test_util;
 
+pub mod convert;
 mod hash;
 mod rng;
 mod scalar;

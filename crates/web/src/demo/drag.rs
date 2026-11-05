@@ -28,7 +28,7 @@ impl Demo {
     /// Moves the held grab's anchor to `(x, y)`. `false` if nothing is held.
     pub(crate) fn drag(&mut self, x: f64, y: f64) -> bool {
         let Some(grab) = &self.grab else { return false };
-        each_scalar!(&mut self.world, s => s.world.drag(grab, vec(x, y)));
+        each_scalar!(&mut self.world, s => s.world.drag(grab, Vec2::from_f64(x, y)));
         true
     }
 
@@ -71,13 +71,9 @@ impl Demo {
     }
 }
 
-fn vec<S: Scalar>(x: f64, y: f64) -> Vec2<S> {
-    Vec2::new(S::from_f64(x), S::from_f64(y))
-}
-
 fn grab_in<S: Scalar>(w: &mut World<S>, x: f64, y: f64, radius: f64) -> Option<engine::Grab> {
     let soft = Compliance::new(S::from_f64(DRAG_COMPLIANCE))?;
-    w.grab(vec(x, y), S::from_f64(radius), soft)
+    w.grab(Vec2::from_f64(x, y), S::from_f64(radius), soft)
 }
 
 /// Rebuilds `links` from `w`'s constraints. Indices past `u32::MAX` can't

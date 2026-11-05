@@ -29,8 +29,7 @@ pub fn collapse<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError>
     let mut rng = SplitMix64::new(seed);
     for _ in 0..n {
         let (x, y) = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
-        w.particles
-            .add(Vec2::new(S::from_f64(x), S::from_f64(y)), Vec2::ZERO, m);
+        w.particles.add(Vec2::from_f64(x, y), Vec2::ZERO, m);
     }
     Ok(w)
 }

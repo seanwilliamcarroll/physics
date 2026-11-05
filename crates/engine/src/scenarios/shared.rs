@@ -61,7 +61,7 @@ pub(super) fn add_bodies<S: Scalar>(
     w: &mut World<S>,
     bodies: impl IntoIterator<Item = BodyF64>,
 ) -> Result<(), ConfigError> {
-    let vec = |(x, y): (f64, f64)| Vec2::new(S::from_f64(x), S::from_f64(y));
+    let vec = |(x, y): (f64, f64)| Vec2::from_f64(x, y);
     for b in bodies {
         w.particles.add(vec(b.pos), vec(b.vel), mass(b.mass)?);
     }

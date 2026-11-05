@@ -95,7 +95,7 @@ pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<Worl
     let (star_share, planet_share) = (q / (1.0 + q), 1.0 / (1.0 + q));
     let v_rel = orbit_relative_speed() * speed_ratio;
     let d = ORBIT_SEPARATION;
-    let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
+    let vec = |x: f64, y: f64| Vec2::from_f64(x, y);
     w.particles.add(
         vec(-d * star_share, 0.0),
         vec(0.0, -v_rel * star_share),

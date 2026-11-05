@@ -143,11 +143,7 @@ pub fn jelly<S: Scalar>(
     let ids: Vec<ParticleId> = net
         .positions
         .iter()
-        .map(|&(x, y)| {
-            world
-                .particles
-                .add(Vec2::new(S::from_f64(x), S::from_f64(y)), Vec2::ZERO, m)
-        })
+        .map(|&(x, y)| world.particles.add(Vec2::from_f64(x, y), Vec2::ZERO, m))
         .collect();
     let ends = |a: usize, b: usize| Some((*ids.get(a)?, *ids.get(b)?));
     let springs = match body {

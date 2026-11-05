@@ -35,7 +35,7 @@ pub fn pendulum<S: Scalar>(solver: Solver, substeps: NonZeroU32) -> Result<World
     w.add_force(pendulum_gravity());
     let pin = w.particles.add_static(Vec2::ZERO);
     let bob = w.particles.add(
-        Vec2::new(S::from_f64(PENDULUM_LENGTH), S::ZERO),
+        Vec2::from_f64(PENDULUM_LENGTH, 0.0),
         Vec2::ZERO,
         mass(PENDULUM_MASS)?,
     );

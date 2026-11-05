@@ -125,7 +125,7 @@ const SOFTENED_PEAK_MAX: f64 = 10.0;
 fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     let mut w = World::<S>::new(Integrator::SymplecticEuler, nonzero(1));
     w.add_force(newtonian(Softening::new(s::<S>(softening)).unwrap()));
-    let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
+    let vec = |x: f64, y: f64| Vec2::from_f64(x, y);
     let half_b = PASS_IMPACT_M / 2.0;
     w.particles.add(
         vec(-PASS_HALF_GAP_M, half_b),
