@@ -4,5 +4,7 @@
 channel = "1.99.1"
 # llvm-tools: llvm-profdata and llvm-cov, matching this rustc's LLVM, which
 # cargo-llvm-cov needs to merge and report coverage (cargo xtask coverage).
-components = ["rustfmt", "clippy", "llvm-tools"]
+# rust-analyzer: editors launch it through the rustup proxy, which looks in the
+# pinned toolchain; without the component the language server fails to start.
+components = ["rustfmt", "clippy", "llvm-tools", "rust-analyzer"]
 targets = ["wasm32-unknown-unknown", "wasm32-wasip1"]
