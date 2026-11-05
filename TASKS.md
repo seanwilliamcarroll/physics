@@ -228,10 +228,15 @@ offline into `hammer/table.rs`. Measured: contact within 27 %, shorter
 when harder, C8 < 1 ms; no energy from nowhere; brighter and louder
 when harder, A0 to C5. Treble gap below.
 
-## 4. String groups and the body (PR)
+## ✅ 4. String groups and the body (done)
 
-- [ ] 1–3 detuned strings per key; the body resonances; tests: beat
-      rate, the body's response.
+`Unison`: 1/2/3 strings (E1, G♯2 boundaries), 1 cent apart, a hammer per
+string (a trio = 3× one string within 1.7e-4 at first), uncoupled, the
+summed bridge force out; beats measured within 2 %. `Body`: five
+bandpass biquads plus the direct sound. **For section 5:** `Unison`
+holds a `Vec` of strings and designs each string's dispersion when
+built; voices need it preallocated and re-strung (the per-key design
+table), without allocating.
 
 ## 5. The piano in voices and the web layer (PR)
 

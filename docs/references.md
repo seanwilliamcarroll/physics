@@ -149,6 +149,11 @@ Signal Processing Letters 17(4):406–409. The biquad cascade's placement
 - DOI: https://doi.org/10.1109/LSP.2010.2040924
 - `adf.m`: https://ccrma.stanford.edu/wiki/Dispersion_Filter_Design
 
+**Bristow-Johnson, R.** *Audio EQ Cookbook* (W3C Group Note, from his
+Audio-EQ-Cookbook.txt). Biquad designs; the body's bandpasses (constant
+0 dB peak gain) (A3.4).
+- https://www.w3.org/TR/audio-eq-cookbook/
+
 **Chabassier, J., Chaigne, A., Joly, P. (2013).** *Modeling and Simulation
 of a Grand Piano.* J. Acoust. Soc. Am. 134(1):648–665. A full piano model
 whose discrete equations are energy-preserving schemes; the hammer's
