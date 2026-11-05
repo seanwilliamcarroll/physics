@@ -146,3 +146,46 @@ fn stiff_performance_golden_hashes_are_unchanged() {
         got.0, got.1
     );
 }
+
+/// The piano's performance: the chord struck at mixed velocities, a
+/// melody note ff, a release, one more note pp; through the body.
+fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
+    let mut v = Voices::<S>::new(FS, 7).unwrap();
+    v.set_model(Model::Piano);
+    let mut out = Vec::new();
+    let mut block = vec![S::ZERO; BLOCK];
+    for b in 0..BLOCKS {
+        match b {
+            0 => {
+                for (i, key) in [48_u8, 52, 55, 60, 64, 67, 72].into_iter().enumerate() {
+                    #[expect(clippy::cast_precision_loss, reason = "seven keys")]
+                    let velocity = 0.5 + 0.6 * i as f64;
+                    assert!(v.strike(key, velocity));
+                }
+            }
+            40 => assert!(v.strike(76, acoustic::hammer::FORTISSIMO)),
+            100 => v.note_off(48),
+            200 => assert!(v.strike(79, acoustic::hammer::PIANISSIMO)),
+            _ => {}
+        }
+        v.render(&mut block);
+        out.extend_from_slice(&block);
+    }
+    (out, v.clipped())
+}
+
+/// Golden hashes of [`perform_piano`]: (f32, f64), native and on wasm. The
+/// designs and the hammers are `f64` with `libm`, so the same bits.
+const PIANO_GOLDEN: (u64, u64) = (0xec8a_8ace_34eb_1a9c, 0xc87e_aa6f_0bbf_569b);
+
+#[test]
+fn piano_performance_golden_hashes_are_unchanged() {
+    let (f64_samples, clipped) = perform_piano::<f64>();
+    assert_eq!(clipped, 0, "the piano performance doesn't clip");
+    let got = (hash(&perform_piano::<f32>().0), hash(&f64_samples));
+    assert_eq!(
+        got, PIANO_GOLDEN,
+        "golden hashes changed: ({:#018x}, {:#018x})",
+        got.0, got.1
+    );
+}
