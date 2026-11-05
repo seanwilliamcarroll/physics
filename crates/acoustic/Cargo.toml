@@ -24,3 +24,7 @@ harness = false  # criterion provides main
 [[bench]]
 name = "dispersion"
 harness = false
+
+[[bench]]
+name = "piano"
+harness = false

@@ -43,7 +43,8 @@ export type ProcessorInit = {
 
 /** Messages from the page. */
 export type ToWorklet =
-  | { type: "on"; key: number }
+  /** With `velocity` (m/s), a piano strike; without, the model's note on. */
+  | { type: "on"; key: number; velocity?: number }
   | { type: "off"; key: number }
   | { type: "tuned"; tuned: boolean }
   | { type: "t60"; seconds: number }
@@ -56,6 +57,8 @@ export type ToWorklet =
   | { type: "stop" }
   | { type: "model"; code: number }
   | { type: "pickup"; at: number }
+  /** The piano's strings stiff or ideal (A3). */
+  | { type: "stiffness"; on: boolean }
   /** Include the output's spectrum in each snapshot (A2). */
   | { type: "spectrum"; on: boolean };
 
@@ -124,7 +127,10 @@ class KsProcessor extends AudioWorkletProcessor {
   private handle(m: ToWorklet): void {
     const { x, synth } = this;
     switch (m.type) {
-      case "on": x.synth_note_on(synth, m.key); break;
+      case "on":
+        if (m.velocity === undefined) x.synth_note_on(synth, m.key);
+        else x.synth_note_on_velocity(synth, m.key, m.velocity);
+        break;
       case "off": x.synth_note_off(synth, m.key); break;
       case "tuned": x.synth_set_tuned(synth, m.tuned ? 1 : 0); break;
       case "t60": x.synth_set_t60(synth, m.seconds); break;
@@ -135,6 +141,7 @@ class KsProcessor extends AudioWorkletProcessor {
       case "stop": this.stopSong(); break;
       case "model": x.synth_set_model(synth, m.code); break;
       case "pickup": x.synth_set_pickup(synth, m.at); break;
+      case "stiffness": x.synth_set_stiffness(synth, m.on ? 1 : 0); break;
       case "spectrum": this.spectrumOn = m.on; break;
     }
   }

@@ -1,4 +1,7 @@
 use super::{Model, RELEASE_T60, VOICES, Voices};
+use crate::hammer::{FORTISSIMO, PIANISSIMO, mezzo_forte};
+use crate::measure::{cents, partial, pitch};
+use crate::piano::frequency;
 use crate::{Decay, Excitation, Voicing};
 
 const FS: f64 = 48_000.0;
@@ -113,4 +116,150 @@ fn a_note_keeps_its_model_and_the_pickup_moves_live() {
         a.iter().zip(&b).any(|(x, y)| (x - y).abs() > 1e-3),
         "the pickup moved"
     );
+}
+
+/// A piano pool, the piano chosen (its keys designed).
+fn piano() -> Voices<f64> {
+    let mut v = pool();
+    v.set_model(Model::Piano);
+    v
+}
+
+fn render(v: &mut Voices<f64>, secs: f64) -> Vec<f64> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "test lengths"
+    )]
+    let mut out = vec![0.0; (secs * FS) as usize];
+    v.render(&mut out);
+    out
+}
+
+/// Measured (A3.5): within 0.0027 cents (MIDI 84). The strings sit about
+/// the note (±½, or −1, 0, +1 cent), so their sum's fundamental is the
+/// note's. ~10x.
+const PIANO_TUNE_TOL_CENTS: f64 = 0.03;
+/// Periods in each DFT window, and the attack skipped, s.
+const PERIODS: f64 = 16.0;
+const ATTACK: f64 = 0.05;
+
+#[test]
+fn the_piano_plays_in_tune() {
+    for key in [33_u8, 48, 60, 72, 84] {
+        let mut v = piano();
+        assert!(
+            v.note_on(key, VOICING, Excitation::Noise),
+            "note on plays the piano at mf"
+        );
+        let out = render(&mut v, ATTACK + 3.0 * PERIODS / frequency(key) + 0.1);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "test lengths"
+        )]
+        let tail = &out[(ATTACK * FS) as usize..];
+        let f0 = frequency(key);
+        let coarse = pitch(tail, FS, f0, 0.06).unwrap();
+        let got = partial(tail, FS, coarse, PERIODS).unwrap();
+        println!("MIDI {key}: {:+.4} cents", cents(got, f0));
+        assert!(cents(got, f0).abs() < PIANO_TUNE_TOL_CENTS, "MIDI {key}");
+        assert!(
+            v.latest_detune().unwrap().abs() < 1e-9,
+            "the middle string is in tune"
+        );
+    }
+}
+
+#[test]
+fn harder_strikes_are_louder() {
+    let rms = |velocity: f64| {
+        let mut v = piano();
+        assert!(v.strike(60, velocity));
+        let out = render(&mut v, 0.5);
+        #[expect(clippy::cast_precision_loss, reason = "test lengths")]
+        let n = out.len() as f64;
+        (out.iter().map(|x| x * x).sum::<f64>() / n).sqrt()
+    };
+    let levels = [rms(PIANISSIMO), rms(mezzo_forte()), rms(FORTISSIMO)];
+    println!("C4 pp, mf, ff: {levels:?}");
+    assert!(levels.windows(2).all(|w| w[1] > w[0]), "{levels:?}");
+}
+
+/// The stiffness toggle: off, C4's 10th partial is harmonic; on, it runs
+/// sharp by what `B` says (`f_k = k F₀ √(1 + B k²)`: about 26 cents).
+#[test]
+fn the_stiffness_toggle_stretches_the_partials() {
+    let key = 60;
+    let f0 = frequency(key);
+    let b = crate::inharmonicity(key);
+    let tenth = |stiff: bool| {
+        let mut v = piano();
+        v.set_stiffness(stiff);
+        assert!(v.strike(key, FORTISSIMO));
+        let out = render(&mut v, 1.0);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "test lengths"
+        )]
+        let tail = &out[(ATTACK * FS) as usize..];
+        let want = if stiff {
+            10.0 * f0 / (1.0 + b).sqrt() * (1.0 + 100.0 * b).sqrt()
+        } else {
+            10.0 * f0
+        };
+        (
+            cents(partial(tail, FS, want, PERIODS * 10.0).unwrap(), 10.0 * f0),
+            cents(want, 10.0 * f0),
+        )
+    };
+    let (off, _) = tenth(false);
+    let (on, predicted) = tenth(true);
+    println!(
+        "C4's 10th partial: {off:+.2} cents stiffness off, {on:+.2} on (predicted {predicted:+.2})"
+    );
+    assert!(off.abs() < 0.5, "{off}");
+    assert!((on - predicted).abs() < 0.5, "{on} vs {predicted}");
+}
+
+#[test]
+fn a_released_piano_note_fades_and_frees() {
+    let mut v = piano();
+    assert!(v.strike(60, mezzo_forte()));
+    let loud: f64 = render(&mut v, 0.01).iter().map(|x| x * x).sum();
+    v.note_off(60);
+    let _ = render(&mut v, RELEASE_T60 * 1.5);
+    let quiet: f64 = render(&mut v, 0.01).iter().map(|x| x * x).sum();
+    assert!(quiet < loud * 1e-6, "{quiet} vs {loud}");
+    assert_eq!(v.sounding(), 0);
+}
+
+/// Measured (A3.5): the loudest, a ff cluster of seven treble keys, peaks
+/// at 0.77 at the default gain (the attack's spike); a ff chord at 0.46.
+#[test]
+fn loud_piano_chords_stay_off_the_clamp() {
+    for keys in [
+        [36_u8, 48, 55, 60, 64, 67, 72],
+        [21, 24, 28, 33, 36, 40, 43],
+        [84, 88, 91, 96, 100, 103, 108],
+    ] {
+        let mut v = piano();
+        for k in keys {
+            assert!(v.strike(k, FORTISSIMO));
+        }
+        let out = render(&mut v, 1.0);
+        let peak = out.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
+        println!("{keys:?} ff: peak {peak:.3}");
+        assert_eq!(v.clipped(), 0, "{keys:?}: peak {peak}");
+        assert!(peak < 0.9, "{keys:?}: {peak}");
+    }
+}
+
+#[test]
+fn off_the_keyboard_or_a_bad_velocity_is_refused() {
+    let mut v = piano();
+    assert!(!v.strike(20, mezzo_forte()) && !v.strike(109, mezzo_forte()));
+    assert!(!v.strike(60, 0.0) && !v.strike(60, f64::NAN));
+    assert_eq!(v.sounding(), 0);
 }

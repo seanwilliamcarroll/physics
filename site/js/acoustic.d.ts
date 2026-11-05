@@ -13,6 +13,10 @@ export interface AcousticExports {
   /** Pointer to `frames` f32 samples; 0 for null or over 4096 frames. */
   synth_render(s: SynthHandle, frames: number): number;
   synth_note_on(s: SynthHandle, key: number): Status;
+  /** Strikes piano key `key` at `velocity` m/s (pp 0.5 to ff 5). */
+  synth_note_on_velocity(s: SynthHandle, key: number, velocity: number): Status;
+  /** 1: the piano's strings stiff; 0: ideal. From the next strike. */
+  synth_set_stiffness(s: SynthHandle, stiff: number): Status;
   synth_note_off(s: SynthHandle, key: number): void;
   synth_set_tuned(s: SynthHandle, tuned: number): Status;
   synth_set_t60(s: SynthHandle, t60: number): Status;

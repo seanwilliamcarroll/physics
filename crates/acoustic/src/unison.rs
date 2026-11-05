@@ -8,8 +8,9 @@
 //! them: the fitted hammer (section 3) is a hammer *per string*, and the
 //! contact times stay the tested ones.
 
+use crate::dispersion::Dispersion;
 use crate::hammer::{self, Hammer, STRIKE};
-use crate::{Scalar, Voicing, Waveguide};
+use crate::{Decay, LOWEST_HZ, Scalar, Voicing, Waveguide};
 
 /// The most strings a key has.
 pub const MAX_STRINGS: usize = 3;
@@ -45,10 +46,13 @@ pub fn offset(i: usize, n: usize) -> f64 {
     (i - (n - 1.0) / 2.0) * DETUNE_CENTS
 }
 
-/// One key's strings, struck.
+/// One key's strings, struck. [`MAX_STRINGS`] strings are allocated up
+/// front, sized for [`LOWEST_HZ`], so re-striking for any key never
+/// allocates; `active` of them sound.
 #[derive(Clone, Debug)]
 pub struct Unison<S> {
     strings: Vec<Waveguide<S>>,
+    active: usize,
     /// Each string's last bridge output (its force needs the change).
     previous: [S; MAX_STRINGS],
     /// `2 Z fs`: an arriving wave's displacement change per sample to the
@@ -59,65 +63,136 @@ pub struct Unison<S> {
 }
 
 impl<S: Scalar> Unison<S> {
-    /// Key `midi`'s strings at `fs` Hz, voiced by `voicing` (its pitch is
-    /// the key's, equal-tempered; each string detuned by [`offset`]),
-    /// struck at `velocity` m/s. `None` off the keyboard or for settings
-    /// the strings or hammer can't take.
+    /// Silent strings at `fs` Hz with room for any key (A0's loop);
+    /// `None` for a rate that can't play A0.
     #[must_use]
-    pub fn new(fs: f64, midi: u8, voicing: Voicing, velocity: f64) -> Option<Self> {
-        let felt = hammer::felt(midi)?;
-        let z = hammer::impedance(midi);
-        let f0 = 440.0 * libm::pow(2.0, (f64::from(midi) - 69.0) / 12.0);
-        let n = strings(midi);
-        let strings = (0..n)
-            .map(|i| {
-                let mut s =
-                    Waveguide::new(fs, f0 * libm::pow(2.0, offset(i, n) / 1200.0), voicing)?;
-                s.strike(Hammer::new(felt, z, fs, velocity)?, 1.0 - STRIKE)
-                    .then_some(s)
-            })
-            .collect::<Option<Vec<_>>>()?;
+    pub fn with_capacity(fs: f64) -> Option<Self> {
+        let probe = Voicing {
+            tuned: true,
+            decay: Decay::Loss(1.0),
+            inharmonicity: 0.0,
+        };
+        let cap = libm::ceil(fs / LOWEST_HZ);
+        let cap_ok = cap.is_finite() && cap > 0.0;
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "checked positive and finite"
+        )]
+        let cap = if cap_ok { cap as usize } else { 0 };
+        let string = Waveguide::with_capacity(fs, LOWEST_HZ, probe, cap)?;
         Some(Self {
-            strings,
+            strings: vec![string; MAX_STRINGS],
+            active: 0,
             previous: [S::ZERO; MAX_STRINGS],
-            force_scale: S::from_f64(2.0 * z * fs),
-            z,
+            force_scale: S::ZERO,
+            z: 1.0,
             fs,
         })
+    }
+
+    /// Key `midi`'s strings at `fs` Hz, voiced by `voicing` (its pitch is
+    /// the key's, equal-tempered; each string detuned by [`offset`]),
+    /// struck at `velocity` m/s; the dispersion designed here (milliseconds:
+    /// voices use a stored design instead). `None` off the keyboard or for
+    /// settings the strings or hammer can't take.
+    #[must_use]
+    pub fn new(fs: f64, midi: u8, voicing: Voicing, velocity: f64) -> Option<Self> {
+        let mut u = Self::with_capacity(fs)?;
+        let design = voicing.design(fs, crate::piano::frequency(midi));
+        u.restrike(midi, voicing, design.as_ref(), velocity)
+            .then_some(u)
+    }
+
+    /// Re-strings these strings for key `midi` with `voicing` and the
+    /// stored dispersion `design`, and strikes them at `velocity` m/s,
+    /// without allocating. `false`, leaving them silent, off the keyboard
+    /// or for settings the strings or hammer can't take.
+    pub(crate) fn restrike(
+        &mut self,
+        midi: u8,
+        voicing: Voicing,
+        design: Option<&Dispersion>,
+        velocity: f64,
+    ) -> bool {
+        self.active = 0;
+        let Some(felt) = hammer::felt(midi) else {
+            return false;
+        };
+        let z = hammer::impedance(midi);
+        let f0 = crate::piano::frequency(midi);
+        let n = strings(midi);
+        for (i, s) in self.strings.iter_mut().take(n).enumerate() {
+            let tuned = f0 * libm::exp2(offset(i, n) / 1200.0);
+            let Some(h) = Hammer::new(felt, z, self.fs, velocity) else {
+                return false;
+            };
+            if !(s.restring_designed(self.fs, tuned, voicing, design) && s.strike(h, 1.0 - STRIKE))
+            {
+                return false;
+            }
+        }
+        self.active = n;
+        self.previous = [S::ZERO; MAX_STRINGS];
+        self.force_scale = S::from_f64(2.0 * z * self.fs);
+        self.z = z;
+        true
+    }
+
+    /// The release: every string's damper (see [`Waveguide::damp`]).
+    pub fn damp(&mut self, t60: f64) {
+        for s in self.strings.iter_mut().take(self.active) {
+            s.damp(t60);
+        }
     }
 
     /// How many strings sound.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.strings.len()
+        self.active
     }
 
-    /// Never: a key has at least one string.
+    /// Before any strike (or after a refused one).
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.strings.is_empty()
+        self.active == 0
     }
 
     /// Each string's pitch, Hz.
     pub fn pitches(&self) -> impl Iterator<Item = f64> + '_ {
-        self.strings.iter().map(Waveguide::pitch)
+        self.strings.iter().take(self.active).map(Waveguide::pitch)
     }
 
     /// The hammers, one per string.
     pub fn hammers(&self) -> impl Iterator<Item = &Hammer> + '_ {
-        self.strings.iter().filter_map(Waveguide::hammer)
+        self.strings
+            .iter()
+            .take(self.active)
+            .filter_map(Waveguide::hammer)
+    }
+
+    /// The middle string (the one in tune), for the page to draw.
+    pub(crate) fn middle(&self) -> Option<&Waveguide<S>> {
+        self.strings
+            .get(self.active / 2)
+            .filter(|_| self.active > 0)
     }
 
     /// The strings' energy, J (see [`Waveguide::energy`]).
     #[must_use]
     pub fn energy(&self) -> f64 {
-        self.strings.iter().map(|s| s.energy(self.z, self.fs)).sum()
+        self.strings
+            .iter()
+            .take(self.active)
+            .map(|s| s.energy(self.z, self.fs))
+            .sum()
     }
 
     /// The next sample: the strings' summed force on the bridge, N.
     pub fn next_sample(&mut self) -> S {
         let mut sum = S::ZERO;
-        for (s, previous) in self.strings.iter_mut().zip(self.previous.iter_mut()) {
+        let strings = self.strings.iter_mut().take(self.active);
+        for (s, previous) in strings.zip(self.previous.iter_mut()) {
             let y = s.step();
             sum += self.force_scale * (y - *previous);
             *previous = y;

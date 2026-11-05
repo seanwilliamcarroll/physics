@@ -84,7 +84,24 @@ impl<S: Scalar> Waveguide<S> {
     /// `false`, changing nothing, for settings it can't play or a note
     /// longer than the capacity.
     pub fn restring(&mut self, fs: f64, f0: f64, voicing: Voicing) -> bool {
-        let Some(c) = voicing.coefficients(fs, f0) else {
+        self.restring_from(fs, voicing.coefficients(fs, f0).as_ref())
+    }
+
+    /// As [`restring`](Self::restring), with a stored dispersion design
+    /// (the piano's table): no design at note on.
+    pub(crate) fn restring_designed(
+        &mut self,
+        fs: f64,
+        f0: f64,
+        voicing: Voicing,
+        dispersion: Option<&crate::dispersion::Dispersion>,
+    ) -> bool {
+        let c = voicing.coefficients_designed(fs, f0, |_, _| dispersion.copied());
+        self.restring_from(fs, c.as_ref())
+    }
+
+    fn restring_from(&mut self, fs: f64, c: Option<&crate::voicing::Coefficients>) -> bool {
+        let Some(c) = c else {
             return false;
         };
         let m = c.n / 2;
@@ -96,7 +113,7 @@ impl<S: Scalar> Waveguide<S> {
         self.left.reset(m);
         self.odd = (c.n % 2 == 1).then_some(S::ZERO);
         (self.length, self.first) = geometry(fs, c.pitch, m);
-        self.bridge.apply(&c);
+        self.bridge.apply(c);
         self.hammer = None;
         true
     }

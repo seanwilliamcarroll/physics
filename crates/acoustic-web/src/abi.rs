@@ -10,6 +10,9 @@ pub const EXCITATION_TRIANGLE: u32 = 1;
 pub const MODEL_LOOP: u32 = 0;
 /// [`Model::Waveguide`](acoustic::Model::Waveguide): A2's waveguide.
 pub const MODEL_WAVEGUIDE: u32 = 1;
+/// [`Model::Piano`](acoustic::Model::Piano): A3's piano. Choosing it the
+/// first time designs every key (a one-time pause, `docs/14-piano.md`).
+pub const MODEL_PIANO: u32 = 2;
 
 /// Status returned by setters: 1 = applied, 0 = refused (bad value or
 /// handle). The same convention as the engine's exports.

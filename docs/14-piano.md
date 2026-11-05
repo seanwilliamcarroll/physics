@@ -1,7 +1,7 @@
 # 14 — Piano Voice
 
 Status: **Adopted** (A3.1; as built: dispersion A3.2, the hammer A3.3,
-string groups and the body A3.4). Depends on `12-acoustic-foundations.md` (the
+string groups and the body A3.4, the synth A3.5). Depends on `12-acoustic-foundations.md` (the
 loop filter, tuning) and `13-waveguide.md` (the waveguide, positions on
 the effective length, the FFT).
 
@@ -271,12 +271,51 @@ response folded into the excitation) is out of scope.
 them, flat (0.003 dB) at 15 kHz where only the direct sound is left, the
 ring gone within a second, and `f32` within 10⁻⁵ of `f64`.
 
+## The piano in the synth (A3.5)
+
+- **`Model::Piano`** beside the loop and the waveguide. Each of the 16
+  voices holds three strings sized for A0, allocated once, re-struck for
+  any key without allocating.
+- **The design table.** A key's dispersion takes milliseconds to design,
+  so the first switch to the piano designs all 88 at once (a one-time
+  pause, measured below), and every strike looks its key up. A key's
+  strings, a cent apart, share its design: their tuning allpasses absorb
+  the cent.
+- **A fixed decay per key.** A design depends on the loop lowpass's
+  stretch, which the decay sets, so the piano doesn't take the pages'
+  decay setting: its fundamental's T60 falls from 20 s at A0 to 1.5 s at
+  C8, geometrically (**our choice**, the shape of a piano's, not a
+  measured curve).
+- **Velocity per note:** `strike(key, m/s)`, `synth_note_on_velocity` in
+  the ABI, an optional `velocity` on the worklet's note message; a plain
+  note on is mf (1.58 m/s).
+- **The stiffness toggle:** off, the strings are A2's ideal ones (no
+  cascade), from the next strike.
+- **One body** on the piano voices' summed bridge force (linear, so one on
+  the sum is one per voice), scaled to output by `PIANO_SCALE` = 0.014
+  (**our choice**: the loudest case tried, a ff cluster of seven treble
+  keys, peaks at 0.77 at the default gain; a ff chord at 0.46).
+
+**Measured:** in tune within 0.0027 cents (the strings' mean); louder
+when harder; C4's 10th partial at −0.01 cents with stiffness off and
++26.15 on (`B` predicts +26.19); nothing clipped; a released note frees
+its voice.
+
 ## Cost
 
 Per voice: up to three strings, each a waveguide with up to 16 biquads
-more than A2; the hammer while in contact; the body. 16 voices
-× 3 strings is measured in a bench before the page, against a 128-frame
-render quantum.
+more than A2; the hammer while in contact; the body (once, on the sum).
+Measured (A3.5), 16 voices of three-string keys at 48 kHz, against the
+2.67 ms of a 128-frame quantum:
+
+| | native | wasm (V8, the browser build) |
+|---|---|---|
+| a quantum, the hammers gone | 54 µs (2 %) | 78 µs (3 %) |
+| a quantum, all 48 hammers in contact | | 456 µs (17 %) |
+| designing all 88 keys, once | 177 ms | 230 ms |
+
+The hammer's per-sample force solve is the costly part, and only while a
+hammer is on its string (a few milliseconds a strike).
 
 ## Tests
 
@@ -293,7 +332,8 @@ render quantum.
 - **String groups:** beating at the detuning's rate; a group struck like
   `N` strings under one hammer; no energy from nowhere.
 - **The body:** its response peaks at its resonances; stable.
-- **Determinism:** goldens, native and wasm.
+- **Determinism:** goldens, native and wasm, for a stiff waveguide
+  performance and a piano one (mixed velocities, a release).
 
 ## References
 

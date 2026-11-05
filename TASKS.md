@@ -238,10 +238,17 @@ holds a `Vec` of strings and designs each string's dispersion when
 built; voices need it preallocated and re-strung (the per-key design
 table), without allocating.
 
-## 5. The piano in voices and the web layer (PR)
+## ✅ 5. The piano in voices and the web layer (done)
 
-- [ ] `Model::Piano`, velocity in note on (ABI), the stiffness toggle,
-      hammer hardness; the cost bench; goldens.
+**Your calls:** all 88 keys designed on the first switch to the piano;
+a fixed decay curve per key (20 s → 1.5 s, our choice: a design depends
+on the decay); velocity per note; **no hardness control**. `Model::Piano`,
+preallocated three-string voices, one body on the sum, `PIANO_SCALE`;
+`MODEL_PIANO`, `synth_note_on_velocity`, `synth_set_stiffness`, the
+worklet's messages. Measured: in tune within 0.003 cents; louder when
+harder; the toggle works; nothing clipped; a quantum of 16 × 3 strings
+in 78 µs on wasm (456 µs while the hammers are on), the design 230 ms
+once. A piano golden, same on wasm.
 
 ## 6. Site: the A3 page (PR)
 
