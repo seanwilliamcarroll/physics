@@ -10,15 +10,17 @@ use std::time::Duration;
 const SERVER_POLL: Duration = Duration::from_millis(100);
 const SERVER_POLL_ATTEMPTS: u32 = 50;
 
-/// `python3 -m http.server` on a free local port, killed on drop (including
-/// when a check fails partway).
+/// `xtask/serve.py` (`http.server` with a deeper listen backlog: with the
+/// default 5, macOS resets some of a page's module requests and the page
+/// never starts) on a free local port, killed on drop (including when a
+/// check fails partway).
 pub(super) struct Server {
     child: Child,
     pub(super) port: u16,
 }
 
 impl Server {
-    pub(super) fn start(dir: &Path) -> Result<Self, String> {
+    pub(super) fn start(root: &Path, dir: &Path) -> Result<Self, String> {
         // Ask the OS for a free port, then release it for the server. Another
         // process could grab it in between; unlikely on a dev machine.
         let port = TcpListener::bind(("127.0.0.1", 0))
@@ -26,19 +28,19 @@ impl Server {
             .map_err(|e| format!("finding a free port: {e}"))?
             .port();
         let child = process::Command::new("python3")
+            .arg(root.join("xtask").join("serve.py"))
             .args([
-                "-m",
-                "http.server",
+                "--port",
                 &port.to_string(),
                 "--bind",
                 "127.0.0.1",
-                "-d",
+                "--directory",
             ])
             .arg(dir)
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
-            .map_err(|e| format!("failed to start python3 http.server: {e}"))?;
+            .map_err(|e| format!("failed to start python3 xtask/serve.py: {e}"))?;
         let server = Self { child, port };
         for _ in 0..SERVER_POLL_ATTEMPTS {
             if TcpStream::connect(("127.0.0.1", port)).is_ok() {
@@ -46,7 +48,7 @@ impl Server {
             }
             thread::sleep(SERVER_POLL);
         }
-        Err(format!("http.server didn't start on port {port}"))
+        Err(format!("xtask/serve.py didn't start on port {port}"))
     }
 }
 
