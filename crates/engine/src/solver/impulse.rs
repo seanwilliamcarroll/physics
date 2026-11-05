@@ -6,7 +6,7 @@ use contact_solve::ContactGains;
 
 use super::contacts::CONTACT_SLOP;
 use super::{Stabilization, Step};
-use crate::integrate::{drift, evaluate, kick};
+use crate::integrate::{drift, drift_split, evaluate, kick};
 use crate::{Constraint, Particles, Scalar, Vec2};
 
 impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
@@ -37,7 +37,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     pub(crate) fn impulse(self, h: S) {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
-        kick(&mut p.vel, self.acc, h);
+        kick(p, self.acc, h);
         let contacts = self.contacts;
         if self.collides {
             contacts.find(p, self.walls, self.acc, h);
@@ -84,7 +84,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                             contact_solve::solve(p, c, lambda, cg);
                         });
                 }
-                drift(&mut p.pos, &p.vel, h);
+                drift(p, h);
                 restitution_pass(p, contacts, self.restitution.get());
             }
             Stabilization::Split => {
@@ -109,9 +109,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                 }
                 // Positions move by the real and the pseudo-velocity; only
                 // the real one is kept.
-                for ((x, &v), &pv) in p.pos.iter_mut().zip(&p.vel).zip(pseudo.iter()) {
-                    *x += (v + pv) * h;
-                }
+                drift_split(p, pseudo, h);
                 restitution_pass(p, contacts, self.restitution.get());
             }
         }

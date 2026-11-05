@@ -4,6 +4,7 @@
 
 use engine::diagnostics::{kinetic_energy, momentum};
 use engine::{Damping, Integrator, Spring, SpringForce, Stiffness, Vec2, World};
+use math::convert::f64_to_usize;
 use test_support::{kg, nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
@@ -126,3 +127,41 @@ fn explicit_spring_diverges_above_critical_stiffness() {
     assert!(below < 1e3, "0.9 k_crit: {below}");
     assert!(above > 1e6, "1.1 k_crit: {above}");
 }
+
+/// Velocity Verlet with a **damped** spring stays second order: its second
+/// force evaluation sees the predicted velocity `v + a h`, so the damper's
+/// end-of-step force is off by `O(h²)`, not `O(h)`. A bob on k = 4 N/m,
+/// c = 0.5 N·s/m, released 1 m stretched, against the exact underdamped
+/// solution at t = 5 s, at three step sizes. Measured (audit after A3):
+/// the error quarters with each halving (ratios 4.0); with the old
+/// velocity it only halved (2.0), 100× less accurate at h = 1/60.
+#[test]
+fn verlet_is_second_order_with_damping() {
+    const K: f64 = 4.0;
+    const C: f64 = 0.5;
+    const T: f64 = 5.0;
+    let exact = {
+        let w0 = K.sqrt();
+        let wd = w0 * (1.0 - (C / (2.0 * w0)).powi(2)).sqrt();
+        (-C / 2.0 * T).exp() * ((wd * T).cos() + C / 2.0 / wd * (wd * T).sin())
+    };
+    let error = |substeps: u32| {
+        let (mut w, _) = bob_on_spring(K, C, substeps, 1.0);
+        w.set_integrator(Integrator::VelocityVerlet);
+        for _ in 0..f64_to_usize(T / DT).unwrap() {
+            w.step(time_step(DT));
+        }
+        (w.particles().pos()[1].x - 1.0 - exact).abs()
+    };
+    let (e1, e2, e4) = (error(1), error(2), error(4));
+    let (r1, r2) = (e1 / e2, e2 / e4);
+    println!("errors {e1:.3e} {e2:.3e} {e4:.3e}; ratios {r1:.2} {r2:.2}");
+    assert!(
+        r1 > SECOND_ORDER_RATIO && r2 > SECOND_ORDER_RATIO,
+        "{r1} {r2}"
+    );
+}
+
+/// Halving h divides a second-order error by 4 and a first-order one by 2;
+/// 3.5 tells them apart with room for higher-order terms.
+const SECOND_ORDER_RATIO: f64 = 3.5;

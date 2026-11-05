@@ -5,7 +5,7 @@
 
 use engine::diagnostics::{center_of_mass, momentum};
 use engine::scenarios::{ORBIT_SEPARATION, cluster, orbit, orbit_period};
-use engine::{Integrator, Mass, TimeStep, UniformGravity, Vec2, World};
+use engine::{DistanceConstraint, Integrator, Mass, Solver, TimeStep, UniformGravity, Vec2, World};
 use test_support::{
     Tol, bits, energy_errors, envelope, for_each_scalar, momentum_drift_bound, momentum_scale,
     nonzero, s, steps_for, time_step, v,
@@ -117,6 +117,42 @@ fn static_particle_is_bit_identical<S: Tol>() {
     }
 }
 for_each_scalar!(static_particle_is_bit_identical);
+
+/// A static particle never moves, even with a velocity (`vel_mut` can give
+/// it one): `kick` and `drift` skip `inv_mass = 0` in every stepper, the
+/// three integrators and both solvers (a rod from the pin puts a world in
+/// a solver's hands). Before the audit after A3 a static drifted at
+/// whatever velocity it was given.
+fn a_static_with_a_velocity_stays_put<S: Tol>() {
+    let pin = v::<S>(1.5, -2.25);
+    let run = |mut w: World<S>, label: &str| {
+        let id = w.add_static(pin);
+        if let Some(vel) = w.vel_mut().get_mut(id.index()) {
+            *vel = v(3.0, 4.0);
+        }
+        for _ in 0..100 {
+            w.step(time_step(1.0 / 60.0));
+        }
+        assert_eq!(bits(w.particles().pos()[id.index()]), bits(pin), "{label}");
+    };
+    for integrator in Integrator::ALL {
+        run(
+            falling_world::<S>(integrator, 4, v(0.0, 0.0), v(1.0, 1.0)),
+            &format!("{integrator:?}"),
+        );
+    }
+    for solver in [Solver::Xpbd, Solver::Impulse] {
+        let mut w = World::new(Integrator::SymplecticEuler, nonzero(4));
+        w.add_force(UniformGravity::new(v(0.0, G)));
+        w.set_solver(solver);
+        let bob = w.add_particle(v(1.5, -3.25), Vec2::ZERO, Mass::ONE);
+        let anchor = w.add_static(v(1.5, -2.25));
+        let rod = DistanceConstraint::between(w.particles(), anchor, bob).unwrap();
+        w.add_constraint(rod).unwrap();
+        run(w, &format!("{solver:?}"));
+    }
+}
+for_each_scalar!(a_static_with_a_velocity_stays_put);
 
 /// M0's "zero dt" test, now a type's: a zero step was a no-op for the
 /// integrators, but `0 / 0` for XPBD's velocity (`Δx / h`), so no step that
