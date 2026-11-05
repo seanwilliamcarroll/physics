@@ -56,15 +56,15 @@ fn run(links: &[LinkSpec], order: &[usize], solver: Solver, steps: u32) -> (Vec<
     w.add_force(pendulum_gravity());
     w.set_solver(solver);
     w.set_iterations(nonzero(ITERATIONS));
-    let mut ids = vec![w.particles.add_static(Vec2::ZERO)];
+    let mut ids = vec![w.add_static(Vec2::ZERO)];
     let mut x = Vec2::ZERO;
     for &(len, angle, m) in links {
         x += Vec2::new(len * angle.cos(), len * angle.sin());
-        ids.push(w.particles.add(x, Vec2::ZERO, kg(m)));
+        ids.push(w.add_particle(x, Vec2::ZERO, kg(m)));
     }
     let rods: Vec<_> = ids
         .windows(2)
-        .map(|p| DistanceConstraint::between(&w.particles, p[0], p[1]).unwrap())
+        .map(|p| DistanceConstraint::between(w.particles(), p[0], p[1]).unwrap())
         .collect();
     for &i in order {
         w.add_constraint(rods[i]).unwrap();
@@ -72,9 +72,9 @@ fn run(links: &[LinkSpec], order: &[usize], solver: Solver, steps: u32) -> (Vec<
     let mut worst = 0.0_f64;
     for _ in 0..steps {
         w.step(DT);
-        worst = worst.max(constraint_error(&w.particles, w.constraints()).unwrap().0);
+        worst = worst.max(constraint_error(w.particles(), w.constraints()).unwrap().0);
     }
-    (w.particles.pos().to_vec(), worst)
+    (w.particles().pos().to_vec(), worst)
 }
 
 proptest! {

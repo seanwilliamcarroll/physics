@@ -56,6 +56,6 @@ impl Demo {
     /// energy of stiff, unconverged constraints is meaningless).
     #[must_use]
     pub(crate) fn kinetic_energy(&self) -> f64 {
-        each_scalar!(&self.world, s => engine::Scalar::to_f64(kinetic_energy(&s.world.particles)))
+        each_scalar!(&self.world, s => engine::Scalar::to_f64(kinetic_energy(s.world.particles())))
     }
 }

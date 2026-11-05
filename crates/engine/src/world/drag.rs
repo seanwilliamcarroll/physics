@@ -2,6 +2,7 @@
 //! anchor at the pointer, joined to the particle by a compliant rod of rest
 //! length 0, removed again on release.
 
+use super::ConfigError;
 use super::World;
 use crate::{Compliance, DistanceConstraint, ParticleId, Scalar, Vec2};
 
@@ -30,21 +31,39 @@ impl<S: Scalar> World<S> {
     /// `except` (a held grab: its stiffness is the drag's, not the
     /// scene's). For live changes that keep the world running, e.g. a
     /// stiffness slider (`docs/07-soft-bodies.md`, "Live stiffness"). `f`
-    /// must keep the constraint's bodies (it gets the constraint by value
-    /// and its result replaces it in place, so λ stays aligned).
+    /// gets each constraint by value and its result replaces it in place
+    /// (so λ stays aligned).
+    ///
+    /// # Errors
+    /// [`ConfigError::ChangedBodies`], changing nothing, if `f` changes
+    /// which particles any constraint joins.
     pub fn update_constraints(
         &mut self,
         except: Option<&Grab>,
         f: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
-    ) {
-        self.constraints.update(except.map(|g| g.rod), f);
+    ) -> Result<(), ConfigError> {
+        self.constraints.update(except.map(|g| g.rod), f)
+    }
+
+    /// Whether this world can be grabbed: only if a solver already steps it
+    /// (it has constraints, or something collides). A grab is a rod; in a
+    /// world the integrator steps, adding one would hand the whole world to
+    /// a solver for as long as it's held (M5's force-spring jelly would
+    /// stop being stepped by symplectic Euler), so such a world refuses.
+    #[must_use]
+    pub fn grabbable(&self) -> bool {
+        !self.constraints.is_empty() || self.collides()
     }
 
     /// Grabs the dynamic particle nearest to `point` within `radius` (m):
     /// adds a static anchor at `point` and a rod of rest length 0 and
     /// compliance `softness` from it to the particle. `None`, changing
-    /// nothing, if no dynamic particle is that close.
+    /// nothing, if no dynamic particle is that close, or the world isn't
+    /// [`grabbable`](Self::grabbable).
     pub fn grab(&mut self, point: Vec2<S>, radius: S, softness: Compliance<S>) -> Option<Grab> {
+        if !self.grabbable() {
+            return None;
+        }
         let particle = self.particles.nearest_dynamic(point, radius)?;
         let anchor = self.particles.add_static(point);
         let rod = self.constraints().len();

@@ -60,7 +60,7 @@ fn force_error_is_bounded_and_grows_with_theta<S: Tol>() {
             let w = cluster::<S>(n, seed).unwrap();
             let mut previous = 0.0;
             for (theta, bound) in THETA_BOUNDS {
-                let err = force_error(&w.particles, theta);
+                let err = force_error(w.particles(), theta);
                 assert!(
                     err <= bound,
                     "n {n}, seed {seed}, θ {theta}: error {err:e} > {bound}"
@@ -103,22 +103,22 @@ fn momentum_drift_is_bounded_by_force_error<S: Tol>() {
         cluster_gravity::<S>().unwrap(),
         cluster_barnes_hut_force::<S>(MOMENTUM_THETA),
     );
-    let p0 = momentum(&w.particles);
+    let p0 = momentum(w.particles());
     let mut error_law = 0.0;
     for _ in 0..MOMENTUM_STEPS {
-        let exact = accelerations(&w.particles, &exact_force);
-        let tree = accelerations(&w.particles, &tree_force);
+        let exact = accelerations(w.particles(), &exact_force);
+        let tree = accelerations(w.particles(), &tree_force);
         error_law += DT
             * tree
                 .iter()
                 .zip(&exact)
-                .zip(w.particles.inv_mass())
+                .zip(w.particles().inv_mass())
                 .map(|((&t, &e), &inv_m)| (t - e).length().to_f64() / inv_m.to_f64())
                 .sum::<f64>();
         w.step(s(DT));
     }
-    let drift = (momentum(&w.particles) - p0).length().to_f64();
-    let scale = momentum_scale(&w.particles);
+    let drift = (momentum(w.particles()) - p0).length().to_f64();
+    let scale = momentum_scale(w.particles());
     let rounding = momentum_drift_bound::<S>(MOMENTUM_STEPS, scale);
     assert!(
         drift <= error_law + rounding,
@@ -139,12 +139,12 @@ for_each_scalar!(momentum_drift_is_bounded_by_force_error);
 /// `Σ m |v|`, ~400–500x under the property tests' `steps · ε · Σ m|v|` law.
 fn theta_zero_conserves_momentum_to_rounding<S: Tol>() {
     let mut w = cluster_barnes_hut::<S>(MOMENTUM_N, 1, 0.0);
-    let p0 = momentum(&w.particles);
+    let p0 = momentum(w.particles());
     for _ in 0..MOMENTUM_STEPS {
         w.step(s(DT));
     }
-    let drift = (momentum(&w.particles) - p0).length().to_f64();
-    let bound = momentum_drift_bound::<S>(MOMENTUM_STEPS, momentum_scale(&w.particles));
+    let drift = (momentum(w.particles()) - p0).length().to_f64();
+    let bound = momentum_drift_bound::<S>(MOMENTUM_STEPS, momentum_scale(w.particles()));
     assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
 }
 for_each_scalar!(theta_zero_conserves_momentum_to_rounding);
@@ -158,8 +158,8 @@ fn cluster_runs_finite_for_every_theta<S: Tol>() {
             w.step(s(DT));
         }
         let finite = |v: &Vec2<S>| v.x.to_f64().is_finite() && v.y.to_f64().is_finite();
-        assert!(w.particles.pos().iter().all(finite), "θ {theta}");
-        assert!(w.particles.vel().iter().all(finite), "θ {theta}");
+        assert!(w.particles().pos().iter().all(finite), "θ {theta}");
+        assert!(w.particles().vel().iter().all(finite), "θ {theta}");
     }
 }
 for_each_scalar!(cluster_runs_finite_for_every_theta);

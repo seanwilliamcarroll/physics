@@ -12,12 +12,10 @@ const DT: f64 = 1.0 / 60.0;
 /// anchor, rest length 1 m, released stretched by `stretch` (no gravity).
 fn bob_on_spring(k: f64, c: f64, substeps: u32, stretch: f64) -> (World<f64>, SpringForce<f64>) {
     let mut w = World::new(Integrator::SymplecticEuler, nonzero(substeps));
-    let anchor = w.particles.add_static(Vec2::ZERO);
-    let bob = w
-        .particles
-        .add(Vec2::new(1.0 + stretch, 0.0), Vec2::ZERO, kg(1.0));
+    let anchor = w.add_static(Vec2::ZERO);
+    let bob = w.add_particle(Vec2::new(1.0 + stretch, 0.0), Vec2::ZERO, kg(1.0));
     let spring = Spring::with_rest(
-        &w.particles,
+        w.particles(),
         anchor,
         bob,
         1.0,
@@ -31,7 +29,7 @@ fn bob_on_spring(k: f64, c: f64, substeps: u32, stretch: f64) -> (World<f64>, Sp
 }
 
 fn energy(w: &World<f64>, f: &SpringForce<f64>) -> f64 {
-    kinetic_energy(&w.particles) + f.potential(&w.particles)
+    kinetic_energy(w.particles()) + f.potential(w.particles())
 }
 
 /// Undamped, k = 100 N/m, m = 1 kg: period 2π √(m/k) ≈ 0.628 s, measured
@@ -43,7 +41,7 @@ fn spring_period_is_two_pi_root_m_over_k() {
     let (mut first, mut last, mut periods, mut prev) = (None, 0.0, -1.0_f64, 0.01);
     for i in 1..=300_u32 {
         w.step(DT);
-        let x = w.particles.pos()[1].x - 1.0;
+        let x = w.particles().pos()[1].x - 1.0;
         if prev < 0.0 && x >= 0.0 {
             let t = f64::from(i) * DT;
             first.get_or_insert(t);
@@ -77,12 +75,10 @@ fn damped_spring_loses_energy_at_the_analytic_rate() {
 #[test]
 fn spring_conserves_momentum() {
     let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(4));
-    let a = w.particles.add(Vec2::ZERO, Vec2::new(0.3, -1.0), kg(1.0));
-    let b = w
-        .particles
-        .add(Vec2::new(1.2, 0.0), Vec2::new(-0.1, 2.0), kg(2.0));
+    let a = w.add_particle(Vec2::ZERO, Vec2::new(0.3, -1.0), kg(1.0));
+    let b = w.add_particle(Vec2::new(1.2, 0.0), Vec2::new(-0.1, 2.0), kg(2.0));
     let s = Spring::with_rest(
-        &w.particles,
+        w.particles(),
         a,
         b,
         1.0,
@@ -91,11 +87,11 @@ fn spring_conserves_momentum() {
     )
     .unwrap();
     w.add_force(SpringForce::new(vec![s]));
-    let p0 = momentum(&w.particles);
+    let p0 = momentum(w.particles());
     for _ in 0..600 {
         w.step(DT);
     }
-    let drift = (momentum(&w.particles) - p0).length();
+    let drift = (momentum(w.particles()) - p0).length();
     // Measured 1.3e-14; bound ~10x.
     assert!(drift < 2e-13, "{drift}");
 }

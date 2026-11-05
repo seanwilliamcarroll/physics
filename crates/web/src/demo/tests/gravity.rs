@@ -20,7 +20,7 @@ fn cluster_demo_has_n_bodies_and_a_matching_energy() {
         d.advance(PHYSICS_DT);
         w.step(PHYSICS_DT);
     }
-    let expect = total_energy(&w.particles, &cluster_gravity().unwrap());
+    let expect = total_energy(w.particles(), &cluster_gravity().unwrap());
     assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));
 }
 
@@ -57,7 +57,7 @@ fn set_softening_rebuilds_the_force_and_the_energy_readout() {
     let w = collapse::<f64>(40, 3).unwrap();
     assert_eq!(
         d.energy(),
-        Some(total_energy(&w.particles, &newtonian(eps)))
+        Some(total_energy(w.particles(), &newtonian(eps)))
     );
 
     // And the world steps under it: a softer force pulls less, so after

@@ -13,17 +13,22 @@ pub use config_error::ConfigError;
 use constraints::Constraints;
 pub use drag::Grab;
 
-use crate::{Baumgarte, Restitution, Wall};
+use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, Wall};
 use crate::{
     DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Stabilization, Vec2,
 };
 
 /// A simulation: particles, the forces acting on them, and how to integrate.
 pub struct World<S: Scalar> {
-    pub particles: Particles<S>,
+    /// Crate-visible only: outside the engine, reads go through
+    /// [`particles`](Self::particles) and changes through the world's own
+    /// methods, none of which can replace or remove particles, so every
+    /// constraint keeps naming particles that exist (checked once, in
+    /// [`add_constraint`](Self::add_constraint)).
+    pub(crate) particles: Particles<S>,
     forces: Vec<Box<dyn Force<S>>>,
     integrator: Integrator,
-    substeps: u32,
+    substeps: NonZeroU32,
     /// Per-substep acceleration scratch, reused to avoid allocating each
     /// step. Lives here, not in `Particles`: forces borrow the particles
     /// immutably while writing into this buffer.
@@ -52,7 +57,7 @@ impl<S: Scalar> World<S> {
             particles: Particles::new(),
             forces: Vec::new(),
             integrator,
-            substeps: substeps.get(),
+            substeps,
             acc: Vec::new(),
             acc_next: Vec::new(),
             constraints: Constraints::new(Baumgarte::default()),
@@ -89,6 +94,44 @@ impl<S: Scalar> World<S> {
     #[must_use]
     pub fn collides(&self) -> bool {
         !self.walls.is_empty() || self.particles.max_radius() > S::ZERO
+    }
+
+    /// The particles, read-only (see the field).
+    #[must_use]
+    pub const fn particles(&self) -> &Particles<S> {
+        &self.particles
+    }
+
+    /// Adds a dynamic particle (see [`Particles::add`]).
+    pub fn add_particle(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: Mass<S>) -> ParticleId {
+        self.particles.add(pos, vel, mass)
+    }
+
+    /// Adds a dynamic circle, which collides (see [`Particles::add_circle`]).
+    pub fn add_circle(
+        &mut self,
+        pos: Vec2<S>,
+        vel: Vec2<S>,
+        mass: Mass<S>,
+        radius: Radius<S>,
+    ) -> ParticleId {
+        self.particles.add_circle(pos, vel, mass, radius)
+    }
+
+    /// Adds an immovable particle (see [`Particles::add_static`]).
+    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId {
+        self.particles.add_static(pos)
+    }
+
+    /// Velocities, mutable in place (see [`Particles::vel_mut`]).
+    pub fn vel_mut(&mut self) -> &mut [Vec2<S>] {
+        self.particles.vel_mut()
+    }
+
+    /// Moves a static particle (see [`Particles::set_static_position`]).
+    #[must_use]
+    pub fn set_static_position(&mut self, id: ParticleId, pos: Vec2<S>) -> bool {
+        self.particles.set_static_position(id, pos)
     }
 
     pub fn add_force(&mut self, force: impl Force<S> + 'static) {
@@ -173,11 +216,11 @@ impl<S: Scalar> World<S> {
 
     /// The type makes 0 unrepresentable, so there's nothing to report.
     pub const fn set_substeps(&mut self, substeps: NonZeroU32) {
-        self.substeps = substeps.get();
+        self.substeps = substeps;
     }
 
     #[must_use]
-    pub const fn substeps(&self) -> u32 {
+    pub const fn substeps(&self) -> NonZeroU32 {
         self.substeps
     }
 
@@ -195,8 +238,8 @@ impl<S: Scalar> World<S> {
 
     /// Advances by `dt`, split into `substeps` equal substeps of `dt / substeps`.
     pub fn step(&mut self, dt: S) {
-        let h = dt / S::from_f64(f64::from(self.substeps));
-        for _ in 0..self.substeps {
+        let h = dt / S::from_f64(f64::from(self.substeps.get()));
+        for _ in 0..self.substeps.get() {
             self.substep(h);
         }
     }

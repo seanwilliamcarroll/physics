@@ -73,7 +73,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
                 w.step(s(DT));
                 scene.respawn_fallen(&mut w);
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         }
         Run::Cluster | Run::Disk | Run::Collapse => {
             let build = match r {
@@ -85,7 +85,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
             for _ in 0..300 {
                 w.step(s(DT));
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         }
         Run::Jelly(body) => {
             let k = if body == JellyBody::Springs {
@@ -97,21 +97,21 @@ fn run<S: Scalar>(r: Run) -> u64 {
             for _ in 0..300 {
                 j.world.step(s(DT));
             }
-            state_hash(&j.world.particles)
+            state_hash(j.world.particles())
         }
         Run::Pendulum(solver) => {
             let mut w = pendulum::<S>(solver, nonzero(4)).unwrap();
             for _ in 0..600 {
                 w.step(s(DT));
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         }
         Run::Chain(solver) => {
             let mut w = chain::<S>(solver, nonzero(4), CHAIN_LINKS, 100.0).unwrap();
             for _ in 0..600 {
                 w.step(s(DT));
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         }
         Run::DoublePendulum => {
             let mut w = double_pendulum::<S>(
@@ -124,21 +124,21 @@ fn run<S: Scalar>(r: Run) -> u64 {
             for _ in 0..600 {
                 w.step(s(DT));
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         }
         Run::ClusterBarnesHut => {
             let mut w = cluster_barnes_hut::<S>(64, 1, 0.5);
             for _ in 0..300 {
                 w.step(s(DT));
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         }
         Run::Orbit(integrator) => {
             let mut w = orbit::<S>(integrator, 1.0).unwrap();
             for _ in 0..600 {
                 w.step(s(DT));
             }
-            state_hash(&w.particles)
+            state_hash(w.particles())
         }
     }
 }

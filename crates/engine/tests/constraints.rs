@@ -12,7 +12,7 @@ const DT: f64 = 1.0 / 60.0;
 const STEPS: u32 = 600;
 
 fn max_rod_error<S: Scalar>(w: &World<S>) -> f64 {
-    constraint_error(&w.particles, w.constraints()).map_or(f64::NAN, |(max, _)| max.to_f64())
+    constraint_error(w.particles(), w.constraints()).map_or(f64::NAN, |(max, _)| max.to_f64())
 }
 
 /// XPBD projects the bob back onto the circle every substep, so the rod
@@ -37,8 +37,8 @@ fn the_pin_never_moves() {
     for _ in 0..STEPS {
         w.step(DT);
     }
-    assert_eq!(w.particles.pos()[0], Vec2::ZERO);
-    assert_eq!(w.particles.vel()[0], Vec2::ZERO);
+    assert_eq!(w.particles().pos()[0], Vec2::ZERO);
+    assert_eq!(w.particles().vel()[0], Vec2::ZERO);
 }
 
 /// XPBD dissipates through projection, less with smaller substeps (`01`,
@@ -64,15 +64,15 @@ fn xpbd_energy_loss_shrinks_with_substeps() {
 /// and the rod holds.
 fn free_rod_conserves_momentum<S: Tol>() {
     let mut w = World::<S>::new(Integrator::SymplecticEuler, nonzero(1));
-    let a = w.particles.add(v(-0.5, 0.0), v(0.1, -1.0), kg(1.0));
-    let b = w.particles.add(v(0.5, 0.0), v(0.3, 2.0), kg(3.0));
-    let rod = DistanceConstraint::between(&w.particles, a, b).unwrap();
+    let a = w.add_particle(v(-0.5, 0.0), v(0.1, -1.0), kg(1.0));
+    let b = w.add_particle(v(0.5, 0.0), v(0.3, 2.0), kg(3.0));
+    let rod = DistanceConstraint::between(w.particles(), a, b).unwrap();
     w.add_constraint(rod).unwrap();
-    let p0 = momentum(&w.particles);
+    let p0 = momentum(w.particles());
     for _ in 0..STEPS {
         w.step(s(DT));
     }
-    let drift = (momentum(&w.particles) - p0).length().to_f64();
+    let drift = (momentum(w.particles()) - p0).length().to_f64();
     // Σ m|v| ≈ 7 kg m/s; rounding per step, as M1's momentum law.
     assert!(
         drift <= f64::from(STEPS) * S::EPSILON * 7.0 * 4.0,
@@ -92,7 +92,7 @@ fn integrator_is_ignored_with_constraints() {
         for _ in 0..60 {
             w.step(DT);
         }
-        w.particles.pos().to_vec()
+        w.particles().pos().to_vec()
     };
     let reference = run(Integrator::SymplecticEuler);
     for integrator in Integrator::ALL {

@@ -22,7 +22,7 @@ fn world(solver: Solver, e: f64) -> World<f64> {
 }
 
 fn ball(w: &mut World<f64>, x: (f64, f64), v: (f64, f64), m: f64) {
-    w.particles.add_circle(
+    w.add_circle(
         Vec2::new(x.0, x.1),
         Vec2::new(v.0, v.1),
         kg(m),
@@ -39,7 +39,7 @@ fn head_on(solver: Solver, e: f64) -> (Vec2<f64>, Vec2<f64>) {
     for _ in 0..60 {
         w.step(DT);
     }
-    (w.particles.vel()[0], w.particles.vel()[1])
+    (w.particles().vel()[0], w.particles().vel()[1])
 }
 
 /// Velocity tolerance for one collision, m/s.
@@ -83,11 +83,11 @@ fn momentum_is_conserved_through_a_pileup() {
         for (x, v, m) in PILEUP {
             ball(&mut w, x, v, m);
         }
-        let p0 = momentum(&w.particles);
+        let p0 = momentum(w.particles());
         for _ in 0..120 {
             w.step(DT);
         }
-        let drift = (momentum(&w.particles) - p0).length();
+        let drift = (momentum(w.particles()) - p0).length();
         println!("{solver:?}: momentum drift {drift:e}");
         assert!(drift < 1e-12, "{solver:?}: {drift}");
     }
@@ -105,7 +105,7 @@ fn drop(solver: Solver, e: f64, height: f64, steps: u32) -> (f64, f64, f64) {
     let mut prev_vy = 0.0;
     for _ in 0..steps {
         w.step(DT);
-        let (y, vy) = (w.particles.pos()[0].y - R, w.particles.vel()[0].y);
+        let (y, vy) = (w.particles().pos()[0].y - R, w.particles().vel()[0].y);
         deepest = deepest.max(-y);
         bounced |= prev_vy < 0.0 && vy > 0.0;
         if bounced {
@@ -113,7 +113,7 @@ fn drop(solver: Solver, e: f64, height: f64, steps: u32) -> (f64, f64, f64) {
         }
         prev_vy = vy;
     }
-    (peak, deepest, kinetic_energy(&w.particles))
+    (peak, deepest, kinetic_energy(w.particles()))
 }
 
 #[test]
@@ -162,11 +162,11 @@ fn pileup_energy(solver: Solver, e: f64) -> (f64, f64, f64) {
     for (x, v, m) in PILEUP {
         ball(&mut w, x, v, m);
     }
-    let e0 = kinetic_energy(&w.particles);
+    let e0 = kinetic_energy(w.particles());
     let (mut prev, mut rise) = (e0, 0.0_f64);
     for _ in 0..120 {
         w.step(DT);
-        let ke = kinetic_energy(&w.particles);
+        let ke = kinetic_energy(w.particles());
         rise = rise.max(ke - prev);
         prev = ke;
     }
@@ -200,12 +200,12 @@ fn stack(solver: Solver) -> (f64, f64) {
     let mut deepest = 0.0_f64;
     for _ in 0..120 {
         w.step(DT);
-        let y = |i: usize| w.particles.pos()[i].y;
+        let y = |i: usize| w.particles().pos()[i].y;
         deepest = deepest.max(R - y(0));
         deepest = deepest.max(2.0 * R - (y(1) - y(0)));
         deepest = deepest.max(2.0 * R - (y(2) - y(1)));
     }
-    (deepest, kinetic_energy(&w.particles))
+    (deepest, kinetic_energy(w.particles()))
 }
 
 #[test]

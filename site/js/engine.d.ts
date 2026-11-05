@@ -63,6 +63,9 @@ export interface EngineExports {
   /** Number of u32s at demo_links_ptr (two per constraint). */
   demo_links_len(demo: DemoHandle): number;
   /** Grabs the nearest dynamic particle within `radius` m; its index or -1. */
+  /** 1 if the demo can be grabbed: a world a solver steps (constraints, or
+   *  collisions). A world its integrator steps refuses. */
+  demo_grabbable(demo: DemoHandle): number;
   demo_grab(demo: DemoHandle, x: number, y: number, radius: number): number;
   /** Moves the held grab's anchor; 0 if nothing is held. */
   demo_drag(demo: DemoHandle, x: number, y: number): Status;

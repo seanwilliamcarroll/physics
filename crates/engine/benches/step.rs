@@ -62,7 +62,7 @@ fn pairwise<S: Scalar>(c: &mut Criterion, scalar: &str) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
                 acc.fill(Vec2::ZERO);
-                gravity.accumulate(black_box(&w.particles), &mut acc);
+                gravity.accumulate(black_box(w.particles()), &mut acc);
             });
         });
     }
@@ -83,7 +83,7 @@ fn barnes_hut<S: Scalar>(c: &mut Criterion, scalar: &str) {
             group.bench_with_input(BenchmarkId::new(format!("theta_{theta}"), n), &n, |b, _| {
                 b.iter(|| {
                     acc.fill(Vec2::ZERO);
-                    force.accumulate(black_box(&w.particles), &mut acc);
+                    force.accumulate(black_box(w.particles()), &mut acc);
                 });
             });
         }
@@ -98,7 +98,7 @@ fn body_vec<S: Scalar>(c: &mut Criterion, scalar: &str) {
     let mut group = c.benchmark_group(format!("bodyvec_{scalar}"));
     for n in SIZES {
         let w = cluster::<S>(n, SEED).unwrap();
-        let p = &w.particles;
+        let p = w.particles();
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
                 let bodies: Vec<(Vec2<S>, S, S)> = black_box(p)

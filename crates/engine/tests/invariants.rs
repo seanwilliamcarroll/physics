@@ -22,7 +22,7 @@ fn falling_world<S: Tol>(
 ) -> World<S> {
     let mut w = World::new(integrator, nonzero(substeps));
     w.add_force(UniformGravity::new(v(0.0, G)));
-    w.particles.add(x0, v0, Mass::ONE);
+    w.add_particle(x0, v0, Mass::ONE);
     w
 }
 
@@ -57,8 +57,8 @@ fn free_fall_matches_each_integrators_closed_form<S: Tol>() {
         }
         let t = h * f64::from(n);
         let c = discrete_offset(integrator);
-        let x = w.particles.pos()[0];
-        let vel = w.particles.vel()[0];
+        let x = w.particles().pos()[0];
+        let vel = w.particles().vel()[0];
         let expect_y = x0.1 + v0.1 * t + 0.5 * G * t * (t + c * h);
         let expect_x = x0.0 + v0.0 * t;
         assert!(
@@ -87,7 +87,7 @@ fn euler_free_fall_error_is_first_order_in_dt<S: Tol>() {
                 w.step(s(h));
             }
             let t = h * f64::from(n);
-            w.particles.pos()[0].y.to_f64() - 0.5 * G * t * t
+            w.particles().pos()[0].y.to_f64() - 0.5 * G * t * t
         };
         let coarse = error_at(1.0 / 32.0, 32);
         let fine = error_at(1.0 / 64.0, 64);
@@ -104,13 +104,13 @@ fn static_particle_is_bit_identical<S: Tol>() {
     for integrator in Integrator::ALL {
         let mut w = falling_world::<S>(integrator, 4, v(0.0, 0.0), v(1.0, 1.0));
         let pin = v::<S>(1.5, -2.25);
-        w.particles.add_static(pin);
+        w.add_static(pin);
         for _ in 0..1000 {
             w.step(s(1.0 / 60.0));
         }
-        assert_eq!(bits(w.particles.pos()[1]), bits(pin), "{integrator:?}");
+        assert_eq!(bits(w.particles().pos()[1]), bits(pin), "{integrator:?}");
         assert_eq!(
-            bits(w.particles.vel()[1]),
+            bits(w.particles().vel()[1]),
             bits(Vec2::<S>::ZERO),
             "{integrator:?}"
         );
@@ -121,12 +121,12 @@ for_each_scalar!(static_particle_is_bit_identical);
 fn zero_dt_leaves_state_unchanged<S: Tol>() {
     for integrator in Integrator::ALL {
         let mut w = falling_world::<S>(integrator, 4, v(1.0, 2.0), v(3.0, 4.0));
-        let before = (w.particles.pos().to_vec(), w.particles.vel().to_vec());
+        let before = (w.particles().pos().to_vec(), w.particles().vel().to_vec());
         for _ in 0..10 {
             w.step(S::ZERO);
         }
-        assert_eq!(w.particles.pos(), before.0, "{integrator:?}");
-        assert_eq!(w.particles.vel(), before.1, "{integrator:?}");
+        assert_eq!(w.particles().pos(), before.0, "{integrator:?}");
+        assert_eq!(w.particles().vel(), before.1, "{integrator:?}");
     }
 }
 for_each_scalar!(zero_dt_leaves_state_unchanged);
@@ -149,9 +149,9 @@ fn substeps_equal_repeated_smaller_steps<S: Tol>() {
                 b.step(h);
             }
         }
-        let (pa, pb) = (a.particles.pos()[0], b.particles.pos()[0]);
+        let (pa, pb) = (a.particles().pos()[0], b.particles().pos()[0]);
         assert_eq!(bits(pa), bits(pb), "{integrator:?}");
-        let (va, vb) = (a.particles.vel()[0], b.particles.vel()[0]);
+        let (va, vb) = (a.particles().vel()[0], b.particles().vel()[0]);
         assert_eq!(bits(va), bits(vb), "{integrator:?}");
     }
 }
@@ -165,12 +165,12 @@ const STEP: f64 = 1.0 / 60.0;
 /// total momentum of an isolated cluster can only change by rounding.
 fn pairwise_gravity_conserves_momentum<S: Tol>() {
     let mut w = cluster::<S>(CLUSTER_N, 1).unwrap();
-    let p0 = momentum(&w.particles);
+    let p0 = momentum(w.particles());
     for _ in 0..CLUSTER_STEPS {
         w.step(s(STEP));
     }
-    let drift = (momentum(&w.particles) - p0).length().to_f64();
-    let scale = momentum_scale(&w.particles);
+    let drift = (momentum(w.particles()) - p0).length().to_f64();
+    let scale = momentum_scale(w.particles());
     let bound = momentum_drift_bound::<S>(CLUSTER_STEPS, scale);
     assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
 }
@@ -181,19 +181,19 @@ for_each_scalar!(pairwise_gravity_conserves_momentum);
 fn center_of_mass_moves_at_constant_velocity<S: Tol>() {
     let mut w = cluster::<S>(CLUSTER_N, 1).unwrap();
     let total_mass: f64 = w
-        .particles
+        .particles()
         .inv_mass()
         .iter()
         .map(|w| 1.0 / w.to_f64())
         .sum();
-    let p0 = momentum(&w.particles);
+    let p0 = momentum(w.particles());
     let com_velocity = (p0.x.to_f64() / total_mass, p0.y.to_f64() / total_mass);
-    let c0 = center_of_mass(&w.particles).unwrap();
+    let c0 = center_of_mass(w.particles()).unwrap();
     for _ in 0..CLUSTER_STEPS {
         w.step(s(STEP));
     }
     let t = STEP * f64::from(CLUSTER_STEPS);
-    let c1 = center_of_mass(&w.particles).unwrap();
+    let c1 = center_of_mass(w.particles()).unwrap();
     let expect = (
         c0.x.to_f64() + com_velocity.0 * t,
         c0.y.to_f64() + com_velocity.1 * t,

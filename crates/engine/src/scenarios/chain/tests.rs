@@ -63,5 +63,5 @@ fn bad_mass_ratios_are_invalid_masses_whatever_the_link_count() {
 #[test]
 fn substeps_are_the_ones_given() {
     let w = chain::<f32>(Solver::Xpbd, NonZeroU32::new(20).unwrap(), 3, 1.0).unwrap();
-    assert_eq!(w.substeps(), 20);
+    assert_eq!(w.substeps().get(), 20);
 }

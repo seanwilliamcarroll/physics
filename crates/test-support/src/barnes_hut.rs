@@ -1,9 +1,7 @@
 //! Barnes–Hut test worlds and accelerations (`docs/barnes-hut.md`).
 
-use engine::scenarios::{CLUSTER_SOFTENING, CLUSTER_SUBSTEPS, GRAVITATIONAL_CONSTANT, cluster};
-use engine::{
-    BarnesHut, Force, Integrator, OpeningAngle, Particles, Scalar, Softening, Vec2, World,
-};
+use engine::scenarios::{CLUSTER_SOFTENING, GRAVITATIONAL_CONSTANT, cluster};
+use engine::{BarnesHut, Force, OpeningAngle, Particles, Scalar, Softening, Vec2, World};
 
 use crate::s;
 
@@ -22,9 +20,9 @@ pub fn cluster_barnes_hut_force<S: Scalar>(theta: f64) -> BarnesHut<S> {
 /// under Barnes–Hut at `theta` instead of pairwise gravity.
 #[must_use]
 pub fn cluster_barnes_hut<S: Scalar>(n: usize, seed: u64, theta: f64) -> World<S> {
-    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
+    let mut w = cluster::<S>(n, seed).unwrap();
+    w.clear_forces();
     w.add_force(cluster_barnes_hut_force::<S>(theta));
-    w.particles = cluster::<S>(n, seed).unwrap().particles;
     w
 }
 

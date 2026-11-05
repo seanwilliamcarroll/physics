@@ -23,7 +23,7 @@ pub struct PendulumRun {
 /// Pendulum energy (kinetic + gravity), J.
 #[must_use]
 pub fn pendulum_energy<S: Scalar>(w: &World<S>) -> f64 {
-    (kinetic_energy(&w.particles) + uniform_gravity_potential(&w.particles, &pendulum_gravity()))
+    (kinetic_energy(w.particles()) + uniform_gravity_potential(w.particles(), &pendulum_gravity()))
         .to_f64()
 }
 
@@ -37,7 +37,7 @@ pub fn pendulum_run<S: Scalar>(solver: Solver, beta: f64, substeps: u32) -> Pend
     let mut max_rod_error = 0.0_f64;
     for _ in 0..PENDULUM_STEPS {
         w.step(s(PENDULUM_DT));
-        let (max, _) = constraint_error(&w.particles, w.constraints()).unwrap();
+        let (max, _) = constraint_error(w.particles(), w.constraints()).unwrap();
         max_rod_error = max_rod_error.max(max.to_f64());
     }
     PendulumRun {

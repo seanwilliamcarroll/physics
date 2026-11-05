@@ -35,13 +35,13 @@ fn run(body: JellyBody, k: f64) -> (f64, f64) {
     let mut peak = 0.0_f64;
     for _ in 0..300 {
         j.world.step(DT);
-        let ke = kinetic_energy(&j.world.particles);
+        let ke = kinetic_energy(j.world.particles());
         if !ke.is_finite() {
             return (f64::INFINITY, f64::INFINITY);
         }
         peak = peak.max(ke);
     }
-    (peak, kinetic_energy(&j.world.particles))
+    (peak, kinetic_energy(j.world.particles()))
 }
 
 /// The fall: dropped 0.5 m (plus its own height), the jelly reaches 4.82 J

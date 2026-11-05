@@ -58,8 +58,8 @@ pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> Wo
     for b in bodies {
         let pos = v::<S>(b.pos.0, b.pos.1);
         match b.mass {
-            Some(m) => w.particles.add(pos, v(b.vel.0, b.vel.1), kg(m)),
-            None => w.particles.add_static(pos),
+            Some(m) => w.add_particle(pos, v(b.vel.0, b.vel.1), kg(m)),
+            None => w.add_static(pos),
         };
     }
     w
