@@ -51,7 +51,7 @@ impl<S: Scalar> Voices<S> {
     }
 
     /// The latest strike's hammer force on its middle string, N, a sample
-    /// at a time from impact: up to [`TRACE_SECONDS`] of it, as rendered so
+    /// at a time from impact: up to [`TRACE_SECONDS`](super::TRACE_SECONDS) of it, as rendered so
     /// far. Empty before any strike.
     #[must_use]
     pub fn strike_trace(&self) -> &[f64] {
