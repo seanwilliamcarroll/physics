@@ -149,6 +149,12 @@ Signal Processing Letters 17(4):406–409. The biquad cascade's placement
 - DOI: https://doi.org/10.1109/LSP.2010.2040924
 - `adf.m`: https://ccrma.stanford.edu/wiki/Dispersion_Filter_Design
 
+**Chabassier, J., Chaigne, A., Joly, P. (2013).** *Modeling and Simulation
+of a Grand Piano.* J. Acoust. Soc. Am. 134(1):648–665. A full piano model
+whose discrete equations are energy-preserving schemes; the hammer's
+energy-conserving step (A3.3).
+- DOI: https://doi.org/10.1121/1.4809649
+
 **Weinreich, G. (1977).** *Coupled Piano Strings.* J. Acoust. Soc. Am.
 62(6):1474–1484. Double decay and polarization from coupling at the bridge
 (A3, out of scope).

@@ -60,6 +60,17 @@ impl<S: Scalar> DelayLine<S> {
             .unwrap_or(S::ZERO)
     }
 
+    /// Adds `v` to sample `j` counting from the front (nothing past the
+    /// end): a force entering a string mid-rail (`docs/14-piano.md`).
+    pub fn add_at(&mut self, j: usize, v: S) {
+        let n = self.buf.len();
+        if j < n
+            && let Some(x) = self.buf.get_mut((self.head + j) % n)
+        {
+            *x += v;
+        }
+    }
+
     /// The newest sample (the last pushed).
     #[must_use]
     pub fn back(&self) -> S {
