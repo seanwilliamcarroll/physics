@@ -1,6 +1,6 @@
 # 14 — Piano Voice
 
-Status: **Adopted** (A3.1; dispersion as built, A3.2). Depends on `12-acoustic-foundations.md` (the
+Status: **Adopted** (A3.1; dispersion as built, A3.2; the hammer as built, A3.3). Depends on `12-acoustic-foundations.md` (the
 loop filter, tuning) and `13-waveguide.md` (the waveguide, positions on
 the effective length, the FFT).
 
@@ -127,15 +127,8 @@ felt spring**: while the felt is compressed by `c` (the hammer's position
 minus the string's at the strike point), it pushes with
 
 ```
-F = K c^p          (c > 0; no force once it leaves)
+F = K c^p          (c > 0; no force while apart)
 ```
-
-and each sample the hammer decelerates by `F / M_h` while the force
-enters the string at the strike point. In the waveguide, a force at a
-point launches equal waves both ways (displacement waves, each
-`F / 2Z` in velocity, `Z` the string's wave impedance), at A2's
-positions. The hammer leaves when it falls behind the string; the force
-is then zero for good (no second strike in A3).
 
 What's measured, and what we do with it:
 
@@ -148,22 +141,92 @@ What's measured, and what we do with it:
   treble at mezzo-forte, varying about ±20 % from p to ff, shorter when
   louder (Askenfelt, KTH lecture notes). The open literature we could
   check gives no hammer masses or felt stiffnesses `K` per key (they are
-  in Chaigne & Askenfelt's table, not open), so **we choose** `M_h` and
-  `K` per register to **reproduce those contact times**, and the tests
-  measure them. The constants are ours; the behavior is the measured one.
-- **The strike point:** **our choice**, 1/8 of A2's effective length. A
-  strike point near an eighth is the commonly cited piano design (it sits
-  near the nodes of the 7th–9th harmonics, which A2 showed a strike there
-  weakens); not checked against a measurement for this doc.
+  in Chaigne & Askenfelt's table, not open), so **we fit** `M` and `K`
+  per key to **reproduce those behaviors** (below), and the tests measure
+  them.
+- **The strike point:** **our choice**, an eighth of the length from the
+  nut (the agraffe). A strike point near an eighth is the commonly cited
+  piano design (it sits near the nodes of the 7th–9th harmonics, which A2
+  showed a strike there weakens); not checked against a measurement for
+  this doc.
 - **Velocity** is the hammer's speed at impact. **Our choice:** 0.5 m/s
-  (pp) to 5 m/s (ff), mapped from the on-screen key's press height or a
-  slider. Whatever the range, the tests require brightness and loudness
-  to rise monotonically with it.
+  (pp) to 5 m/s (ff), mf their geometric mean (1.58 m/s).
+- **The string's wave impedance `Z = √(T μ)`, our choice:** about 750 N
+  of tension; a heavy wound string at A0 (`Z` = 10 kg/s), plain wire of
+  about 1 mm at C4 (2.2) and 0.8 mm at C8 (1.7), log-linear between.
 
-Why it's brighter when harder: the felt stiffens as it compresses
-(`p > 1`), so a faster hammer meets a stiffer spring and a shorter
-contact, a shorter pulse with more high-frequency energy. That's the
-monotonic-brightness test, and the shorter contact is the other.
+### Coupling, as built (A3.3)
+
+Everything is in physical units (m, kg, N), so the string's energy can be
+checked against the hammer's.
+
+- **A junction between two cells.** A point force moves the string at
+  `F / 2Z` (it launches half each way), so each wave it launches carries
+  displacement `I / 2Z`, `I = ∫F dt`. The force acts between two cells,
+  not on one: adding to both rails in one cell counts that cell twice
+  (our first prototype did). After the hammer leaves, `I` stays constant:
+  the step it launched reflects inverted at the ends and cancels.
+- **Energy-conserving and implicit.** Each sample, the hammer moves by
+  the midpoint rule and the felt's force is its potential's difference
+  quotient (a discrete gradient): `F̄ = (V(c₁) − V(c₀)) / (c₁ − c₀)`,
+  `V = K c^(p+1) / (p+1)`. Kinetic plus felt energy then changes by
+  exactly the work done on the string. The new compression solves one
+  monotone scalar equation (Newton, safeguarded). Energy-preserving
+  schemes are the norm in piano models that check their energy
+  (Chabassier, Chaigne & Joly 2013). Both simpler schemes failed:
+  explicit stepping (the force a sample late) put up to 16× the hammer's
+  momentum into the string, and backward Euler lost 30–50 % of an
+  elastic bounce's energy. Against a rigid wall, ours keeps it to 10⁻⁹,
+  and the contact time matches Hertz's closed form to 0.02 %.
+- **Re-contact.** In the treble the near end's reflection can kick the
+  string away from a hammer still flying forward, so it touches again
+  (several pulses in one blow, as measured on real pianos). The hammer
+  stays a free mass until it moves away from the string, then retires.
+
+### Fitting each key's hammer
+
+Two measurements, two unknowns per key: `M` and `K` such that a **cheap
+model** of the blow gives the key's contact time at mf (4 ms at A0 to
+0.8 ms at C8, log-linear: the ends measured, the curve ours) **and** the
+pp-to-ff spread (`τ_pp / τ_ff` = 1.5, our reading of ±20 %). The cheap
+model is the hammer against the string's near end only: the wave
+launched toward the nut comes back inverted after `1/8` of a period,
+which is what throws the hammer off in the bass (4.5 ms at A0). The fit
+is a nested bisection: for each mass, `K` for the contact time; then the
+mass for the spread.
+
+- Fitting `K` alone drove the tenor's felt nearly rigid (its target sits
+  near the string's own floor, about `M / 2Z` plus the near return), and
+  then velocity barely changed the sound. Hence the spread as a second
+  target.
+- The exact per-key fit is **jagged** (neighbors 2.7× apart in mass): the
+  near return is a whole number of samples, and the fit hops between
+  branches where a contact pulse appears. The piano uses a **smooth
+  cubic** through it in `log M` and `log K`: about 15 g at A0, 2 g in the
+  middle, rising to 3.7 g at C8 (not monotonic, unlike real hammers: a
+  result of our `Z` curve, not a measurement).
+- Fitting all 88 keys takes seconds, so it runs offline: eight
+  coefficients in `hammer/table.rs`, regenerated by an ignored test.
+
+**Measured on the waveguide** (with stiffness):
+
+- mf contact within 27 % of the target at every key (most within 10 %),
+  shorter at every step from pp to ff, and C8's under 1 ms; spread 1.34
+  to 2.16.
+- **No energy from nowhere:** when the hammer leaves, the string's energy
+  plus the hammer's is at most 1.0000 of the impact's (and at least
+  0.966: the rails' measure misses what's inside the bridge's filters).
+- **Brighter and louder when harder** (the bridge force's spectral
+  centroid and level), from A0 to C5. Bass contacts are short against a
+  period, so a harder blow, a shorter pulse, reaches higher partials:
+  A0's centroid rises from 108 to 193 Hz from pp to ff.
+- **Known gap, the treble:** from C6 up, the blow outlasts a period, the
+  string takes only 0.2–13 % of the hammer's energy, and every partial
+  sits in the force pulse's spectral sidelobes: neither brightness nor
+  level rises reliably with velocity (C6's centroid even falls slightly,
+  1100 → 1049 Hz). The cause is our interpolated contact times (only
+  "under 1 ms" at the very top is measured), plus a waveguide only five
+  cells long at C8.
 
 ## String groups
 
@@ -197,11 +260,12 @@ render quantum.
   `measure::partial` per harmonic, at `k f₀ √(1 + B k²)` within cents; the
   fundamental in tune at all 88 keys with stiffness on.
 - **The hammer:** contact time in the measured range per register and
-  shorter for harder strikes; brightness (energy above the first few
-  partials, relative to the total) and level rising monotonically with
-  velocity; no energy from nowhere (the string's energy after contact is
-  bounded by the hammer's kinetic energy at impact, in the model's
-  units).
+  shorter for harder strikes; brightness (the spectral centroid of the
+  force on the bridge, which drives the soundboard) and level rising
+  monotonically with velocity, where the blow is shorter than a period;
+  no energy from nowhere (the string's energy after contact plus the
+  hammer's is bounded by the hammer's at impact, in joules). A rigid-wall
+  bounce against Hertz's closed form.
 - **String groups:** beating at the detuning's rate.
 - **The body:** its response peaks at its resonances.
 - **Determinism:** goldens, native and wasm.
@@ -234,3 +298,5 @@ Full entries in `references.md`.
 - Askenfelt, *From touch to string vibrations* (KTH lecture notes):
   contact times.
 - Weinreich (1977), *Coupled Piano Strings*: double decay, coupling.
+- Chabassier, Chaigne & Joly (2013), *Modeling and simulation of a grand
+  piano*: energy-preserving schemes for the hammer and string.

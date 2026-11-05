@@ -218,10 +218,15 @@ tune within 0.026 with stiffness on; a stiff golden, same on wasm.
 **Design cost** 2–14 ms a key (~200 ms for 88, native): too slow for a
 note on, so section 5 designs per key at start (measure on wasm there).
 
-## 3. The hammer (PR)
+## ✅ 3. The hammer (done)
 
-- [ ] Mass and nonlinear felt in the waveguide; tests: contact time vs
-      velocity, brightness monotonic in velocity, no energy from nowhere.
+Physical units; a force at a junction; **energy-conserving** (discrete
+gradient: explicit made energy, backward Euler lost 30–50 %); re-contact.
+**`M` and `K` fitted to two measurements** (mf contact, pp→ff spread) on
+a cheap model, then **smoothed** (a cubic; the exact fit was jagged),
+offline into `hammer/table.rs`. Measured: contact within 27 %, shorter
+when harder, C8 < 1 ms; no energy from nowhere; brighter and louder
+when harder, A0 to C5. Treble gap below.
 
 ## 4. String groups and the body (PR)
 
@@ -254,6 +259,14 @@ note on, so section 5 designs per key at start (measure on wasm there).
 - Finite-difference strings (A4–A5).
 
 ## Known gaps
+
+**A3 treble hammer (A3.3):** from C6 up the blow outlasts a period, the
+string takes 0.2–13 % of the hammer's energy, and brightness and level
+don't rise reliably with velocity (C6's centroid falls 1100 → 1049 Hz pp
+→ ff). Our contact curve between the measured ends is interpolated, and
+C8's waveguide is five cells. Options: shorter treble contact targets,
+a higher internal rate for the top octaves, or accept (real top-octave
+tones are nearly pure too).
 
 **M2 page at N = 4096 (found in review):** about 1 fps. One step of all
 three panels costs ~27 ms (f32 and f64 direct, plus Barnes–Hut), so 60 Hz
