@@ -35,6 +35,10 @@ pub const PIANO_SCALE: f64 = 0.014;
 /// (preallocated, so `render` of any length never allocates).
 const PIANO_BLOCK: usize = 256;
 
+/// How long the latest strike's hammer force is recorded, s: past the
+/// longest contact (about 8 ms, A0 at pp), for the page to draw.
+pub const TRACE_SECONDS: f64 = 0.012;
+
 /// A released voice is free once it's had this many `RELEASE_T60`s (80 dB
 /// down: below audibility).
 const RELEASE_FREE_FACTOR: f64 = 80.0 / 60.0;
@@ -103,6 +107,10 @@ pub struct Voices<S> {
     body: Body<S>,
     piano_block: Vec<S>,
     piano_scale: S,
+    /// The latest strike's middle-string hammer force, N, one per sample
+    /// from impact (allocated once, [`TRACE_SECONDS`] long), and its voice.
+    trace: Vec<f64>,
+    traced: Option<usize>,
 }
 
 impl<S: Scalar> Voices<S> {
@@ -154,6 +162,13 @@ impl<S: Scalar> Voices<S> {
             body: Body::new(fs)?,
             piano_block: vec![S::ZERO; PIANO_BLOCK],
             piano_scale: S::from_f64(PIANO_SCALE),
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "a positive, small sample count (fs checked by the probe string)"
+            )]
+            trace: Vec::with_capacity(libm::ceil(TRACE_SECONDS * fs) as usize),
+            traced: None,
         })
     }
 
@@ -233,8 +248,18 @@ impl<S: Scalar> Voices<S> {
             .is_some_and(|v| v.piano.restrike(key, voicing, design, velocity));
         if ok {
             self.started(i, key, piano::frequency(key), Model::Piano);
+            self.trace.clear();
+            self.traced = Some(i);
         }
         ok
+    }
+
+    /// The latest strike's hammer force on its middle string, N, a sample
+    /// at a time from impact: up to [`TRACE_SECONDS`] of it, as rendered so
+    /// far. Empty before any strike.
+    #[must_use]
+    pub fn strike_trace(&self) -> &[f64] {
+        &self.trace
     }
 
     /// Moves every waveguide's pickup to `s` (from the bridge, 0 to 1),
@@ -335,13 +360,24 @@ impl<S: Scalar> Voices<S> {
                     continue;
                 };
                 block.fill(S::ZERO);
-                for v in self
-                    .pool
+                let (pool, trace, traced) = (&mut self.pool, &mut self.trace, self.traced);
+                let playing = pool
                     .iter_mut()
-                    .filter(|v| v.key.is_some() && v.model == Model::Piano)
-                {
+                    .enumerate()
+                    .filter(|(_, v)| v.key.is_some() && v.model == Model::Piano);
+                for (i, v) in playing {
+                    let tracing = traced == Some(i);
                     for x in block.iter_mut() {
                         *x += v.piano.next_sample();
+                        // Within capacity: recording never allocates.
+                        if tracing && trace.len() < trace.capacity() {
+                            let force = v
+                                .piano
+                                .middle()
+                                .and_then(Waveguide::hammer)
+                                .map_or(0.0, crate::hammer::Hammer::force);
+                            trace.push(force);
+                        }
                     }
                 }
                 for (s, &x) in chunk.iter_mut().zip(block.iter()) {

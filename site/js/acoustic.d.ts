@@ -35,4 +35,12 @@ export interface AcousticExports {
   /** Computes the last 4096 samples' spectrum; returns its bins (dB). */
   synth_spectrum(s: SynthHandle): number;
   synth_spectrum_ptr(s: SynthHandle): number;
+  /** Copies the latest strike's hammer force (N, a sample at a time from
+   *  impact, up to 12 ms); returns its length (0 before any strike). */
+  synth_strike_trace(s: SynthHandle): number;
+  synth_strike_trace_ptr(s: SynthHandle): number;
+  /** Piano key `key`'s inharmonicity B; 0 off the keyboard. No synth needed. */
+  piano_inharmonicity(key: number): number;
+  /** Piano key `key`'s strings (1–3); 0 off the keyboard. */
+  piano_strings(key: number): number;
 }

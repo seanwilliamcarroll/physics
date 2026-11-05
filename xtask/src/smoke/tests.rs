@@ -118,3 +118,10 @@ fn a_silenced_harmonic_must_be_missing() {
     assert!(judge_audio(&line("ok audio_peak=0.2 samples=24000 missing_db=48.0")).is_ok());
     assert!(judge_audio(&line("ok audio_peak=0.2 samples=24000 missing_db=6.0")).is_err());
 }
+
+#[test]
+fn a_stretched_partial_must_be_stretched() {
+    let line = |msg: &str| console(&format!("SMOKE {msg}"));
+    assert!(judge_audio(&line("ok audio_peak=0.06 samples=33600 stretch_db=30.0")).is_ok());
+    assert!(judge_audio(&line("ok audio_peak=0.06 samples=33600 stretch_db=3.0")).is_err());
+}

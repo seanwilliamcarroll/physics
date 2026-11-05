@@ -60,14 +60,17 @@ export type ToWorklet =
   /** The piano's strings stiff or ideal (A3). */
   | { type: "stiffness"; on: boolean }
   /** Include the output's spectrum in each snapshot (A2). */
-  | { type: "spectrum"; on: boolean };
+  | { type: "spectrum"; on: boolean }
+  /** Include the latest strike's hammer force in each snapshot (A3). */
+  | { type: "trace"; on: boolean };
 
 /** Messages to the page. */
 export type FromWorklet =
   | { type: "ready"; sampleRate: number }
   /** `buf` holds the string's samples (`len`), then, if asked for, the
-   *  spectrum's dB bins (`bins`, 0 otherwise). */
-  | { type: "snapshot"; buf: ArrayBuffer; len: number; bins: number; clipped: number; cents: number; frames: number }
+   *  spectrum's dB bins (`bins`, 0 otherwise), then the latest strike's
+   *  hammer force in newtons (`trace`, 0 otherwise). */
+  | { type: "snapshot"; buf: ArrayBuffer; len: number; bins: number; trace: number; clipped: number; cents: number; frames: number }
   | { type: "error"; message: string };
 
 /** Snapshots per second (display rate; the page draws each one). */
@@ -96,6 +99,7 @@ class KsProcessor extends AudioWorkletProcessor {
   private songNext = 0;
   private readonly songHeld = new Set<number>();
   private spectrumOn = false;
+  private traceOn = false;
 
   constructor(options: AudioWorkletNodeOptions) {
     super(options);
@@ -143,6 +147,7 @@ class KsProcessor extends AudioWorkletProcessor {
       case "pickup": x.synth_set_pickup(synth, m.at); break;
       case "stiffness": x.synth_set_stiffness(synth, m.on ? 1 : 0); break;
       case "spectrum": this.spectrumOn = m.on; break;
+      case "trace": this.traceOn = m.on; break;
     }
   }
 
@@ -206,7 +211,8 @@ class KsProcessor extends AudioWorkletProcessor {
     const { x, synth } = this;
     const len = x.synth_snapshot(synth);
     const bins = this.spectrumOn ? x.synth_spectrum(synth) : 0;
-    if ((len + bins) * Float32Array.BYTES_PER_ELEMENT > buf.byteLength) {
+    const trace = this.traceOn ? x.synth_strike_trace(synth) : 0;
+    if ((len + bins + trace) * Float32Array.BYTES_PER_ELEMENT > buf.byteLength) {
       this.pool.push(buf);
       return;
     }
@@ -215,8 +221,12 @@ class KsProcessor extends AudioWorkletProcessor {
       new Float32Array(buf, len * Float32Array.BYTES_PER_ELEMENT, bins)
         .set(new Float32Array(x.memory.buffer, x.synth_spectrum_ptr(synth), bins));
     }
+    if (trace > 0) {
+      new Float32Array(buf, (len + bins) * Float32Array.BYTES_PER_ELEMENT, trace)
+        .set(new Float32Array(x.memory.buffer, x.synth_strike_trace_ptr(synth), trace));
+    }
     const msg: FromWorklet = {
-      type: "snapshot", buf, len, bins, frames,
+      type: "snapshot", buf, len, bins, trace, frames,
       clipped: x.synth_clipped(synth),
       cents: x.synth_latest_cents(synth),
     };

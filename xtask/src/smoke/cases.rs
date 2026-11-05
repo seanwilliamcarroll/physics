@@ -30,6 +30,7 @@ const M5: &str = "demos/m5-jelly/";
 const M4_DP: &str = "demos/m4-double-pendulum/";
 const A1: &str = "demos/a1-string/";
 const A2: &str = "demos/a2-waveguide/";
+const A3: &str = "demos/a3-piano/";
 
 /// M0: default settings, the other scalar, the size that once rendered a
 /// blank canvas (one path over Chrome's ~16 MiB draw-command limit), and
@@ -39,7 +40,7 @@ const A2: &str = "demos/a2-waveguide/";
 /// a heavier cluster. M3: both solver panels, default and the f32 stress
 /// case (100 substeps). M4: the chain (both solver panels) and the double
 /// pendulum in both comparison modes.
-pub(super) const CASES: [Case; 19] = [
+pub(super) const CASES: [Case; 20] = [
     Case {
         name: "default",
         page: M0,
@@ -157,6 +158,14 @@ pub(super) const CASES: [Case; 19] = [
     Case {
         name: "a2",
         page: A2,
+        query: "?smoke",
+        check: Check::Sounds,
+    },
+    // A3: a stiff C4 struck at mf, rendered offline; its 10th partial must
+    // sit at the stretched frequency, not the harmonic one (`stretch_db`).
+    Case {
+        name: "a3",
+        page: A3,
         query: "?smoke",
         check: Check::Sounds,
     },

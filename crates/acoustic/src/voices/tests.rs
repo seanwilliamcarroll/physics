@@ -263,3 +263,28 @@ fn off_the_keyboard_or_a_bad_velocity_is_refused() {
     assert!(!v.strike(60, 0.0) && !v.strike(60, f64::NAN));
     assert_eq!(v.sounding(), 0);
 }
+
+/// The strike trace: the latest strike's hammer force from impact, its
+/// contact inside it (C4 at mf: 1.9 ms), recorded without growing.
+#[test]
+fn the_latest_strike_is_traced() {
+    let mut v = piano();
+    assert_eq!(v.strike_trace(), &[] as &[f64]);
+    assert!(v.strike(60, mezzo_forte()));
+    let capacity = v.trace.capacity();
+    let _ = render(&mut v, 0.05);
+    let trace = v.strike_trace();
+    assert_eq!(trace.len(), capacity, "full, and no longer");
+    let contact = trace.iter().rposition(|&f| f > 0.0).unwrap() + 1;
+    #[expect(clippy::cast_precision_loss, reason = "small")]
+    let ms = contact as f64 / FS * 1e3;
+    let peak = trace.iter().fold(0.0_f64, |m, &f| m.max(f));
+    println!("C4 mf: contact {ms:.2} ms, peak {peak:.1} N");
+    assert!((1.0..3.0).contains(&ms), "{ms}");
+    assert!(trace.iter().skip(contact).all(|&f| f == 0.0));
+    assert!(v.strike(48, mezzo_forte()));
+    assert!(
+        v.strike_trace().is_empty(),
+        "a new strike starts a new trace"
+    );
+}

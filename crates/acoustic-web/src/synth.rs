@@ -36,6 +36,8 @@ pub struct Synth {
     out: Vec<f32>,
     /// The latest string's delay line, oldest first: what the page draws.
     snapshot: Vec<f32>,
+    /// The latest strike's hammer force, N, as `f32` (allocated once).
+    trace: Vec<f32>,
     /// The last `SPECTRUM_SIZE` output samples (a ring; `history_at` is
     /// the oldest), a linear copy of them, and the analyzer: all
     /// allocated once.
@@ -73,6 +75,12 @@ impl Synth {
             excitation: Excitation::Noise,
             out: vec![0.0; MAX_FRAMES],
             snapshot: Vec::with_capacity(longest),
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "a positive, small sample count (fs checked by Voices::new)"
+            )]
+            trace: Vec::with_capacity((acoustic::TRACE_SECONDS * fs).ceil() as usize),
             history: vec![0.0; SPECTRUM_SIZE],
             history_at: 0,
             linear: vec![0.0; SPECTRUM_SIZE],
@@ -208,6 +216,26 @@ impl Synth {
     #[must_use]
     pub fn spectrum_ptr(&self) -> *const f32 {
         self.spectrum.last().as_ptr()
+    }
+
+    /// Copies the latest strike's hammer force (N, a sample at a time from
+    /// impact) into the trace buffer and returns it (empty before any
+    /// strike).
+    pub fn strike_trace(&mut self) -> &[f32] {
+        self.trace.clear();
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "f32 is the page's precision"
+        )]
+        self.trace
+            .extend(self.voices.strike_trace().iter().map(|&f| f as f32));
+        &self.trace
+    }
+
+    /// Where the trace's samples are (for the C ABI).
+    #[must_use]
+    pub fn trace_ptr(&self) -> *const f32 {
+        self.trace.as_ptr()
     }
 
     /// Where the snapshot's samples are (for the C ABI).

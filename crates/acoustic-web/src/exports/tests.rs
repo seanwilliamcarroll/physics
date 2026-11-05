@@ -1,11 +1,13 @@
 use core::ptr;
 
 use super::{
-    synth_clipped, synth_free, synth_new, synth_note_off, synth_note_on, synth_render,
-    synth_set_excitation, synth_set_gain, synth_set_model, synth_set_pickup, synth_set_t60,
-    synth_set_tuned, synth_snapshot, synth_snapshot_ptr, synth_spectrum, synth_spectrum_ptr,
+    piano_inharmonicity, piano_strings, synth_clipped, synth_free, synth_new, synth_note_off,
+    synth_note_on, synth_note_on_velocity, synth_render, synth_set_excitation, synth_set_gain,
+    synth_set_model, synth_set_pickup, synth_set_t60, synth_set_tuned, synth_snapshot,
+    synth_snapshot_ptr, synth_spectrum, synth_spectrum_ptr, synth_strike_trace,
+    synth_strike_trace_ptr,
 };
-use crate::abi::{EXCITATION_TRIANGLE, MODEL_WAVEGUIDE, STATUS_OK, STATUS_REFUSED};
+use crate::abi::{EXCITATION_TRIANGLE, MODEL_PIANO, MODEL_WAVEGUIDE, STATUS_OK, STATUS_REFUSED};
 
 #[test]
 fn round_trip_through_the_c_abi() {
@@ -55,4 +57,35 @@ fn null_handles_are_harmless() {
         assert_eq!(synth_set_model(null, MODEL_WAVEGUIDE), STATUS_REFUSED);
         synth_free(null);
     }
+}
+
+#[test]
+fn the_piano_through_the_c_abi() {
+    let s = synth_new(48_000.0, 1);
+    unsafe {
+        assert_eq!(synth_strike_trace(s), 0, "no strike yet");
+        assert_eq!(synth_set_model(s, MODEL_PIANO), STATUS_OK);
+        assert_eq!(synth_note_on_velocity(s, 60, 1.58), STATUS_OK);
+        for _ in 0..8 {
+            assert!(!synth_render(s, 128).is_null());
+        }
+        let n = synth_strike_trace(s) as usize;
+        assert!(n > 0);
+        let trace = core::slice::from_raw_parts(synth_strike_trace_ptr(s), n);
+        assert!(trace.iter().any(|&f| f > 0.0), "the hammer pushed");
+        synth_free(s);
+        assert_eq!(synth_strike_trace(ptr::null_mut()), 0);
+        assert!(synth_strike_trace_ptr(ptr::null()).is_null());
+    }
+    assert!((piano_inharmonicity(60) - acoustic::inharmonicity(60)).abs() < 1e-15);
+    assert_eq!(piano_inharmonicity(20), 0.0);
+    assert_eq!(
+        (
+            piano_strings(21),
+            piano_strings(40),
+            piano_strings(60),
+            piano_strings(109)
+        ),
+        (1, 2, 3, 0)
+    );
 }
