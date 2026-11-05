@@ -4,6 +4,7 @@
 //! are re-read by JS after each call: memory growth detaches old views.
 
 use core::ptr;
+use math::convert::u64_to_f64;
 
 use crate::abi::{STATUS_OK, STATUS_REFUSED};
 use crate::synth::Synth;
@@ -239,11 +240,7 @@ pub(crate) unsafe extern "C" fn synth_latest_cents(s: *const Synth) -> f64 {
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_clipped(s: *const Synth) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live Synth.
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "a count far below 2^53 in any session"
-    )]
-    unsafe { s.as_ref() }.map_or(0.0, |s| s.clipped() as f64)
+    unsafe { s.as_ref() }.map_or(0.0, |s| u64_to_f64(s.clipped()))
 }
 
 /// Copies the latest strike's hammer force (N, one per sample from

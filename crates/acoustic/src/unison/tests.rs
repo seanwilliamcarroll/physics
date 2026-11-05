@@ -1,6 +1,7 @@
 use super::{DETUNE_CENTS, Unison, offset, strings};
 use crate::hammer::{self, Hammer, STRIKE};
 use crate::{Decay, Voicing, Waveguide, inharmonicity};
+use math::convert::{f64_to_usize, usize_to_f64};
 
 const FS: f64 = 48_000.0;
 
@@ -23,8 +24,7 @@ fn one_two_or_three_strings_by_register() {
 fn the_tuning_is_symmetric_about_the_note() {
     for n in 1..=3 {
         let offsets: Vec<f64> = (0..n).map(|i| offset(i, n)).collect();
-        #[expect(clippy::cast_precision_loss, reason = "small counts")]
-        let mean = offsets.iter().sum::<f64>() / offsets.len() as f64;
+        let mean = offsets.iter().sum::<f64>() / usize_to_f64(offsets.len());
         assert!(mean.abs() < 1e-12, "{offsets:?}");
         assert!(
             offsets
@@ -64,12 +64,7 @@ fn a_group_is_n_strings_struck_alike() {
         1.0 - STRIKE
     ));
     let (mut previous, mut worst, mut peak) = (0.0, 0.0_f64, 0.0_f64);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    for _ in 0..(EARLY * FS) as usize {
+    for _ in 0..f64_to_usize(EARLY * FS).unwrap() {
         let y = one.step();
         let single = 2.0 * z * FS * (y - previous);
         previous = y;
@@ -100,8 +95,7 @@ fn a_group_makes_no_energy() {
             v,
         )
         .unwrap();
-        #[expect(clippy::cast_precision_loss, reason = "small counts")]
-        let start = 0.5 * hammer::felt(key).unwrap().mass * v * v * u.len() as f64;
+        let start = 0.5 * hammer::felt(key).unwrap().mass * v * v * usize_to_f64(u.len());
         while !u.hammers().all(Hammer::retired) {
             u.next_sample();
         }

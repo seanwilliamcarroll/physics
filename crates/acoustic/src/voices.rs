@@ -2,6 +2,7 @@
 //! (`docs/12-acoustic-foundations.md`, "Voices").
 
 use math::SplitMix64;
+use math::convert::{f64_to_usize, usize_to_f64};
 
 use crate::body::Body;
 use crate::measure::CENTS_PER_OCTAVE;
@@ -75,7 +76,7 @@ struct Voice<S> {
     /// Note-on order: the smallest is the oldest, stolen first.
     started: u64,
     /// Samples left before a released voice is free.
-    releasing: Option<u64>,
+    releasing: Option<usize>,
 }
 
 /// A pool of [`VOICES`] strings at one sample rate, summed into one
@@ -124,17 +125,7 @@ impl<S: Scalar> Voices<S> {
             decay: crate::Decay::Loss(1.0),
             inharmonicity: 0.0,
         };
-        let cap = libm::ceil(fs / LOWEST_HZ);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "checked positive and finite by the probe string below"
-        )]
-        let cap = if cap.is_finite() && cap > 0.0 {
-            cap as usize
-        } else {
-            0
-        };
+        let cap = f64_to_usize(libm::ceil(fs / LOWEST_HZ)).unwrap_or(0);
         let string = KsString::with_capacity(fs, LOWEST_HZ, probe, cap)?;
         let guide = Waveguide::with_capacity(fs, LOWEST_HZ, probe, cap)?;
         let piano = Unison::with_capacity(fs)?;
@@ -163,12 +154,7 @@ impl<S: Scalar> Voices<S> {
             body: Body::new(fs)?,
             piano_block: vec![S::ZERO; PIANO_BLOCK],
             piano_scale: S::from_f64(PIANO_SCALE),
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "a positive, small sample count (fs checked by the probe string)"
-            )]
-            trace: Vec::with_capacity(libm::ceil(TRACE_SECONDS * fs) as usize),
+            trace: Vec::with_capacity(f64_to_usize(libm::ceil(TRACE_SECONDS * fs)).unwrap_or(0)),
             traced: None,
         })
     }
@@ -267,12 +253,7 @@ impl<S: Scalar> Voices<S> {
                     Model::Waveguide => v.guide.damp(RELEASE_T60),
                     Model::Piano => v.piano.damp(RELEASE_T60),
                 }
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "a positive, small sample count"
-                )]
-                let samples = (fs * RELEASE_T60 * RELEASE_FREE_FACTOR) as u64;
+                let samples = f64_to_usize(fs * RELEASE_T60 * RELEASE_FREE_FACTOR).unwrap_or(0);
                 v.releasing = Some(samples);
             }
         }
@@ -307,7 +288,7 @@ impl<S: Scalar> Voices<S> {
                 continue;
             }
             if let Some(left) = v.releasing.as_mut() {
-                *left = left.saturating_sub(out.len() as u64);
+                *left = left.saturating_sub(out.len());
                 if *left == 0 {
                     v.key = None;
                     v.releasing = None;
@@ -363,8 +344,7 @@ impl<S: Scalar> Voices<S> {
             // The strings' mean, in cents: a pair sits at ±½ cent, so no
             // one string is the note.
             Model::Piano => {
-                #[expect(clippy::cast_precision_loss, reason = "at most 3 strings")]
-                let n = v.piano.len() as f64;
+                let n = usize_to_f64(v.piano.len());
                 let mean = v
                     .piano
                     .pitches()

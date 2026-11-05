@@ -2,6 +2,7 @@ use crate::Scalar;
 use crate::measure::{cents, pitch, t60};
 use crate::test_util::hash_noise;
 use crate::{Decay, KsString, Voicing};
+use math::convert::f64_to_usize;
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
 
@@ -20,12 +21,7 @@ fn render<S: Scalar>(fs: f64, f0: f64, rho: f64, secs: f64) -> (KsString<S>, Vec
     };
     let mut s = KsString::<S>::new(fs, f0, voicing).unwrap();
     s.pluck(|i, _| S::from_f64(hash_noise(i)));
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let mut out = vec![S::ZERO; (fs * secs) as usize];
+    let mut out = vec![S::ZERO; f64_to_usize(fs * secs).unwrap()];
     s.render(&mut out);
     (s, out.iter().map(|x| x.to_f64()).collect())
 }
@@ -37,12 +33,7 @@ fn integer_loop_pitch_is_fs_over_n_plus_half<S: Scalar>() {
         for f0 in [55.0, 220.0, 880.0, 3520.0] {
             let (s, sig) = render::<S>(fs, f0, 1.0, 0.5);
             let want = s.pitch();
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "test lengths"
-            )]
-            let skip = ((4.0 * fs / f0) as usize).max(ATTACK);
+            let skip = f64_to_usize(4.0 * fs / f0).unwrap().max(ATTACK);
             let got = pitch(&sig[skip..], fs, f0, 0.06).unwrap();
             let err = cents(got, want);
             println!(

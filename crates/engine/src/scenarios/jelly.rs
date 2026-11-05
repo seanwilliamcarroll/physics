@@ -3,6 +3,7 @@
 //! (M5; `docs/07-soft-bodies.md`).
 
 use core::num::NonZeroU32;
+use math::convert::usize_to_f64;
 
 use super::pendulum::pendulum_gravity;
 use super::shared::mass;
@@ -55,22 +56,14 @@ impl SpringNetwork {
     #[must_use]
     pub fn grid(cols: usize, rows: usize, bottom: f64) -> Self {
         let idx = |i: usize, j: usize| j * cols + i;
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "grid sizes are tiny next to 2^53, so the conversion is exact"
-        )]
-        let half_width = cols.saturating_sub(1) as f64 * JELLY_SPACING / 2.0;
+        let half_width = usize_to_f64(cols.saturating_sub(1)) * JELLY_SPACING / 2.0;
         let mut positions = Vec::with_capacity(cols * rows);
         let mut pairs = Vec::new();
         for j in 0..rows {
             for i in 0..cols {
-                #[expect(
-                    clippy::cast_precision_loss,
-                    reason = "grid indices are tiny next to 2^53, so the conversion is exact"
-                )]
                 let (x, y) = (
-                    i as f64 * JELLY_SPACING - half_width,
-                    bottom + j as f64 * JELLY_SPACING,
+                    usize_to_f64(i) * JELLY_SPACING - half_width,
+                    bottom + usize_to_f64(j) * JELLY_SPACING,
                 );
                 positions.push((x, y));
                 let mut join = |di: usize, dj: usize, kind| {
@@ -131,11 +124,7 @@ pub fn jelly<S: Scalar>(
     c: f64,
 ) -> Result<Jelly<S>, ConfigError> {
     let net = SpringNetwork::grid(cols, rows, JELLY_DROP);
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "particle counts are tiny next to 2^53, so the conversion is exact"
-    )]
-    let m = mass::<S>(JELLY_MASS / net.positions.len() as f64)?;
+    let m = mass::<S>(JELLY_MASS / usize_to_f64(net.positions.len()))?;
     let damping = Damping::new(S::from_f64(c)).ok_or(ConfigError::InvalidDamping)?;
     let mut world = World::new(Integrator::SymplecticEuler, substeps);
     world.add_force(pendulum_gravity());

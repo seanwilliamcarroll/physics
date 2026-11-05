@@ -7,6 +7,7 @@
 use acoustic::measure::{amplitude, partial};
 use acoustic::{Decay, Scalar, Voicing, Waveguide};
 use math::Fnv1a;
+use math::convert::f64_to_usize;
 
 const FS: f64 = 48_000.0;
 /// 220 Hz: a 218-sample loop, 109 cells a rail.
@@ -40,12 +41,10 @@ fn harmonics<S: Scalar>(beta: f64, pickup: f64, count: u32) -> Vec<f64> {
     let shape = triangle(beta);
     wg.pluck(|s| S::from_f64(shape(s)));
     wg.set_pickup(pickup);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let (skip, len) = ((SKIP_S * FS) as usize, (WINDOW_S * FS) as usize);
+    let (skip, len) = (
+        f64_to_usize(SKIP_S * FS).unwrap(),
+        f64_to_usize(WINDOW_S * FS).unwrap(),
+    );
     let mut out = vec![S::ZERO; skip + len];
     wg.render(&mut out);
     let sig: Vec<f64> = out

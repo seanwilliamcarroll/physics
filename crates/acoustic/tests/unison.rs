@@ -6,6 +6,7 @@ use acoustic::measure::amplitude;
 use acoustic::piano::frequency;
 use acoustic::unison::{DETUNE_CENTS, Unison};
 use acoustic::{Decay, Voicing, inharmonicity};
+use math::convert::{f64_to_usize, usize_to_f64};
 
 const FS: f64 = 48_000.0;
 /// Nearly lossless: the pair's beat takes 17 s, and a real decay over
@@ -33,37 +34,25 @@ fn beat_rate(key: u8, expected: f64) -> f64 {
         inharmonicity: inharmonicity(key),
     };
     let mut u = Unison::<f64>::new(FS, key, voicing, 1.58).unwrap();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let mut signal = vec![0.0; ((SKIP + BEATS / expected) * FS) as usize];
+    let mut signal = vec![0.0; f64_to_usize((SKIP + BEATS / expected) * FS).unwrap()];
     u.render(&mut signal);
     let f1 = frequency(key);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
     let (window, hop, skip) = (
-        (WINDOW_PERIODS * FS / f1) as usize,
-        (HOP * FS) as usize,
-        (SKIP * FS) as usize,
+        f64_to_usize(WINDOW_PERIODS * FS / f1).unwrap(),
+        f64_to_usize(HOP * FS).unwrap(),
+        f64_to_usize(SKIP * FS).unwrap(),
     );
     let envelope: Vec<f64> = (skip..signal.len() - window)
         .step_by(hop)
         .map(|i| amplitude(&signal[i..i + window], FS, f1))
         .collect();
-    #[expect(clippy::cast_precision_loss, reason = "window counts are small")]
-    let mean = envelope.iter().sum::<f64>() / envelope.len() as f64;
+    let mean = envelope.iter().sum::<f64>() / usize_to_f64(envelope.len());
     let strength = |f: f64| {
         let (re, im) = envelope
             .iter()
             .enumerate()
             .fold((0.0, 0.0), |(re, im), (n, &e)| {
-                #[expect(clippy::cast_precision_loss, reason = "window counts are small")]
-                let a = core::f64::consts::TAU * f * n as f64 * HOP;
+                let a = core::f64::consts::TAU * f * usize_to_f64(n) * HOP;
                 (re + (e - mean) * a.cos(), im - (e - mean) * a.sin())
             });
         re * re + im * im

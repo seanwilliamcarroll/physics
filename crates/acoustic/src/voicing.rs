@@ -4,6 +4,7 @@
 //! coefficients are bit-identical on every platform.
 
 use core::f64::consts::PI;
+use math::convert::f64_to_usize;
 
 /// How the string decays.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -121,12 +122,7 @@ impl Voicing {
         if n < MIN_DELAY || !n.is_finite() {
             return None;
         }
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "n is a positive whole number of samples, checked above"
-        )]
-        let n = n as usize;
+        let n = f64_to_usize(n)?;
         Some(Coefficients {
             n,
             rho,

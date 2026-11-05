@@ -1,21 +1,16 @@
 use super::{amplitude, cents, pitch, t60};
 use core::f64::consts::TAU;
+use math::convert::{f64_to_usize, usize_to_f64};
 
 const FS: f64 = 48_000.0;
 
 /// A sawtooth-ish tone: a few harmonics of `f0`, decaying by `decay_db`
 /// per second.
 fn tone(f0: f64, decay_db: f64, secs: f64) -> Vec<f64> {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let n = (FS * secs) as usize;
+    let n = f64_to_usize(FS * secs).unwrap();
     (0..n)
         .map(|i| {
-            #[expect(clippy::cast_precision_loss, reason = "test indices")]
-            let t = i as f64 / FS;
+            let t = usize_to_f64(i) / FS;
             let gain = 10f64.powf(-decay_db * t / 20.0);
             gain * (1..=4)
                 .map(|k| (TAU * f0 * f64::from(k) * t).sin() / f64::from(k))
@@ -51,16 +46,10 @@ fn t60_of_a_known_decay() {
 #[test]
 fn amplitude_reads_a_sine_between_bins() {
     // 0.3 at 441.3 Hz plus 0.1 at its octave, 0.2 s.
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let n = (0.2 * FS) as usize;
+    let n = f64_to_usize(0.2 * FS).unwrap();
     let x: Vec<f64> = (0..n)
         .map(|i| {
-            #[expect(clippy::cast_precision_loss, reason = "test indices")]
-            let t = i as f64 / FS;
+            let t = usize_to_f64(i) / FS;
             0.3 * (TAU * 441.3 * t).sin() + 0.1 * (TAU * 882.6 * t).sin()
         })
         .collect();

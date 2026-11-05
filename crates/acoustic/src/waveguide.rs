@@ -3,6 +3,7 @@
 use crate::bridge::Bridge;
 use crate::hammer::Hammer;
 use crate::{DelayLine, Scalar, Voicing};
+use math::convert::{clamped_index, usize_to_f64};
 
 /// A string of length `L` with fixed ends, as two delay lines ("rails")
 /// of `M` samples: `right`, the wave traveling toward the bridge, and
@@ -151,11 +152,7 @@ impl<S: Scalar> Waveguide<S> {
     pub fn pluck(&mut self, mut shape: impl FnMut(f64) -> S) {
         let m = self.right.len();
         let (length, first) = (self.length, self.first);
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "rail lengths are far below 2^53"
-        )]
-        let at = |c: usize| (c as f64 + first) / length;
+        let at = |c: usize| (usize_to_f64(c) + first) / length;
         let half = S::from_f64(0.5);
         self.right.fill(|c| shape(at(c)) * half);
         // The left rail runs the other way (its front is the cell nearest
@@ -205,23 +202,10 @@ impl<S: Scalar> Waveguide<S> {
     pub fn displacement(&self) -> S {
         let m = self.right.len();
         // The pickup's cell coordinate (cell c's center is at c).
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "rail lengths are far below 2^53"
-        )]
-        let x = (self.pickup * self.length - self.first).clamp(0.0, (m - 1) as f64);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "x is clamped to the rail"
-        )]
-        let c0 = x as usize;
+        let x = (self.pickup * self.length - self.first).clamp(0.0, usize_to_f64(m - 1));
+        let c0 = clamped_index(x, m - 1);
         let c1 = (c0 + 1).min(m - 1);
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "rail lengths are far below 2^53"
-        )]
-        let frac = S::from_f64(x - c0 as f64);
+        let frac = S::from_f64(x - usize_to_f64(c0));
         let a = self.cell(c0);
         a + (self.cell(c1) - a) * frac
     }
@@ -249,11 +233,7 @@ impl<S: Scalar> Waveguide<S> {
     /// effective length).
     #[must_use]
     pub fn position(&self, c: usize) -> f64 {
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "rail lengths are far below 2^53"
-        )]
-        let c = c as f64;
+        let c = usize_to_f64(c);
         (c + self.first) / self.length
     }
 
@@ -307,11 +287,7 @@ impl<S: Scalar> Waveguide<S> {
 /// minus the `M` cells' own, plus half a cell. Falls back to the bare
 /// rail (`M`, `½`) for a pitch that isn't positive.
 fn geometry(fs: f64, pitch: f64, m: usize) -> (f64, f64) {
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "rail lengths are far below 2^53"
-    )]
-    let m = m as f64;
+    let m = usize_to_f64(m);
     let length = fs / (2.0 * pitch);
     // `length > 0` is false for NaN too.
     let usable = length > 0.0 && length.is_finite();

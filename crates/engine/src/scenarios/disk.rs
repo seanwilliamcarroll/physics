@@ -5,6 +5,7 @@ use super::cluster::{CLUSTER_SOFTENING, CLUSTER_SUBSTEPS, cluster_gravity};
 use super::shared::{BodyF64, GRAVITATIONAL_CONSTANT, add_bodies, point_in_annulus};
 use crate::rng::SplitMix64;
 use crate::{ConfigError, Integrator, Scalar, World};
+use math::convert::usize_to_f64;
 
 /// Outer radius of [`disk`], m: the same as the cluster's, so the scenes
 /// share a view.
@@ -61,11 +62,7 @@ pub(super) fn disk_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
     let pos: Vec<(f64, f64)> = (0..orbiters)
         .map(|_| point_in_annulus(&mut rng, DISK_INNER_RADIUS, DISK_RADIUS))
         .collect();
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "orbiter counts are far below 2^53, so the conversion is exact"
-    )]
-    let m = DISK_ORBITERS_TOTAL_MASS / orbiters.max(1) as f64;
+    let m = DISK_ORBITERS_TOTAL_MASS / usize_to_f64(orbiters.max(1));
 
     // Enclosed mass: the center plus every orbiter strictly closer in.
     // Sorted squared radii make that a binary search per orbiter.
@@ -78,11 +75,7 @@ pub(super) fn disk_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
         .iter()
         .map(|&(x, y)| {
             let r_sq = x * x + y * y;
-            #[expect(
-                clippy::cast_precision_loss,
-                reason = "orbiter counts are far below 2^53, so the conversion is exact"
-            )]
-            let closer = r_sq_sorted.partition_point(|&q| q < r_sq) as f64;
+            let closer = usize_to_f64(r_sq_sorted.partition_point(|&q| q < r_sq));
             let enclosed = DISK_CENTRAL_MASS + m * closer;
             // v² / r = G M r / (r² + ε²)^(3/2), as for `orbit_relative_speed`.
             let q = r_sq + eps_sq;

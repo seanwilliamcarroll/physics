@@ -1,4 +1,5 @@
 use math::SplitMix64;
+use math::convert::usize_to_f64;
 
 use super::Excitation;
 use crate::{Decay, KsString, Voicing};
@@ -16,8 +17,7 @@ fn excited(e: Excitation, seed: u64) -> Vec<f64> {
 }
 
 fn mean(v: &[f64]) -> f64 {
-    #[expect(clippy::cast_precision_loss, reason = "test lengths")]
-    let n = v.len() as f64;
+    let n = usize_to_f64(v.len());
     v.iter().sum::<f64>() / n
 }
 
@@ -38,7 +38,6 @@ fn the_triangle_peaks_where_asked() {
         .iter()
         .enumerate()
         .fold((0, f64::MIN), |m, (i, &v)| if v > m.1 { (i, v) } else { m });
-    #[expect(clippy::cast_precision_loss, reason = "test lengths")]
-    let where_ = at as f64 / t.len() as f64;
+    let where_ = usize_to_f64(at) / usize_to_f64(t.len());
     assert!((where_ - 0.25).abs() < 0.01, "{where_}");
 }

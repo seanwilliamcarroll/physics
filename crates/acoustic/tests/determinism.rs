@@ -6,6 +6,7 @@
 
 use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing, inharmonicity};
 use math::Fnv1a;
+use math::convert::usize_to_f64;
 
 const FS: f64 = 48_000.0;
 const BLOCK: usize = 128;
@@ -152,8 +153,7 @@ fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
         match b {
             0 => {
                 for (i, key) in [48_u8, 52, 55, 60, 64, 67, 72].into_iter().enumerate() {
-                    #[expect(clippy::cast_precision_loss, reason = "seven keys")]
-                    let velocity = 0.5 + 0.6 * i as f64;
+                    let velocity = 0.5 + 0.6 * usize_to_f64(i);
                     assert!(v.strike(key, velocity));
                 }
             }

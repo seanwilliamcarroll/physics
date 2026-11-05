@@ -2,6 +2,7 @@
 //! (`docs/12-acoustic-foundations.md`, "Measuring, offline, in Rust").
 //! In `f64`, whatever scalar rendered the signal.
 
+use math::convert::{f64_to_usize, usize_to_f64};
 /// Cents in an octave: a cent is a hundredth of an equal-tempered
 /// semitone.
 pub const CENTS_PER_OCTAVE: f64 = 1200.0;
@@ -49,12 +50,7 @@ pub fn pitch(signal: &[f64], fs: f64, expected: f64, search: f64) -> Option<f64>
 /// The lag in `[lo, hi]` samples with the largest normalized
 /// autocorrelation, refined by a parabola through it and its neighbors.
 fn peak_lag(signal: &[f64], lo: f64, hi: f64) -> Option<f64> {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "lags are positive whole numbers of samples, far below usize::MAX"
-    )]
-    let (lo, hi) = (lo.floor().max(1.0) as usize, hi.ceil() as usize);
+    let (lo, hi) = (f64_to_usize(lo.floor().max(1.0))?, f64_to_usize(hi.ceil())?);
     let window = signal.len().checked_sub(hi + 1)?.min(4 * hi);
     if window < 2 * hi {
         return None;
@@ -88,8 +84,7 @@ fn peak_lag(signal: &[f64], lo: f64, hi: f64) -> Option<f64> {
     } else {
         0.0
     };
-    #[expect(clippy::cast_precision_loss, reason = "lags are far below 2^53")]
-    Some(best as f64 + offset)
+    Some(usize_to_f64(best) + offset)
 }
 
 /// The frequency of `signal`'s component near `estimate` Hz, refined from
@@ -107,19 +102,10 @@ fn peak_lag(signal: &[f64], lo: f64, hi: f64) -> Option<f64> {
 /// shorter than two windows, or the component is silent.
 #[must_use]
 pub fn partial(signal: &[f64], fs: f64, estimate: f64, periods: f64) -> Option<f64> {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a positive whole number of samples"
-    )]
-    let window = (periods * fs / estimate).round() as usize;
+    let window = f64_to_usize((periods * fs / estimate).round())?;
     let first = bin(signal.get(..window)?, fs, estimate)?;
     let second = bin(signal.get(window..2 * window)?, fs, estimate)?;
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "window sizes are far below 2^53"
-    )]
-    let hop = window as f64;
+    let hop = usize_to_f64(window);
     let tau = core::f64::consts::TAU;
     let predicted = tau * estimate * hop / fs;
     let advance = second.1.atan2(second.0) - first.1.atan2(first.0);
@@ -135,27 +121,18 @@ pub fn partial(signal: &[f64], fs: f64, estimate: f64, periods: f64) -> Option<f
 /// and of its neighbors, so they don't leak in.
 #[must_use]
 pub fn amplitude(signal: &[f64], fs: f64, f: f64) -> f64 {
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "window sizes are far below 2^53"
-    )]
-    let n = signal.len() as f64;
+    let n = usize_to_f64(signal.len());
     bin(signal, fs, f).map_or(0.0, |(re, im)| re.hypot(im) * 4.0 / n)
 }
 
 /// The Hann-windowed DFT of `chunk` at `f` Hz: `(re, im)`, or `None` if
 /// it's zero.
 fn bin(chunk: &[f64], fs: f64, f: f64) -> Option<(f64, f64)> {
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "window sizes are far below 2^53"
-    )]
-    let w = chunk.len() as f64;
+    let w = usize_to_f64(chunk.len());
     let omega = core::f64::consts::TAU * f / fs;
     let (mut re, mut im) = (0.0, 0.0);
     for (i, &x) in chunk.iter().enumerate() {
-        #[expect(clippy::cast_precision_loss, reason = "window indices are small")]
-        let i = i as f64;
+        let i = usize_to_f64(i);
         let hann = 0.5 - 0.5 * (core::f64::consts::TAU * i / w).cos();
         re += hann * x * (omega * i).cos();
         im -= hann * x * (omega * i).sin();
@@ -175,29 +152,16 @@ fn bin(chunk: &[f64], fs: f64, f: f64) -> Option<(f64, f64)> {
 /// in the span, or the level doesn't fall.
 #[must_use]
 pub fn t60(signal: &[f64], fs: f64, f0: f64, periods: f64, start: f64, end: f64) -> Option<f64> {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a positive whole number of samples"
-    )]
-    let window = (periods * fs / f0).round() as usize;
+    let window = f64_to_usize((periods * fs / f0).round())?;
     if window < 2 {
         return None;
     }
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "window sizes are far below 2^53"
-    )]
-    let w = window as f64;
+    let w = usize_to_f64(window);
     let points: Vec<(f64, f64)> = signal
         .chunks_exact(window)
         .enumerate()
         .filter_map(|(k, chunk)| {
-            #[expect(
-                clippy::cast_precision_loss,
-                reason = "sample counts are far below 2^53"
-            )]
-            let t = (k as f64 + 0.5) * w / fs;
+            let t = (usize_to_f64(k) + 0.5) * w / fs;
             let (re, im) = bin(chunk, fs, f0).unwrap_or((0.0, 0.0));
             let amp = (re * re + im * im).sqrt();
             (t >= start && t <= end && amp > 0.0).then(|| (t, 20.0 * amp.log10()))
@@ -206,8 +170,7 @@ pub fn t60(signal: &[f64], fs: f64, f0: f64, periods: f64, start: f64, end: f64)
     if points.len() < 2 {
         return None;
     }
-    #[expect(clippy::cast_precision_loss, reason = "point counts are tiny")]
-    let n = points.len() as f64;
+    let n = usize_to_f64(points.len());
     let (st, sl) = points
         .iter()
         .fold((0.0, 0.0), |(a, b), &(t, l)| (a + t, b + l));

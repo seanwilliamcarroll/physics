@@ -12,6 +12,7 @@ use crate::dispersion::Dispersion;
 use crate::hammer::{self, Hammer, STRIKE};
 use crate::measure::CENTS_PER_OCTAVE;
 use crate::{Decay, LOWEST_HZ, Scalar, Voicing, Waveguide};
+use math::convert::{f64_to_usize, usize_to_f64};
 
 /// The most strings a key has.
 pub const MAX_STRINGS: usize = 3;
@@ -42,8 +43,7 @@ pub const fn strings(midi: u8) -> usize {
 /// group's mean is the note (−½, ½ for two; −1, 0, 1 for three).
 #[must_use]
 pub fn offset(i: usize, n: usize) -> f64 {
-    #[expect(clippy::cast_precision_loss, reason = "at most 3 strings")]
-    let (i, n) = (i as f64, n as f64);
+    let (i, n) = (usize_to_f64(i), usize_to_f64(n));
     (i - (n - 1.0) / 2.0) * DETUNE_CENTS
 }
 
@@ -73,14 +73,7 @@ impl<S: Scalar> Unison<S> {
             decay: Decay::Loss(1.0),
             inharmonicity: 0.0,
         };
-        let cap = libm::ceil(fs / LOWEST_HZ);
-        let cap_ok = cap.is_finite() && cap > 0.0;
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "checked positive and finite"
-        )]
-        let cap = if cap_ok { cap as usize } else { 0 };
+        let cap = f64_to_usize(libm::ceil(fs / LOWEST_HZ)).unwrap_or(0);
         let string = Waveguide::with_capacity(fs, LOWEST_HZ, probe, cap)?;
         Some(Self {
             strings: vec![string; MAX_STRINGS],

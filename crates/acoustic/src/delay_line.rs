@@ -1,6 +1,7 @@
 //! [`DelayLine`]: a fixed-length FIFO of samples, as a ring buffer.
 
 use crate::Scalar;
+use math::convert::usize_to_f64;
 
 /// The last `len` samples written, oldest first: [`front`](Self::front)
 /// is the sample written `len` pushes ago (`y[n − N]`), and
@@ -122,11 +123,7 @@ impl<S: Scalar> DelayLine<S> {
     /// in the loop, which passes DC at full gain, and decay only by `ρ`.
     pub fn remove_mean(&mut self) {
         let sum = self.buf.iter().fold(S::ZERO, |a, &x| a + x);
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "line lengths are far below 2^53"
-        )]
-        let mean = sum / S::from_f64(self.buf.len() as f64);
+        let mean = sum / S::from_f64(usize_to_f64(self.buf.len()));
         for x in &mut self.buf {
             *x -= mean;
         }
