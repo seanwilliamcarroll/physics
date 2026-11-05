@@ -115,16 +115,27 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`SplitMix64`](../crates/math/src/rng.rs) | The seeded PRNG, in `math` since A1.4 so the engine (scenes) and the acoustic track (noise) share one deterministic generator. |
 | [`DelayLine<S>`](../crates/acoustic/src/delay_line.rs) | A ring buffer of samples; `with_capacity` + `reset` re-length it without allocating, which the audio thread requires. |
 | [`KsString<S>`](../crates/acoustic/src/string.rs) | The Karplus–Strong loop: delay line, lowpass with the loss folded in, optional allpass. `restring` re-voices it in place. |
-| [`Voicing`, `Decay`](../crates/acoustic/src/string/voicing.rs) | A note's tuning (allpass or integer loop) and decay (`Loss(ρ)` or a target `T60`), turned into coefficients once at note on, with `libm` so they're bit-identical on wasm. |
+| [`Voicing`, `Decay`](../crates/acoustic/src/voicing.rs) | A note's tuning (allpass or integer loop), decay (`Loss(ρ)` or a target `T60`) and stiffness (`B`, A3), turned into coefficients once at note on, with `libm` so they're bit-identical on wasm. |
 | [`Excitation`](../crates/acoustic/src/excitation.rs) | What a pluck leaves in the loop (noise, or the Piano Gloves triangle), always zero-mean. |
-| [`Voices<S>`](../crates/acoustic/src/voices.rs) | 8 preallocated strings played by MIDI key: stealing, release, gain and a counted clamp. |
+| [`Voices<S>`](../crates/acoustic/src/voices.rs) | 16 preallocated voices played by MIDI key (each a loop, a waveguide and a piano key's strings): stealing, release, gain and a counted clamp. |
 | [`Synth`](../crates/acoustic-web/src/synth.rs) | The worklet's whole state behind the `synth_*` C ABI: voices, settings, and preallocated output and snapshot buffers. |
 | [`ProcessorInit`, `ToWorklet`, `FromWorklet`](../site/js/synth-worklet.ts) | The messages between page and worklet as a discriminated union, so a misspelled field or type is a compile error on both sides. Shared by the acoustic pages since A2. |
 | [`Waveguide<S>`](../crates/acoustic/src/waveguide.rs) | A2's string: two rails with inverting ends and A1's loop filter at the bridge; positions on the effective length (`fs / 2f₀`), so a pluck or pickup at 1/n really sits on the node. Bit-exact to A1's loop from the same state. |
-| [`Model`](../crates/acoustic/src/voices.rs) | Which string a note plays (loop or waveguide); every voice preallocates both, so the choice never allocates. |
+| [`Model`](../crates/acoustic/src/voices.rs) | Which string a note plays (loop, waveguide, piano); every voice preallocates all three, so the choice never allocates. |
 | [`Fft<S>`, `Spectrum<S>`](../crates/acoustic/src/fft.rs) | Our radix-2 FFT and the Hann/dB analyzer around it, everything precomputed so analysis on the audio thread never allocates. |
 | [`Live`, `LiveOptions`](../site/js/synth-live.ts) | One way for every acoustic page to start audio and keep the snapshot buffers circulating. |
 | [`SynthHandle`](../site/js/acoustic.d.ts) | A branded `*mut Synth`, like the engine's `DemoHandle`. |
+
+## `acoustic` — the piano (A3)
+
+| Type | Why it exists |
+|---|---|
+| [`Dispersion`](../crates/acoustic/src/dispersion.rs) | A stiff string's allpass cascade: up to 16 biquads as pole pairs, placed (Abel, Välimäki & Smith) then refined; its delay at `f₀` joins the tuning budget. `Copy`, so a stored design re-strings a note without designing. |
+| [`Designs`](../crates/acoustic/src/piano.rs) | All 88 keys' cascades, built once when the piano is first chosen (milliseconds a key), looked up at every strike. Valid because the piano's decay is a fixed curve. |
+| [`Felt`, `Hammer`](../crates/acoustic/src/hammer.rs) | A key's fitted hammer (mass, felt stiffness, exponent) and a blow in progress: physical units, an energy-conserving step (a discrete gradient), re-contact until it moves away. `Hammer::new` checks every value once, so velocity and felt travel as plain `f64`s. |
+| [`Unison<S>`](../crates/acoustic/src/unison.rs) | One key's 1–3 strings, a cent apart, each with its own copy of the hammer; three waveguides sized for A0, re-struck without allocating; output the summed bridge force. |
+| [`Body<S>`](../crates/acoustic/src/body.rs) | Five fixed bandpass resonances plus the direct sound, once on the piano's sum (linear, so one is as good as one per voice). |
+| `drawTrace`, `DrawColors.stretched` ([`audio-draw.ts`](../site/js/audio-draw.ts)) | The hammer's force plot, and the stiff partials' ticks on the spectrum. |
 
 ## Test and tooling crates
 

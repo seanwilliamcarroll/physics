@@ -259,11 +259,17 @@ once. A piano golden, same on wasm.
       (`stretch_db` 69.9); gallery. Smoke now drives Chrome over DevTools
       and waits for the report (`--screenshot` quit at `load`, before
       A3's offline render).
-- [ ] Listening check against **Done when** (yours).
+- [x] Listening check against **Done when**: yours, "sounds pretty good".
 
-## 7. A3 cleanup (PR, if needed)
+## ✅ 7. A3 cleanup (done)
 
-- [ ] Magic numbers, triggers, `docs/types.md`, small files.
+One pitch formula (the hammer fit regenerates bit-identically), the
+cents factor and the table's key coordinate named once, the pages' log
+floor named. Small files: the piano's voice methods, the waveguide's
+hammer parts and the dispersion's refinement in their own modules.
+`types.md` for A3 (and two stale A1 lines), the triggers re-checked
+(velocity and felt checked once, in `Hammer::new`: not adopted),
+`repo-layout.md`.
 
 ---
 

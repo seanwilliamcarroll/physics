@@ -92,6 +92,23 @@ entry point and one use, so a newtype would only move the check. Revisit
 if A2–A3 pass them around (a hammer, pickup positions). `UnitVec2` and
 the rest: unchanged.
 
+**Triggers re-checked at the end of A3:** A1's note asked to revisit
+if A2–A3 passed parameters around. A3 does, in two cases:
+- **The hammer's velocity** travels `Synth` → `Voices::strike` →
+  `Unison::restrike` → `Hammer::new` as a plain `f64`. It is checked
+  once, in `Hammer::new` (with the felt and the impedance: positive,
+  finite), and a refusal propagates as `false` up to the ABI. The layers
+  in between only pass it on, so a `Velocity` newtype would move the
+  check, not add one. Not adopted.
+- **`Felt`'s fields are public**, so an invalid felt can be built. It
+  can't be used, though: the hammer is the only consumer, and it checks.
+  Not adopted for the same reason.
+
+`B` arrives per key from the Rigaud model, never from the page. The
+dispersion design reads `B ≤ 0` or NaN as "no stiffness", which is right
+for the toggle and can't be reached from outside. Item 2 is otherwise
+unchanged; `UnitVec2` and the rest too.
+
 **Triggers re-checked at the end of M5:** `Stiffness` and `Damping`
 adopted (item 2, trigger: the stiffness and damping sliders); both reject
 NaN and infinity, and rigid lives only in `Compliance` (α = 0), since a

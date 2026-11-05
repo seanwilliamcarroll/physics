@@ -53,7 +53,7 @@ physics/
 │   │   │   └── properties.proptest-regressions  # committed
 │   │   └── benches/step.rs
 │   │
-│   ├── acoustic/           # A1+: Karplus–Strong string, offline pitch/T60 measurement
+│   ├── acoustic/           # A1+: Karplus–Strong string, waveguide, piano (stiff strings, hammer, body); offline measurement
 │   ├── acoustic-web/       # cdylib → acoustic.wasm (the audio worklet's synth)
 │   ├── test-support/       # dev-dep: shared integration-test helpers
 │   │   └── src/            # tol, orbit, hash, worlds (proptest)
@@ -69,7 +69,8 @@ physics/
 │
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)
 │   ├── src/main.rs
-│   ├── serve.py            # dev server: http.server + Cache-Control: no-store
+│   ├── serve.py            # dev and smoke server: http.server + no-store + a deep backlog
+│   ├── smoke_page.mjs      # one smoke load: Chrome over DevTools, waits for SMOKE
 │   └── bench_wasm.mjs      # Node side of `cargo xtask bench-wasm`
 │
 └── site/
@@ -89,9 +90,9 @@ physics/
     │   ├── stiffness.ts    # M5 log stiffness slider (rigid stop), k_crit hint
     │   ├── ks.ts           # A1: MIDI, note names, computer-keyboard piano layout
     │   ├── acoustic.d.ts   # types for acoustic.wasm's exports
-    │   ├── synth-worklet.ts # the AudioWorklet processor (A1, A2)
+    │   ├── synth-worklet.ts # the AudioWorklet processor (A1–A3)
     │   ├── synth-live.ts   # starting audio, snapshot buffers, offline render
-    │   ├── piano-ui.ts     # on-screen piano, computer keyboard, songs
+    │   ├── piano-ui.ts     # on-screen piano (velocity from press depth), keyboard, songs
     │   ├── tone.ts         # amplitude, onsets, silenced harmonics (pure)
     │   ├── …               # abi, dom, options, ring, smoke, trail
     │   └── engine.d.ts     # types for the wasm exports/imports
