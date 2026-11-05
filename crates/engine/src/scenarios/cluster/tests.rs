@@ -1,5 +1,5 @@
 use super::{CLUSTER_RADIUS, CLUSTER_SPEED, CLUSTER_TOTAL_MASS, CLUSTER_WEIGHT, cluster};
-use crate::scenarios::test_util::assert_same_up_to_rounding;
+use crate::test_util::assert_same_up_to_rounding;
 use crate::{Force, Integrator, Vec2};
 
 #[test]

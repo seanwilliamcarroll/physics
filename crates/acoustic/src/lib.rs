@@ -18,6 +18,8 @@ pub mod piano;
 mod solve;
 mod stiffness;
 mod string;
+#[cfg(test)]
+mod test_util;
 pub mod unison;
 mod voices;
 mod voicing;

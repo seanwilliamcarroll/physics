@@ -1,6 +1,7 @@
 use core::f64::consts::TAU;
 
-use super::{MAX_BIQUADS, design, lowpass_delay};
+use super::{MAX_BIQUADS, design};
+use crate::voicing::phase_delay_lowpass;
 
 const FS: f64 = 48_000.0;
 
@@ -16,7 +17,9 @@ fn worst_cents(f1: f64, b: f64) -> (usize, u32, f64) {
             let k = f64::from(k);
             let fk = k * f0 * (1.0 + b * k * k).sqrt();
             let wk = TAU * fk / FS;
-            let want = k * FS / fk - FS / f1 - (lowpass_delay(0.5, wk) - lowpass_delay(0.5, w1));
+            let want = k * FS / fk
+                - FS / f1
+                - (phase_delay_lowpass(0.5, wk) - phase_delay_lowpass(0.5, w1));
             let got = d.delay(wk) - d.delay(w1);
             (1200.0 / core::f64::consts::LN_2 * (got - want) / (k * FS / fk)).abs()
         })

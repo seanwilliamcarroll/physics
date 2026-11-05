@@ -1,5 +1,6 @@
 use crate::Scalar;
 use crate::measure::{cents, pitch, t60};
+use crate::test_util::hash_noise;
 use crate::{Decay, KsString, Voicing};
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
@@ -10,14 +11,6 @@ const RATES: [f64; 2] = [44_100.0, 48_000.0];
 /// waveform still changing shape across the window); with this, every
 /// note measured within 0.09 cents.
 const ATTACK: usize = 2048;
-
-/// A deterministic "noise" for tests: a fixed integer hash, zero-mean
-/// enough for a pluck (section 4 brings the real excitations).
-#[expect(clippy::cast_precision_loss, reason = "a 16-bit value, exact")]
-fn hash_noise(i: usize) -> f64 {
-    let h = (i.wrapping_mul(2_654_435_761) >> 7) & 0xffff;
-    h as f64 / 32768.0 - 1.0
-}
 
 fn render<S: Scalar>(fs: f64, f0: f64, rho: f64, secs: f64) -> (KsString<S>, Vec<f64>) {
     let voicing = Voicing {

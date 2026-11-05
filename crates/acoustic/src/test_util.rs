@@ -1,0 +1,11 @@
+//! Helpers shared by the acoustic crate's unit tests. (`tests/tuning.rs`
+//! keeps its own `hash_noise`: integration tests can't see `cfg(test)`
+//! code, and one function doesn't warrant a test-support crate.)
+
+/// A deterministic "noise" for tests: a fixed integer hash, zero-mean
+/// enough for a pluck (section 4 brings the real excitations).
+#[expect(clippy::cast_precision_loss, reason = "a 16-bit value, exact")]
+pub(crate) fn hash_noise(i: usize) -> f64 {
+    let h = (i.wrapping_mul(2_654_435_761) >> 7) & 0xffff;
+    h as f64 / 32768.0 - 1.0
+}

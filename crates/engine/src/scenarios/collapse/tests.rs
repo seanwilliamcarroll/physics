@@ -36,6 +36,6 @@ fn falls_in_on_itself() {
     };
     let mut w = collapse::<f64>(64, 2).unwrap();
     let r0 = mean_radius(&w);
-    crate::scenarios::test_util::run(&mut w, 60);
+    crate::test_util::run(&mut w, 60);
     assert!(mean_radius(&w) < 0.9 * r0, "{} vs {r0}", mean_radius(&w));
 }

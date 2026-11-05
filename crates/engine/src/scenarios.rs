@@ -36,6 +36,3 @@ pub use orbit::{
 };
 pub use pendulum::{PENDULUM_LENGTH, PENDULUM_MASS, pendulum, pendulum_gravity};
 pub use shared::{GRAVITATIONAL_CONSTANT, STANDARD_GRAVITY, newtonian};
-
-#[cfg(test)]
-mod test_util;

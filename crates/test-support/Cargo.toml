@@ -9,6 +9,7 @@ description = "Shared helpers for the engine's integration tests (dev-dependency
 
 [dependencies]
 engine = { path = "../engine" }
+math = { path = "../math" }
 proptest.workspace = true
 
 [lints]

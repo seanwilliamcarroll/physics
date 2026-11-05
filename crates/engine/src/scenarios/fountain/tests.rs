@@ -1,6 +1,6 @@
 use super::{FOUNTAIN_VX, FOUNTAIN_VY, Fountain};
 use crate::Vec2;
-use crate::scenarios::test_util::run;
+use crate::test_util::run;
 
 fn in_launch_range(v: Vec2<f64>) -> bool {
     (FOUNTAIN_VX.0..FOUNTAIN_VX.1).contains(&v.x) && (FOUNTAIN_VY.0..FOUNTAIN_VY.1).contains(&v.y)

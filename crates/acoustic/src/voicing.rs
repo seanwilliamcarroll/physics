@@ -162,7 +162,7 @@ fn decay_for(t60: f64, f0: f64, w: f64) -> Option<(f64, f64)> {
 
 /// The phase delay of `(1 − S) + S z⁻¹` at `w`, samples: exactly ½ at
 /// every `w` for `S = ½`, about `S` at low frequencies otherwise.
-fn phase_delay_lowpass(s: f64, w: f64) -> f64 {
+pub(crate) fn phase_delay_lowpass(s: f64, w: f64) -> f64 {
     libm::atan2(s * libm::sin(w), 1.0 - s + s * libm::cos(w)) / w
 }
 

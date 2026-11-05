@@ -1,13 +1,8 @@
 use super::Waveguide;
+use crate::test_util::hash_noise;
 use crate::{Decay, KsString, Scalar, Voicing};
 
 const FS: f64 = 48_000.0;
-
-#[expect(clippy::cast_precision_loss, reason = "a 16-bit value, exact")]
-fn hash_noise(i: usize) -> f64 {
-    let h = (i.wrapping_mul(2_654_435_761) >> 7) & 0xffff;
-    h as f64 / 32768.0 - 1.0
-}
 
 /// Karplus–Strong is the waveguide's special case (`docs/13-waveguide.md`):
 /// started from a loop's state, the waveguide's bridge output is the

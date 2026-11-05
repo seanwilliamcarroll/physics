@@ -23,6 +23,7 @@
 use core::f64::consts::{PI, TAU};
 
 use crate::measure::CENTS_PER_OCTAVE;
+use crate::voicing::phase_delay_lowpass;
 
 /// The most biquads a cascade may have (the bridge keeps state for this
 /// many, so nothing allocates).
@@ -83,11 +84,6 @@ fn biquad_delay(r: f64, th: f64, w: f64) -> f64 {
     (2.0 * w + 2.0 * (factor(th) + factor(-th))) / w
 }
 
-/// The two-point lowpass's phase delay at `w` (as in `voicing`).
-pub(crate) fn lowpass_delay(s: f64, w: f64) -> f64 {
-    libm::atan2(s * libm::sin(w), 1.0 - s + s * libm::cos(w)) / w
-}
-
 /// A partial to design for: its frequency (rad/sample), the extra delay it
 /// needs over the fundamental, and the weight turning a delay error into
 /// cents.
@@ -117,7 +113,8 @@ pub(crate) fn design(fs: f64, f1: f64, b: f64, s: f64, max_delay: f64) -> Option
         .map(|k| {
             let fk = partial(k);
             let w = TAU * fk / fs;
-            let want = k * fs / fk - fs / f1 - (lowpass_delay(s, w) - lowpass_delay(s, w1));
+            let want =
+                k * fs / fk - fs / f1 - (phase_delay_lowpass(s, w) - phase_delay_lowpass(s, w1));
             Target {
                 w,
                 want,

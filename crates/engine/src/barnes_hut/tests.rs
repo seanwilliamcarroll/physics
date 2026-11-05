@@ -2,16 +2,11 @@ use super::BarnesHut;
 use crate::OpeningAngle;
 use crate::params::kg;
 use crate::rng::SplitMix64;
+use crate::test_util::accel;
 use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
 const G: f64 = 6.674_30e-11;
 const EPS: f64 = 0.1;
-
-fn accel<S: Scalar>(p: &Particles<S>, f: &impl Force<S>) -> Vec<Vec2<S>> {
-    let mut acc = vec![Vec2::ZERO; p.len()];
-    f.accumulate(p, &mut acc);
-    acc
-}
 
 fn eps<S: Scalar>(eps: f64) -> Softening<S> {
     Softening::new(S::from_f64(eps)).unwrap()

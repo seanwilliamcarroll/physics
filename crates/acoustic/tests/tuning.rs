@@ -4,6 +4,7 @@
 #![cfg(test)]
 
 use acoustic::measure::{cents, partial, pitch, t60};
+use acoustic::piano::frequency;
 use acoustic::{Decay, KsString, Scalar, Voicing, Waveguide, inharmonicity};
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
@@ -16,11 +17,8 @@ const PARTIAL_PERIODS: f64 = 16.0;
 /// Every note's decay for the tuning sweep: long enough to measure.
 const SWEEP_T60: f64 = 2.0;
 
-/// Equal temperament, A4 = 440 Hz.
-fn frequency(midi: u8) -> f64 {
-    440.0 * 2f64.powf((f64::from(midi) - 69.0) / 12.0)
-}
-
+/// The same noise as the unit tests' `crate::test_util::hash_noise` (an
+/// integration test can't reach `cfg(test)` code).
 #[expect(clippy::cast_precision_loss, reason = "a 16-bit value, exact")]
 fn hash_noise(i: usize) -> f64 {
     let h = (i.wrapping_mul(2_654_435_761) >> 7) & 0xffff;

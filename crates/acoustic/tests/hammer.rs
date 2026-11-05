@@ -5,6 +5,7 @@
 
 use acoustic::hammer::{self, FORTISSIMO, Hammer, PIANISSIMO, STRIKE};
 use acoustic::measure::amplitude;
+use acoustic::piano::frequency;
 use acoustic::{Decay, Scalar, Voicing, Waveguide, inharmonicity};
 
 const FS: f64 = 48_000.0;
@@ -20,10 +21,6 @@ const SETTLE: f64 = 0.02;
 /// the rate.
 const PARTIALS: u32 = 30;
 const BAND: f64 = 0.4;
-
-fn frequency(midi: u8) -> f64 {
-    440.0 * 2f64.powf((f64::from(midi) - 69.0) / 12.0)
-}
 
 /// A strike, rendered: when the felt last pushed, the string's and the
 /// hammer's energy when it retired, its energy at impact, and the force on

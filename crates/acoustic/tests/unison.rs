@@ -3,6 +3,7 @@
 #![cfg(test)]
 
 use acoustic::measure::amplitude;
+use acoustic::piano::frequency;
 use acoustic::unison::{DETUNE_CENTS, Unison};
 use acoustic::{Decay, Voicing, inharmonicity};
 
@@ -22,10 +23,6 @@ const BEATS: f64 = 3.0;
 /// the expected beat, in this many steps.
 const SEARCH: (f64, f64) = (0.5, 2.0);
 const SEARCH_STEPS: u32 = 600;
-
-fn frequency(midi: u8) -> f64 {
-    440.0 * 2f64.powf((f64::from(midi) - 69.0) / 12.0)
-}
 
 /// The rate the group's envelope swells and fades at, Hz: the strongest
 /// frequency of the fundamental's amplitude over time.

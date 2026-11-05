@@ -9,7 +9,7 @@ use engine::scenarios::{cluster, cluster_gravity};
 use engine::{Particles, Scalar, Vec2};
 use test_support::{
     Tol, accelerations, cluster_barnes_hut, cluster_barnes_hut_force, for_each_scalar,
-    momentum_drift_bound, s,
+    momentum_drift_bound, momentum_scale, s,
 };
 
 /// One step: a 60 Hz frame, as the demos use.
@@ -87,16 +87,6 @@ const MOMENTUM_THETA: f64 = 0.5;
 /// so Barnes–Hut changes the total momentum by more than it started with.
 /// Other runs measured: θ = 1 drifts 7.1e-2 (f64), θ = 0.3 4.7e-3.
 const MOMENTUM_DRIFT_REL: f64 = 0.1;
-
-/// `Σ m |v|` of the dynamic bodies: the scale momentum drift is judged on.
-fn momentum_scale<S: Scalar>(p: &Particles<S>) -> f64 {
-    p.vel()
-        .iter()
-        .zip(p.inv_mass())
-        .filter(|&(_, &w)| w != S::ZERO)
-        .map(|(v, w)| v.length().to_f64() / w.to_f64())
-        .sum()
-}
 
 /// Barnes–Hut forces aren't equal and opposite, so momentum drifts
 /// (`docs/barnes-hut.md`). Two checks:
