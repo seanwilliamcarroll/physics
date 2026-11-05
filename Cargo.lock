@@ -16,6 +16,7 @@ name = "acoustic-web"
 version = "0.1.0"
 dependencies = [
  "acoustic",
+ "math",
 ]
 
 [[package]]
@@ -574,6 +575,7 @@ name = "test-support"
 version = "0.1.0"
 dependencies = [
  "engine",
+ "math",
  "proptest",
 ]
 
@@ -620,6 +622,7 @@ name = "web"
 version = "0.1.0"
 dependencies = [
  "engine",
+ "math",
 ]
 
 [[package]]

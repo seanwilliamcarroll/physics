@@ -1,5 +1,6 @@
 use super::{MAX_FRAMES, SPECTRUM_SIZE, Synth};
 use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_PIANO, MODEL_WAVEGUIDE};
+use math::convert::{f64_to_usize, usize_to_f64};
 
 const FS: f64 = 48_000.0;
 
@@ -65,14 +66,8 @@ fn the_spectrum_peaks_at_the_notes_harmonics() {
     let db = s.spectrum().to_vec();
     assert_eq!(db.len(), SPECTRUM_SIZE / 2);
     // Bin k is k · 48000 / 4096 Hz: 440 Hz is bin 37.5, 880 Hz bin 75.
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        clippy::cast_precision_loss,
-        reason = "test bins"
-    )]
     let near = |hz: f64| -> f32 {
-        let k = (hz * SPECTRUM_SIZE as f64 / FS).round() as usize;
+        let k = f64_to_usize((hz * usize_to_f64(SPECTRUM_SIZE) / FS).round()).unwrap();
         db[k - 2..=k + 2].iter().copied().fold(f32::MIN, f32::max)
     };
     let (first, second, third) = (near(440.0), near(880.0), near(1320.0));

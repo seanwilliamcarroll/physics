@@ -5,7 +5,9 @@
 
 use acoustic::hammer::{self, FORTISSIMO, Hammer, PIANISSIMO, STRIKE};
 use acoustic::measure::amplitude;
+use acoustic::piano::frequency;
 use acoustic::{Decay, Scalar, Voicing, Waveguide, inharmonicity};
+use math::convert::{f64_to_usize, usize_to_f64};
 
 const FS: f64 = 48_000.0;
 /// Keys across the keyboard, A0 to C8.
@@ -20,10 +22,6 @@ const SETTLE: f64 = 0.02;
 /// the rate.
 const PARTIALS: u32 = 30;
 const BAND: f64 = 0.4;
-
-fn frequency(midi: u8) -> f64 {
-    440.0 * 2f64.powf((f64::from(midi) - 69.0) / 12.0)
-}
 
 /// A strike, rendered: when the felt last pushed, the string's and the
 /// hammer's energy when it retired, its energy at impact, and the force on
@@ -50,20 +48,14 @@ fn strike<S: Scalar>(key: u8, velocity: f64, stiff: bool) -> Blow {
     assert!(s.strike(h, 1.0 - STRIKE));
     let (mut contact, mut at_retire, mut previous) = (0.0, None, 0.0);
     let mut bridge_force = Vec::new();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let samples = (RENDER * FS) as usize;
+    let samples = f64_to_usize(RENDER * FS).unwrap();
     for n in 0..samples {
         let y = s.step().to_f64();
         bridge_force.push(2.0 * z * FS * (y - previous));
         previous = y;
         let h = s.hammer().unwrap();
         if h.force() > 0.0 {
-            #[expect(clippy::cast_precision_loss, reason = "sample counts are small")]
-            let t = (n + 1) as f64 / FS;
+            let t = usize_to_f64(n + 1) / FS;
             contact = t;
         }
         if h.retired() && at_retire.is_none() {
@@ -84,12 +76,7 @@ fn strike<S: Scalar>(key: u8, velocity: f64, stiff: bool) -> Blow {
 /// (Hz), and its RMS (N), after the contact.
 fn brightness_and_level(key: u8, blow: &Blow) -> (f64, f64) {
     let (f1, b) = (frequency(key), inharmonicity(key));
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let tail = &blow.bridge_force[(SETTLE * FS) as usize..];
+    let tail = &blow.bridge_force[f64_to_usize(SETTLE * FS).unwrap()..];
     let partial = |k: f64| k * f1 / (1.0 + b).sqrt() * (1.0 + b * k * k).sqrt();
     let (mut weighted, mut total) = (0.0, 0.0);
     for k in (1..=PARTIALS)
@@ -100,8 +87,7 @@ fn brightness_and_level(key: u8, blow: &Blow) -> (f64, f64) {
         weighted += partial(k) * a * a;
         total += a * a;
     }
-    #[expect(clippy::cast_precision_loss, reason = "test lengths")]
-    let rms = (tail.iter().map(|x| x * x).sum::<f64>() / tail.len() as f64).sqrt();
+    let rms = (tail.iter().map(|x| x * x).sum::<f64>() / usize_to_f64(tail.len())).sqrt();
     (weighted / total, rms)
 }
 

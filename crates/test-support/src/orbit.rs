@@ -4,6 +4,7 @@
 use engine::diagnostics::total_energy;
 use engine::scenarios::{orbit_gravity, orbit_period};
 use engine::{Scalar, World};
+use math::convert::f64_to_usize;
 
 /// Total energy of a `scenarios::orbit` world, under the scene's own force.
 #[must_use]
@@ -19,14 +20,9 @@ pub fn separation<S: Scalar>(w: &World<S>) -> f64 {
 }
 
 /// Steps of `dt` for `orbits` periods of the circular orbit (rounded).
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a small positive step count, rounded on purpose"
-)]
 #[must_use]
 pub fn steps_for(orbits: f64, dt: f64) -> u32 {
-    (orbits * orbit_period() / dt).round() as u32
+    u32::try_from(f64_to_usize((orbits * orbit_period() / dt).round()).unwrap()).unwrap()
 }
 
 /// Runs `steps` steps of `dt`, returning the relative energy error

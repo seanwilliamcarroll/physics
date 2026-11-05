@@ -2,6 +2,7 @@
 //! every per-scalar `match` to one line.
 
 use engine::{Scalar, World};
+use math::convert::f64_to_f32;
 
 use super::sim::Sim;
 
@@ -50,10 +51,6 @@ pub(super) fn fill_positions<S: Scalar>(w: &World<S>, buf: &mut Vec<f32>) {
 
 /// Engine scalar to render coordinate. `to_f64` is the lossless readout;
 /// narrowing to `f32` is fine for drawing (sub-micrometer at demo scales).
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "intended narrowing: render coordinates only need f32 precision"
-)]
 fn to_render<S: Scalar>(x: S) -> f32 {
-    x.to_f64() as f32
+    f64_to_f32(x.to_f64())
 }

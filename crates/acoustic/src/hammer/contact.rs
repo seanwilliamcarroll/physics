@@ -7,6 +7,7 @@
 
 use super::keys::STRIKE;
 use super::{Felt, Hammer};
+use math::convert::{f64_to_usize, samples, usize_to_f64};
 
 /// The longest blow simulated, s: past every measured contact.
 const LONGEST: f64 = 0.05;
@@ -31,23 +32,13 @@ pub(super) fn contact_within(
     longest: f64,
 ) -> Option<f64> {
     let mut hammer = Hammer::new(felt, z, fs, velocity)?;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a positive sample count"
-    )]
-    let lag = (libm::round(STRIKE * fs / f0) as usize).max(1);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a positive sample count"
-    )]
-    let samples = (longest * fs) as usize + 1;
+    let lag = f64_to_usize(libm::round(STRIKE * fs / f0))?.max(1);
+    let steps = samples(longest, fs)? + 1;
     // What was launched toward the nut, `lag` samples back: a ring.
     let mut history = vec![0.0; lag];
     let mut last = 0.0;
     let mut previous = 0.0_f64;
-    for n in 0..samples {
+    for n in 0..steps {
         let slot = n % lag;
         let back = history.get(slot).copied().unwrap_or(0.0);
         let launched = hammer.step(-back);
@@ -55,11 +46,7 @@ pub(super) fn contact_within(
             *h = launched;
         }
         let c = hammer.compression();
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "sample counts are far below 2^53"
-        )]
-        let t = n as f64;
+        let t = usize_to_f64(n);
         if hammer.force() > 0.0 {
             last = t + 1.0;
         } else if previous > 0.0 {

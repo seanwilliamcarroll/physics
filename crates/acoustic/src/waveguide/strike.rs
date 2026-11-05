@@ -6,6 +6,7 @@
 use super::Waveguide;
 use crate::Scalar;
 use crate::hammer::Hammer;
+use math::convert::{clamped_index, usize_to_f64};
 
 impl<S: Scalar> Waveguide<S> {
     /// Strikes the silenced string with `hammer` at `s` (from the bridge,
@@ -24,19 +25,10 @@ impl<S: Scalar> Waveguide<S> {
         self.silence();
         // Cell c's center is at (c + first) / length, so the junction after
         // it (between c and c + 1) is at (c + ½ + first) / length.
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "rail lengths are far below 2^53"
-        )]
         let x = (s.clamp(0.0, 1.0) * self.length - self.first - 0.5)
             .round()
-            .clamp(0.0, (m - 2) as f64);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "x is clamped to the rail"
-        )]
-        let c = x as usize;
+            .clamp(0.0, usize_to_f64(m - 2));
+        let c = clamped_index(x, m - 2);
         self.hammer = Some((hammer, c));
         true
     }

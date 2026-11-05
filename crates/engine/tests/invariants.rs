@@ -5,10 +5,10 @@
 
 use engine::diagnostics::{center_of_mass, momentum};
 use engine::scenarios::{ORBIT_SEPARATION, cluster, orbit, orbit_period};
-use engine::{Integrator, Mass, Particles, Scalar, UniformGravity, Vec2, World};
+use engine::{Integrator, Mass, UniformGravity, Vec2, World};
 use test_support::{
-    Tol, bits, energy_errors, envelope, for_each_scalar, momentum_drift_bound, nonzero, s,
-    steps_for, v,
+    Tol, bits, energy_errors, envelope, for_each_scalar, momentum_drift_bound, momentum_scale,
+    nonzero, s, steps_for, v,
 };
 
 const G: f64 = -9.81;
@@ -160,17 +160,6 @@ for_each_scalar!(substeps_equal_repeated_smaller_steps);
 const CLUSTER_N: usize = 16;
 const CLUSTER_STEPS: u32 = 1000;
 const STEP: f64 = 1.0 / 60.0;
-
-/// `Σ m |v|`: the momentum a cluster *could* have if every body moved the
-/// same way. Momentum error is judged relative to it.
-fn momentum_scale<S: Scalar>(p: &Particles<S>) -> f64 {
-    p.vel()
-        .iter()
-        .zip(p.inv_mass())
-        .filter(|&(_, &w)| w != S::ZERO)
-        .map(|(v, w)| v.length().to_f64() / w.to_f64())
-        .sum()
-}
 
 /// `docs/04-testing.md`: pairwise forces are equal and opposite, so the
 /// total momentum of an isolated cluster can only change by rounding.

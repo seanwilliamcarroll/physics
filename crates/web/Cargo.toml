@@ -11,6 +11,7 @@ license.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
+math = { path = "../math" }
 engine = { path = "../engine" }
 
 [lints]

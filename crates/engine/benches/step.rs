@@ -9,6 +9,7 @@
     reason = "bench setup: fixed scenarios that can't fail"
 )]
 
+use math::convert::{f64_to_usize, usize_to_f64};
 use std::hint::black_box;
 use std::time::Duration;
 
@@ -124,13 +125,7 @@ const BALL_JITTER: f64 = 0.02;
 fn broadphase(c: &mut Criterion) {
     let mut group = c.benchmark_group("broadphase_f64");
     for n in TREE_SIZES {
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            clippy::cast_precision_loss,
-            reason = "small bench sizes: the side is a few dozen, exact"
-        )]
-        let side = (n as f64).sqrt().ceil() as usize;
+        let side = f64_to_usize(usize_to_f64(n).sqrt().ceil()).unwrap();
         let pos: Vec<Vec2<f64>> = (0..n)
             .map(|i| {
                 let (col, row) = (i % side, i / side);
@@ -138,10 +133,9 @@ fn broadphase(c: &mut Criterion) {
                 let j = |k: usize| {
                     BALL_JITTER * (f64::from(u32::try_from(k * 7919 % 101).unwrap()) / 100.0 - 0.5)
                 };
-                #[expect(clippy::cast_precision_loss, reason = "small grid indices, exact")]
                 let (x, y) = (
-                    col as f64 * BALL_SPACING + j(i),
-                    row as f64 * BALL_SPACING + j(i + 1),
+                    usize_to_f64(col) * BALL_SPACING + j(i),
+                    usize_to_f64(row) * BALL_SPACING + j(i + 1),
                 );
                 Vec2::new(x, y)
             })

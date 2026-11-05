@@ -1,4 +1,5 @@
 use core::f64::consts::TAU;
+use math::convert::usize_to_f64;
 
 use super::{Body, resonances};
 
@@ -17,8 +18,7 @@ fn impulse_response<S: crate::Scalar>() -> Vec<f64> {
 fn gain(h: &[f64], f: f64) -> f64 {
     let w = TAU * f / FS;
     let (re, im) = h.iter().enumerate().fold((0.0, 0.0), |(re, im), (n, &x)| {
-        #[expect(clippy::cast_precision_loss, reason = "small counts")]
-        let a = w * n as f64;
+        let a = w * usize_to_f64(n);
         (re + x * a.cos(), im - x * a.sin())
     });
     (re * re + im * im).sqrt()

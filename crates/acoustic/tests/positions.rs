@@ -6,6 +6,8 @@
 
 use acoustic::measure::{amplitude, partial};
 use acoustic::{Decay, Scalar, Voicing, Waveguide};
+use math::Fnv1a;
+use math::convert::f64_to_usize;
 
 const FS: f64 = 48_000.0;
 /// 220 Hz: a 218-sample loop, 109 cells a rail.
@@ -39,12 +41,10 @@ fn harmonics<S: Scalar>(beta: f64, pickup: f64, count: u32) -> Vec<f64> {
     let shape = triangle(beta);
     wg.pluck(|s| S::from_f64(shape(s)));
     wg.set_pickup(pickup);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let (skip, len) = ((SKIP_S * FS) as usize, (WINDOW_S * FS) as usize);
+    let (skip, len) = (
+        f64_to_usize(SKIP_S * FS).unwrap(),
+        f64_to_usize(WINDOW_S * FS).unwrap(),
+    );
     let mut out = vec![S::ZERO; skip + len];
     wg.render(&mut out);
     let sig: Vec<f64> = out
@@ -144,13 +144,6 @@ fn harmonics_follow_the_prediction_f32() {
     harmonics_follow_the_prediction::<f32>();
 }
 
-/// FNV-1a, 64-bit, as `determinism.rs`.
-fn fnv1a(bytes: impl Iterator<Item = u8>) -> u64 {
-    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-    bytes.fold(OFFSET, |h, b| (h ^ u64::from(b)).wrapping_mul(PRIME))
-}
-
 /// Half a second of three waveguide notes (plucked at 0.2, heard at 0.1),
 /// hashed: the same bits native and on wasm (`cargo xtask test-wasm`).
 fn waveguide_hash<S: Scalar>() -> u64 {
@@ -163,7 +156,11 @@ fn waveguide_hash<S: Scalar>() -> u64 {
         wg.render(&mut out);
         all.extend(out);
     }
-    fnv1a(all.iter().flat_map(|x| x.to_f64().to_bits().to_le_bytes()))
+    let mut h = Fnv1a::new();
+    for x in &all {
+        h.write(&x.to_f64().to_bits().to_le_bytes());
+    }
+    h.finish()
 }
 
 /// (f32, f64), recorded on aarch64-apple-darwin, Rust 1.99.1. If a change

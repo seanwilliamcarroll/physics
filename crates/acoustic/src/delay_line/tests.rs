@@ -1,4 +1,5 @@
 use super::DelayLine;
+use math::convert::{f64_to_f32, usize_to_f64};
 
 #[test]
 fn front_is_the_sample_pushed_len_pushes_ago() {
@@ -24,8 +25,7 @@ fn front_is_the_sample_pushed_len_pushes_ago() {
 fn fill_counts_from_the_front() {
     let mut d = DelayLine::<f32>::new(4).unwrap();
     d.push(9.0); // move the head off slot 0
-    #[expect(clippy::cast_precision_loss, reason = "tiny test indices")]
-    d.fill(|i| i as f32);
+    d.fill(|i| f64_to_f32(usize_to_f64(i)));
     assert_eq!(d.iter().collect::<Vec<_>>(), vec![0.0, 1.0, 2.0, 3.0]);
     assert_eq!(d.front(), 0.0);
 }

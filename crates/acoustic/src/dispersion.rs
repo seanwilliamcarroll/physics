@@ -21,8 +21,10 @@
 //! bit-identical on every platform.
 
 use core::f64::consts::{PI, TAU};
+use math::convert::{clamped_index, usize_to_f64};
 
 use crate::measure::CENTS_PER_OCTAVE;
+use crate::voicing::phase_delay_lowpass;
 
 /// The most biquads a cascade may have (the bridge keeps state for this
 /// many, so nothing allocates).
@@ -83,11 +85,6 @@ fn biquad_delay(r: f64, th: f64, w: f64) -> f64 {
     (2.0 * w + 2.0 * (factor(th) + factor(-th))) / w
 }
 
-/// The two-point lowpass's phase delay at `w` (as in `voicing`).
-pub(crate) fn lowpass_delay(s: f64, w: f64) -> f64 {
-    libm::atan2(s * libm::sin(w), 1.0 - s + s * libm::cos(w)) / w
-}
-
 /// A partial to design for: its frequency (rad/sample), the extra delay it
 /// needs over the fundamental, and the weight turning a delay error into
 /// cents.
@@ -117,7 +114,8 @@ pub(crate) fn design(fs: f64, f1: f64, b: f64, s: f64, max_delay: f64) -> Option
         .map(|k| {
             let fk = partial(k);
             let w = TAU * fk / fs;
-            let want = k * fs / fk - fs / f1 - (lowpass_delay(s, w) - lowpass_delay(s, w1));
+            let want =
+                k * fs / fk - fs / f1 - (phase_delay_lowpass(s, w) - phase_delay_lowpass(s, w1));
             Target {
                 w,
                 want,
@@ -140,14 +138,8 @@ pub(crate) fn design(fs: f64, f1: f64, b: f64, s: f64, max_delay: f64) -> Option
         if delay <= max_delay || count <= 1 {
             break;
         }
-        #[expect(clippy::cast_precision_loss, reason = "at most 16 biquads")]
-        let per_biquad = delay / count as f64;
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "a small count, at least 1"
-        )]
-        let fits = (libm::floor(max_delay / per_biquad).max(1.0) as usize).min(count - 1);
+        let per_biquad = delay / usize_to_f64(count);
+        let fits = clamped_index(libm::floor(max_delay / per_biquad), count - 1).max(1);
         params.truncate(2 * fits);
         refine::refine(&mut params, w1, &targets);
     }
@@ -157,8 +149,7 @@ pub(crate) fn design(fs: f64, f1: f64, b: f64, s: f64, max_delay: f64) -> Option
     let mut d = Dispersion {
         poles: [(0.0, 0.0); MAX_BIQUADS],
         count: 0,
-        #[expect(clippy::cast_possible_truncation, reason = "at most 30 partials")]
-        partials: targets.len() as u32 + 1,
+        partials: u32::try_from(targets.len() + 1).unwrap_or(DESIGN_PARTIALS),
     };
     for (slot, &[r, th]) in d.poles.iter_mut().zip(params.as_chunks::<2>().0) {
         *slot = (r, th);
@@ -175,16 +166,10 @@ fn place(fs: f64, f0: f64, b: f64, df: f64) -> Vec<(f64, f64)> {
     let pd0 = tau0 / libm::sqrt(stretch(df));
     let mu0 = pd0 / stretch(df);
     let phi0 = TAU * (df / fs) * pd0 - mu0 * TAU * df / fs;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a small count, clamped"
-    )]
-    let nap = (libm::floor(phi0 / TAU).max(0.0) as usize).min(MAX_BIQUADS);
-    #[expect(clippy::cast_precision_loss, reason = "at most 16 poles")]
+    let nap = clamped_index(libm::floor(phi0 / TAU), MAX_BIQUADS);
     let theta: Vec<f64> = (0..nap)
         .map(|k| {
-            let (kf, n) = (k as f64, nap as f64);
+            let (kf, n) = (usize_to_f64(k), usize_to_f64(nap));
             let phik = PI * (2.0 * kf + 1.0);
             let eta = kf / (1.2 * n) * df;
             let pdn = tau0 / libm::sqrt(stretch(eta));
@@ -214,8 +199,7 @@ fn place(fs: f64, f0: f64, b: f64, df: f64) -> Vec<(f64, f64)> {
 fn pad(poles: &mut Vec<(f64, f64)>, band: f64) {
     let have = poles.len();
     for i in have..MIN_BIQUADS {
-        #[expect(clippy::cast_precision_loss, reason = "at most 4 poles")]
-        let at = (i as f64 + 0.5) / MIN_BIQUADS as f64 * band;
+        let at = (usize_to_f64(i) + 0.5) / usize_to_f64(MIN_BIQUADS) * band;
         poles.push((0.5, at.clamp(ANGLE_MARGIN, PI - ANGLE_MARGIN)));
     }
 }

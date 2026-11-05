@@ -13,6 +13,7 @@ description = "Wasm shell for the acoustic track: a synth behind raw C-ABI expor
 crate-type = ["cdylib"]
 
 [dependencies]
+math = { path = "../math" }
 acoustic = { path = "../acoustic" }
 
 [lints]

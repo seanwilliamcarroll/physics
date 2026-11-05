@@ -2,6 +2,7 @@
 //! (`docs/12-acoustic-foundations.md`, "Excitation").
 
 use math::SplitMix64;
+use math::convert::usize_to_f64;
 
 use crate::{KsString, Scalar, Waveguide};
 
@@ -31,11 +32,7 @@ impl Excitation {
             Self::Triangle { peak } => {
                 let peak = peak.clamp(PEAK_MARGIN, 1.0 - PEAK_MARGIN);
                 string.pluck(|i, n| {
-                    #[expect(
-                        clippy::cast_precision_loss,
-                        reason = "line lengths are far below 2^53"
-                    )]
-                    let x = i as f64 / n as f64;
+                    let x = usize_to_f64(i) / usize_to_f64(n);
                     let y = if x < peak {
                         x / peak
                     } else {

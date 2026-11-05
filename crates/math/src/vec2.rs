@@ -26,6 +26,12 @@ impl<S: Scalar> Vec2<S> {
         Self { x, y }
     }
 
+    /// `(x, y)` from `f64`s, each rounded into `S` ([`Scalar::from_f64`]):
+    /// scene constants and boundary values, written once in `f64`.
+    pub fn from_f64(x: f64, y: f64) -> Self {
+        Self::new(S::from_f64(x), S::from_f64(y))
+    }
+
     /// Dot product: `x1*x2 + y1*y2`.
     #[must_use]
     pub fn dot(self, o: Self) -> S {

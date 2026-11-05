@@ -2,6 +2,7 @@
 //! ratio test (M4).
 
 use core::num::NonZeroU32;
+use math::convert::usize_to_f64;
 
 use super::pendulum::pendulum_gravity;
 use super::shared::mass;
@@ -48,15 +49,9 @@ pub fn chain<S: Scalar>(
     w.add_force(pendulum_gravity());
     let mut prev = w.particles.add_static(Vec2::ZERO);
     for i in 1..=links {
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "link counts are far below 2^53, so the conversion is exact"
-        )]
-        let x = CHAIN_LENGTH * i as f64 / links as f64;
+        let x = CHAIN_LENGTH * usize_to_f64(i) / usize_to_f64(links);
         let m = if i == links { bob_mass } else { link_mass };
-        let next = w
-            .particles
-            .add(Vec2::new(S::from_f64(x), S::ZERO), Vec2::ZERO, m);
+        let next = w.particles.add(Vec2::from_f64(x, 0.0), Vec2::ZERO, m);
         let rod = DistanceConstraint::between(&w.particles, prev, next)
             .ok_or(ConfigError::UnknownParticle)?;
         w.add_constraint(rod)?;

@@ -83,12 +83,8 @@ impl Scalar for f32 {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
 
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "narrowing is the point: `as` rounds to the nearest f32"
-    )]
     fn from_f64(v: f64) -> Self {
-        v as f32
+        crate::convert::f64_to_f32(v)
     }
 
     fn to_f64(self) -> f64 {

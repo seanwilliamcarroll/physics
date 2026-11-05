@@ -3,6 +3,7 @@
 //! spectrum").
 
 use core::f64::consts::TAU;
+use math::convert::usize_to_f64;
 
 use crate::Scalar;
 
@@ -31,10 +32,9 @@ impl<S: Scalar> Fft<S> {
             return None;
         }
         let bits = n.trailing_zeros();
-        #[expect(clippy::cast_precision_loss, reason = "FFT sizes are far below 2^53")]
         let twiddles = (0..n / 2)
             .map(|k| {
-                let a = -TAU * k as f64 / n as f64;
+                let a = -TAU * usize_to_f64(k) / usize_to_f64(n);
                 (S::from_f64(libm::cos(a)), S::from_f64(libm::sin(a)))
             })
             .collect();
@@ -122,9 +122,8 @@ impl<S: Scalar> Spectrum<S> {
     #[must_use]
     pub fn new(n: usize) -> Option<Self> {
         let fft = Fft::new(n)?;
-        #[expect(clippy::cast_precision_loss, reason = "FFT sizes are far below 2^53")]
         let window = (0..n)
-            .map(|t| S::from_f64(0.5 - 0.5 * libm::cos(TAU * t as f64 / n as f64)))
+            .map(|t| S::from_f64(0.5 - 0.5 * libm::cos(TAU * usize_to_f64(t) / usize_to_f64(n))))
             .collect();
         Some(Self {
             fft,
@@ -159,8 +158,7 @@ impl<S: Scalar> Spectrum<S> {
             *i = S::ZERO;
         }
         self.fft.forward(&mut self.re, &mut self.im);
-        #[expect(clippy::cast_precision_loss, reason = "FFT sizes are far below 2^53")]
-        let scale = 4.0 / self.fft.len() as f64;
+        let scale = 4.0 / usize_to_f64(self.fft.len());
         for ((d, r), i) in self.db.iter_mut().zip(&self.re).zip(&self.im) {
             let amp = (r.to_f64() * r.to_f64() + i.to_f64() * i.to_f64()).sqrt() * scale;
             let level = if amp > 0.0 {

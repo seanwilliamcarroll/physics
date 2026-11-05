@@ -60,7 +60,7 @@ pub fn double_pendulum<S: Scalar>(
 ) -> Result<World<S>, ConfigError> {
     let l = DOUBLE_PENDULUM_LENGTH;
     let m = mass(DOUBLE_PENDULUM_MASS)?;
-    let vec = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
+    let vec = |x: f64, y: f64| Vec2::from_f64(x, y);
     let mut w = World::new(Integrator::SymplecticEuler, substeps);
     w.add_force(pendulum_gravity());
     let pin = w.particles.add_static(Vec2::ZERO);

@@ -3,6 +3,7 @@ use crate::hammer::{FORTISSIMO, PIANISSIMO, mezzo_forte};
 use crate::measure::{cents, partial, pitch};
 use crate::piano::frequency;
 use crate::{Decay, Excitation, Voicing};
+use math::convert::{f64_to_usize, usize_to_f64};
 
 const FS: f64 = 48_000.0;
 const VOICING: Voicing = Voicing {
@@ -45,12 +46,7 @@ fn note_off_fades_and_frees_the_voice() {
     let loud = block.iter().map(|x| x * x).sum::<f64>();
     v.note_off(69);
     // Render the release time and a little: silent (80 dB down), freed.
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let blocks = (FS * RELEASE_T60 * 1.5 / 128.0) as usize;
+    let blocks = f64_to_usize(FS * RELEASE_T60 * 1.5 / 128.0).unwrap();
     for _ in 0..blocks {
         v.render(&mut block);
     }
@@ -126,12 +122,7 @@ fn piano() -> Voices<f64> {
 }
 
 fn render(v: &mut Voices<f64>, secs: f64) -> Vec<f64> {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let mut out = vec![0.0; (secs * FS) as usize];
+    let mut out = vec![0.0; f64_to_usize(secs * FS).unwrap()];
     v.render(&mut out);
     out
 }
@@ -153,12 +144,7 @@ fn the_piano_plays_in_tune() {
             "note on plays the piano at mf"
         );
         let out = render(&mut v, ATTACK + 3.0 * PERIODS / frequency(key) + 0.1);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "test lengths"
-        )]
-        let tail = &out[(ATTACK * FS) as usize..];
+        let tail = &out[f64_to_usize(ATTACK * FS).unwrap()..];
         let f0 = frequency(key);
         let coarse = pitch(tail, FS, f0, 0.06).unwrap();
         let got = partial(tail, FS, coarse, PERIODS).unwrap();
@@ -177,8 +163,7 @@ fn harder_strikes_are_louder() {
         let mut v = piano();
         assert!(v.strike(60, velocity));
         let out = render(&mut v, 0.5);
-        #[expect(clippy::cast_precision_loss, reason = "test lengths")]
-        let n = out.len() as f64;
+        let n = usize_to_f64(out.len());
         (out.iter().map(|x| x * x).sum::<f64>() / n).sqrt()
     };
     let levels = [rms(PIANISSIMO), rms(mezzo_forte()), rms(FORTISSIMO)];
@@ -198,12 +183,7 @@ fn the_stiffness_toggle_stretches_the_partials() {
         v.set_stiffness(stiff);
         assert!(v.strike(key, FORTISSIMO));
         let out = render(&mut v, 1.0);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "test lengths"
-        )]
-        let tail = &out[(ATTACK * FS) as usize..];
+        let tail = &out[f64_to_usize(ATTACK * FS).unwrap()..];
         let want = if stiff {
             10.0 * f0 / (1.0 + b).sqrt() * (1.0 + 100.0 * b).sqrt()
         } else {
@@ -276,8 +256,7 @@ fn the_latest_strike_is_traced() {
     let trace = v.strike_trace();
     assert_eq!(trace.len(), capacity, "full, and no longer");
     let contact = trace.iter().rposition(|&f| f > 0.0).unwrap() + 1;
-    #[expect(clippy::cast_precision_loss, reason = "small")]
-    let ms = contact as f64 / FS * 1e3;
+    let ms = usize_to_f64(contact) / FS * 1e3;
     let peak = trace.iter().fold(0.0_f64, |m, &f| m.max(f));
     println!("C4 mf: contact {ms:.2} ms, peak {peak:.1} N");
     assert!((1.0..3.0).contains(&ms), "{ms}");

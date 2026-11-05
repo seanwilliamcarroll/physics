@@ -1,4 +1,5 @@
 use core::f64::consts::TAU;
+use math::convert::usize_to_f64;
 
 use math::SplitMix64;
 
@@ -7,13 +8,11 @@ use crate::Scalar;
 
 /// The textbook O(n²) DFT, in f64: what the FFT must agree with.
 fn naive_dft(x: &[f64]) -> (Vec<f64>, Vec<f64>) {
-    #[expect(clippy::cast_precision_loss, reason = "test sizes")]
-    let n = x.len() as f64;
+    let n = usize_to_f64(x.len());
     (0..x.len())
         .map(|k| {
             x.iter().enumerate().fold((0.0, 0.0), |(re, im), (t, &v)| {
-                #[expect(clippy::cast_precision_loss, reason = "test sizes")]
-                let a = -TAU * (k * t) as f64 / n;
+                let a = -TAU * usize_to_f64(k * t) / n;
                 (re + v * a.cos(), im + v * a.sin())
             })
         })
@@ -58,9 +57,8 @@ fn a_tone_lands_in_its_bin() {
     // 5 cycles over 64 samples: all the energy in bins 5 and 64 − 5.
     let n = 64;
     let fft = Fft::<f64>::new(n).unwrap();
-    #[expect(clippy::cast_precision_loss, reason = "test sizes")]
     let mut re: Vec<f64> = (0..n)
-        .map(|t| (TAU * 5.0 * t as f64 / n as f64).cos())
+        .map(|t| (TAU * 5.0 * usize_to_f64(t) / usize_to_f64(n)).cos())
         .collect();
     let mut im = vec![0.0; n];
     fft.forward(&mut re, &mut im);
@@ -90,9 +88,8 @@ fn the_spectrum_finds_a_tone_in_db() {
     // 6 dB, the analyzer scales it back), and nowhere else near it.
     let n = 4096;
     let mut s = Spectrum::<f64>::new(n).unwrap();
-    #[expect(clippy::cast_precision_loss, reason = "test sizes")]
     let x: Vec<f64> = (0..n)
-        .map(|t| (TAU * 100.0 * t as f64 / n as f64).sin())
+        .map(|t| (TAU * 100.0 * usize_to_f64(t) / usize_to_f64(n)).sin())
         .collect();
     let db = s.analyze(&x).unwrap();
     assert_eq!(db.len(), n / 2);

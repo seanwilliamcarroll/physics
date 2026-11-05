@@ -1,6 +1,6 @@
 //! Per-scalar tolerances and error laws for the engine's tests.
 
-use engine::Scalar;
+use engine::{Particles, Scalar};
 
 /// Per-scalar tolerances. These are hypotheses: when one fails, first decide
 /// whether the tolerance or the physics is wrong, and record why here.
@@ -67,4 +67,17 @@ impl Tol for f64 {
 #[must_use]
 pub fn momentum_drift_bound<S: Tol>(steps: u32, scale: f64) -> f64 {
     f64::from(steps) * S::EPSILON * scale
+}
+
+/// `Σ m |v|` of the dynamic bodies: the momentum a world *could* have if
+/// every body moved the same way, the scale momentum drift is judged on
+/// (with [`momentum_drift_bound`]).
+#[must_use]
+pub fn momentum_scale<S: Scalar>(p: &Particles<S>) -> f64 {
+    p.vel()
+        .iter()
+        .zip(p.inv_mass())
+        .filter(|&(_, &w)| w != S::ZERO)
+        .map(|(v, w)| v.length().to_f64() / w.to_f64())
+        .sum()
 }

@@ -3,6 +3,7 @@
 
 use acoustic::fft::Spectrum;
 use acoustic::{DEFAULT_GAIN, Decay, Excitation, Model, Voices, Voicing};
+use math::convert::{f64_to_f32, f64_to_usize};
 
 use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_PIANO, MODEL_WAVEGUIDE};
 
@@ -75,12 +76,9 @@ impl Synth {
             excitation: Excitation::Noise,
             out: vec![0.0; MAX_FRAMES],
             snapshot: Vec::with_capacity(longest),
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "a positive, small sample count (fs checked by Voices::new)"
-            )]
-            trace: Vec::with_capacity((acoustic::TRACE_SECONDS * fs).ceil() as usize),
+            trace: Vec::with_capacity(
+                f64_to_usize((acoustic::TRACE_SECONDS * fs).ceil()).unwrap_or(0),
+            ),
             history: vec![0.0; SPECTRUM_SIZE],
             history_at: 0,
             linear: vec![0.0; SPECTRUM_SIZE],
@@ -195,11 +193,7 @@ impl Synth {
     pub fn set_gain(&mut self, gain: f64) -> bool {
         let ok = (0.0..=1.0).contains(&gain);
         if ok {
-            #[expect(
-                clippy::cast_possible_truncation,
-                reason = "a gain in [0, 1]; f32 is the output's precision"
-            )]
-            self.voices.set_gain(gain as f32);
+            self.voices.set_gain(f64_to_f32(gain));
         }
         ok
     }
@@ -223,12 +217,8 @@ impl Synth {
     /// strike).
     pub fn strike_trace(&mut self) -> &[f32] {
         self.trace.clear();
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "f32 is the page's precision"
-        )]
         self.trace
-            .extend(self.voices.strike_trace().iter().map(|&f| f as f32));
+            .extend(self.voices.strike_trace().iter().map(|&f| f64_to_f32(f)));
         &self.trace
     }
 

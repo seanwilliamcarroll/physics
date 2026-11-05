@@ -2,16 +2,11 @@ use super::BarnesHut;
 use crate::OpeningAngle;
 use crate::params::kg;
 use crate::rng::SplitMix64;
+use crate::test_util::accel;
 use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
 const G: f64 = 6.674_30e-11;
 const EPS: f64 = 0.1;
-
-fn accel<S: Scalar>(p: &Particles<S>, f: &impl Force<S>) -> Vec<Vec2<S>> {
-    let mut acc = vec![Vec2::ZERO; p.len()];
-    f.accumulate(p, &mut acc);
-    acc
-}
 
 fn eps<S: Scalar>(eps: f64) -> Softening<S> {
     Softening::new(S::from_f64(eps)).unwrap()
@@ -25,10 +20,6 @@ fn bh<S: Scalar>(eps_m: f64, theta: f64) -> BarnesHut<S> {
     )
 }
 
-fn v<S: Scalar>(x: f64, y: f64) -> Vec2<S> {
-    Vec2::new(S::from_f64(x), S::from_f64(y))
-}
-
 /// A small irregular cloud: 40 bodies, plus one static particle in the
 /// middle.
 fn cloud<S: Scalar>() -> Particles<S> {
@@ -37,9 +28,9 @@ fn cloud<S: Scalar>() -> Particles<S> {
     for _ in 0..40 {
         let (x, y) = (rng.range(-2.0, 2.0), rng.range(-2.0, 2.0));
         let m = rng.range(0.5e10, 1.5e10);
-        p.add(v(x, y), Vec2::ZERO, kg(m));
+        p.add(Vec2::from_f64(x, y), Vec2::ZERO, kg(m));
     }
-    p.add_static(v(0.05, -0.03));
+    p.add_static(Vec2::from_f64(0.05, -0.03));
     p
 }
 

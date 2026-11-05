@@ -4,7 +4,9 @@
 #![cfg(test)]
 
 use acoustic::measure::{cents, partial, pitch, t60};
+use acoustic::piano::frequency;
 use acoustic::{Decay, KsString, Scalar, Voicing, Waveguide, inharmonicity};
+use math::convert::{f64_to_usize, usize_to_f64};
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
 /// The 88 keys: MIDI notes 21 (A0) to 108 (C8).
@@ -16,15 +18,11 @@ const PARTIAL_PERIODS: f64 = 16.0;
 /// Every note's decay for the tuning sweep: long enough to measure.
 const SWEEP_T60: f64 = 2.0;
 
-/// Equal temperament, A4 = 440 Hz.
-fn frequency(midi: u8) -> f64 {
-    440.0 * 2f64.powf((f64::from(midi) - 69.0) / 12.0)
-}
-
-#[expect(clippy::cast_precision_loss, reason = "a 16-bit value, exact")]
+/// The same noise as the unit tests' `crate::test_util::hash_noise` (an
+/// integration test can't reach `cfg(test)` code).
 fn hash_noise(i: usize) -> f64 {
     let h = (i.wrapping_mul(2_654_435_761) >> 7) & 0xffff;
-    h as f64 / 32768.0 - 1.0
+    usize_to_f64(h) / 32768.0 - 1.0
 }
 
 /// Which string model renders: A1's loop, or A2's waveguide (read at its
@@ -40,12 +38,7 @@ enum Model {
 }
 
 fn render<S: Scalar>(model: Model, fs: f64, f0: f64, voicing: Voicing, secs: f64) -> Vec<f64> {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "test lengths"
-    )]
-    let mut out = vec![S::ZERO; (fs * secs) as usize];
+    let mut out = vec![S::ZERO; f64_to_usize(fs * secs).unwrap()];
     match model {
         Model::Loop => {
             let mut s = KsString::<S>::new(fs, f0, voicing).unwrap();
@@ -83,15 +76,9 @@ fn errors<S: Scalar>(model: Model, fs: f64, tuned: bool, stiff: bool) -> Vec<(u8
         };
         let f0 = frequency(key);
         // The attack, then two DFT windows, with room to spare.
-        #[expect(clippy::cast_precision_loss, reason = "ATTACK is small")]
-        let secs = (ATTACK as f64 / fs + 2.5 * PARTIAL_PERIODS / f0).max(0.5);
+        let secs = (usize_to_f64(ATTACK) / fs + 2.5 * PARTIAL_PERIODS / f0).max(0.5);
         let sig = render::<S>(model, fs, f0, voicing, secs);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "test lengths"
-        )]
-        let skip = ((4.0 * fs / f0) as usize).max(ATTACK);
+        let skip = f64_to_usize(4.0 * fs / f0).unwrap().max(ATTACK);
         let coarse = pitch(&sig[skip..], fs, f0, 0.06).unwrap();
         let got = partial(&sig[skip..], fs, coarse, PARTIAL_PERIODS).unwrap();
         (key, cents(got, f0))
@@ -181,12 +168,7 @@ fn stiff_partials_run_sharp() {
         let f0 = f1 / (1.0 + b).sqrt();
         let secs = 0.1 + 2.5 * STRETCH_PERIODS / f1;
         let sig = render::<f64>(Model::Waveguide, fs, f1, voicing, secs);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "test lengths"
-        )]
-        let skip = (0.1 * fs) as usize;
+        let skip = f64_to_usize(0.1 * fs).unwrap();
         let mut worst = 0.0_f64;
         for n in 2..=STRETCH_PARTIALS {
             let k = f64::from(n);

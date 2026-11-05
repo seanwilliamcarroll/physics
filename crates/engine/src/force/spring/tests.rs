@@ -1,6 +1,7 @@
 use super::{Spring, SpringForce};
 use crate::params::kg;
-use crate::{Damping, Force, Particles, Stiffness, Vec2};
+use crate::test_util::accel;
+use crate::{Damping, Particles, Stiffness, Vec2};
 
 fn k(v: f64) -> Stiffness<f64> {
     Stiffness::new(v).unwrap()
@@ -11,12 +12,6 @@ fn two_bodies(gap: f64) -> Particles<f64> {
     let _ = p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
     let _ = p.add(Vec2::new(gap, 0.0), Vec2::ZERO, kg(3.0));
     p
-}
-
-fn accel(p: &Particles<f64>, f: &SpringForce<f64>) -> Vec<Vec2<f64>> {
-    let mut acc = vec![Vec2::ZERO; p.len()];
-    f.accumulate(p, &mut acc);
-    acc
 }
 
 #[test]

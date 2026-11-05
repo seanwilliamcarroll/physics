@@ -61,6 +61,16 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
   doc --workspace --no-deps`, so an intra-doc link (``[`Item`]``) that
   stops resolving (an item moved, renamed, or went private) fails the push.
 - **Local exceptions** use `#[expect(lint, reason = "...")]`, not `#[allow]`.
+- **Numeric casts go through `math::convert`, not `as`** (audit, after
+  A3). The cast lints (`cast_precision_loss`, `cast_possible_truncation`,
+  `cast_sign_loss`) once had 97 local exceptions, nearly all the same
+  count ↔ `f64` conversion, each reason a claim nobody checked. Now each
+  conversion is written and justified once (`usize_to_f64` exact below
+  2^53; `f64_to_usize` returns `None` for NaN, negative or too large, where
+  `as` saturates silently; `clamped_index` clamps by name; `f64_to_f32`),
+  and a new cast `expect` means a conversion `convert` doesn't cover yet:
+  add it there. The two kept are deliberate (the broadphase's saturating
+  `i64` cell index; the RNG test's `u64` constant).
   `expect` fails if the lint stops firing, so stale exceptions don't build up.
 
 ## Magic numbers (convention, enforced in review)

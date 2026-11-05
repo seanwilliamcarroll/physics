@@ -4,6 +4,7 @@
 //! coefficients are bit-identical on every platform.
 
 use core::f64::consts::PI;
+use math::convert::f64_to_usize;
 
 /// How the string decays.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -121,12 +122,7 @@ impl Voicing {
         if n < MIN_DELAY || !n.is_finite() {
             return None;
         }
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "n is a positive whole number of samples, checked above"
-        )]
-        let n = n as usize;
+        let n = f64_to_usize(n)?;
         Some(Coefficients {
             n,
             rho,
@@ -162,7 +158,7 @@ fn decay_for(t60: f64, f0: f64, w: f64) -> Option<(f64, f64)> {
 
 /// The phase delay of `(1 − S) + S z⁻¹` at `w`, samples: exactly ½ at
 /// every `w` for `S = ½`, about `S` at low frequencies otherwise.
-fn phase_delay_lowpass(s: f64, w: f64) -> f64 {
+pub(crate) fn phase_delay_lowpass(s: f64, w: f64) -> f64 {
     libm::atan2(s * libm::sin(w), 1.0 - s + s * libm::cos(w)) / w
 }
 

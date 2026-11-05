@@ -41,10 +41,7 @@ impl Fountain {
     #[must_use]
     pub fn world<S: Scalar>(&mut self, n: usize) -> World<S> {
         let mut w = World::new(Integrator::SymplecticEuler, FOUNTAIN_SUBSTEPS);
-        w.add_force(UniformGravity::new(Vec2::new(
-            S::ZERO,
-            -S::from_f64(STANDARD_GRAVITY),
-        )));
+        w.add_force(UniformGravity::new(Vec2::from_f64(0.0, -STANDARD_GRAVITY)));
         for _ in 0..n {
             let vel = self.launch_velocity();
             w.particles.add(Vec2::ZERO, vel, Mass::ONE);
@@ -73,7 +70,7 @@ impl Fountain {
     fn launch_velocity<S: Scalar>(&mut self) -> Vec2<S> {
         let vx = self.rng.range(FOUNTAIN_VX.0, FOUNTAIN_VX.1);
         let vy = self.rng.range(FOUNTAIN_VY.0, FOUNTAIN_VY.1);
-        Vec2::new(S::from_f64(vx), S::from_f64(vy))
+        Vec2::from_f64(vx, vy)
     }
 }
 

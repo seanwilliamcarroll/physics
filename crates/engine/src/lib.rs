@@ -14,6 +14,8 @@ mod particles;
 mod rng;
 pub mod scenarios;
 mod solver;
+#[cfg(test)]
+mod test_util;
 mod world;
 
 pub use barnes_hut::BarnesHut;

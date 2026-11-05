@@ -3,7 +3,7 @@ use super::{
     orbit_relative_speed,
 };
 use crate::diagnostics::{center_of_mass, momentum};
-use crate::scenarios::test_util::assert_same_up_to_rounding;
+use crate::test_util::assert_same_up_to_rounding;
 use crate::{Force, Integrator, Vec2};
 
 #[test]

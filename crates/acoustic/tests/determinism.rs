@@ -5,6 +5,8 @@
 #![cfg(test)]
 
 use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing, inharmonicity};
+use math::Fnv1a;
+use math::convert::usize_to_f64;
 
 const FS: f64 = 48_000.0;
 const BLOCK: usize = 128;
@@ -15,14 +17,6 @@ const VOICING: Voicing = Voicing {
     decay: Decay::T60(1.5),
     inharmonicity: 0.0,
 };
-
-/// FNV-1a, 64-bit (as the engine's `test-support`): small, fixed, and
-/// enough to notice any changed bit.
-fn fnv1a(bytes: impl Iterator<Item = u8>) -> u64 {
-    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-    bytes.fold(OFFSET, |h, b| (h ^ u64::from(b)).wrapping_mul(PRIME))
-}
 
 /// A short performance, 1 s: a seven-note chord (noise), a
 /// triangle-plucked melody note, a release, and one more note. Returns
@@ -64,12 +58,13 @@ fn perform_voiced<S: Scalar>(model: Model, voicing: impl Fn(u8) -> Voicing) -> (
     (out, v.clipped())
 }
 
+/// FNV-1a (`math`) of every sample's `f64` bits, little-endian.
 fn hash<S: Scalar>(samples: &[S]) -> u64 {
-    fnv1a(
-        samples
-            .iter()
-            .flat_map(|x| x.to_f64().to_bits().to_le_bytes()),
-    )
+    let mut h = Fnv1a::new();
+    for x in samples {
+        h.write(&x.to_f64().to_bits().to_le_bytes());
+    }
+    h.finish()
 }
 
 #[test]
@@ -158,8 +153,7 @@ fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
         match b {
             0 => {
                 for (i, key) in [48_u8, 52, 55, 60, 64, 67, 72].into_iter().enumerate() {
-                    #[expect(clippy::cast_precision_loss, reason = "seven keys")]
-                    let velocity = 0.5 + 0.6 * i as f64;
+                    let velocity = 0.5 + 0.6 * usize_to_f64(i);
                     assert!(v.strike(key, velocity));
                 }
             }

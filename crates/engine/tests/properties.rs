@@ -11,7 +11,8 @@ use engine::{Integrator, Scalar, Vec2, World};
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
 use test_support::{
-    BodySpec, Tol, build_world, momentum_drift_bound, proptest_config, state_hash, world_spec,
+    BodySpec, Tol, build_world, momentum_drift_bound, momentum_scale, proptest_config, state_hash,
+    world_spec,
 };
 
 /// One second of 60 Hz steps per property case.
@@ -27,23 +28,12 @@ fn run<S: Scalar>(mut w: World<S>) -> World<S> {
     w
 }
 
-/// `Σ m |v|` of the dynamic bodies: the scale momentum drift is judged on.
-fn momentum_scale<S: Scalar>(w: &World<S>) -> f64 {
-    w.particles
-        .vel()
-        .iter()
-        .zip(w.particles.inv_mass())
-        .filter(|&(_, &iw)| iw != S::ZERO)
-        .map(|(v, iw)| v.length().to_f64() / iw.to_f64())
-        .sum()
-}
-
 fn momentum_is_conserved<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseError> {
     let w0 = build_world::<S>(bodies, Integrator::SymplecticEuler);
     let p0 = momentum(&w0.particles);
     let w = run(w0);
     let drift = (momentum(&w.particles) - p0).length().to_f64();
-    let scale = momentum_scale(&w).max(f64::MIN_POSITIVE);
+    let scale = momentum_scale(&w.particles).max(f64::MIN_POSITIVE);
     let bound = momentum_drift_bound::<S>(STEPS, scale);
     prop_assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
     Ok(())

@@ -23,8 +23,7 @@ const SPACING: u8 = 4;
 fn piano(c: &mut Criterion) {
     let mut v = Voices::<f32>::new(FS, 1).unwrap();
     v.set_model(Model::Piano);
-    #[expect(clippy::cast_possible_truncation, reason = "16 voices")]
-    for i in 0..VOICES as u8 {
+    for i in 0..u8::try_from(VOICES).unwrap() {
         assert!(v.strike(FIRST_TRIO + i * SPACING % 60, FORTISSIMO));
     }
     let mut out = vec![0.0_f32; QUANTUM];
