@@ -16,11 +16,7 @@ use super::keys::{
     FORTISSIMO, PIANISSIMO, SPREAD, contact_target, exponent, impedance, mezzo_forte,
 };
 use super::{Felt, contact_time};
-
-/// The equal-tempered frequency of `midi`.
-fn frequency(midi: u8) -> f64 {
-    440.0 * libm::pow(2.0, (f64::from(midi) - 69.0) / 12.0)
-}
+use crate::piano::frequency;
 
 /// The stiffness search, in `log₁₀ K`: up from soft felt in steps until
 /// contact is short enough, then bisected (contact time isn't monotonic
