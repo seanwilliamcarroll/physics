@@ -1,7 +1,7 @@
 # 14 — Piano Voice
 
 Status: **Adopted** (A3.1; as built: dispersion A3.2, the hammer A3.3,
-string groups and the body A3.4, the synth A3.5). Depends on `12-acoustic-foundations.md` (the
+string groups and the body A3.4, the synth A3.5, the page A3.6). Depends on `12-acoustic-foundations.md` (the
 loop filter, tuning) and `13-waveguide.md` (the waveguide, positions on
 the effective length, the FFT).
 
@@ -300,6 +300,30 @@ ring gone within a second, and `f32` within 10⁻⁵ of `f64`.
 when harder; C4's 10th partial at −0.01 cents with stiffness off and
 +26.15 on (`B` predicts +26.19); nothing clipped; a released note frees
 its voice.
+
+## The page (A3.6)
+
+`site/demos/a3-piano/`: the piano in the browser.
+
+- **Velocity from where a key is pressed:** the top of a key is pp (0.5
+  m/s), the bottom ff (5 m/s), geometrically between, as on a real key
+  (pressing deeper is pressing harder). The computer keyboard uses a
+  velocity slider; songs play at mf.
+- **Stiff or ideal strings**, from the next strike.
+- **The spectrum:** gray lines at the harmonics `k f₁`, short yellow
+  ticks at the stiff string's partials `k F₀ √(1 + B k²)`: they drift
+  apart up the spectrum.
+- **The hammer:** the latest strike's force against time (12 ms), with
+  its peak and how long the felt pushed; the near end's reflection shows
+  as a second hump mid-blow (C4 at mf: 5.3 N, 1.88 ms).
+- **The string:** the middle string's shape, scaled to its peak (a
+  fraction of a millimetre), the hammer's point marked.
+- **The readout:** the key's strings, `B`, and how sharp its 10th partial
+  runs. `B` and the string count come from two pure exports, read from
+  the module's own instance on the page, so the constants live only in
+  Rust.
+- **Smoke:** C4 at mf rendered offline; its 10th partial is 69.9 dB
+  louder at the stretched frequency than at the harmonic one.
 
 ## Cost
 

@@ -361,7 +361,9 @@ cases through `engine.wasm` in Node 22, vs criterion's native means):
 ## Browser smoke test
 
 `cargo xtask smoke` (also in pre-push) builds the site and loads the demo
-in headless Chrome, one fresh profile per case: M0 (default, f64, 500k,
+in headless Chrome, one fresh profile per case, driven over the DevTools
+protocol by `xtask/smoke_page.mjs` (it waits for the page's `SMOKE` line,
+up to 10 s, then screenshots; audio muted): M0 (default, f64, 500k,
 panic) and M1 (orbits in f64 and f32; every panel must step, draw its
 planet, and report finite energy; the reported pixels are the minimum
 across panels, so one blank panel fails), and M2 (the default disk, the
@@ -377,7 +379,9 @@ unclipped peak, and, for a song, an onset found for every scheduled note
 within 10 ms: `SMOKE ok audio_peak=… samples=… song_notes=… onsets=…
 onset_worst_ms=…`), and A2 (A4 on the waveguide plucked at ½: the 2nd
 harmonic, measured in the rendered audio, must sit at least 20 dB under
-its neighbors: `missing_db=…`).
+its neighbors: `missing_db=…`), and A3 (a stiff C4 at mf: its 10th
+partial must be at least 10 dB louder at its stretched frequency than at
+the harmonic one, `stretch_db=…`; measured 69.9).
 The
 page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
 synchronously, draws once, counts particle-colored pixels, and logs
@@ -393,6 +397,16 @@ Lessons that shaped it:
   alone would pass the latter. The 500k blank-canvas bug produced 0
   particle pixels and a `Failed to serialize op` log; the test checks both.
 - **Fresh profile per run**: a reused one served stale JS from cache.
+- **Wait for the report, not for `load` (A3.6):** Chrome's `--screenshot`
+  captures at the page's load event and quits (about 0.5 s) without
+  waiting for async work. A1's and A2's offline renders finished inside
+  that window; A3's, which designs all 88 keys first, didn't. The DevTools
+  driver waits for the line itself.
+- **A deep listen backlog (A3.4):** `http.server` queues 5 connections; a
+  page requests its dozen modules at once, and on macOS the overflow is a
+  reset (`ERR_CONNECTION_RESET` on a module, the page never starts: about
+  1 load in 10). `xtask/serve.py` uses 128. Found by listing the pending
+  requests over DevTools when a load hung.
 - **It catches scene design, not just plumbing (M2.6):** the N = 1024
   cluster case drew 0 pixels because the cluster's per-body masses made
   total mass grow with N, and every body left the view in 0.5 s. The

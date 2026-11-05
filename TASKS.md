@@ -252,9 +252,13 @@ once. A piano golden, same on wasm.
 
 ## 6. Site: the A3 page (PR)
 
-- [ ] `a3-piano`: keyboard with velocity, the stiffness toggle, strings
-      per key, the spectrum with harmonic and stretched-partial ticks,
-      the hammer force of the last strike; smoke; gallery.
+- [x] `a3-piano`: velocity from where a key is pressed (pp at the top, ff
+      at the bottom; a slider for the computer keyboard), stiff or ideal
+      strings, strings per key and `B` in the readout, the spectrum with
+      stretched-partial ticks, the latest strike's hammer force; smoke
+      (`stretch_db` 69.9); gallery. Smoke now drives Chrome over DevTools
+      and waits for the report (`--screenshot` quit at `load`, before
+      A3's offline render).
 - [ ] Listening check against **Done when** (yours).
 
 ## 7. A3 cleanup (PR, if needed)
