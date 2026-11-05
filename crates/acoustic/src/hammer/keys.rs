@@ -38,6 +38,14 @@ fn along(midi: u8, a: f64, b: f64) -> f64 {
     ((f64::from(midi) - a) / (b - a)).clamp(0.0, 1.0)
 }
 
+/// Where `midi` sits on the keyboard, −1 (A0) to 1 (C8): the variable of
+/// the hammers' smoothed fit (`fit.rs`, `table.rs`), scaled so its least
+/// squares are well conditioned.
+pub(crate) fn key_coordinate(midi: u8) -> f64 {
+    let (middle, half_span) = (f64::midpoint(A0, C8), 0.5 * (C8 - A0));
+    (f64::from(midi) - middle) / half_span
+}
+
 /// `a` to `b`, geometrically, at `t`.
 fn geometric(a: f64, b: f64, t: f64) -> f64 {
     a * libm::pow(b / a, t)

@@ -10,6 +10,7 @@
 
 use crate::dispersion::Dispersion;
 use crate::hammer::{self, Hammer, STRIKE};
+use crate::measure::CENTS_PER_OCTAVE;
 use crate::{Decay, LOWEST_HZ, Scalar, Voicing, Waveguide};
 
 /// The most strings a key has.
@@ -86,6 +87,7 @@ impl<S: Scalar> Unison<S> {
             active: 0,
             previous: [S::ZERO; MAX_STRINGS],
             force_scale: S::ZERO,
+            // Until struck: `restrike` sets the key's.
             z: 1.0,
             fs,
         })
@@ -123,7 +125,7 @@ impl<S: Scalar> Unison<S> {
         let f0 = crate::piano::frequency(midi);
         let n = strings(midi);
         for (i, s) in self.strings.iter_mut().take(n).enumerate() {
-            let tuned = f0 * libm::exp2(offset(i, n) / 1200.0);
+            let tuned = f0 * libm::exp2(offset(i, n) / CENTS_PER_OCTAVE);
             let Some(h) = Hammer::new(felt, z, self.fs, velocity) else {
                 return false;
             };

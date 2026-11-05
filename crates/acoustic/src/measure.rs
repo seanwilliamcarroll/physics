@@ -2,11 +2,14 @@
 //! (`docs/12-acoustic-foundations.md`, "Measuring, offline, in Rust").
 //! In `f64`, whatever scalar rendered the signal.
 
-/// `1200 · log₂(f / target)`: how far `f` is from `target`, in cents (a
-/// hundredth of an equal-tempered semitone).
+/// Cents in an octave: a cent is a hundredth of an equal-tempered
+/// semitone.
+pub const CENTS_PER_OCTAVE: f64 = 1200.0;
+
+/// `1200 · log₂(f / target)`: how far `f` is from `target`, in cents.
 #[must_use]
 pub fn cents(f: f64, target: f64) -> f64 {
-    1200.0 * (f / target).log2()
+    CENTS_PER_OCTAVE * (f / target).log2()
 }
 
 /// Lags shorter than this are refined over several periods: interpolating
