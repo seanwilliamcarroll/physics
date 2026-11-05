@@ -6,6 +6,7 @@
 //! and `f64` in tests. Independent of the physics engine; shares only
 //! `math`.
 
+pub mod body;
 mod bridge;
 mod delay_line;
 mod dispersion;
@@ -16,6 +17,7 @@ pub mod measure;
 mod solve;
 mod stiffness;
 mod string;
+pub mod unison;
 mod voices;
 mod voicing;
 mod waveguide;

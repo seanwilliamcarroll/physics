@@ -1,6 +1,7 @@
 # 14 — Piano Voice
 
-Status: **Adopted** (A3.1; dispersion as built, A3.2; the hammer as built, A3.3). Depends on `12-acoustic-foundations.md` (the
+Status: **Adopted** (A3.1; as built: dispersion A3.2, the hammer A3.3,
+string groups and the body A3.4). Depends on `12-acoustic-foundations.md` (the
 loop filter, tuning) and `13-waveguide.md` (the waveguide, positions on
 the effective length, the FFT).
 
@@ -231,21 +232,44 @@ mass for the spread.
 ## String groups
 
 Most piano notes have two or three strings, tuned a few cents apart.
-**Our choice by register:** 1 string from A0 to about E1, 2 to about
-G#2, 3 above; detuned by a couple of cents (spread symmetrically).
-**Uncoupled**: each string is its own waveguide and the outputs sum, so
-two strings `Δf` apart beat at `Δf`. Real strings couple through the
-bridge, which is what gives a piano's two-stage "double decay" (a fast
-initial drop, then a long aftersound) and its polarization effects
-(Weinreich 1977); A3 leaves coupling out (a stretch, measured if
-attempted).
+**Our choice by register:** 1 string from A0 to E1, 2 from F1 to G♯2, 3
+above; neighboring strings 1 cent apart, spread symmetrically about the
+note (±½ cent for a pair; −1, 0, +1 for a trio). **Uncoupled**: each
+string is its own waveguide and their forces on the bridge sum, so
+neighbors `Δf = f (2^(1/1200) − 1)` apart beat at `Δf` (for an evenly
+spread trio, the envelope `|1 + 2 cos(2π Δf t)|` repeats at `Δf` too).
+Real strings couple through the bridge, which is what gives a piano's
+two-stage "double decay" (a fast initial drop, then a long aftersound)
+and its polarization effects (Weinreich 1977); A3 leaves coupling out (a
+stretch, measured if attempted).
+
+**A hammer per string** (A3.4): each string is struck by its own copy of
+the key's fitted hammer. At impact the strings are identical, and a cent
+barely changes them during a 1–4 ms contact, so `N` hammers of mass `M`
+on `N` strings behave like one of `N M` on all of them: the fitted hammer
+is a hammer per string (making a whole trio's about 6 g in the middle),
+and the contact times stay the tested ones. A shared hammer (one mass, `N`
+felt contacts, coupled equations each sample) would differ inaudibly.
+
+**Measured:** a trio's bridge force is 3× one string's within 1.7 · 10⁻⁴
+of the peak over its first 6 ms; groups make no energy (the strings' and
+hammers' energy at most 0.9999 of the hammers' at impact); a pair (G♯2,
+0.060 Hz) and a trio (C5, 0.302 Hz) beat at their detuning, +2.0 % and
++0.75 %.
 
 ## The body
 
-A few fixed resonances (biquad bandpasses summed with the direct sound)
-on the voice's output: soundboard-like coloring, **our choice** of
-frequencies and gains (not a measured soundboard). Commuted synthesis (a
-measured body response folded into the excitation) is out of scope.
+A few fixed resonances on the voice's output: the direct sound plus five
+bandpass biquads in parallel (constant 0 dB peak, Bristow-Johnson's
+cookbook), at 90, 200, 450, 1000 and 2200 Hz with Q of 4–6 and gains
+falling from 1 to 0.3: soundboard-like coloring, **our choice** (a
+soundboard's lowest modes are near 50–100 Hz and get denser upward; these
+are not a measured soundboard). Commuted synthesis (a measured body
+response folded into the excitation) is out of scope.
+
+**Measured:** 2–6 dB peaks at each resonance over the points between
+them, flat (0.003 dB) at 15 kHz where only the direct sound is left, the
+ring gone within a second, and `f32` within 10⁻⁵ of `f64`.
 
 ## Cost
 
@@ -266,8 +290,9 @@ render quantum.
   no energy from nowhere (the string's energy after contact plus the
   hammer's is bounded by the hammer's at impact, in joules). A rigid-wall
   bounce against Hertz's closed form.
-- **String groups:** beating at the detuning's rate.
-- **The body:** its response peaks at its resonances.
+- **String groups:** beating at the detuning's rate; a group struck like
+  `N` strings under one hammer; no energy from nowhere.
+- **The body:** its response peaks at its resonances; stable.
 - **Determinism:** goldens, native and wasm.
 
 ## References
@@ -298,5 +323,6 @@ Full entries in `references.md`.
 - Askenfelt, *From touch to string vibrations* (KTH lecture notes):
   contact times.
 - Weinreich (1977), *Coupled Piano Strings*: double decay, coupling.
+- Bristow-Johnson, *Audio EQ Cookbook*: the body's bandpasses.
 - Chabassier, Chaigne & Joly (2013), *Modeling and simulation of a grand
   piano*: energy-preserving schemes for the hammer and string.

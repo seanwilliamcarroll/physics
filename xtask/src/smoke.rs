@@ -14,8 +14,9 @@ mod server;
 use cases::{CASES, Check};
 use server::Server;
 
-/// How long Chrome waits before its screenshot (and exit). Smoke mode is
-/// synchronous, so this only has to cover loading: about 1 s at 500k.
+/// The most Chrome waits for the page to load: it takes its screenshot
+/// (and exits) at the `load` event, measured at about 0.5 s a page, or at
+/// this. Smoke mode is synchronous, so loading is all it covers.
 const CHROME_TIMEOUT_MS: u32 = 3000;
 
 /// Window size for screenshots, CSS pixels.
@@ -170,7 +171,7 @@ pub(crate) fn judge(stderr: &str) -> Result<Report, String> {
 pub(crate) fn smoke(root: &Path) -> Result<(), String> {
     super::site(root)?;
     let chrome = find_chrome()?;
-    let server = Server::start(&root.join("site"))?;
+    let server = Server::start(root, &root.join("site"))?;
     let shots = root.join("target").join("smoke");
     fs::create_dir_all(&shots).map_err(|e| format!("creating {}: {e}", shots.display()))?;
 
