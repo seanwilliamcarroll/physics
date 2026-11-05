@@ -67,6 +67,30 @@ impl Voicing {
     /// for invalid settings (non-positive or non-finite rates, `ρ` outside
     /// `(0, 1]`, `T₆₀ ≤ 0`, a loop under 2 samples).
     pub(crate) fn coefficients(self, fs: f64, f0: f64) -> Option<Coefficients> {
+        let b = self.inharmonicity;
+        self.coefficients_designed(fs, f0, |stretch, room| {
+            crate::dispersion::design(fs, f0, b, stretch, room)
+        })
+    }
+
+    /// The dispersion cascade [`coefficients`](Self::coefficients) would
+    /// design for this note: what the piano designs once per key, at
+    /// start (`docs/14-piano.md`). `None` without stiffness, or for
+    /// settings `coefficients` refuses.
+    pub(crate) fn design(self, fs: f64, f0: f64) -> Option<crate::dispersion::Dispersion> {
+        self.coefficients(fs, f0)?.dispersion
+    }
+
+    /// As [`coefficients`](Self::coefficients), with the dispersion
+    /// cascade from `design(stretch, room)`: `stretch` is the lowpass's
+    /// `S`, `room` the most delay it may take at `f₀`. A stored design
+    /// skips the design's cost (milliseconds) at note on.
+    pub(crate) fn coefficients_designed(
+        self,
+        fs: f64,
+        f0: f64,
+        design: impl FnOnce(f64, f64) -> Option<crate::dispersion::Dispersion>,
+    ) -> Option<Coefficients> {
         let valid = fs > 0.0 && f0 > 0.0 && fs.is_finite() && f0.is_finite() && f0 < fs / 2.0;
         if !valid {
             return None;
@@ -82,8 +106,7 @@ impl Voicing {
         let period = fs / f0;
         // The dispersion cascade gets at most half the loop, leaving the
         // delay line and the other filters room.
-        let dispersion =
-            crate::dispersion::design(fs, f0, self.inharmonicity, stretch, period / 2.0);
+        let dispersion = design(stretch, period / 2.0);
         let lowpass = phase_delay_lowpass(stretch, w) + dispersion.map_or(0.0, |d| d.delay(w));
         let (n, allpass, pitch) = if self.tuned {
             let n = libm::floor(period - lowpass - MIN_FRACTION);
