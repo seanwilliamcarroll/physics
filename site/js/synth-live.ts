@@ -16,6 +16,9 @@ export const SONG_LEAD_S = 0.05;
 /** The lowest note a voice holds (crates/acoustic LOWEST_HZ, A0): sizes
  *  the snapshot buffers (the longest line plus slack). */
 const LOWEST_HZ = 27.5;
+/** The latest strike's hammer force, s (crates/acoustic TRACE_SECONDS):
+ *  sizes the snapshot buffers when a page asks for it. */
+const TRACE_SECONDS = 0.012;
 /** Two snapshot buffers ping-pong between page and worklet. */
 const SNAPSHOT_BUFFERS = 2;
 
@@ -33,6 +36,8 @@ export type LiveOptions = {
   initial: () => ToWorklet[];
   /** Whether snapshots carry the spectrum (and so buffer room for it). */
   spectrum: boolean;
+  /** Whether snapshots carry the latest strike's hammer force (A3). */
+  trace?: boolean;
   onSnapshot: (m: Extract<FromWorklet, { type: "snapshot" }>, live: Live) => void;
   onError: (message: string) => void;
 };
@@ -65,7 +70,9 @@ export function liveSynth(o: LiveOptions): { start: () => Promise<Live>; send: L
       live = l;
       for (const m of o.initial()) l.send(m);
       l.send({ type: "spectrum", on: o.spectrum });
-      const floats = Math.ceil(ctx.sampleRate / LOWEST_HZ) + 2 + (o.spectrum ? SPECTRUM_SIZE / 2 : 0);
+      l.send({ type: "trace", on: o.trace ?? false });
+      const floats = Math.ceil(ctx.sampleRate / LOWEST_HZ) + 2 + (o.spectrum ? SPECTRUM_SIZE / 2 : 0) +
+        (o.trace === true ? Math.ceil(ctx.sampleRate * TRACE_SECONDS) + 1 : 0);
       for (let i = 0; i < SNAPSHOT_BUFFERS; i++) {
         const buf = new ArrayBuffer(floats * Float32Array.BYTES_PER_ELEMENT);
         l.send({ type: "buffer", buf }, [buf]);

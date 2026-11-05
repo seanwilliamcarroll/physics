@@ -27,8 +27,13 @@ export type PianoOptions = {
   /** Starts audio if needed (the first gesture), then resolves. */
   start: () => Promise<unknown>;
   send: (m: ToWorklet) => void;
-  /** Told of every note played, by hand or by a song (the page's readout). */
-  onNote: (midi: number) => void;
+  /** Told of every note played, by hand or by a song (the page's readout),
+   *  with its velocity if it has one (a song's notes don't). */
+  onNote: (midi: number, velocity?: number) => void;
+  /** A piano strike's velocity (m/s) for a key pressed `depth` of the way
+   *  down it (0 the top, 1 the bottom; `null` from the computer keyboard).
+   *  Without it, notes have none (the model's own note on). */
+  velocity?: (depth: number | null) => number;
 };
 
 /** Builds the piano and songs into the page and listens to the keyboard. */
@@ -37,10 +42,11 @@ export function pianoUi(o: PianoOptions): void {
   const labelFor = new Map(Object.entries(KEY_CODES).map(([code, off]) => [off, code.replace("Key", "").replace("Semicolon", ";")]));
   const keyEl = (midi: number): HTMLElement | null => o.piano.querySelector(`[data-midi="${midi}"]`);
 
-  const noteOn = async (midi: number): Promise<void> => {
+  const noteOn = async (midi: number, depth: number | null): Promise<void> => {
     await o.start();
-    o.onNote(midi);
-    o.send({ type: "on", key: midi });
+    const velocity = o.velocity?.(depth);
+    o.onNote(midi, velocity);
+    o.send(velocity === undefined ? { type: "on", key: midi } : { type: "on", key: midi, velocity });
     keyEl(midi)?.classList.add("down");
   };
   const noteOff = (midi: number): void => {
@@ -67,7 +73,8 @@ export function pianoUi(o: PianoOptions): void {
       if (!black) white++;
       el.addEventListener("pointerdown", (e) => {
         el.setPointerCapture(e.pointerId);
-        void noteOn(midi);
+        const box = el.getBoundingClientRect();
+        void noteOn(midi, box.height > 0 ? Math.min(1, Math.max(0, (e.clientY - box.top) / box.height)) : null);
       });
       el.addEventListener("pointerup", () => noteOff(midi));
       el.addEventListener("pointercancel", () => noteOff(midi));
@@ -90,7 +97,7 @@ export function pianoUi(o: PianoOptions): void {
     if (midi === undefined) return;
     e.preventDefault();
     held.set(e.code, midi);
-    void noteOn(midi);
+    void noteOn(midi, null);
   });
   window.addEventListener("keyup", (e) => {
     const midi = held.get(e.code);

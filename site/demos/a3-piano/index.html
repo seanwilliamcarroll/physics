@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A3 · Piano: stiff strings, a felt hammer</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Piano: stiff strings, a felt hammer</h1>
+    <p class="muted">
+      A2's string, made of steel. A stiff string is part bar, so its
+      overtones run <b>sharp</b>: partial <i>k</i> sits at
+      k·F₀·√(1 + Bk²), not k·f₀. On the spectrum, the gray lines are where
+      a perfect string's harmonics would be, and the yellow ticks where
+      this one's are: watch them drift apart up the spectrum. The strings
+      are struck by a felt hammer that stays on them for a millisecond or
+      a few (the force plot), and the felt stiffens as it's squeezed, so a
+      <b>harder strike is brighter</b>, not only louder. Most keys have two
+      or three strings a cent apart, beating slowly; a few body
+      resonances color the sound.
+    </p>
+    <p class="muted">
+      Play with the keyboard (home row and the row above, <kbd>Z</kbd> /
+      <kbd>X</kbd> for octaves) or the keys below: <b>press low on a key to
+      strike harder</b>. The computer keyboard uses the velocity slider.
+      Turn the stiffness off to hear the same piano with ideal strings. The
+      first note waits a moment while every key's strings are designed.
+    </p>
+    <button class="start" id="start">Start audio</button>
+    <div class="controls" id="controls"></div>
+    <div class="controls" id="songs"></div>
+    <div class="piano" id="piano"></div>
+    <h2>Spectrum</h2>
+    <div class="plot"><canvas id="spectrum"></canvas></div>
+    <h2>The hammer</h2>
+    <div class="plot"><canvas id="force"></canvas></div>
+    <h2>The string</h2>
+    <div class="plot"><canvas id="string"></canvas></div>
+    <div class="hud-line" id="hud">audio off: click Start, or press a key</div>
+  </main>
+</body>
+</html>
