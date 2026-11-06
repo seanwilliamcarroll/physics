@@ -151,7 +151,10 @@ What's measured, and what we do with it:
   showed a strike there weakens); not checked against a measurement for
   this doc.
 - **Velocity** is the hammer's speed at impact. **Our choice:** 0.5 m/s
-  (pp) to 5 m/s (ff), mf their geometric mean (1.58 m/s).
+  (pp) to 5 m/s (ff), mf their geometric mean (1.58 m/s). A strike above
+  twice ff (10 m/s, `MAX_VELOCITY`) is refused: a finite but huge speed
+  overflowed the `f32` strings and panicked (found by the ABI property
+  test).
 - **The string's wave impedance `Z = √(T μ)`, our choice:** about 750 N
   of tension; a heavy wound string at A0 (`Z` = 10 kg/s), plain wire of
   about 1 mm at C4 (2.2) and 0.8 mm at C8 (1.7), log-linear between.
