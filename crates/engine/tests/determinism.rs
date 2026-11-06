@@ -164,7 +164,7 @@ const GOLDEN: [(u64, u64); 16] = [
     (0x38b8_98d9_9f2e_436a, 0x62a3_677f_7c53_91e2), // Orbit(SymplecticEuler)
     (0xdbd3_a74a_c351_be50, 0xa548_448e_abb6_5ba7), // Orbit(ExplicitEuler)
     (0x521c_acff_69c8_f074, 0x2479_9e2b_6114_4cb8), // Orbit(VelocityVerlet)
-    (0x1b01_6782_cfd0_e3bb, 0x6ad4_4251_6e06_fcf6), // ClusterBarnesHut
+    (0x36db_ee64_fd7d_9585, 0x127b_bd5f_cc9b_e6c3), // ClusterBarnesHut
     (0x989a_6cd3_ba07_198c, 0x208c_a668_28aa_95aa), // Pendulum(Xpbd)
     (0x1ddc_6b8c_24f6_6c6b, 0x6642_c1e3_c031_d93e), // Pendulum(Impulse)
     (0x45e3_0c60_6f1f_bfe2, 0xe52e_d266_de49_2a04), // Chain(Xpbd)

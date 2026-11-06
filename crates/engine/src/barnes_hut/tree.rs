@@ -38,9 +38,16 @@ pub(super) struct Node<S> {
 pub(super) enum NodeKind<S> {
     /// A leaf: one particle, at `com` exactly.
     Body { index: usize },
-    /// A cell of side `√width_sq` whose bodies have Morton keys in
-    /// `keys.0..=keys.1` (a contiguous range: the containment test).
-    Cell { width_sq: S, keys: (u64, u64) },
+    /// A cell of side `width` whose bodies have Morton keys in
+    /// `keys.0..=keys.1` (a contiguous range: the containment test), and
+    /// whose center of mass is `offset` from its geometric center (δ, for
+    /// the opening test: a lopsided cell must be farther away to be used
+    /// whole).
+    Cell {
+        width: S,
+        keys: (u64, u64),
+        offset: S,
+    },
 }
 
 /// The root square: its center and half its side.
@@ -104,13 +111,28 @@ const fn quadrant(key: u64, level: u32) -> u64 {
     (key >> (2 * (MAX_DEPTH - 1 - level))) & 0b11
 }
 
+/// The center of `center`'s child in quadrant `q` (its two key bits) for a
+/// cell of side `width`: a quarter of the side toward it, as
+/// [`Root::key`] steps.
+fn child_center<S: Scalar>(center: Vec2<S>, width: S, half: S, q: u64) -> Vec2<S> {
+    let quarter = width * half * half;
+    let (east, north) = (q & 0b01 != 0, q & 0b10 != 0);
+    center
+        + Vec2::new(
+            if east { quarter } else { -quarter },
+            if north { quarter } else { -quarter },
+        )
+}
+
 /// Builds the subtree for `bodies` (sorted by key, all inside the cell at
-/// `level` of side `width`) into `nodes`, in postorder. Returns its total
-/// mass and `Σ m x`, for the parent's aggregate.
+/// `level` of side `width` centered at `center`) into `nodes`, in
+/// postorder. Returns its total mass and `Σ m x`, for the parent's
+/// aggregate.
 pub(super) fn build<S: Scalar>(
     bodies: &[Body<S>],
     mut level: u32,
     mut width: S,
+    mut center: Vec2<S>,
     half: S,
     nodes: &mut Vec<Node<S>>,
 ) -> (S, Vec2<S>) {
@@ -130,6 +152,7 @@ pub(super) fn build<S: Scalar>(
     // without storing a node. Sorted keys share a prefix iff the first and
     // last do.
     while level < MAX_DEPTH && quadrant(first.key, level) == quadrant(last.key, level) {
+        center = child_center(center, width, half, quadrant(first.key, level));
         level += 1;
         width = width * half;
     }
@@ -138,26 +161,30 @@ pub(super) fn build<S: Scalar>(
     if level == MAX_DEPTH {
         // Identical keys: a bucket, every body its own leaf.
         for b in bodies {
-            let (m, mx) = build(core::slice::from_ref(b), level, width, half, nodes);
+            let (m, mx) = build(core::slice::from_ref(b), level, width, center, half, nodes);
             mass += m;
             moment += mx;
         }
     } else {
         // Sorted by key, each quadrant is one consecutive run.
         for group in bodies.chunk_by(|a, b| quadrant(a.key, level) == quadrant(b.key, level)) {
-            let (m, mx) = build(group, level + 1, width * half, half, nodes);
+            let q = group.first().map_or(0, |b| quadrant(b.key, level));
+            let child = child_center(center, width, half, q);
+            let (m, mx) = build(group, level + 1, width * half, child, half, nodes);
             mass += m;
             moment += mx;
         }
     }
+    // Dynamic masses are positive, so `mass > 0` here.
+    let com = moment / mass;
     nodes.push(Node {
-        // Dynamic masses are positive, so `mass > 0` here.
-        com: moment / mass,
+        com,
         mass,
         size: nodes.len() - start + 1,
         kind: NodeKind::Cell {
-            width_sq: width * width,
+            width,
             keys: (first.key, last.key),
+            offset: (com - center).length(),
         },
     });
     (mass, moment)

@@ -13,9 +13,13 @@ use tree::{Body, Node, NodeKind, Root, build};
 /// Newtonian gravity between dynamic particles), but a group of bodies far
 /// enough away is felt as one point mass at its center of mass.
 ///
-/// "Far enough": a quadtree cell of side `s` at distance `d` is used whole
-/// when `s / d < θ`. θ = 0 never uses a cell, which is direct summation;
-/// larger θ is faster and less accurate. Forces are no longer equal and
+/// "Far enough": a quadtree cell of side `s` whose center of mass is at
+/// distance `d`, and `δ` from the cell's geometric center, is used whole
+/// when `s / (d − δ) < θ`. The `δ` keeps a lopsided cell (its mass bunched
+/// on one side) from being accepted by a target just outside its *other*
+/// side, beside some of its bodies (Salmon & Warren 1994; measured 25% off
+/// at θ = 0.7 before, audit after A3). θ = 0 never uses a cell, which is
+/// direct summation; larger θ is faster and less accurate. Forces are no longer equal and
 /// opposite, so momentum is only conserved up to the force error.
 ///
 /// Static particles (`inv_mass = 0`) neither pull nor are pulled.
@@ -25,7 +29,8 @@ pub struct BarnesHut<S> {
     /// ε², as in `PairwiseGravity`: nonnegative ε is guaranteed by
     /// [`Softening`], checked where it was built.
     softening_sq: S,
-    /// θ², so the opening test `s² < θ² d²` needs no sqrt.
+    /// θ, and θ², so the opening test needs no sqrt (see `accel_on`).
+    theta: S,
     theta_sq: S,
 }
 
@@ -38,6 +43,7 @@ impl<S: Scalar> BarnesHut<S> {
         Self {
             g_const,
             softening_sq: softening.squared(),
+            theta: theta.get(),
             theta_sq: theta.get() * theta.get(),
         }
     }
@@ -51,6 +57,7 @@ impl<S: Scalar> BarnesHut<S> {
         Self {
             g_const: exact.g_const(),
             softening_sq: exact.softening_sq(),
+            theta: theta.get(),
             theta_sq: theta.get() * theta.get(),
         }
     }
@@ -101,13 +108,18 @@ impl<S: Scalar> BarnesHut<S> {
                     false
                 }
                 NodeKind::Cell {
-                    width_sq,
+                    width,
                     keys: (lo, hi),
+                    offset,
                 } => {
                     // Never accept a cell containing the target: that
                     // would include its own mass (a self-force).
                     let contains = lo <= key && key <= hi;
-                    let far = width_sq < self.theta_sq * dist_sq;
+                    // `s / (d − δ) < θ`, as `(s + θ δ)² < θ² d²`: both
+                    // sides are non-negative, so squaring keeps the order,
+                    // and `d ≤ δ` fails it, as it should.
+                    let reach = width + self.theta * offset;
+                    let far = reach * reach < self.theta_sq * dist_sq;
                     if !contains && far {
                         a += self.pull(r, dist_sq, node.mass);
                     }
@@ -168,7 +180,7 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
         // this never regrows.
         let mut nodes = Vec::with_capacity(2 * bodies.len());
         let side = root.half_side + root.half_side;
-        let _ = build(&bodies, 0, side, root.half, &mut nodes);
+        let _ = build(&bodies, 0, side, root.center, root.half, &mut nodes);
 
         for (index, (a, (&x, &w))) in acc
             .iter_mut()

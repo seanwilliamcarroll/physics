@@ -21,13 +21,15 @@ const DT: f64 = 1.0 / 60.0;
 /// Normalized by the RMS acceleration, not by each body's own: a body
 /// near the cluster's center has a small net |a| (pulls cancel), so its
 /// *relative* error is large while its absolute error is typical. Worst
-/// per-body relative errors measured: 0.65 at θ = 0.3, 7.7 at θ = 1
-/// (n = 1024); medians 0.4% and 6.4% (`docs/barnes-hut.md`).
+/// per-body relative errors measured: 0.57 at θ = 0.3, 5.1 at θ = 1
+/// (n = 1024); medians 0.4% and 5.8% (`docs/barnes-hut.md`).
 ///
-/// Measured (2026-11-02), worst over n ∈ {64, 256, 1024}, seeds 1–3, f32
-/// and f64 (equal to 3 digits): 0.0127, 0.0487, 0.198, 0.302. Bounds ~10x
-/// above. An independent Python Barnes–Hut on the same 256 bodies agreed
-/// to 1.7e-15 of RMS |a| (θ = 0.5), so these are the method's errors.
+/// Measured with the `δ` opening test (2026-11-06, audit after A3), worst
+/// over n ∈ {64, 256, 1024}, seeds 1–3, f32 and f64 (equal to 3 digits):
+/// 0.0101, 0.0506, 0.104, 0.180 (the classic test: 0.0127, 0.0487, 0.198,
+/// 0.302). Bounds 10–20x above. An independent Python Barnes–Hut agreed
+/// with the classic test's to 1.7e-15 of RMS |a| (θ = 0.5), so these are
+/// the method's errors.
 const THETA_BOUNDS: [(f64, f64); 4] = [(0.3, 0.13), (0.5, 0.5), (0.8, 2.0), (1.0, 3.0)];
 
 /// Cluster sizes for the accuracy test: past the crossover (~200–256 bodies
@@ -82,10 +84,11 @@ const MOMENTUM_STEPS: u32 = 1000;
 const MOMENTUM_THETA: f64 = 0.5;
 
 /// Momentum drift allowed after the run, as a fraction of `Σ m |v|`.
-/// Measured (2026-11-02): 1.04e-2 (f64), 5.3e-3 (f32); bound ~10x.
+/// Measured (2026-11-06, the `δ` opening test): 5.2e-3 (f64), 8.7e-3
+/// (f32); bound ~10x.
 /// For scale: the cluster's initial momentum is about 4e-3 of `Σ m |v|`,
 /// so Barnes–Hut changes the total momentum by more than it started with.
-/// Other runs measured: θ = 1 drifts 7.1e-2 (f64), θ = 0.3 4.7e-3.
+/// Other runs measured: θ = 1 drifts 7.0e-2 (f64), θ = 0.3 8.8e-4.
 const MOMENTUM_DRIFT_REL: f64 = 0.1;
 
 /// Barnes–Hut forces aren't equal and opposite, so momentum drifts
@@ -93,7 +96,7 @@ const MOMENTUM_DRIFT_REL: f64 = 0.1;
 ///
 /// 1. The derived law: each step changes momentum by `h Σ mᵢ aᵢ`, and the
 ///    exact forces sum to zero, so `|Δp| ≤ h Σ mᵢ |aᵢ − aᵢ*|` summed over
-///    steps (plus rounding). Measured: the drift is 0.9% (f64) and 0.4%
+///    steps (plus rounding). Measured: the drift is 0.7% (f64) and 1.1%
 ///    (f32) of this bound (errors mostly cancel); the triangle inequality is loose, but
 ///    it is a law, not a fit.
 /// 2. The measured size, [`MOMENTUM_DRIFT_REL`].
