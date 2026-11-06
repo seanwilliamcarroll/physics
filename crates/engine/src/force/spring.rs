@@ -18,11 +18,12 @@ impl<S: Scalar> Spring<S> {
     #[must_use]
     pub fn between(
         p: &Particles<S>,
-        a: ParticleId,
-        b: ParticleId,
+        a: impl Into<ParticleId>,
+        b: impl Into<ParticleId>,
         k: Stiffness<S>,
         c: Damping<S>,
     ) -> Option<Self> {
+        let (a, b) = (a.into(), b.into());
         let (xa, xb) = (p.pos().get(a.index())?, p.pos().get(b.index())?);
         Self::with_rest(p, a, b, (*xb - *xa).length(), k, c)
     }
@@ -32,12 +33,13 @@ impl<S: Scalar> Spring<S> {
     #[must_use]
     pub fn with_rest(
         p: &Particles<S>,
-        a: ParticleId,
-        b: ParticleId,
+        a: impl Into<ParticleId>,
+        b: impl Into<ParticleId>,
         rest: S,
         k: Stiffness<S>,
         c: Damping<S>,
     ) -> Option<Self> {
+        let (a, b) = (a.into(), b.into());
         let known = a.index() < p.len() && b.index() < p.len();
         (known && a != b && rest >= S::ZERO).then_some(Self {
             ends: [a, b],

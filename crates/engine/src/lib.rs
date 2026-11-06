@@ -28,6 +28,6 @@ pub use params::{
     Baumgarte, Compliance, DEFAULT_BAUMGARTE, Damping, Mass, OpeningAngle, Radius, Restitution,
     Softening, Stiffness, TimeStep,
 };
-pub use particles::{ParticleId, Particles};
+pub use particles::{ParticleId, Particles, StaticId};
 pub use solver::{Order, Solver, Stabilization};
 pub use world::{ConfigError, Grab, World};

@@ -45,7 +45,12 @@ impl<S: Scalar> DistanceConstraint<S> {
     /// length can be wrong (negative, NaN). `None` if `a == b` or either
     /// isn't in `p`.
     #[must_use]
-    pub fn between(p: &Particles<S>, a: ParticleId, b: ParticleId) -> Option<Self> {
+    pub fn between(
+        p: &Particles<S>,
+        a: impl Into<ParticleId>,
+        b: impl Into<ParticleId>,
+    ) -> Option<Self> {
+        let (a, b) = (a.into(), b.into());
         let (xa, xb) = (p.pos().get(a.index())?, p.pos().get(b.index())?);
         Self::with_length(p, a, b, (*xb - *xa).length(), Compliance::RIGID)
     }
@@ -56,11 +61,12 @@ impl<S: Scalar> DistanceConstraint<S> {
     #[must_use]
     pub fn with_length(
         p: &Particles<S>,
-        a: ParticleId,
-        b: ParticleId,
+        a: impl Into<ParticleId>,
+        b: impl Into<ParticleId>,
         length: S,
         compliance: Compliance<S>,
     ) -> Option<Self> {
+        let (a, b) = (a.into(), b.into());
         let known = a.index() < p.len() && b.index() < p.len();
         (known && a != b && length >= S::ZERO).then_some(Self {
             bodies: [a, b],

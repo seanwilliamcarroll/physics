@@ -4,7 +4,7 @@ use crate::{Particles, UnitVec2, Vec2};
 
 fn two_bodies() -> (Particles<f64>, crate::ParticleId, crate::ParticleId) {
     let mut p = Particles::new();
-    let a = p.add_static(Vec2::new(1.0, 1.0));
+    let a = p.add_static(Vec2::new(1.0, 1.0)).id();
     let b = p.add(Vec2::new(4.0, 5.0), Vec2::ZERO, kg(2.0));
     (p, a, b)
 }

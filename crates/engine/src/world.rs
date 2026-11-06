@@ -15,7 +15,7 @@ use constraints::Constraints;
 use crate::integrate::VerletScratch;
 pub use drag::Grab;
 
-use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, TimeStep, Wall};
+use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, StaticId, TimeStep, Wall};
 use crate::{
     DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Stabilization, Vec2,
 };
@@ -125,7 +125,7 @@ impl<S: Scalar> World<S> {
     }
 
     /// Adds an immovable particle (see [`Particles::add_static`]).
-    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId {
+    pub fn add_static(&mut self, pos: Vec2<S>) -> StaticId {
         self.particles.add_static(pos)
     }
 
@@ -136,7 +136,7 @@ impl<S: Scalar> World<S> {
 
     /// Moves a static particle (see [`Particles::set_static_position`]).
     #[must_use]
-    pub fn set_static_position(&mut self, id: ParticleId, pos: Vec2<S>) -> bool {
+    pub fn set_static_position(&mut self, id: StaticId, pos: Vec2<S>) -> bool {
         self.particles.set_static_position(id, pos)
     }
 

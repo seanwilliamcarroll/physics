@@ -4,14 +4,14 @@
 
 use super::ConfigError;
 use super::World;
-use crate::{Compliance, DistanceConstraint, ParticleId, Scalar, Vec2};
+use crate::{Compliance, DistanceConstraint, ParticleId, Scalar, StaticId, Vec2};
 
 /// A grab in progress. Not `Clone`: [`World::release`] consumes it, so a
 /// grab can't be released twice or dragged after release.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Grab {
     /// The static particle that follows the pointer.
-    anchor: ParticleId,
+    anchor: StaticId,
     /// The particle being dragged.
     particle: ParticleId,
     /// Index of the anchor's rod in the constraint list.
@@ -77,7 +77,7 @@ impl<S: Scalar> World<S> {
             })
         } else {
             // Unreachable by construction (both ids exist, length 0); undo.
-            let _ = self.particles.pop_if_last(anchor);
+            let _ = self.particles.pop_if_last(anchor.id());
             None
         }
     }
@@ -102,7 +102,7 @@ impl<S: Scalar> World<S> {
             return Err(grab);
         }
         let popped =
-            self.constraints.pop_if_last(grab.rod) && self.particles.pop_if_last(grab.anchor);
+            self.constraints.pop_if_last(grab.rod) && self.particles.pop_if_last(grab.anchor.id());
         if popped { Ok(()) } else { Err(grab) }
     }
 }

@@ -56,7 +56,7 @@ fn run(links: &[LinkSpec], order: &[usize], solver: Solver, steps: u32) -> (Vec<
     w.add_force(pendulum_gravity());
     w.set_solver(solver);
     w.set_iterations(nonzero(ITERATIONS));
-    let mut ids = vec![w.add_static(Vec2::ZERO)];
+    let mut ids = vec![w.add_static(Vec2::ZERO).id()];
     let mut x = Vec2::ZERO;
     for &(len, angle, m) in links {
         x += Vec2::new(len * angle.cos(), len * angle.sin());

@@ -6,7 +6,7 @@ use math::convert::usize_to_f64;
 
 use super::pendulum::pendulum_gravity;
 use super::shared::mass;
-use crate::{ConfigError, DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
+use crate::{ConfigError, DistanceConstraint, Integrator, ParticleId, Scalar, Solver, Vec2, World};
 
 /// Total length of [`chain`], m: the same 1 m as
 /// [`PENDULUM_LENGTH`](super::PENDULUM_LENGTH), so a one-link chain is the
@@ -47,7 +47,7 @@ pub fn chain<S: Scalar>(
     let bob_mass = mass(CHAIN_LINK_MASS * mass_ratio)?;
     let mut w = World::new(Integrator::SymplecticEuler, substeps);
     w.add_force(pendulum_gravity());
-    let mut prev = w.particles.add_static(Vec2::ZERO);
+    let mut prev: ParticleId = w.particles.add_static(Vec2::ZERO).into();
     for i in 1..=links {
         let x = CHAIN_LENGTH * usize_to_f64(i) / usize_to_f64(links);
         let m = if i == links { bob_mass } else { link_mass };
