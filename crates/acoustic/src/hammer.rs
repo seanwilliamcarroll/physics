@@ -174,9 +174,10 @@ impl Hammer {
         self.retired
     }
 
-    /// The hammer's velocity, m/s (negative once it rebounds).
+    /// Test-only: the hammer's velocity, m/s (negative once it rebounds).
+    #[cfg(test)]
     #[must_use]
-    pub const fn velocity(&self) -> f64 {
+    pub(crate) const fn velocity(&self) -> f64 {
         self.velocity
     }
 

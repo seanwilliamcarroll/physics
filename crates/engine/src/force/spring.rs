@@ -55,9 +55,10 @@ impl<S: Scalar> Spring<S> {
         self.ends
     }
 
-    /// Rest length, m.
+    /// Test-only: rest length, m.
+    #[cfg(test)]
     #[must_use]
-    pub const fn rest(&self) -> S {
+    pub(crate) const fn rest(&self) -> S {
         self.rest
     }
 

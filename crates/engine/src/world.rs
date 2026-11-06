@@ -78,13 +78,17 @@ impl<S: Scalar> World<S> {
         self.walls.push(wall);
     }
 
+    /// Test-only: the walls, in the order added.
+    #[cfg(test)]
     #[must_use]
-    pub fn walls(&self) -> &[Wall<S>] {
+    pub(crate) fn walls(&self) -> &[Wall<S>] {
         &self.walls
     }
 
+    /// Test-only: the restitution contacts use.
+    #[cfg(test)]
     #[must_use]
-    pub const fn restitution(&self) -> Restitution<S> {
+    pub(crate) const fn restitution(&self) -> Restitution<S> {
         self.restitution
     }
 
@@ -225,8 +229,10 @@ impl<S: Scalar> World<S> {
         self.substeps = substeps;
     }
 
+    /// Test-only: substeps per step.
+    #[cfg(test)]
     #[must_use]
-    pub const fn substeps(&self) -> NonZeroU32 {
+    pub(crate) const fn substeps(&self) -> NonZeroU32 {
         self.substeps
     }
 
