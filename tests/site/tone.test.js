@@ -1,7 +1,7 @@
 // Unit tests for site/js/tone.ts: the acoustic pages' pure measurements.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { amplitudeAt, harmonicWeight, onsets, silenced, silencedBy } from "../../site/js/tone.ts";
+import { amplitudeAt, harmonicWeight, levelDb, onsets, peakOf, silenced, silencedBy } from "../../site/js/tone.ts";
 
 const RATE = 48000;
 
@@ -28,4 +28,18 @@ test("onsets finds where the level jumps", () => {
   for (const start of [0.1, 0.5]) for (let i = 0; i < 2400; i++) x[Math.round(start * RATE) + i] = 0.5 * Math.sin(i / 3);
   const found = onsets(x, RATE);
   assert.deepEqual(found.map((t) => Math.round(t * 100) / 100), [0.1, 0.5]);
+});
+
+test("levelDb: a 0.1 sine reads -20 dB; silence reads the floor, not -Infinity", () => {
+  const n = 9600;
+  const x = new Float32Array(n);
+  for (let i = 0; i < n; i++) x[i] = 0.1 * Math.sin((2 * Math.PI * 441.3 * i) / RATE);
+  assert.ok(Math.abs(levelDb(x, RATE, 441.3) + 20) < 0.01);
+  assert.equal(levelDb(new Float32Array(n), RATE, 441.3), -240);
+});
+
+test("peakOf: the largest |sample|, and whether all are finite", () => {
+  assert.deepEqual(peakOf(new Float32Array([0.1, -0.5, 0.25])), { peak: 0.5, finite: true });
+  assert.equal(peakOf(new Float32Array([0.1, Number.NaN])).finite, false);
+  assert.deepEqual(peakOf(new Float32Array(0)), { peak: 0, finite: true });
 });
