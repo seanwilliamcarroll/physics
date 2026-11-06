@@ -3,21 +3,19 @@
 // stiffness slider that reaches rigid (docs/07-soft-bodies.md).
 
 import { loadEngine, positionsView, linksView } from "../../js/wasm.ts";
-import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
 import { View, clear, devicePx, drawPoints, drawLinks, drawHorizon, cssColor } from "../../js/canvas.ts";
-import { DEFAULT_RATE_HZ, JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, SCALAR_F64 } from "../../js/abi.ts";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, SCALAR_F64 } from "../../js/abi.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
 import { slider, button } from "../../js/controls.ts";
-import { buildPanels, demoHandle } from "../../js/panels.ts";
+import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
+import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, rateSlider, runDemo } from "../../js/page.ts";
 import { enableDrag } from "../../js/drag.ts";
 import {
   JELLY_BLOWUP_FRACTION, RIGID_STOP, allWithin, SLIDER_MAX, SLIDER_MIN, kCrit, sliderToStiffness, stiffnessLabel,
 } from "../../js/stiffness.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
-import type { DemoHandle } from "../../js/engine";
 
 const PANELS = [
   { body: JELLY_SPRINGS, name: "force springs", colorVar: "--series-1" },
@@ -54,8 +52,8 @@ const OPTIONS: {
   grid: { kind: "int", min: 2, max: 16, default: 8, help: "particles per side (the jelly's mass stays 1 kg)" },
   // 10: the web demo's starting substeps (crates/web demo/jelly.rs).
   substeps: { kind: "int", min: 1, max: 50, default: 10, help: "substeps per physics step" },
-  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second" },
-  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  rate: RATE_OPTION,
+  fps: FPS_OPTION,
 };
 
 const PRESETS: [string, string][] = [
@@ -108,17 +106,13 @@ const hud = byId("hud", HTMLElement);
 const hint = byId("hint", HTMLElement);
 const css = document.documentElement;
 const colors = {
-  background: cssColor(css, "--stage-bg"),
+  ...plotColors(css),
   body: cssColor(css, "--particle"),
   ground: cssColor(css, "--muted"),
-  grid: cssColor(css, "--grid"),
-  text: cssColor(css, "--muted"),
 };
 
-const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
-  ...cfg,
-  ...base,
-  demo: null as DemoHandle | null,
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map((p) => ({
+  ...p,
   /** The stiffness this panel runs at: the slider's, except that force
    *  springs keep their last finite one when the slider asks for rigid. */
   k: 0,
@@ -132,10 +126,10 @@ const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg,
 type Panel = (typeof panels)[number];
 
 const energyPlot = new LinePlot(byId("energy", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: "log",
-  colors: { background: colors.background, grid: colors.grid, text: colors.text },
+  colors,
 });
 
 /** The force jelly's stability hint for the current grid and substeps. */
@@ -160,8 +154,7 @@ try {
   const applySettings = () => {
     for (const p of panels) {
       const d = demoHandle(p);
-      const ok = engine.demo_set_substeps(d, state.substeps) === 1 && engine.demo_set_rate(d, state.rate) === 1;
-      if (!ok) throw new Error("a setting was rejected");
+      requireAccepted([engine.demo_set_substeps(d, state.substeps), engine.demo_set_rate(d, state.rate)]);
     }
     updateHint();
   };
@@ -177,17 +170,16 @@ try {
 
   const applyDamping = () => {
     for (const p of panels) {
-      if (engine.demo_set_damping(demoHandle(p), state.damping) !== 1) throw new Error("damping was rejected");
+      requireAccepted([engine.demo_set_damping(demoHandle(p), state.damping)], "damping");
     }
   };
 
   /** (Re)creates the three jellies with the current grid and settings. */
   const restart = () => {
     for (const p of panels) {
-      if (p.demo !== null) engine.demo_free(p.demo);
       const k = p.body === JELLY_SPRINGS && !Number.isFinite(wantedK()) ? (p.k || firstFiniteK) : wantedK();
-      const demo = engine.demo_new_jelly(SCALAR_F64, p.body, state.grid, state.grid, k, state.damping);
-      if (demo === 0) throw new Error("demo_new_jelly returned null");
+      const created = engine.demo_new_jelly(SCALAR_F64, p.body, state.grid, state.grid, k, state.damping);
+      const demo = replaceDemo(engine, p.demo, created, "demo_new_jelly");
       // The start is sane: at k ≥ 10⁴ the first step already explodes.
       const sane = positionsView(engine, demo).slice();
       Object.assign(p, { demo, k, exploded: false, ke: 0, sane });
@@ -273,30 +265,18 @@ try {
       applySettings();
     },
   });
-  slider(controls, {
-    label: "rate",
-    min: OPTIONS.rate.min,
-    max: OPTIONS.rate.max,
-    value: state.rate,
-    format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
-    onInput: (hz) => {
-      state.rate = hz;
-      applySettings();
-    },
+  rateSlider(controls, state.rate, (hz) => {
+    state.rate = hz;
+    applySettings();
   });
   button(controls, { label: "reset", onClick: restart });
 
-  if (smokeMode) {
-    runSmoke(
-      engine,
-      panels.map((p) => ({ demo: demoHandle(p), ctx: p.ctx, draw: () => drawPanel(p) })),
-      colors.body,
-      { checkEnergy: true },
-    );
-  } else {
-    const fps = new RateMeter();
-    const sps = new RateMeter();
-    runLoop((elapsed, now) => {
+  runDemo(engine, hud, {
+    panels,
+    draw: (p) => drawPanel(p),
+    particleColor: colors.body,
+    maxFps,
+    frame: (elapsed) => {
       let steps = 0;
       for (const p of panels) {
         if (p.exploded) continue;
@@ -318,16 +298,10 @@ try {
       simTime += steps / state.rate;
       energyPlot.push(simTime, panels.map((p) => p.ke));
       energyPlot.draw();
-      fps.add(now);
-      sps.add(now, steps);
-      hud.textContent =
-        `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · ${state.grid} × ${state.grid}, ` +
-        `${state.substeps} substeps · t = ${simTime.toFixed(1)} s` +
-        (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-    }, { maxFps });
-  }
+      const status = `${state.grid} × ${state.grid}, ${state.substeps} substeps · t = ${simTime.toFixed(1)} s`;
+      return { steps, status };
+    },
+  });
 } catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  smokeError(err);
-  throw err;
+  pageFailed(hud, err);
 }

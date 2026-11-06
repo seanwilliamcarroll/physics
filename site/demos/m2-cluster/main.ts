@@ -4,13 +4,11 @@
 // energy errors, and a table shows step cost growing with N.
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
-import { runLoop, RateMeter, Smoothed, MS_PER_SECOND } from "../../js/loop.ts";
+import { Smoothed } from "../../js/loop.ts";
 import { View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
-import {
-  DEFAULT_RATE_HZ, DEMO_CLUSTER, DEMO_COLLAPSE, DEMO_DISK, SCALAR_F32, SCALAR_F64,
-} from "../../js/abi.ts";
-import { buildPanels, demoHandle } from "../../js/panels.ts";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { DEMO_CLUSTER, DEMO_COLLAPSE, DEMO_DISK, SCALAR_F32, SCALAR_F64 } from "../../js/abi.ts";
+import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
+import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, rateSlider, runDemo } from "../../js/page.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
@@ -18,7 +16,6 @@ import { slider, select, button } from "../../js/controls.ts";
 import { rmsDistance } from "../../js/divergence.ts";
 import { CostTable, costTableHtml, timeMs } from "../../js/perf.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
-import type { DemoHandle } from "../../js/engine";
 
 /** Scene names on the URL and in the menu → abi.ts codes. */
 const SCENES = { disk: DEMO_DISK, cluster: DEMO_CLUSTER, collapse: DEMO_COLLAPSE };
@@ -67,8 +64,8 @@ const OPTIONS: {
   seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "scene randomness; same seed, same scene" },
   eps_mm: { kind: "int", min: 0, max: SOFTENING_MAX_M * MM_PER_M, default: SOFTENING_DEFAULT_MM, help: "softening ε in millimeters; 0 = pure 1/r²" },
   theta_pct: { kind: "int", min: 0, max: THETA_MAX * PCT, default: THETA_DEFAULT_PCT, help: "Barnes–Hut opening angle θ × 100; 0 = exact" },
-  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate" },
-  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  rate: RATE_OPTION,
+  fps: FPS_OPTION,
 };
 
 const PRESETS: [string, string][] = [
@@ -110,17 +107,10 @@ byId("options", HTMLElement).innerHTML = optionsTableHtml(OPTIONS, PRESETS);
 const hud = byId("hud", HTMLElement);
 const costEl = byId("cost", HTMLElement);
 const css = document.documentElement;
-const colors = {
-  background: cssColor(css, "--stage-bg"),
-  body: cssColor(css, "--particle"),
-  grid: cssColor(css, "--grid"),
-  text: cssColor(css, "--muted"),
-};
+const colors = { ...plotColors(css), body: cssColor(css, "--particle") };
 
-const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
-  ...cfg,
-  ...base,
-  demo: null as DemoHandle | null,
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map((p) => ({
+  ...p,
   /** Energy at the start (or the last softening change): ΔE/E's reference. */
   e0: 0,
   msPerStep: new Smoothed(),
@@ -128,20 +118,19 @@ const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg,
 }));
 type Panel = (typeof panels)[number];
 
-const plotColors = { background: colors.background, grid: colors.grid, text: colors.text };
 /** Divergence series: every panel except the reference, against it. */
 const compared = panels.filter((_, i) => i !== REFERENCE);
 const divergencePlot = new LinePlot(byId("divergence", HTMLCanvasElement), {
   series: compared.map((p) => ({ label: `${p.name} vs f64`, color: p.color })),
   capacity: PLOT_SAMPLES,
   scale: "log",
-  colors: plotColors,
+  colors,
 });
 const energyPlot = new LinePlot(byId("energy", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: "log",
-  colors: plotColors,
+  colors,
 });
 const cost = new CostTable(panels.length);
 
@@ -158,12 +147,12 @@ try {
   /** (Re)creates both demos from the current scene, N, seed, ε, rate. */
   const restart = () => {
     for (const p of panels) {
-      if (p.demo !== null) engine.demo_free(p.demo);
-      const demo = engine.demo_new(SCENES[state.scene], p.code, state.n, state.seed);
-      if (demo === 0) throw new Error("demo_new returned null");
-      if (engine.demo_set_softening(demo, state.softening) !== 1) throw new Error("softening rejected");
-      if (p.barnesHut && engine.demo_set_theta(demo, state.theta) !== 1) throw new Error("θ rejected");
-      engine.demo_set_rate(demo, state.rate);
+      const demo = replaceDemo(engine, p.demo, engine.demo_new(SCENES[state.scene], p.code, state.n, state.seed), "demo_new");
+      requireAccepted([
+        engine.demo_set_softening(demo, state.softening),
+        p.barnesHut ? engine.demo_set_theta(demo, state.theta) : 1,
+        engine.demo_set_rate(demo, state.rate),
+      ]);
       p.demo = demo;
     }
     resetEnergy();
@@ -226,35 +215,19 @@ try {
       for (const p of panels) if (p.barnesHut) engine.demo_set_theta(demoHandle(p), t);
     },
   });
-  slider(controls, {
-    label: "rate",
-    min: OPTIONS.rate.min,
-    max: OPTIONS.rate.max,
-    value: state.rate,
-    format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
-    onInput: (hz) => {
-      state.rate = hz;
-      for (const p of panels) engine.demo_set_rate(demoHandle(p), hz);
-    },
+  rateSlider(controls, state.rate, (hz) => {
+    state.rate = hz;
+    for (const p of panels) engine.demo_set_rate(demoHandle(p), hz);
   });
   button(controls, { label: "reset", onClick: restart });
 
-  if (smokeMode) {
-    runSmoke(
-      engine,
-      panels.map((p) => ({
-        demo: demoHandle(p),
-        ctx: p.ctx,
-        draw: () => drawPanel(p, positionsView(engine, demoHandle(p))),
-      })),
-      colors.body,
-      { checkEnergy: true },
-    );
-  } else {
-    const fps = new RateMeter();
-    const sps = new RateMeter();
-    let costShownAt = -Infinity;
-    runLoop((elapsed, now) => {
+  let costShownAt = -Infinity;
+  runDemo(engine, hud, {
+    panels,
+    draw: (p) => drawPanel(p, positionsView(engine, demoHandle(p))),
+    particleColor: colors.body,
+    maxFps,
+    frame: (elapsed, now) => {
       // Advance both first, then read positions: a fresh view per frame,
       // taken after all stepping, because memory growth during either step
       // would detach a view taken earlier.
@@ -289,16 +262,9 @@ try {
         costEl.innerHTML = costTableHtml(cost, panels.map((p) => p.name));
         costShownAt = now;
       }
-      fps.add(now);
-      sps.add(now, steps);
-      hud.textContent =
-        `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · ` +
-        `${state.scene}, N = ${state.n.toLocaleString()} · t = ${simTime.toFixed(1)} s` +
-        (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-    }, { maxFps });
-  }
+      return { steps, status: `${state.scene}, N = ${state.n.toLocaleString()} · t = ${simTime.toFixed(1)} s` };
+    },
+  });
 } catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  smokeError(err);
-  throw err;
+  pageFailed(hud, err);
 }

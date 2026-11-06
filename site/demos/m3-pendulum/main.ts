@@ -3,21 +3,17 @@
 // side by side under the same settings, with rod-error and energy plots.
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
-import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
 import { View, clear, drawPoints, drawSegment, drawCircle, cssColor } from "../../js/canvas.ts";
-import {
-  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_PENDULUM, SOLVER_IMPULSE, SOLVER_XPBD,
-} from "../../js/abi.ts";
+import { COORDS_PER_PARTICLE, DEMO_PENDULUM, SOLVER_IMPULSE, SOLVER_XPBD } from "../../js/abi.ts";
 import { SCALAR_CODES, isScalar, readScalar } from "../../js/scalars.ts";
-import { buildPanels, demoHandle } from "../../js/panels.ts";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
+import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, rateSlider, runDemo } from "../../js/page.ts";
 import { byId } from "../../js/dom.ts";
 import { readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
 import { Trail } from "../../js/trail.ts";
 import { slider, select, button } from "../../js/controls.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
-import type { DemoHandle } from "../../js/engine";
 
 /** The two panels: solver code, name, CSS color variable. */
 const PANELS = [
@@ -42,8 +38,8 @@ const OPTIONS: {
   beta_pct: { kind: "int", min: 0, max: PCT, default: 20, help: "impulse solver's Baumgarte β × 100; 0 = no feedback" },
   substeps: { kind: "int", min: 1, max: 100, default: 1, help: "substeps per physics step (01's table: 1, 20, 100)" },
   iterations: { kind: "int", min: 1, max: 10, default: 1, help: "solver passes per substep (one rod converges in one; matters for chains)" },
-  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate" },
-  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  rate: RATE_OPTION,
+  fps: FPS_OPTION,
 };
 
 /** One preset per row of 01-solvers.md's table (both solvers show at
@@ -86,19 +82,15 @@ byId("options", HTMLElement).innerHTML = optionsTableHtml(OPTIONS, PRESETS);
 const hud = byId("hud", HTMLElement);
 const css = document.documentElement;
 const colors = {
-  background: cssColor(css, "--stage-bg"),
+  ...plotColors(css),
   pin: cssColor(css, "--star"),
   bob: cssColor(css, "--particle"),
   rest: cssColor(css, "--grid"),
-  grid: cssColor(css, "--grid"),
-  text: cssColor(css, "--muted"),
 };
 
-const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
-  ...cfg,
-  ...base,
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map((p) => ({
+  ...p,
   trail: new Trail(TRAIL_POINTS),
-  demo: null as DemoHandle | null,
   /** Energy at release: the reference for "energy lost". */
   e0: 0,
   /** Largest rod error since the last reset, m. */
@@ -106,18 +98,17 @@ const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg,
 }));
 type Panel = (typeof panels)[number];
 
-const plotColors = { background: colors.background, grid: colors.grid, text: colors.text };
 const rodPlot = new LinePlot(byId("rod", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: "log",
-  colors: plotColors,
+  colors,
 });
 const energyPlot = new LinePlot(byId("energy", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: "linear",
-  colors: plotColors,
+  colors,
 });
 
 try {
@@ -130,23 +121,20 @@ try {
   const applySettings = () => {
     for (const p of panels) {
       const d = demoHandle(p);
-      const statuses = [
+      requireAccepted([
         engine.demo_set_solver(d, p.code),
         engine.demo_set_beta(d, state.beta),
         engine.demo_set_substeps(d, state.substeps),
         engine.demo_set_iterations(d, state.iterations),
         engine.demo_set_rate(d, state.rate),
-      ];
-      if (!statuses.every((s) => s === 1)) throw new Error("a setting was rejected");
+      ]);
     }
   };
 
   /** (Re)creates both pendulums with the current scalar and settings. */
   const restart = () => {
     for (const p of panels) {
-      if (p.demo !== null) engine.demo_free(p.demo);
-      const demo = engine.demo_new(DEMO_PENDULUM, SCALAR_CODES[state.scalar], 0, 0);
-      if (demo === 0) throw new Error("demo_new returned null");
+      const demo = replaceDemo(engine, p.demo, engine.demo_new(DEMO_PENDULUM, SCALAR_CODES[state.scalar], 0, 0), "demo_new");
       p.demo = demo;
       p.e0 = engine.demo_energy(demo);
       p.worst = 0;
@@ -206,16 +194,9 @@ try {
       applySettings();
     },
   });
-  slider(controls, {
-    label: "rate",
-    min: OPTIONS.rate.min,
-    max: OPTIONS.rate.max,
-    value: state.rate,
-    format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
-    onInput: (hz) => {
-      state.rate = hz;
-      applySettings();
-    },
+  rateSlider(controls, state.rate, (hz) => {
+    state.rate = hz;
+    applySettings();
   });
   select(controls, {
     label: "scalar",
@@ -228,21 +209,12 @@ try {
   });
   button(controls, { label: "reset", onClick: restart });
 
-  if (smokeMode) {
-    runSmoke(
-      engine,
-      panels.map((p) => ({
-        demo: demoHandle(p),
-        ctx: p.ctx,
-        draw: () => drawPanel(p, positionsView(engine, demoHandle(p))),
-      })),
-      colors.bob,
-      { checkEnergy: true },
-    );
-  } else {
-    const fps = new RateMeter();
-    const sps = new RateMeter();
-    runLoop((elapsed, now) => {
+  runDemo(engine, hud, {
+    panels,
+    draw: (p) => drawPanel(p, positionsView(engine, demoHandle(p))),
+    particleColor: colors.bob,
+    maxFps,
+    frame: (elapsed) => {
       let steps = 0;
       for (const p of panels) steps = engine.demo_advance(demoHandle(p), elapsed);
       // Views after all stepping (memory growth would detach earlier ones).
@@ -264,15 +236,9 @@ try {
       energyPlot.push(simTime, readings.map((r) => r.lost));
       rodPlot.draw();
       energyPlot.draw();
-      fps.add(now);
-      sps.add(now, steps);
-      hud.textContent =
-        `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · ${state.scalar} · ` +
-        `t = ${simTime.toFixed(1)} s` + (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-    }, { maxFps });
-  }
+      return { steps, status: `${state.scalar} · t = ${simTime.toFixed(1)} s` };
+    },
+  });
 } catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  smokeError(err);
-  throw err;
+  pageFailed(hud, err);
 }

@@ -3,23 +3,21 @@
 // integrator at the same rate, plus their energy errors on one plot.
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
-import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
 import { View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
 import {
-  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
+  COORDS_PER_PARTICLE, DEMO_ORBIT, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
   INTEGRATOR_VELOCITY_VERLET,
 } from "../../js/abi.ts";
 import { SCALAR_CODES, isScalar, readScalar } from "../../js/scalars.ts";
 import type { ScalarName } from "../../js/scalars.ts";
-import { buildPanels, demoHandle } from "../../js/panels.ts";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { buildPanels, demoHandle, panelSeries, replaceDemo } from "../../js/panels.ts";
+import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, rateSlider, runDemo } from "../../js/page.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
 import { Trail } from "../../js/trail.ts";
-import { slider, select, button } from "../../js/controls.ts";
+import { select, button } from "../../js/controls.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
-import type { DemoHandle } from "../../js/engine";
 
 /** The three panels: integrator code, display name, and the CSS variable
  *  holding its color (title, trail, plot line). */
@@ -31,9 +29,9 @@ const PANELS = [
 
 const OPTIONS: { scalar: ChoiceOption; rate: IntOption; scale: ChoiceOption; fps: IntOption } = {
   scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f64", help: "engine number type (f32 shows Verlet hitting f32's rounding floor)" },
-  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate" },
+  rate: RATE_OPTION,
   scale: { kind: "choice", values: ["log", "linear"], default: "log", help: "energy plot's y axis" },
-  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  fps: FPS_OPTION,
 };
 
 const PRESETS: [string, string][] = [
@@ -69,19 +67,15 @@ byId("options", HTMLElement).innerHTML = optionsTableHtml(OPTIONS, PRESETS);
 const hud = byId("hud", HTMLElement);
 const css = document.documentElement;
 const colors = {
-  background: cssColor(css, "--stage-bg"),
+  ...plotColors(css),
   star: cssColor(css, "--star"),
   planet: cssColor(css, "--particle"),
-  grid: cssColor(css, "--grid"),
-  text: cssColor(css, "--muted"),
 };
 
 // Panel markup, generated from PANELS so the three stay identical.
-const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
-  ...cfg,
-  ...base,
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map((p) => ({
+  ...p,
   trail: new Trail(TRAIL_POINTS),
-  demo: null as DemoHandle | null,
   /** Energy at the start: the reference for ΔE/E. */
   e0: 0,
 }));
@@ -89,10 +83,10 @@ const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg,
 type Panel = (typeof panels)[number];
 
 const plot = new LinePlot(byId("plot", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: readChoice(params, "scale", OPTIONS.scale) === "linear" ? "linear" : "log",
-  colors: { background: colors.background, grid: colors.grid, text: colors.text },
+  colors,
 });
 
 try {
@@ -103,9 +97,7 @@ try {
   /** (Re)creates all three demos with the current scalar and rate. */
   const restart = () => {
     for (const p of panels) {
-      if (p.demo !== null) engine.demo_free(p.demo);
-      const demo = engine.demo_new(DEMO_ORBIT, SCALAR_CODES[state.scalar], 0, 0);
-      if (demo === 0) throw new Error("demo_new returned null");
+      const demo = replaceDemo(engine, p.demo, engine.demo_new(DEMO_ORBIT, SCALAR_CODES[state.scalar], 0, 0), "demo_new");
       engine.demo_set_integrator(demo, p.code);
       engine.demo_set_rate(demo, state.rate);
       p.demo = demo;
@@ -128,16 +120,9 @@ try {
 
   // Controls.
   const controls = byId("controls", HTMLElement);
-  slider(controls, {
-    label: "rate",
-    min: OPTIONS.rate.min,
-    max: OPTIONS.rate.max,
-    value: state.rate,
-    format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
-    onInput: (hz) => {
-      state.rate = hz;
-      for (const p of panels) engine.demo_set_rate(demoHandle(p), hz);
-    },
+  rateSlider(controls, state.rate, (hz) => {
+    state.rate = hz;
+    for (const p of panels) engine.demo_set_rate(demoHandle(p), hz);
   });
   select(controls, {
     label: "scalar",
@@ -158,21 +143,12 @@ try {
   });
   button(controls, { label: "reset", onClick: restart });
 
-  if (smokeMode) {
-    runSmoke(
-      engine,
-      panels.map((p) => ({
-        demo: demoHandle(p),
-        ctx: p.ctx,
-        draw: () => drawPanel(p, positionsView(engine, demoHandle(p))),
-      })),
-      colors.planet,
-      { checkEnergy: true },
-    );
-  } else {
-    const fps = new RateMeter();
-    const sps = new RateMeter();
-    runLoop((elapsed, now) => {
+  runDemo(engine, hud, {
+    panels,
+    draw: (p) => drawPanel(p, positionsView(engine, demoHandle(p))),
+    particleColor: colors.planet,
+    maxFps,
+    frame: (elapsed) => {
       let steps = 0;
       const errors = panels.map((p) => {
         const demo = demoHandle(p);
@@ -188,16 +164,9 @@ try {
       simTime += steps / state.rate;
       plot.push(simTime, errors);
       plot.draw();
-      fps.add(now);
-      sps.add(now, steps);
-      hud.textContent =
-        `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · ` +
-        `${state.scalar} · t = ${simTime.toFixed(1)} s` +
-        (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-    }, { maxFps });
-  }
+      return { steps, status: `${state.scalar} · t = ${simTime.toFixed(1)} s` };
+    },
+  });
 } catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  smokeError(err);
-  throw err;
+  pageFailed(hud, err);
 }

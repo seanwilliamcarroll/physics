@@ -7,11 +7,12 @@ import { cssColor, setupCanvas } from "../../js/canvas.ts";
 import { button, select, slider } from "../../js/controls.ts";
 import { midiToHz, noteName } from "../../js/ks.ts";
 import { EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_WAVEGUIDE } from "../../js/acoustic-abi.ts";
-import { errorText, reportSmoke, smokeMode } from "../../js/smoke.ts";
+import { reportSmoke } from "../../js/smoke.ts";
+import { runAudioPage } from "../../js/page.ts";
 import { liveSynth, renderOffline } from "../../js/synth-live.ts";
 import { pianoUi } from "../../js/piano-ui.ts";
 import { drawSpectrum, drawWave } from "../../js/audio-draw.ts";
-import { amplitudeAt, silencedBy } from "../../js/tone.ts";
+import { levelDb, peakOf, silencedBy } from "../../js/tone.ts";
 import type { ToWorklet } from "../../js/synth-worklet.ts";
 
 /** Settings. Positions are fractions of the string from the bridge. */
@@ -35,10 +36,6 @@ const SMOKE_KEY = 69;
 const SMOKE_PLUCK = 0.5;
 const SMOKE_MEASURE: [number, number] = [0.1, 0.45]; // s
 const SMOKE_DRAWN = 2048;
-const DB = 20;
-/** An amplitude floor before taking the log: a silent component reads
- *  −240 dB, not −∞. */
-const SILENT_AMPLITUDE = 1e-12;
 
 const stringCtx = setupCanvas(byId("string", HTMLCanvasElement));
 const spectrumCtx = setupCanvas(byId("spectrum", HTMLCanvasElement));
@@ -94,15 +91,6 @@ const synth = liveSynth({
   },
 });
 
-function sendSettings(): void {
-  for (const m of settingsMessages()) synth.send(m);
-}
-
-async function start(): Promise<void> {
-  await synth.start();
-  byId("start", HTMLButtonElement).hidden = true;
-}
-
 /** Smoke: the 2nd harmonic of a string plucked at ½ is missing. */
 async function smoke(): Promise<void> {
   const data = await renderOffline(
@@ -110,15 +98,10 @@ async function smoke(): Promise<void> {
     SMOKE_SECONDS,
     SMOKE_RATE,
   );
-  let peak = 0;
-  let finite = true;
-  for (const v of data) {
-    finite &&= Number.isFinite(v);
-    peak = Math.max(peak, Math.abs(v));
-  }
+  const { peak, finite } = peakOf(data);
   const part = data.subarray(Math.round(SMOKE_MEASURE[0] * SMOKE_RATE), Math.round(SMOKE_MEASURE[1] * SMOKE_RATE));
   const f0 = midiToHz(SMOKE_KEY);
-  const [h1, h2, h3] = [1, 2, 3].map((k) => DB * Math.log10(Math.max(amplitudeAt(part, SMOKE_RATE, k * f0), SILENT_AMPLITUDE)));
+  const [h1, h2, h3] = [1, 2, 3].map((k) => levelDb(part, SMOKE_RATE, k * f0));
   const missingDb = Math.min(h1 ?? 0, h3 ?? 0) - (h2 ?? 0);
   // The output heard at the pickup (a trapezoid, for a string plucked in
   // the middle), not the string's shape: no position marks.
@@ -141,7 +124,7 @@ function buildControls(): void {
     value: settings.triangle ? "triangle" : "noise",
     onChange: (v) => {
       settings.triangle = v === "triangle";
-      sendSettings();
+      synth.resend();
     },
   });
   const pluck = slider(controls, {
@@ -153,7 +136,7 @@ function buildControls(): void {
     format: (v) => `${pct(v)} from the bridge`,
     onInput: (v) => {
       settings.beta = v;
-      sendSettings();
+      synth.resend();
     },
   });
   slider(controls, {
@@ -177,7 +160,7 @@ function buildControls(): void {
     format: (v) => `T60 ${(10 ** v).toFixed(2)} s`,
     onInput: (v) => {
       settings.t60 = 10 ** v;
-      sendSettings();
+      synth.resend();
     },
   });
   slider(controls, {
@@ -189,7 +172,7 @@ function buildControls(): void {
     format: (v) => pct(v),
     onInput: (v) => {
       settings.gain = v;
-      sendSettings();
+      synth.resend();
     },
   });
   const presets = byId("presets", HTMLElement);
@@ -206,24 +189,18 @@ function buildControls(): void {
   }
 }
 
-try {
-  drawWave(stringCtx, new Float32Array(0), colors, marks());
-  if (smokeMode) {
-    byId("start", HTMLButtonElement).hidden = true;
-    await smoke();
-  } else {
+drawWave(stringCtx, new Float32Array(0), colors, marks());
+await runAudioPage(hud, {
+  start: synth.start,
+  smoke,
+  live: (begin) => {
     buildControls();
     pianoUi({
       piano: byId("piano", HTMLElement),
       songs: byId("songs", HTMLElement),
-      start,
+      start: begin,
       send: (m) => synth.send(m),
       onNote: (midi) => (last = { midi, beta: settings.triangle ? settings.beta : null }),
     });
-    byId("start", HTMLButtonElement).addEventListener("click", () => void start());
-  }
-} catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  if (smokeMode) reportSmoke(`error ${errorText(err)}`);
-  throw err;
-}
+  },
+});

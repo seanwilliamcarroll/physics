@@ -1,5 +1,5 @@
 // The acoustic pages' pure measurements and predictions: a partial's
-// amplitude, note onsets, and which harmonics a pluck and pickup silence
+// amplitude and level, a render's peak, note onsets, and which harmonics a pluck and pickup silence
 // (docs/13-waveguide.md). Pure, so node --test covers them.
 
 /** The amplitude of `data`'s component at `f` Hz: a Hann-windowed DFT at
@@ -17,6 +17,29 @@ export function amplitudeAt(data: Float32Array, rate: number, f: number): number
     im -= x * Math.sin(w * i);
   }
   return (Math.hypot(re, im) * 4) / n;
+}
+
+/** Decibels per decade of amplitude. */
+const DB_PER_DECADE = 20;
+/** An amplitude floor before taking the log: a silent component reads
+ *  −240 dB, not −∞. */
+const SILENT_AMPLITUDE = 1e-12;
+
+/** `amplitudeAt` in dB (re amplitude 1). */
+export function levelDb(data: Float32Array, rate: number, f: number): number {
+  return DB_PER_DECADE * Math.log10(Math.max(amplitudeAt(data, rate, f), SILENT_AMPLITUDE));
+}
+
+/** A render's peak |sample|, and whether every sample is finite (the smoke
+ *  checks' first test of any render). */
+export function peakOf(data: Float32Array): { peak: number; finite: boolean } {
+  let peak = 0;
+  let finite = true;
+  for (const v of data) {
+    finite &&= Number.isFinite(v);
+    peak = Math.max(peak, Math.abs(v));
+  }
+  return { peak, finite };
 }
 
 /** How loudly harmonic `k` sounds, relative, plucked at `beta` and heard

@@ -1,21 +1,23 @@
 // Side-by-side demo panels: one titled canvas plus a readout per config,
-// built the same way on every multi-panel page (M1, M2, M3).
+// built the same way on every multi-panel page (M1–M5), and the checks on
+// the demos they hold.
 
 import { setupCanvas, cssColor } from "./canvas.ts";
-import type { DemoHandle } from "./engine";
+import type { DemoHandle, EngineExports } from "./engine";
 
 /** What every panel config needs: its title and the CSS variable holding
  *  its color (title, and whatever the page draws in that color). Pages add
  *  their own fields (integrator code, scalar, …). */
 export type PanelConfig = { name: string; colorVar: string };
 
-/** One built panel: the page's config, its resolved color, a sized 2D
- *  context, and the readout line under the canvas. */
-export type PanelBase<C extends PanelConfig> = {
-  cfg: C;
+/** One built panel: the page's config fields, its resolved color, a sized
+ *  2D context, the readout line under the canvas, and its demo (`null`
+ *  until the page creates it, once the engine has loaded). */
+export type Panel<C extends PanelConfig> = C & {
   color: string;
   ctx: CanvasRenderingContext2D;
   readout: HTMLElement;
+  demo: DemoHandle | null;
 };
 
 /** Builds a `div.panel` (h3 title, canvas, `div.readout`) per config into
@@ -29,7 +31,7 @@ export function buildPanels<C extends PanelConfig>(
   container: HTMLElement,
   configs: readonly C[],
   css: Element,
-): PanelBase<C>[] {
+): Panel<C>[] {
   const built = configs.map((cfg) => {
     const color = cssColor(css, cfg.colorVar);
     const el = document.createElement("div");
@@ -45,11 +47,17 @@ export function buildPanels<C extends PanelConfig>(
   });
   container.append(...built.map((p) => p.el));
   return built.map(({ cfg, color, canvas, readout }) => ({
-    cfg,
+    ...cfg,
     color,
     ctx: setupCanvas(canvas),
     readout,
+    demo: null,
   }));
+}
+
+/** The panels as plot series: one line per panel, in its color. */
+export function panelSeries(panels: readonly { name: string; color: string }[]): { label: string; color: string }[] {
+  return panels.map((p) => ({ label: p.name, color: p.color }));
 }
 
 /** The panel's demo; throws if the page hasn't created it yet. Panels hold
@@ -58,4 +66,23 @@ export function buildPanels<C extends PanelConfig>(
 export function demoHandle(p: { demo: DemoHandle | null }): DemoHandle {
   if (p.demo === null) throw new Error("demo not created");
   return p.demo;
+}
+
+/** Throws unless every `demo_set_*` status is 1: a 0 means the page passed
+ *  something the engine rejects, a page bug worth stopping on. */
+export function requireAccepted(statuses: number[], what = "a setting"): void {
+  if (!statuses.every((s) => s === 1)) throw new Error(`${what} was rejected`);
+}
+
+/** `created` in place of `old` (freed): the constructor's handle, checked,
+ *  since 0 is the ABI's null. `what` names the constructor for the error. */
+export function replaceDemo(
+  engine: EngineExports,
+  old: DemoHandle | null,
+  created: DemoHandle,
+  what: string,
+): DemoHandle {
+  if (old !== null) engine.demo_free(old);
+  if (created === 0) throw new Error(`${what} returned null`);
+  return created;
 }

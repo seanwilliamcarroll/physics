@@ -43,9 +43,12 @@ export type LiveOptions = {
 };
 
 /** A synth that starts on the first call to `start` (a user gesture is
- *  required: autoplay policy), then forwards `send`. Snapshot buffers are
+ *  required: autoplay policy), then forwards `send`; `resend` repeats the
+ *  settings (`initial`) after a control changes them. Snapshot buffers are
  *  handed back to the worklet after `onSnapshot` returns. */
-export function liveSynth(o: LiveOptions): { start: () => Promise<Live>; send: Live["send"] } {
+export function liveSynth(
+  o: LiveOptions,
+): { start: () => Promise<Live>; send: Live["send"]; resend: () => void } {
   let live: Live | null = null;
   let starting: Promise<Live> | null = null;
   const send: Live["send"] = (m, transfer = []) => live?.send(m, transfer);
@@ -81,7 +84,11 @@ export function liveSynth(o: LiveOptions): { start: () => Promise<Live>; send: L
     })();
     return starting;
   };
-  return { start, send };
+  /** Sends `initial`'s messages again: the page's settings changed. */
+  const resend = (): void => {
+    for (const m of o.initial()) send(m);
+  };
+  return { start, send, resend };
 }
 
 /** Renders `seconds` offline through the real worklet and module (no

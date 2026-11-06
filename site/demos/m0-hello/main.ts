@@ -6,7 +6,8 @@ import { runLoop, RateMeter, Smoothed } from "../../js/loop.ts";
 import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.ts";
 import { DEMO_FOUNTAIN } from "../../js/abi.ts";
 import { SCALAR_CODES, readScalar } from "../../js/scalars.ts";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
+import { smokeMode, runSmoke } from "../../js/smoke.ts";
+import { FPS_OPTION, pageFailed } from "../../js/page.ts";
 import { byId } from "../../js/dom.ts";
 import { readInt, optionsTableHtml } from "../../js/options.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
@@ -22,7 +23,7 @@ const OPTIONS: { scalar: ChoiceOption; n: IntOption; seed: IntOption; fps: IntOp
   scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f32", help: "engine number type" },
   n: { kind: "int", min: 1, max: 2_000_000, default: 300, help: "particle count" },
   seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "launch randomness; same seed, same fountain" },
-  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  fps: FPS_OPTION,
 };
 
 /** Preset links shown under the table: [label, query string].
@@ -103,7 +104,5 @@ try {
     }, { maxFps });
   }
 } catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  smokeError(err);
-  throw err;
+  pageFailed(hud, err);
 }

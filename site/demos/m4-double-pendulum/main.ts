@@ -3,22 +3,20 @@
 // and a log plot of their divergence.
 
 import { loadEngine, positionsView, linksView } from "../../js/wasm.ts";
-import { runLoop, RateMeter } from "../../js/loop.ts";
 import { View, clear, drawPoints, drawLinks, cssColor } from "../../js/canvas.ts";
 import {
-  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD,
+  COORDS_PER_PARTICLE, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD,
   START_HORIZONTAL, START_RAISED,
 } from "../../js/abi.ts";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
 import { Trail } from "../../js/trail.ts";
 import { slider, select, button } from "../../js/controls.ts";
-import { buildPanels, demoHandle } from "../../js/panels.ts";
+import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
+import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, runDemo } from "../../js/page.ts";
 import { enableDrag } from "../../js/drag.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
-import type { DemoHandle } from "../../js/engine";
 
 /** The two comparisons: what differs between the panels. */
 const MODES = {
@@ -48,8 +46,8 @@ const OPTIONS: {
   solver: { kind: "choice", values: Object.keys(SOLVERS), default: "impulse", help: "impulse keeps the energy; XPBD's damping kills the chaos" },
   // 20: the substeps M4.4 measured (energy within 0.04 J over 30 s).
   substeps: { kind: "int", min: 1, max: 100, default: 20, help: "substeps per physics step" },
-  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second" },
-  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  rate: RATE_OPTION,
+  fps: FPS_OPTION,
 };
 
 const PRESETS: [string, string][] = [
@@ -92,35 +90,30 @@ byId("options", HTMLElement).innerHTML = optionsTableHtml(OPTIONS, PRESETS);
 const hud = byId("hud", HTMLElement);
 const css = document.documentElement;
 const colors = {
-  background: cssColor(css, "--stage-bg"),
+  ...plotColors(css),
   pin: cssColor(css, "--star"),
   body: cssColor(css, "--particle"),
-  grid: cssColor(css, "--grid"),
-  text: cssColor(css, "--muted"),
 };
 
 const configs = PANEL_COLORS.map((colorVar, i) => ({ index: i, name: MODES[state.mode].names[i] ?? "", colorVar }));
-const panels = buildPanels(byId("panels", HTMLElement), configs, css).map(({ cfg, ...base }) => ({
-  ...cfg,
-  ...base,
-  demo: null as DemoHandle | null,
+const panels = buildPanels(byId("panels", HTMLElement), configs, css).map((p) => ({
+  ...p,
   trail: new Trail(TRAIL_POINTS),
   e0: 0,
 }));
 type Panel = (typeof panels)[number];
 
-const plotColors = { background: colors.background, grid: colors.grid, text: colors.text };
 const divergencePlot = new LinePlot(byId("divergence", HTMLCanvasElement), {
   series: [{ label: "tip distance, m", color: cssColor(css, "--series-2") }],
   capacity: PLOT_SAMPLES,
   scale: "log",
-  colors: plotColors,
+  colors,
 });
 const energyPlot = new LinePlot(byId("energy", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: "linear",
-  colors: plotColors,
+  colors,
 });
 
 try {
@@ -130,10 +123,11 @@ try {
   const applySettings = () => {
     for (const p of panels) {
       const d = demoHandle(p);
-      const ok = engine.demo_set_solver(d, SOLVERS[state.solver]) === 1
-        && engine.demo_set_substeps(d, state.substeps) === 1
-        && engine.demo_set_rate(d, state.rate) === 1;
-      if (!ok) throw new Error("a setting was rejected");
+      requireAccepted([
+        engine.demo_set_solver(d, SOLVERS[state.solver]),
+        engine.demo_set_substeps(d, state.substeps),
+        engine.demo_set_rate(d, state.rate),
+      ]);
     }
   };
 
@@ -141,11 +135,12 @@ try {
   const restart = () => {
     const mode = MODES[state.mode];
     for (const p of panels) {
-      if (p.demo !== null) engine.demo_free(p.demo);
-      const demo = engine.demo_new_double_pendulum(
-        mode.scalars[p.index] ?? SCALAR_F64, STARTS[state.start], mode.offsets[p.index] ?? 0,
+      const demo = replaceDemo(
+        engine,
+        p.demo,
+        engine.demo_new_double_pendulum(mode.scalars[p.index] ?? SCALAR_F64, STARTS[state.start], mode.offsets[p.index] ?? 0),
+        "demo_new_double_pendulum",
       );
-      if (demo === 0) throw new Error("demo_new_double_pendulum returned null");
       p.demo = demo;
       p.e0 = engine.demo_energy(demo);
       p.trail.clear();
@@ -211,21 +206,12 @@ try {
   });
   button(controls, { label: "reset", onClick: restart });
 
-  if (smokeMode) {
-    runSmoke(
-      engine,
-      panels.map((p) => ({
-        demo: demoHandle(p),
-        ctx: p.ctx,
-        draw: () => drawPanel(p, positionsView(engine, demoHandle(p))),
-      })),
-      colors.body,
-      { checkEnergy: true },
-    );
-  } else {
-    const fps = new RateMeter();
-    const sps = new RateMeter();
-    runLoop((elapsed, now) => {
+  runDemo(engine, hud, {
+    panels,
+    draw: (p) => drawPanel(p, positionsView(engine, demoHandle(p))),
+    particleColor: colors.body,
+    maxFps,
+    frame: (elapsed) => {
       let steps = 0;
       for (const p of panels) steps = engine.demo_advance(demoHandle(p), elapsed);
       const tips = panels.map((p) => {
@@ -246,16 +232,10 @@ try {
       }
       divergencePlot.draw();
       energyPlot.draw();
-      fps.add(now);
-      sps.add(now, steps);
-      hud.textContent =
-        `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · ${MODES[state.mode].label}, ` +
-        `${state.start} start, ${state.solver} · t = ${simTime.toFixed(1)} s` +
-        (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-    }, { maxFps });
-  }
+      const status = `${MODES[state.mode].label}, ${state.start} start, ${state.solver} · t = ${simTime.toFixed(1)} s`;
+      return { steps, status };
+    },
+  });
 } catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  smokeError(err);
-  throw err;
+  pageFailed(hud, err);
 }

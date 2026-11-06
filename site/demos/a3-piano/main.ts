@@ -8,11 +8,12 @@ import { select, slider } from "../../js/controls.ts";
 import { midiToHz, noteName } from "../../js/ks.ts";
 import { MODEL_PIANO } from "../../js/acoustic-abi.ts";
 import type { AcousticExports } from "../../js/acoustic";
-import { errorText, reportSmoke, smokeMode } from "../../js/smoke.ts";
+import { reportSmoke } from "../../js/smoke.ts";
+import { runAudioPage } from "../../js/page.ts";
 import { compileAcoustic, liveSynth, renderOffline } from "../../js/synth-live.ts";
 import { pianoUi } from "../../js/piano-ui.ts";
 import { drawSpectrum, drawTrace, drawWave } from "../../js/audio-draw.ts";
-import { amplitudeAt } from "../../js/tone.ts";
+import { levelDb, peakOf } from "../../js/tone.ts";
 import type { ToWorklet } from "../../js/synth-worklet.ts";
 
 /** The hammer's speed, m/s: pp to ff (crates/acoustic hammer), mf their
@@ -38,10 +39,6 @@ const SMOKE_SECONDS = 0.7;
 const SMOKE_KEY = 60;
 const SMOKE_MEASURE: [number, number] = [0.1, 0.65]; // s
 const SMOKE_DRAWN = 2048;
-const DB = 20;
-/** An amplitude floor before taking the log: a silent component reads
- *  −240 dB, not −∞. */
-const SILENT_AMPLITUDE = 1e-12;
 
 const settings = { stiff: true, velocity: MEZZO_FORTE, gain: 0.25 };
 
@@ -120,9 +117,9 @@ const synth = liveSynth({
   },
 });
 
+/** Audio, and the page's own module for the per-key facts. */
 async function start(): Promise<void> {
   await Promise.all([synth.start(), keys === null ? loadKeys() : Promise.resolve()]);
-  byId("start", HTMLButtonElement).hidden = true;
 }
 
 /** Smoke: a stiff C4's 10th partial is at k·F₀·√(1 + Bk²), not 10·f₀: the
@@ -130,15 +127,10 @@ async function start(): Promise<void> {
 async function smoke(): Promise<void> {
   await loadKeys();
   const data = await renderOffline({ notes: [SMOKE_KEY], model: MODEL_PIANO }, SMOKE_SECONDS, SMOKE_RATE);
-  let peak = 0;
-  let finite = true;
-  for (const v of data) {
-    finite &&= Number.isFinite(v);
-    peak = Math.max(peak, Math.abs(v));
-  }
+  const { peak, finite } = peakOf(data);
   const part = data.subarray(Math.round(SMOKE_MEASURE[0] * SMOKE_RATE), Math.round(SMOKE_MEASURE[1] * SMOKE_RATE));
   const b = keys?.piano_inharmonicity(SMOKE_KEY) ?? 0;
-  const level = (hz: number) => DB * Math.log10(Math.max(amplitudeAt(part, SMOKE_RATE, hz), SILENT_AMPLITUDE));
+  const level = (hz: number) => levelDb(part, SMOKE_RATE, hz);
   const stretched = level(partialHz(SMOKE_KEY, READOUT_PARTIAL, b));
   const harmonic = level(READOUT_PARTIAL * midiToHz(SMOKE_KEY));
   const stretchDb = stretched - harmonic;
@@ -153,10 +145,6 @@ async function smoke(): Promise<void> {
   );
 }
 
-function sendSettings(): void {
-  for (const m of settingsMessages()) synth.send(m);
-}
-
 function buildControls(): void {
   const controls = byId("controls", HTMLElement);
   select(controls, {
@@ -165,7 +153,7 @@ function buildControls(): void {
     value: settings.stiff ? "stiff" : "ideal",
     onChange: (v) => {
       settings.stiff = v === "stiff";
-      sendSettings();
+      synth.resend();
     },
   });
   slider(controls, {
@@ -186,7 +174,7 @@ function buildControls(): void {
     format: (v) => pct(v),
     onInput: (v) => {
       settings.gain = v;
-      sendSettings();
+      synth.resend();
     },
   });
 }
@@ -197,27 +185,21 @@ function velocityFor(depth: number | null): number {
   return depth === null ? settings.velocity : PIANISSIMO * (FORTISSIMO / PIANISSIMO) ** depth;
 }
 
-try {
-  drawString(new Float32Array(0));
-  drawTrace(forceCtx, new Float32Array(0), SMOKE_RATE, colors);
-  if (smokeMode) {
-    byId("start", HTMLButtonElement).hidden = true;
-    await smoke();
-  } else {
+drawString(new Float32Array(0));
+drawTrace(forceCtx, new Float32Array(0), SMOKE_RATE, colors);
+await runAudioPage(hud, {
+  start,
+  smoke,
+  live: (begin) => {
     buildControls();
     pianoUi({
       piano: byId("piano", HTMLElement),
       songs: byId("songs", HTMLElement),
-      start,
+      start: begin,
       send: (m) => synth.send(m),
       velocity: velocityFor,
       // A song's notes come without a velocity: mf.
       onNote: (midi, velocity = MEZZO_FORTE) => (last = { midi, velocity, stiff: settings.stiff }),
     });
-    byId("start", HTMLButtonElement).addEventListener("click", () => void start());
-  }
-} catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  if (smokeMode) reportSmoke(`error ${errorText(err)}`);
-  throw err;
-}
+  },
+});
