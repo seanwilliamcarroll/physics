@@ -1,6 +1,6 @@
 // What every demo page does the same way: the rate and fps options, the
 // rate slider, the smoke-or-live split with its HUD rates line, and the
-// error path. A page keeps its own scene, settings, drawing and readouts:
+// error path (DOM and smoke-mode code; the pure helpers are in panels.ts). A page keeps its own scene, settings, drawing and readouts:
 // those differ in substance, and sharing them would take a hook per page.
 
 import { DEFAULT_RATE_HZ } from "./abi.ts";
@@ -42,25 +42,6 @@ export function rateSlider(parent: HTMLElement, value: number, onInput: (hz: num
     format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
     onInput,
   });
-}
-
-/** Throws unless every `demo_set_*` status is 1: a 0 means the page passed
- *  something the engine rejects, a page bug worth stopping on. */
-export function requireAccepted(statuses: number[], what = "a setting"): void {
-  if (!statuses.every((s) => s === 1)) throw new Error(`${what} was rejected`);
-}
-
-/** `created` in place of `old` (freed): the constructor's handle, checked,
- *  since 0 is the ABI's null. `what` names the constructor for the error. */
-export function replaceDemo(
-  engine: EngineExports,
-  old: DemoHandle | null,
-  created: DemoHandle,
-  what: string,
-): DemoHandle {
-  if (old !== null) engine.demo_free(old);
-  if (created === 0) throw new Error(`${what} returned null`);
-  return created;
 }
 
 /** One frame's result: physics steps taken, and the page's part of the HUD. */

@@ -3,21 +3,19 @@
 // pointer dragging in either panel.
 
 import { loadEngine, positionsView, linksView } from "../../js/wasm.ts";
-import { runLoop, RateMeter, MS_PER_SECOND } from "../../js/loop.ts";
 import { View, clear, drawPoints, drawLinks, cssColor } from "../../js/canvas.ts";
 import {
-  COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, ORDER_ALTERNATING, ORDER_FORWARD, ORDER_REVERSE, SCALAR_F64,
+  COORDS_PER_PARTICLE, ORDER_ALTERNATING, ORDER_FORWARD, ORDER_REVERSE, SCALAR_F64,
   SOLVER_IMPULSE, SOLVER_XPBD, STABILIZATION_BAUMGARTE, STABILIZATION_SPLIT,
 } from "../../js/abi.ts";
-import { smokeMode, runSmoke, smokeError, errorText } from "../../js/smoke.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
 import { slider, select, button } from "../../js/controls.ts";
-import { buildPanels, demoHandle } from "../../js/panels.ts";
+import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
+import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, rateSlider, runDemo } from "../../js/page.ts";
 import { enableDrag } from "../../js/drag.ts";
 import type { ChoiceOption, IntOption } from "../../js/options.ts";
-import type { DemoHandle } from "../../js/engine";
 
 const PANELS = [
   { code: SOLVER_XPBD, name: "XPBD", colorVar: "--series-1" },
@@ -50,8 +48,8 @@ const OPTIONS: {
   substeps: { kind: "int", min: 1, max: 100, default: 20, help: "substeps per physics step" },
   iterations: { kind: "int", min: 1, max: 20, default: 1, help: "solver passes per substep" },
   order: { kind: "choice", values: Object.keys(ORDERS), default: "forward", help: "the order each pass visits the links in" },
-  rate: { kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second" },
-  fps: { kind: "int", min: 1, max: 1000, default: Infinity, help: "cap the display rate to emulate a slower monitor" },
+  rate: RATE_OPTION,
+  fps: FPS_OPTION,
 };
 
 const PRESETS: [string, string][] = [
@@ -95,33 +93,29 @@ byId("options", HTMLElement).innerHTML = optionsTableHtml(OPTIONS, PRESETS);
 const hud = byId("hud", HTMLElement);
 const css = document.documentElement;
 const colors = {
-  background: cssColor(css, "--stage-bg"),
+  ...plotColors(css),
   pin: cssColor(css, "--star"),
   body: cssColor(css, "--particle"),
-  grid: cssColor(css, "--grid"),
-  text: cssColor(css, "--muted"),
 };
 
-const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map(({ cfg, ...base }) => ({
-  ...cfg,
-  ...base,
-  demo: null as DemoHandle | null,
+const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map((p) => ({
+  ...p,
   /** Energy at the start: the reference for "energy gained". */
   e0: 0,
 }));
 type Panel = (typeof panels)[number];
 
 const energyPlot = new LinePlot(byId("energy", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: "linear",
-  colors: { background: colors.background, grid: colors.grid, text: colors.text },
+  colors,
 });
 const errorPlot = new LinePlot(byId("error", HTMLCanvasElement), {
-  series: panels.map((p) => ({ label: p.name, color: p.color })),
+  series: panelSeries(panels),
   capacity: PLOT_SAMPLES,
   scale: "log",
-  colors: { background: colors.background, grid: colors.grid, text: colors.text },
+  colors,
 });
 
 try {
@@ -131,24 +125,21 @@ try {
   const applySettings = () => {
     for (const p of panels) {
       const d = demoHandle(p);
-      const statuses = [
+      requireAccepted([
         engine.demo_set_solver(d, p.code),
         engine.demo_set_substeps(d, state.substeps),
         engine.demo_set_iterations(d, state.iterations),
         engine.demo_set_order(d, ORDERS[state.order]),
         engine.demo_set_stabilization(d, STABILIZATIONS[state.stab]),
         engine.demo_set_rate(d, state.rate),
-      ];
-      if (!statuses.every((s) => s === 1)) throw new Error("a setting was rejected");
+      ]);
     }
   };
 
   /** (Re)creates both chains with the current links and mass ratio. */
   const restart = () => {
     for (const p of panels) {
-      if (p.demo !== null) engine.demo_free(p.demo);
-      const demo = engine.demo_new_chain(SCALAR_F64, state.links, state.ratio);
-      if (demo === 0) throw new Error("demo_new_chain returned null");
+      const demo = replaceDemo(engine, p.demo, engine.demo_new_chain(SCALAR_F64, state.links, state.ratio), "demo_new_chain");
       p.demo = demo;
       p.e0 = engine.demo_energy(demo);
     }
@@ -233,30 +224,18 @@ try {
       applySettings();
     },
   });
-  slider(controls, {
-    label: "rate",
-    min: OPTIONS.rate.min,
-    max: OPTIONS.rate.max,
-    value: state.rate,
-    format: (hz) => `${hz} Hz · dt ${(MS_PER_SECOND / hz).toFixed(1)} ms`,
-    onInput: (hz) => {
-      state.rate = hz;
-      applySettings();
-    },
+  rateSlider(controls, state.rate, (hz) => {
+    state.rate = hz;
+    applySettings();
   });
   button(controls, { label: "reset", onClick: restart });
 
-  if (smokeMode) {
-    runSmoke(
-      engine,
-      panels.map((p) => ({ demo: demoHandle(p), ctx: p.ctx, draw: () => drawPanel(p) })),
-      colors.body,
-      { checkEnergy: true },
-    );
-  } else {
-    const fps = new RateMeter();
-    const sps = new RateMeter();
-    runLoop((elapsed, now) => {
+  runDemo(engine, hud, {
+    panels,
+    draw: (p) => drawPanel(p),
+    particleColor: colors.body,
+    maxFps,
+    frame: (elapsed) => {
       let steps = 0;
       for (const p of panels) steps = engine.demo_advance(demoHandle(p), elapsed);
       const readings = panels.map((p) => {
@@ -273,16 +252,9 @@ try {
       energyPlot.push(simTime, readings.map((r) => r.gained));
       errorPlot.draw();
       energyPlot.draw();
-      fps.add(now);
-      sps.add(now, steps);
-      hud.textContent =
-        `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · 1:${state.ratio}, ` +
-        `${state.links} links · t = ${simTime.toFixed(1)} s` +
-        (Number.isFinite(maxFps) ? ` · capped at ${maxFps} fps` : "");
-    }, { maxFps });
-  }
+      return { steps, status: `1:${state.ratio}, ${state.links} links · t = ${simTime.toFixed(1)} s` };
+    },
+  });
 } catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  smokeError(err);
-  throw err;
+  pageFailed(hud, err);
 }

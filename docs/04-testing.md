@@ -470,7 +470,7 @@ cargo xtask coverage          # needs: cargo install cargo-llvm-cov
 - **Site JS:** `node --test --experimental-test-coverage` over
   `tests/site` (the test files themselves excluded). Node prints its own
   table. It only lists **modules the tests import**: `dom.ts`, `wasm.ts`,
-  `controls.ts`, `smoke.ts` and the demo pages aren't in it at all, not
+  `controls.ts`, `smoke.ts`, `page.ts` and the demo pages aren't in it at all, not
   even as 0%.
 - **Report only, no thresholds.** Both halves run every time (the JS
   half takes well under a second). Warm run: ~2.5 s; after

@@ -85,7 +85,8 @@ physics/
     │   ├── controls.ts     # sliders/dropdowns → demo_set_*
     │   ├── perf.ts         # timings, per-N cost table (ns/pair)
     │   ├── divergence.ts   # RMS distance between two runs
-    │   ├── panels.ts       # side-by-side panel markup, demo handle check
+    │   ├── panels.ts       # side-by-side panel markup, demo handle checks
+    │   ├── page.ts         # every page's lifecycle: rate/fps options, smoke or live loop, errors
     │   ├── scalars.ts      # f32/f64 names → scalar codes, URL parsing
     │   ├── stiffness.ts    # M5 log stiffness slider (rigid stop), k_crit hint
     │   ├── ks.ts           # A1: MIDI, note names, computer-keyboard piano layout
@@ -93,7 +94,7 @@ physics/
     │   ├── synth-worklet.ts # the AudioWorklet processor (A1–A3)
     │   ├── synth-live.ts   # starting audio, snapshot buffers, offline render
     │   ├── piano-ui.ts     # on-screen piano (velocity from press depth), keyboard, songs
-    │   ├── tone.ts         # amplitude, onsets, silenced harmonics (pure)
+    │   ├── tone.ts         # amplitude, level, peak, onsets, silenced harmonics (pure)
     │   ├── …               # abi, dom, options, ring, smoke, trail
     │   └── engine.d.ts     # types for the wasm exports/imports
     ├── demos/
