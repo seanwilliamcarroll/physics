@@ -80,14 +80,6 @@ impl<S: Scalar> Body<S> {
         }
         out
     }
-
-    /// Clears the filters' memory.
-    pub fn clear(&mut self) {
-        for b in &mut self.bands {
-            b.x = (S::ZERO, S::ZERO);
-            b.y = (S::ZERO, S::ZERO);
-        }
-    }
 }
 
 #[cfg(test)]

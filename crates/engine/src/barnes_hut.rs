@@ -72,11 +72,6 @@ impl<S: Scalar> BarnesHut<S> {
         self.softening_sq
     }
 
-    #[must_use]
-    pub const fn theta_sq(&self) -> S {
-        self.theta_sq
-    }
-
     /// Softened pull toward a point mass `mass` at offset `r` (unsoftened
     /// `|r|² = dist_sq`): `G m r / (|r|² + ε²)^(3/2)`. Zero, not 0/0, for
     /// a coincident unsoftened pair (no direction).
