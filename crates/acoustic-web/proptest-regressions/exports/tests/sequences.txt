@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4b01c7ec00e417780e57d0060eb5b318cb183e419105e24742e83b9b7d146920 # shrinks to first = (44100.0, 0), calls = [NoteOnVelocity(48, 2.5357729898613393e51)]

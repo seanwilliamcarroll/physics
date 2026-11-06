@@ -89,3 +89,5 @@ fn the_piano_through_the_c_abi() {
         (1, 2, 3, 0)
     );
 }
+
+mod sequences;
