@@ -17,7 +17,9 @@ pub trait Force<S: Scalar> {
     /// overwrite, so multiple forces combine.
     ///
     /// Accelerations, not forces: static particles (`inv_mass = 0`) are
-    /// skipped without ever dividing by a mass.
+    /// skipped, since a static has no mass to divide by or to pull with.
+    /// (Skipping them isn't what keeps them still: `kick` and `drift` never
+    /// move a static, whatever a force writes for it.)
     fn accumulate(&self, p: &Particles<S>, acc: &mut [Vec2<S>]);
 }
 

@@ -6,7 +6,8 @@ Depends on: `02-core-types.md` (`Force<S>`, `PairwiseGravity`),
 `04-testing.md`, `lint-policy.md`
 Reference: Barnes, J., Hut, P. (1986). *A hierarchical O(N log N)
 force-calculation algorithm.* Nature 324:446–449.
-https://doi.org/10.1038/324446a0 (`references.md`)
+https://doi.org/10.1038/324446a0; the opening test's `δ`: Salmon & Warren
+(1994), *Skeletons from the Treecode Closet* (`references.md`)
 
 ## The idea
 
@@ -42,18 +43,34 @@ terminates.
 ## Opening criterion θ
 
 Walking the tree for a target body at `x`, a cell of side `s` whose center
-of mass is at distance `d` from `x` is **accepted** (used as one point mass)
-when
+of mass is at distance `d` from `x`, and **`δ` from the cell's geometric
+center**, is **accepted** (used as one point mass) when
 
 ```text
-s / d < θ      evaluated as   s² < θ² d²   (no sqrt, no division)
+s / (d − δ) < θ     evaluated as   (s + θ δ)² < θ² d²   (no sqrt, no division)
 ```
 
-and **opened** (its children visited) otherwise. Small θ opens more cells:
-more accurate, more expensive. **θ = 0 never accepts a cell**, so every
-body is visited individually: exact direct summation, the same sum as
-`PairwiseGravity` up to rounding (summation order differs). The paper
-uses θ ≈ 1; values from 0.3 to 1 are common.
+and **opened** (its children visited) otherwise. Both sides of the
+squared form are non-negative, so squaring keeps the order, and `d ≤ δ`
+fails it, as it should. Small θ opens more cells: more accurate, more
+expensive. **θ = 0 never accepts a cell**, so every body is visited
+individually: exact direct summation, the same sum as `PairwiseGravity`
+up to rounding (summation order differs). The paper uses θ ≈ 1; values
+from 0.3 to 1 are common.
+
+**Why `δ`** (audit after A3). The paper's test is `s / d < θ`, with `d`
+measured to the center of mass. A cell whose bodies bunch on one side
+(its center of mass far from its middle) can then pass for a target just
+outside its *other* side, right beside some of its bodies, and the point
+mass is a poor stand-in there. Salmon & Warren (1994) showed the classic
+test's error has no bound in such configurations. Measured here: a cell
+with 90% of its mass at its far edge, the target 0.6 cell widths outside
+its near edge, θ = 0.7: the classic test accepted it, 25.5% off; with
+`δ` it's opened, 0.03% off (`a_target_just_outside_a_lopsided_cell_is_accurate`).
+For an evenly filled cell `δ ≈ 0` and nothing changes. The build tracks
+each cell's geometric center exactly as the Morton key steps (a quarter of
+the side toward each quadrant), so `δ` costs one `length` per cell built
+and one multiply-add per cell visited.
 
 **A cell containing the target is never accepted**, whatever θ says. For
 θ ≳ 0.7 a body near a corner of a large cell can be far from that cell's
@@ -62,11 +79,11 @@ the cell's center. Opening such cells removes the self-force outright. The
 test is exact and cheap: cells are contiguous ranges of Morton keys (below),
 so "contains the target" is `key_lo ≤ key ≤ key_hi`.
 
-θ is validated at construction: `BarnesHut::new` returns `None` for θ < 0
-(or NaN). It's the parameter a slider will set, so this is the boundary
-`type-invariants.md` asks to parse at. θ is stored squared, like ε. ε
-arrives already checked, as a `Softening<S>`, the same as for
-`PairwiseGravity::new`.
+θ arrives as an `OpeningAngle<S>` (`params/`): finite and `≥ 0`, checked
+where it's made (the θ slider's value at the wasm boundary), so
+`BarnesHut::new` can't fail. θ is stored as is and squared (the test uses
+both), like ε. ε arrives already checked, as a `Softening<S>`, the same as
+for `PairwiseGravity::new`.
 
 ## Softening for cells
 
@@ -194,8 +211,9 @@ if a profile shows allocation mattering next to the O(n log n) work.
 
 ## Measurements
 
-From `crates/engine/tests/barnes_hut.rs` (2026-11-02, aarch64-apple-darwin,
-Rust 1.99.1). Scene: `scenarios::cluster` (uniform disk of radius 2 m,
+From `crates/engine/tests/barnes_hut.rs`, re-measured with the `δ` test
+(2026-11-06, audit after A3; first measured 2026-11-02 with the classic
+one), aarch64-apple-darwin, Rust 1.99.1. Scene: `scenarios::cluster` (uniform disk of radius 2 m,
 ε = 0.1 m), with `PairwiseGravity` as the exact reference.
 
 ### Accuracy vs θ
@@ -211,10 +229,18 @@ Force error after one evaluation, worst over seeds 1–3. Two measures:
 
 | θ | max / RMS, n = 64 | 256 | 1024 | median rel., n = 1024 | max rel., n = 1024 | test bound (max / RMS) |
 |---|---|---|---|---|---|---|
-| 0.3 | 0.0087 | 0.0127 | 0.0100 | 0.42% | 0.65 | 0.13 |
-| 0.5 | 0.0487 | 0.0415 | 0.0360 | 1.5% | 1.46 | 0.5 |
-| 0.8 | 0.198 | 0.154 | 0.098 | 4.0% | 3.76 | 2.0 |
-| 1.0 | 0.302 | 0.292 | 0.183 | 6.4% | 7.67 | 3.0 |
+| 0.3 | 0.0086 | 0.0101 | 0.0100 | 0.38% | 0.57 | 0.13 |
+| 0.5 | 0.0506 | 0.0304 | 0.0330 | 1.3% | 2.00 | 0.5 |
+| 0.8 | 0.104 | 0.0939 | 0.0864 | 3.5% | 2.04 | 2.0 |
+| 1.0 | 0.155 | 0.180 | 0.175 | 5.8% | 5.09 | 3.0 |
+
+Against the classic test (first measurement: 0.0127, 0.0487, 0.198, 0.302
+worst max / RMS; medians 0.42%, 1.5%, 4.0%, 6.4%), `δ` roughly halves the
+worst case at θ = 0.8 and 1.0, where cells are accepted closest, and
+trims the medians everywhere. Two numbers grew: θ = 0.5's worst at n = 64
+(0.0487 → 0.0506) and its max relative at n = 1024 (1.46 → 2.00), from
+different accept decisions on a few cells (that max is the
+cancellation-dominated measure above).
 
 f32 matches f64 to three digits: the approximation error is far above
 f32 rounding, as expected. The error rises faster than θ² over this
@@ -224,11 +250,13 @@ range (×3.3–5.6 from θ = 0.3 to 0.5 across the three sizes, against
 acceleration (unit test).
 
 These errors are larger than a quadrupole-corrected code would give, so
-before trusting them we checked against an independent implementation:
-a plain recursive Python quadtree with the same criterion, on the same
-256 bodies, agreed with this one to 1.7e-15 of RMS `|a|` at θ = 0.5. They
-are the monopole method's errors with `s` the full cell side and `d`
-measured to the center of mass.
+before trusting the first (classic-test) measurement we checked against an
+independent implementation: a plain recursive Python quadtree with the
+same criterion, on the same 256 bodies, agreed with this one to 1.7e-15 of
+RMS `|a|` at θ = 0.5. They are the monopole method's errors with `s` the
+full cell side. The `δ` test changes only which cells are accepted (the
+same tree, the same monopoles), and is checked by θ = 0's exactness, the
+errors growing with θ (both tests), and the lopsided-cell test.
 
 ### Momentum
 
@@ -237,16 +265,16 @@ fraction of `Σ m|v|`:
 
 | θ | f64 | f32 |
 |---|---|---|
-| 0 | 4.1e-16 | 3.2e-7 |
-| 0.3 | 4.7e-3 | 3.8e-3 |
-| 0.5 | 1.0e-2 | 5.3e-3 |
-| 0.8 | 4.0e-2 | 5.0e-2 |
-| 1.0 | 7.1e-2 | 2.8e-2 |
+| 0 | 2.3e-16 | 2.2e-7 |
+| 0.3 | 8.8e-4 | 2.7e-3 |
+| 0.5 | 5.2e-3 | 8.7e-3 |
+| 0.8 | 2.6e-2 | 1.2e-2 |
+| 1.0 | 7.0e-2 | 3.1e-2 |
 
 For scale, the cluster's initial momentum is about 4e-3 of `Σ m|v|`:
 from θ = 0.5 up, Barnes–Hut changes the total momentum by more than the
 cluster started with, so the center of mass visibly wanders off its
-straight line. The drift is 0.4–1.6% of the bound `Σ h Σ mᵢ|aᵢ − aᵢ*|`
+straight line. The drift is 0.7–1.1% of the bound `Σ h Σ mᵢ|aᵢ − aᵢ*|`
 (force errors mostly cancel in the sum), and θ = 0 stays ~400x inside the
 property tests' rounding law. The tests assert the bound at θ = 0.5, a
 measured cap of 0.1 there, and the rounding law at θ = 0. f32 and f64
@@ -262,9 +290,14 @@ runs diverge, and so do their drifts.
 
 | n | pairwise f32 | θ = 0.5 f32 | θ = 1.0 f32 | pairwise f64 | θ = 0.5 f64 | θ = 1.0 f64 |
 |---|---|---|---|---|---|---|
-| 128 | 17.4 µs | 25.1 µs (0.69x) | 15.3 µs (**1.13x**) | 18.0 µs | 24.7 µs (0.73x) | 21.9 µs (0.82x) |
-| 1024 | 1.01 ms | 419 µs (2.4x) | 193 µs (5.3x) | 1.09 ms | 412 µs (2.6x) | 173 µs (6.3x) |
-| 4096 | 9.92 ms | 3.54 ms (2.8x) | 1.36 ms (7.3x) | 13.3 ms | 3.80 ms (3.5x) | 1.48 ms (9.0x) |
+| 128 | 17.0 µs | 26.6 µs (0.64x) | 16.7 µs (**1.02x**) | 17.9 µs | 27.5 µs (0.65x) | 17.3 µs (**1.03x**) |
+| 1024 | 1.02 ms | 437 µs (2.3x) | 207 µs (4.9x) | 1.08 ms | 450 µs (2.4x) | 206 µs (5.2x) |
+| 4096 | 9.69 ms | 3.80 ms (2.5x) | 1.69 ms (5.7x) | 13.2 ms | 4.00 ms (3.3x) | 1.74 ms (7.6x) |
+
+Re-measured with the `δ` test (2026-11-06): it opens more cells, so
+Barnes–Hut is 4–7% slower at θ = 0.5 and up to ~24% at θ = 1.0, the
+largest cost where it fixes the most error. Pairwise is unchanged (within
+2% of the first run).
 
 The bench covers 128, 1024 and 4096 only. To place the crossover, a
 one-off run of the same groups at n = 256 and 512 (not kept in the
@@ -272,21 +305,20 @@ bench):
 
 | n | pairwise f32 | θ = 0.5 f32 | θ = 1.0 f32 | pairwise f64 | θ = 0.5 f64 | θ = 1.0 f64 |
 |---|---|---|---|---|---|---|
-| 256 | 84.2 µs | 65.6 µs (**1.28x**) | 37.4 µs (2.3x) | 84.8 µs | 89.3 µs (0.95x) | 33.7 µs (**2.5x**) |
-| 512 | 347 µs | 164 µs (2.1x) | 82.6 µs (4.2x) | 353 µs | 145 µs (**2.4x**) | 75.1 µs (4.7x) |
+| 256 | 84.2 µs | 70.0 µs (**1.20x**) | 38.9 µs (2.2x) | 84.8 µs | 70.7 µs (**1.20x**) | 39.5 µs (2.1x) |
+| 512 | 347 µs | 170 µs (2.0x) | 86.0 µs (4.0x) | 353 µs | 172 µs (2.1x) | 87.7 µs (4.0x) |
 
-The f64 θ = 0.5 time at 256 is the noisiest number here (criterion's 95%
-interval 82–97 µs, so break-even is within it); f64 θ = 1.0 at 128 is
-likewise wide (20–24 µs).
+(Barnes–Hut re-measured with the `δ` test; pairwise from the first run,
+its code unchanged.)
 
 **Crossover** (bold: first measured n where Barnes–Hut wins): at θ = 0.5,
-~200–256 bodies in f32 and ~256 in f64 (break-even there, a clear win by
-512); at θ = 1.0, ~128 in f32 and between 128 and 256 in f64. Below that,
+~200–256 bodies (1.2x at 256, 2x by 512); at θ = 1.0, break-even at 128
+and 2x by 256. Below that,
 building the tree (two allocations, a sort, 32-level keys) costs more
 than it saves. For the M2 demo's "a few hundred bodies", θ = 0.5 is at
-best ~1.3–2.4x faster, for a median force error of ~1.2–1.5%; the payoff
+best ~1.2–2x faster, for a median force error of ~1.3%; the payoff
 is at thousands of bodies. Growth from n = 1024 to 4096 (4x bodies) is
-8.4x (f32) and 9.2x (f64) for Barnes–Hut at θ = 0.5, against 9.8x and
+8.7x (f32) and 8.9x (f64) for Barnes–Hut at θ = 0.5, against 9.5x and
 12.2x for direct summation (ideal 16x); n log n alone predicts 4.8x,
 which suggests memory effects (the walk's scattered reads) at this size;
 not profiled.

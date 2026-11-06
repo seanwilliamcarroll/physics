@@ -71,6 +71,13 @@ algorithm.* Nature 324:446–449. (M2 stretch: Barnes–Hut quadtree;
 `barnes-hut.md`.)
 - DOI: https://doi.org/10.1038/324446a0
 
+**Salmon, J. K., Warren, M. S. (1994).** *Skeletons from the Treecode
+Closet.* Journal of Computational Physics 111(1):136–155. Worst-case
+errors of tree codes: the classic opening test's error has no bound for a
+target just outside a lopsided cell; why the engine's test adds the
+center of mass's offset δ (audit after A3, `barnes-hut.md`).
+- DOI: https://doi.org/10.1006/jcph.1994.1050
+
 ## Acoustic track (A1–A5)
 
 **Karplus, K., Strong, A. (1983).** *Digital Synthesis of Plucked-String and

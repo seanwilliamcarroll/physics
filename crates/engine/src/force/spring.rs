@@ -72,6 +72,13 @@ impl<S: Scalar> Spring<S> {
 /// on `a`, `−F` on `b`. Equal and opposite, so momentum is conserved to
 /// rounding. Stepped by the integrator: past `k_crit = 4m/h²` symplectic
 /// Euler goes unstable (`docs/07-soft-bodies.md`).
+///
+/// Each spring's ends are checked against the particles it was built from,
+/// not against the world it's added to: `World::add_force` takes any force
+/// and can't see its ids. A spring naming particles that world doesn't have
+/// is skipped (read with `get`, never indexed): no crash, and no force.
+/// Build springs from the world's own particles (`World::particles`).
+/// (Constraints are checked when added: `World::add_constraint`.)
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpringForce<S> {
     springs: Vec<Spring<S>>,
