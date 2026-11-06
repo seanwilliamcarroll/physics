@@ -55,10 +55,14 @@ impl<S: Scalar> DelayLine<S> {
     #[must_use]
     pub fn at(&self, j: usize) -> S {
         let n = self.buf.len();
-        self.buf
-            .get((self.head + j) % n)
-            .copied()
-            .unwrap_or(S::ZERO)
+        if j < n {
+            self.buf
+                .get((self.head + j) % n)
+                .copied()
+                .unwrap_or(S::ZERO)
+        } else {
+            S::ZERO
+        }
     }
 
     /// Adds `v` to sample `j` counting from the front (nothing past the
