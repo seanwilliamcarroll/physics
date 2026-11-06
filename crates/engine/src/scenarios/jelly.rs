@@ -167,11 +167,13 @@ pub fn jelly<S: Scalar>(
     Ok(Jelly { world, springs })
 }
 
-/// `α = 1/k` for constraints: `k = ∞` is rigid (α = 0); `k ≤ 0` or NaN is
-/// rejected.
+/// `α = 1/k` for constraints: `k = ∞` is rigid (α = 0); `k ≤ 0`, NaN, or a
+/// `k` so small that `1/k` overflows in `S` (an infinite compliance, which
+/// XPBD would turn into NaN) is rejected.
 ///
 /// # Errors
-/// [`ConfigError::InvalidStiffness`] unless `k > 0`.
+/// [`ConfigError::InvalidStiffness`] unless `k > 0` and `1/k` is finite in
+/// `S`.
 pub fn compliance_for<S: Scalar>(k: f64) -> Result<Compliance<S>, ConfigError> {
     // `k > 0` is false for NaN too, so NaN is rejected here.
     let positive = k > 0.0;

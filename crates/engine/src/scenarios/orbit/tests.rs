@@ -3,7 +3,7 @@ use super::{
     orbit_relative_speed,
 };
 use crate::diagnostics::{center_of_mass, momentum};
-use crate::test_util::assert_same_up_to_rounding;
+use crate::test_util::{assert_same_up_to_rounding, time_step};
 use crate::{Force, Integrator, Vec2};
 
 #[test]
@@ -63,7 +63,7 @@ fn orbit_gravity_is_the_force_the_scene_uses() {
         .accumulate(&w.particles, &mut acc);
     let mut stepped = orbit::<f64>(Integrator::ExplicitEuler, 1.0).unwrap();
     let v0 = stepped.particles.vel().to_vec();
-    stepped.step(1.0); // explicit Euler: v1 = v0 + a(x0) * 1
+    stepped.step(time_step(1.0)); // explicit Euler: v1 = v0 + a(x0) * 1
     for ((v1, v0), a) in stepped.particles.vel().iter().zip(&v0).zip(&acc) {
         assert_same_up_to_rounding(*v1 - *v0, *a, *v0);
     }

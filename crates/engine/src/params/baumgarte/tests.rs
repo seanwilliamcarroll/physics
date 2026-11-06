@@ -18,9 +18,9 @@ fn baumgarte_rejects_overshoot_negative_and_nan() {
 }
 
 #[test]
-fn baumgarte_casts_without_rechecking() {
+fn baumgarte_casts_to_the_nearest() {
     let b = Baumgarte::new(0.2_f64).unwrap().cast::<f32>();
-    assert_eq!(b.get(), 0.2_f32);
+    assert_eq!(b.map(Baumgarte::get), Some(0.2_f32));
 }
 
 #[test]

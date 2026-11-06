@@ -43,7 +43,7 @@ fn orbit_energy_matches_diagnostics_on_the_same_world() {
     let mut w = orbit::<f64>(Integrator::VelocityVerlet, 1.0).unwrap();
     for _ in 0..90 {
         d.advance(PHYSICS_DT);
-        w.step(PHYSICS_DT);
+        w.step(engine::TimeStep::new(PHYSICS_DT).unwrap());
     }
     let expect = total_energy(w.particles(), &orbit_gravity().unwrap());
     assert_eq!(d.energy().map(f64::to_bits), Some(expect.to_bits()));

@@ -12,7 +12,7 @@ use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
 use test_support::{
     BodySpec, Tol, build_world, momentum_drift_bound, momentum_scale, proptest_config, state_hash,
-    world_spec,
+    time_step, world_spec,
 };
 
 /// One second of 60 Hz steps per property case.
@@ -23,7 +23,7 @@ const MAX_SHIFT_M: f64 = 100.0;
 
 fn run<S: Scalar>(mut w: World<S>) -> World<S> {
     for _ in 0..STEPS {
-        w.step(S::from_f64(DT));
+        w.step(time_step(DT));
     }
     w
 }

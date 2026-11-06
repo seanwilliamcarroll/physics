@@ -1,3 +1,4 @@
+use crate::test_util::time_step;
 use core::num::NonZeroU32;
 
 use crate::params::kg;
@@ -48,7 +49,7 @@ fn drag_pulls_the_particle_and_release_restores_the_world() {
         .unwrap();
     w.drag(&g, Vec2::new(3.0, 2.0));
     for _ in 0..60 {
-        w.step(1.0 / 60.0);
+        w.step(time_step(1.0 / 60.0));
     }
     // Held near the anchor against gravity (sag m g α ≈ 1 cm at k = 1000).
     let bob = w.particles.pos()[2];

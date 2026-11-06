@@ -22,6 +22,21 @@ fn reads_back_epsilon() {
 #[test]
 fn cast_keeps_the_value_up_to_rounding() {
     let eps = Softening::new(0.1_f64).unwrap();
-    assert_eq!(eps.cast::<f32>().get(), 0.1_f32);
-    assert_eq!(Softening::new(1e-50_f64).unwrap().cast::<f32>().get(), 0.0);
+    assert_eq!(eps.cast::<f32>().map(Softening::get), Some(0.1_f32));
+    // Underflow to 0 is still a valid ε; overflow to +∞ isn't.
+    assert_eq!(
+        Softening::new(1e-50_f64)
+            .unwrap()
+            .cast::<f32>()
+            .map(Softening::get),
+        Some(0.0)
+    );
+    assert!(Softening::new(1e300_f64).unwrap().cast::<f32>().is_none());
+}
+
+/// Finite always: ∞ passed `ε ≥ 0` before the audit (and switched gravity
+/// off).
+#[test]
+fn infinity_is_refused() {
+    assert!(Softening::new(f64::INFINITY).is_none());
 }

@@ -1,6 +1,6 @@
 use super::{FOUNTAIN_VX, FOUNTAIN_VY, Fountain};
 use crate::Vec2;
-use crate::test_util::run;
+use crate::test_util::{run, time_step};
 
 fn in_launch_range(v: Vec2<f64>) -> bool {
     (FOUNTAIN_VX.0..FOUNTAIN_VX.1).contains(&v.x) && (FOUNTAIN_VY.0..FOUNTAIN_VY.1).contains(&v.y)
@@ -62,7 +62,7 @@ fn steady_state_keeps_every_particle_in_play() {
     let mut scene = Fountain::new(9);
     let mut w = scene.world::<f64>(50);
     for _ in 0..600 {
-        w.step(1.0 / 60.0);
+        w.step(time_step(1.0 / 60.0));
         scene.respawn_fallen(&mut w);
         assert!(w.particles.pos().iter().all(|p| p.y >= 0.0));
     }

@@ -16,7 +16,7 @@ use std::time::Duration;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use engine::collision::candidate_pairs;
 use engine::scenarios::{CLUSTER_SOFTENING, GRAVITATIONAL_CONSTANT, cluster, cluster_gravity};
-use engine::{BarnesHut, Force, Integrator, OpeningAngle, Scalar, Softening, Vec2};
+use engine::{BarnesHut, Force, Integrator, OpeningAngle, Scalar, Softening, TimeStep, Vec2};
 
 /// Body counts: O(n²) makes each ~8x step in N cost ~64x.
 const SIZES: [usize; 3] = [16, 128, 1024];
@@ -43,7 +43,7 @@ fn step<S: Scalar>(c: &mut Criterion, scalar: &str) {
         for n in SIZES {
             let mut w = cluster::<S>(n, SEED).unwrap();
             w.set_integrator(integrator);
-            let dt = S::from_f64(DT);
+            let dt = TimeStep::new(S::from_f64(DT)).unwrap();
             group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
                 b.iter(|| w.step(black_box(dt)));
             });

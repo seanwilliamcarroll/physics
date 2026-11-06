@@ -92,6 +92,16 @@ entry point and one use, so a newtype would only move the check. Revisit
 if A2–A3 pass them around (a hammer, pickup positions). `UnitVec2` and
 the rest: unchanged.
 
+**Audit after A3:** the macro-built types checked only their range, so
+`Compliance`, `Softening` and `OpeningAngle` accepted ±∞ (`α ≥ 0` holds
+for ∞), and an infinite compliance made XPBD compute `∞ · 0 = NaN`. Now
+`checked_param!` requires finiteness for every type, and its `cast`
+re-checks (`Option`): the old argument that rounding can't leave the range
+held only for `[0, 1]`, while a valid `1e300` is `+∞` in `f32`. `Radius`,
+`Stiffness` and `Damping`, written out by hand only to get exactly that,
+are macro-built now. `World::step` takes a **`TimeStep`** (dt > 0,
+finite), the same idea for the engine's most-called function.
+
 **Triggers re-checked at the end of A3:** A1's note asked to revisit
 if A2–A3 passed parameters around. A3 does, in two cases:
 - **The hammer's velocity** travels `Synth` → `Voices::strike` →

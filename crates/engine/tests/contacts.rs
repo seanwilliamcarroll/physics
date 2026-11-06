@@ -6,7 +6,7 @@
 use engine::diagnostics::{kinetic_energy, momentum};
 use engine::scenarios::pendulum_gravity;
 use engine::{Integrator, Radius, Restitution, Solver, UnitVec2, Vec2, Wall, World};
-use test_support::{kg, nonzero};
+use test_support::{kg, nonzero, time_step};
 
 /// Both solvers handle contacts (M6.5 XPBD, M6.6 impulse).
 const SOLVERS: [Solver; 2] = Solver::ALL;
@@ -37,7 +37,7 @@ fn head_on(solver: Solver, e: f64) -> (Vec2<f64>, Vec2<f64>) {
     ball(&mut w, (-0.5, 0.0), (1.0, 0.0), 1.0);
     ball(&mut w, (0.5, 0.0), (-1.0, 0.0), 3.0);
     for _ in 0..60 {
-        w.step(DT);
+        w.step(time_step(DT));
     }
     (w.particles().vel()[0], w.particles().vel()[1])
 }
@@ -85,7 +85,7 @@ fn momentum_is_conserved_through_a_pileup() {
         }
         let p0 = momentum(w.particles());
         for _ in 0..120 {
-            w.step(DT);
+            w.step(time_step(DT));
         }
         let drift = (momentum(w.particles()) - p0).length();
         println!("{solver:?}: momentum drift {drift:e}");
@@ -104,7 +104,7 @@ fn drop(solver: Solver, e: f64, height: f64, steps: u32) -> (f64, f64, f64) {
     let (mut deepest, mut peak, mut bounced) = (0.0_f64, 0.0_f64, false);
     let mut prev_vy = 0.0;
     for _ in 0..steps {
-        w.step(DT);
+        w.step(time_step(DT));
         let (y, vy) = (w.particles().pos()[0].y - R, w.particles().vel()[0].y);
         deepest = deepest.max(-y);
         bounced |= prev_vy < 0.0 && vy > 0.0;
@@ -165,7 +165,7 @@ fn pileup_energy(solver: Solver, e: f64) -> (f64, f64, f64) {
     let e0 = kinetic_energy(w.particles());
     let (mut prev, mut rise) = (e0, 0.0_f64);
     for _ in 0..120 {
-        w.step(DT);
+        w.step(time_step(DT));
         let ke = kinetic_energy(w.particles());
         rise = rise.max(ke - prev);
         prev = ke;
@@ -199,7 +199,7 @@ fn stack(solver: Solver) -> (f64, f64) {
     }
     let mut deepest = 0.0_f64;
     for _ in 0..120 {
-        w.step(DT);
+        w.step(time_step(DT));
         let y = |i: usize| w.particles().pos()[i].y;
         deepest = deepest.max(R - y(0));
         deepest = deepest.max(2.0 * R - (y(1) - y(0)));

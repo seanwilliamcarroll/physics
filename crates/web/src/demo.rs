@@ -19,7 +19,8 @@ use engine::scenarios::{
     Fountain, ORBIT_CIRCULAR, orbit, orbit_gravity, pendulum, pendulum_gravity,
 };
 use engine::{
-    Baumgarte, ConfigError, Grab, Integrator, OpeningAngle, Scalar, Softening, Solver, World,
+    Baumgarte, ConfigError, Grab, Integrator, OpeningAngle, Scalar, Softening, Solver, TimeStep,
+    World,
 };
 
 use crate::abi;
@@ -164,9 +165,14 @@ impl Demo {
         each_scalar!(&mut self.world, s => s.world.set_solver(solver));
     }
 
-    /// The impulse solver's β, parsed at the boundary in `f64` and cast.
-    pub(crate) fn set_baumgarte(&mut self, beta: Baumgarte<f64>) {
-        each_scalar!(&mut self.world, s => s.world.set_baumgarte(beta.cast()));
+    /// The impulse solver's β, parsed at the boundary in `f64` and cast
+    /// (checked again). `false`, changing nothing, if it leaves the type in
+    /// the engine's scalar (it can't: `[0, 1]` survives rounding).
+    pub(crate) fn set_baumgarte(&mut self, beta: Baumgarte<f64>) -> bool {
+        each_scalar!(&mut self.world, s => beta.cast().is_some_and(|b| {
+            s.world.set_baumgarte(b);
+            true
+        }))
     }
 
     pub(crate) const fn set_substeps(&mut self, substeps: NonZeroU32) {
@@ -195,17 +201,17 @@ impl Demo {
 
     /// Sets a pairwise-gravity scene's softening (from the next step); the
     /// energy readout follows. `eps` was parsed at the boundary in `f64`
-    /// and is cast, still checked, to the engine's scalar. Returns `false`,
-    /// changing nothing, for other scenes.
+    /// and is cast, checked again, to the engine's scalar. Returns `false`,
+    /// changing nothing, for other scenes or an ε that overflows there.
     pub(crate) fn set_softening(&mut self, eps: Softening<f64>) -> bool {
-        each_scalar!(&mut self.world, s => s.set_softening(eps.cast()))
+        each_scalar!(&mut self.world, s => eps.cast().is_some_and(|e| s.set_softening(e)))
     }
 
     /// Switches a pairwise-gravity scene to Barnes–Hut with opening angle
     /// `theta` (parsed in `f64`, cast like ε); it stays on through softening
     /// changes. `false`, changing nothing, for other scenes.
     pub(crate) fn set_theta(&mut self, theta: OpeningAngle<f64>) -> bool {
-        each_scalar!(&mut self.world, s => s.set_theta(theta.cast()))
+        each_scalar!(&mut self.world, s => theta.cast().is_some_and(|t| s.set_theta(t)))
     }
 
     /// Test-only: θ if Barnes–Hut is on, as `f64`.
@@ -229,7 +235,11 @@ impl Demo {
 
 /// Runs `steps` fixed steps of `dt` seconds, with what runs between them.
 fn run_steps<S: Scalar>(w: &mut World<S>, between: &mut BetweenSteps, steps: u32, dt: f64) {
-    let dt = S::from_f64(dt);
+    // `dt` is `1 / rate` for a positive whole rate, so always a valid step;
+    // anything else steps nothing.
+    let Some(dt) = TimeStep::<S>::new(S::from_f64(dt)) else {
+        return;
+    };
     for _ in 0..steps {
         w.step(dt);
         if let BetweenSteps::Respawn(fountain) = between {

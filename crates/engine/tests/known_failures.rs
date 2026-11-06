@@ -10,7 +10,7 @@ use engine::scenarios::{
 use engine::{Integrator, Scalar, Softening, Vec2, World};
 use test_support::{
     Tol, energy_errors, envelope, for_each_scalar, kg, nonzero, orbit_energy, s, separation,
-    steps_for,
+    steps_for, time_step,
 };
 
 /// One 60 Hz frame: the step the demo uses.
@@ -33,7 +33,7 @@ fn explicit_euler_gains_energy_on_orbit<S: Tol>() {
     let mut previous = 0.0;
     for k in 1..=EE_ORBITS {
         for _ in 0..per_orbit {
-            w.step(s(FINE_DT));
+            w.step(time_step(FINE_DT));
         }
         let gain = (orbit_energy(&w) - e0) / e0.abs();
         assert!(
@@ -139,7 +139,7 @@ fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     );
     let mut peak = 0.0_f64;
     for _ in 0..PASS_STEPS {
-        w.step(s(FINE_DT));
+        w.step(time_step(FINE_DT));
         for v in w.particles().vel() {
             peak = peak.max(v.length().to_f64());
         }

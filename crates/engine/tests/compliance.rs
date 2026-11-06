@@ -4,7 +4,7 @@
 #![cfg(test)]
 
 use engine::{Compliance, DistanceConstraint, Integrator, Solver, Vec2, World};
-use test_support::{kg, nonzero};
+use test_support::{kg, nonzero, time_step};
 
 /// k = 1/α = 100 N/m with m = 1 kg: ω = 10 rad/s, T = 2π/10 ≈ 0.628 s.
 const ALPHA: f64 = 0.01;
@@ -37,7 +37,7 @@ fn measured_period(solver: Solver) -> f64 {
     let (mut first, mut last, mut periods) = (None, 0.0, -1.0_f64);
     let mut prev = STRETCH;
     for i in 0..STEPS {
-        w.step(DT);
+        w.step(time_step(DT));
         let stretch = w.particles().pos()[1].x - REST;
         if prev < 0.0 && stretch >= 0.0 {
             let t = f64::from(i + 1) * DT;
@@ -105,7 +105,7 @@ fn energy_ratio(solver: Solver, c: f64) -> f64 {
     };
     let e0 = energy(&w);
     for _ in 0..300 {
-        w.step(DT);
+        w.step(time_step(DT));
     }
     energy(&w) / e0
 }

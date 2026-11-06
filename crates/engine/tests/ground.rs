@@ -6,7 +6,7 @@
 
 use engine::scenarios::{pendulum, pendulum_gravity};
 use engine::{DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
-use test_support::{for_each_scalar, kg, nonzero, pendulum_energy, s, state_hash, v};
+use test_support::{for_each_scalar, kg, nonzero, pendulum_energy, s, state_hash, time_step, v};
 
 const DT: f64 = 1.0 / 60.0;
 /// The pages' substeps.
@@ -50,7 +50,7 @@ fn max_energy_gain<S: Scalar>(w: &mut World<S>) -> f64 {
     let mut e = pendulum_energy(w);
     let mut gain = f64::NEG_INFINITY;
     for _ in 0..STEPS {
-        w.step(s(DT));
+        w.step(time_step(DT));
         let e1 = pendulum_energy(w);
         gain = gain.max(e1 - e);
         e = e1;
@@ -77,7 +77,7 @@ fn a_dropped_particle_lands_and_rests<S: Scalar>() {
     for integrator in Integrator::ALL {
         let mut w = dropped_particle::<S>(integrator);
         for _ in 0..STEPS {
-            w.step(s(DT));
+            w.step(time_step(DT));
         }
         assert_eq!(w.particles().pos(), &[v(0.0, GROUND)], "{integrator:?}");
         assert_eq!(w.particles().vel(), &[Vec2::ZERO], "{integrator:?}");
@@ -98,7 +98,7 @@ fn a_dropped_rod_lands_and_rests_under_both_solvers() {
     for solver in Solver::ALL {
         let mut w = dropped_rod::<f64>(solver);
         for _ in 0..STEPS {
-            w.step(DT);
+            w.step(time_step(DT));
         }
         let (gap, speed) = rest_error(&w);
         println!("{solver:?}: |y - ground| {gap:e} m, speed {speed:e} m/s");
@@ -155,7 +155,7 @@ fn static_particles_below_the_ground_are_not_moved() {
         let pin = w.add_static(v(0.0, GROUND));
         w.set_ground(Some(GROUND + ABOVE));
         for _ in 0..STEPS {
-            w.step(DT);
+            w.step(time_step(DT));
         }
         assert_eq!(
             w.particles().pos()[pin.index()],
@@ -173,7 +173,7 @@ fn static_particles_below_the_ground_are_not_moved() {
         let pin = w.particles().pos()[0];
         w.set_ground(Some(pin.y + ABOVE));
         for _ in 0..STEPS {
-            w.step(DT);
+            w.step(time_step(DT));
         }
         assert_eq!(w.particles().pos()[0], pin, "{solver:?}");
         assert_eq!(w.particles().vel()[0], Vec2::ZERO, "{solver:?}");
@@ -195,7 +195,7 @@ fn no_ground_or_an_unreached_one_changes_nothing() {
                 w.set_ground(g);
             }
             for _ in 0..STEPS {
-                w.step(DT);
+                w.step(time_step(DT));
             }
             state_hash(w.particles())
         };

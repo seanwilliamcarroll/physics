@@ -1,6 +1,7 @@
 //! Measurements of `scenarios::orbit` worlds (energy, separation, error
 //! series) shared by the orbit invariants and known failures.
 
+use crate::time_step;
 use engine::diagnostics::total_energy;
 use engine::scenarios::{orbit_gravity, orbit_period};
 use engine::{Scalar, World};
@@ -32,7 +33,7 @@ pub fn energy_errors<S: Scalar>(w: &mut World<S>, dt: f64, steps: u32) -> (Vec<f
     let (mut lo, mut hi) = (f64::INFINITY, 0.0_f64);
     let errors = (0..steps)
         .map(|_| {
-            w.step(S::from_f64(dt));
+            w.step(time_step(dt));
             let d = separation(w);
             lo = lo.min(d);
             hi = hi.max(d);

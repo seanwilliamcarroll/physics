@@ -5,10 +5,16 @@ use crate::{Mass, Radius, Scalar, Vec2};
 
 /// Names one particle: its slot in [`Particles`].
 ///
-/// A plain index, no generation counter: particles can't be removed, so an
-/// id can never go stale (`docs/type-invariants.md`, item 5, keeps the
-/// trigger for a generational handle). Only [`Particles`] creates ids, so
-/// every id is a slot that exists in the `Particles` it came from.
+/// A plain index, no generation counter: a plain index goes stale if its
+/// particle is removed (a later add would reuse the slot), and only one
+/// thing removes one: a grab's release pops its anchor, the last particle
+/// added, whose id only that `Grab` holds (`World::release` consumes it,
+/// and refuses unless the anchor is still last). Outside the engine,
+/// particles can't be removed or replaced at all (`World::particles` is
+/// read-only), so every id outlives its use (`docs/type-invariants.md`,
+/// item 5, keeps the trigger for a generational handle). Only
+/// [`Particles`] creates ids, so every id is a slot that exists in the
+/// `Particles` it came from.
 /// Not `#[must_use]`: most scenes add particles without naming them.
 /// Ordered by slot, so contacts can be sorted and looked up by their
 /// bodies (M6).

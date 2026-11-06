@@ -9,7 +9,7 @@ use engine::scenarios::{cluster, cluster_gravity};
 use engine::{Particles, Scalar, Vec2};
 use test_support::{
     Tol, accelerations, cluster_barnes_hut, cluster_barnes_hut_force, for_each_scalar,
-    momentum_drift_bound, momentum_scale, s,
+    momentum_drift_bound, momentum_scale, time_step,
 };
 
 /// One step: a 60 Hz frame, as the demos use.
@@ -115,7 +115,7 @@ fn momentum_drift_is_bounded_by_force_error<S: Tol>() {
                 .zip(w.particles().inv_mass())
                 .map(|((&t, &e), &inv_m)| (t - e).length().to_f64() / inv_m.to_f64())
                 .sum::<f64>();
-        w.step(s(DT));
+        w.step(time_step(DT));
     }
     let drift = (momentum(w.particles()) - p0).length().to_f64();
     let scale = momentum_scale(w.particles());
@@ -141,7 +141,7 @@ fn theta_zero_conserves_momentum_to_rounding<S: Tol>() {
     let mut w = cluster_barnes_hut::<S>(MOMENTUM_N, 1, 0.0);
     let p0 = momentum(w.particles());
     for _ in 0..MOMENTUM_STEPS {
-        w.step(s(DT));
+        w.step(time_step(DT));
     }
     let drift = (momentum(w.particles()) - p0).length().to_f64();
     let bound = momentum_drift_bound::<S>(MOMENTUM_STEPS, momentum_scale(w.particles()));
@@ -155,7 +155,7 @@ fn cluster_runs_finite_for_every_theta<S: Tol>() {
     for (theta, _) in THETA_BOUNDS {
         let mut w = cluster_barnes_hut::<S>(MOMENTUM_N, 2, theta);
         for _ in 0..300 {
-            w.step(s(DT));
+            w.step(time_step(DT));
         }
         let finite = |v: &Vec2<S>| v.x.to_f64().is_finite() && v.y.to_f64().is_finite();
         assert!(w.particles().pos().iter().all(finite), "θ {theta}");

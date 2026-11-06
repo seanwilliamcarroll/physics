@@ -13,7 +13,7 @@ pub use config_error::ConfigError;
 use constraints::Constraints;
 pub use drag::Grab;
 
-use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, Wall};
+use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, TimeStep, Wall};
 use crate::{
     DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Stabilization, Vec2,
 };
@@ -236,9 +236,11 @@ impl<S: Scalar> World<S> {
         self.integrator = integrator;
     }
 
-    /// Advances by `dt`, split into `substeps` equal substeps of `dt / substeps`.
-    pub fn step(&mut self, dt: S) {
-        let h = dt / S::from_f64(f64::from(self.substeps.get()));
+    /// Advances by `dt`, split into `substeps` equal substeps of `dt /
+    /// substeps`. A [`TimeStep`] is positive and finite, so time can't run
+    /// backward, stand still (XPBD's velocity is `Δx / h`), or turn NaN.
+    pub fn step(&mut self, dt: TimeStep<S>) {
+        let h = dt.get() / S::from_f64(f64::from(self.substeps.get()));
         for _ in 0..self.substeps.get() {
             self.substep(h);
         }

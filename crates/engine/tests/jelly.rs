@@ -10,7 +10,7 @@
 use engine::Solver;
 use engine::diagnostics::kinetic_energy;
 use engine::scenarios::{JELLY_COLS, JELLY_ROWS, JellyBody, jelly};
-use test_support::nonzero;
+use test_support::{nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
 /// The page's default substeps: h = 1/600 s.
@@ -34,7 +34,7 @@ fn run(body: JellyBody, k: f64) -> (f64, f64) {
     let mut j = jelly::<f64>(body, nonzero(SUBSTEPS), JELLY_COLS, JELLY_ROWS, k, DAMPING).unwrap();
     let mut peak = 0.0_f64;
     for _ in 0..300 {
-        j.world.step(DT);
+        j.world.step(time_step(DT));
         let ke = kinetic_energy(j.world.particles());
         if !ke.is_finite() {
             return (f64::INFINITY, f64::INFINITY);
