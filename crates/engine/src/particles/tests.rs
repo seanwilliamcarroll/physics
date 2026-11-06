@@ -53,7 +53,7 @@ fn ids_compare_by_slot() {
     let a = p.add_static(Vec2::ZERO);
     let b = p.add_static(Vec2::ZERO);
     assert_ne!(a, b);
-    assert_eq!(a, ParticleId(0));
+    assert_eq!(a.id(), ParticleId(0));
 }
 
 #[test]

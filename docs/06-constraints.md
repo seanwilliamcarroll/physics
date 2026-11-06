@@ -311,9 +311,10 @@ stepped by symplectic Euler, which is the thing that panel demonstrates
 1. **Grab** at a world point: pick the nearest dynamic particle within a
    radius; add a **static anchor** particle at the point and a compliant
    rod of **rest length 0** from anchor to particle.
-2. **Drag:** move the anchor (`Particles::set_static_position`, static
-   particles only, checked). The rod's compliance makes the pull soft, so
-   a fast flick doesn't yank the chain or (impulse) inject energy.
+2. **Drag:** move the anchor (`World::set_static_position`, which takes
+   a `StaticId`: a dynamic particle can't be named). The rod's compliance
+   makes the pull soft, so a fast flick doesn't yank the chain or
+   (impulse) inject energy.
 3. **Release:** pop the rod and the anchor (`Constraints::pop`,
    `Particles::pop`: the last-added only). That's not general removal, so
    `ParticleId` stays a plain index: ids of everything else are unchanged.

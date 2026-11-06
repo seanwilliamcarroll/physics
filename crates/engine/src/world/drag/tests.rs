@@ -80,16 +80,30 @@ fn release_refuses_once_something_newer_was_added() {
 
 #[test]
 fn only_static_particles_can_be_moved() {
-    let mut w = world_with_two_bobs();
-    let pin = crate::ParticleId(0);
-    let bob = crate::ParticleId(1);
-    assert!(w.particles.set_static_position(pin, Vec2::new(0.0, 1.0)));
-    assert!(!w.particles.set_static_position(bob, Vec2::new(0.0, 1.0)));
+    // Moving a *dynamic* particle can't be written: `set_static_position`
+    // takes a `StaticId`. What's left at run time is a `StaticId` from
+    // another world, naming a slot that's dynamic, or missing, here.
+    let mut w = bare_two_bobs(); // slots: 0 a pin, 1 and 2 bobs
+    let pin = w.add_static(Vec2::new(5.0, 5.0));
+    assert!(w.set_static_position(pin, Vec2::new(0.0, 1.0)));
+    assert_eq!(w.particles.pos()[pin.index()], Vec2::new(0.0, 1.0));
+    let mut other = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    let _ = other.add_static(Vec2::ZERO);
+    let foreign = other.add_static(Vec2::ZERO); // slot 1: a bob in `w`
     assert!(
-        !w.particles
-            .set_static_position(crate::ParticleId(99), Vec2::ZERO)
+        !w.set_static_position(foreign, Vec2::ZERO),
+        "slot 1 is a bob here"
     );
-    assert_eq!(w.particles.pos()[0], Vec2::new(0.0, 1.0));
+    assert_eq!(
+        w.particles.pos()[1],
+        Vec2::new(1.0, 0.0),
+        "the bob didn't move"
+    );
+    for _ in 0..3 {
+        let _ = other.add_static(Vec2::ZERO);
+    }
+    let missing = other.add_static(Vec2::ZERO); // slot 5: none in `w`
+    assert!(!w.set_static_position(missing, Vec2::ZERO));
 }
 
 #[test]

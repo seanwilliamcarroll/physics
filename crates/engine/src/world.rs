@@ -11,9 +11,11 @@ use core::num::NonZeroU32;
 
 pub use config_error::ConfigError;
 use constraints::Constraints;
+
+use crate::integrate::VerletScratch;
 pub use drag::Grab;
 
-use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, TimeStep, Wall};
+use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, StaticId, TimeStep, Wall};
 use crate::{
     DistanceConstraint, Force, Integrator, Order, Particles, Scalar, Solver, Stabilization, Vec2,
 };
@@ -36,6 +38,9 @@ pub struct World<S: Scalar> {
     /// Second scratch buffer: velocity Verlet's accelerations at the new
     /// positions.
     acc_next: Vec<Vec2<S>>,
+    /// Velocity Verlet's start-of-substep velocities (its second evaluation
+    /// sees predicted ones).
+    vel_start: Vec<Vec2<S>>,
     /// Constraints and the solver state; with any constraints, the solver
     /// steps instead of `integrator`.
     constraints: Constraints<S>,
@@ -60,6 +65,7 @@ impl<S: Scalar> World<S> {
             substeps,
             acc: Vec::new(),
             acc_next: Vec::new(),
+            vel_start: Vec::new(),
             constraints: Constraints::new(Baumgarte::default()),
             ground: None,
             walls: Vec::new(),
@@ -119,7 +125,7 @@ impl<S: Scalar> World<S> {
     }
 
     /// Adds an immovable particle (see [`Particles::add_static`]).
-    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId {
+    pub fn add_static(&mut self, pos: Vec2<S>) -> StaticId {
         self.particles.add_static(pos)
     }
 
@@ -130,7 +136,7 @@ impl<S: Scalar> World<S> {
 
     /// Moves a static particle (see [`Particles::set_static_position`]).
     #[must_use]
-    pub fn set_static_position(&mut self, id: ParticleId, pos: Vec2<S>) -> bool {
+    pub fn set_static_position(&mut self, id: StaticId, pos: Vec2<S>) -> bool {
         self.particles.set_static_position(id, pos)
     }
 
@@ -257,13 +263,13 @@ impl<S: Scalar> World<S> {
             .collides()
             .then_some((self.walls.as_slice(), self.restitution));
         if self.constraints.is_empty() && collision.is_none() {
-            self.integrator.substep(
-                &self.forces,
-                &mut self.particles,
-                &mut self.acc,
-                &mut self.acc_next,
-                h,
-            );
+            let scratch = VerletScratch {
+                acc: &mut self.acc,
+                acc_next: &mut self.acc_next,
+                vel_start: &mut self.vel_start,
+            };
+            self.integrator
+                .substep(&self.forces, &mut self.particles, scratch, h);
         } else {
             self.constraints.substep(
                 &self.forces,

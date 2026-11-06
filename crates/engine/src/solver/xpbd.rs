@@ -25,14 +25,14 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     pub(crate) fn xpbd(self, h: S) {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
-        kick(&mut p.vel, self.acc, h);
+        kick(p, self.acc, h);
         let contacts = self.contacts;
         if self.collides {
             contacts.find(p, self.walls, self.acc, h);
         }
         self.scratch.clear();
         self.scratch.extend_from_slice(&p.pos);
-        drift(&mut p.pos, &p.vel, h);
+        drift(p, h);
 
         self.lambda.fill(S::ZERO);
         let alpha_scale = S::ONE / (h * h);

@@ -78,7 +78,7 @@ pub fn double_pendulum<S: Scalar>(
         Vec2::ZERO,
         m,
     );
-    for (a, b) in [(pin, elbow), (elbow, tip)] {
+    for (a, b) in [(pin.id(), elbow), (elbow, tip)] {
         let rod =
             DistanceConstraint::between(&w.particles, a, b).ok_or(ConfigError::UnknownParticle)?;
         w.add_constraint(rod)?;

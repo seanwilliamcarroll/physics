@@ -29,6 +29,39 @@ impl ParticleId {
     }
 }
 
+/// Names one **static** particle (immovable, `inv_mass = 0`): what
+/// [`Particles::add_static`] returns, and what
+/// [`set_static_position`](Particles::set_static_position) takes, so moving
+/// a dynamic particle by teleport is a type error, not a runtime refusal.
+/// Converts into a [`ParticleId`] wherever either kind is fine (a rod from a
+/// pin to a bob).
+///
+/// A handle, not separate storage: a static is a particle of infinite mass,
+/// so every solver treats it with no special case (it weights corrections
+/// by `inv_mass`), and the storage stays one struct of arrays.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct StaticId(ParticleId);
+
+impl StaticId {
+    /// The slot, for indexing the slices [`Particles`] hands out.
+    #[must_use]
+    pub const fn index(self) -> usize {
+        self.0.index()
+    }
+
+    /// The same particle as a plain [`ParticleId`].
+    #[must_use]
+    pub const fn id(self) -> ParticleId {
+        self.0
+    }
+}
+
+impl From<StaticId> for ParticleId {
+    fn from(id: StaticId) -> Self {
+        id.0
+    }
+}
+
 /// Point masses stored as a struct of arrays (one `Vec` per field).
 ///
 /// Force and integration loops each touch one or two fields, so this layout keeps
@@ -80,9 +113,10 @@ impl<S: Scalar> Particles<S> {
         self.push(pos, vel, mass.inv(), radius.get())
     }
 
-    /// Adds an immovable particle (`inv_mass = 0`, zero velocity).
-    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId {
-        self.push(pos, Vec2::ZERO, S::ZERO, S::ZERO)
+    /// Adds an immovable particle (`inv_mass = 0`, zero velocity; it never
+    /// moves, whatever its velocity, in every stepper).
+    pub fn add_static(&mut self, pos: Vec2<S>) -> StaticId {
+        StaticId(self.push(pos, Vec2::ZERO, S::ZERO, S::ZERO))
     }
 
     /// Appends to every field; the new slot is the old length.
@@ -140,12 +174,13 @@ impl<S: Scalar> Particles<S> {
         self.max_radius
     }
 
-    /// Moves a **static** particle to `pos` (a drag anchor, a moving pin).
-    /// `false`, changing nothing, if `id` is unknown or dynamic: teleporting
-    /// a dynamic particle would break its momentum without a force.
+    /// Moves a **static** particle to `pos` (a drag anchor, a moving pin):
+    /// a dynamic one can't be named here (teleporting it would break its
+    /// momentum without a force). `false`, changing nothing, if `id` isn't
+    /// a static particle of *these* particles (one from another world).
     #[must_use]
-    pub fn set_static_position(&mut self, id: ParticleId, pos: Vec2<S>) -> bool {
-        match (self.inv_mass.get(id.0), self.pos.get_mut(id.0)) {
+    pub fn set_static_position(&mut self, id: StaticId, pos: Vec2<S>) -> bool {
+        match (self.inv_mass.get(id.index()), self.pos.get_mut(id.index())) {
             (Some(&w), Some(x)) if w == S::ZERO => {
                 *x = pos;
                 true

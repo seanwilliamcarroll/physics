@@ -32,7 +32,7 @@ fn two_link_chain(solver: Solver, order: Order) -> World<f64> {
     let pin = w.particles.add_static(Vec2::ZERO);
     let a = w.particles.add(Vec2::new(0.5, 0.0), Vec2::ZERO, kg(1.0));
     let b = w.particles.add(Vec2::new(1.0, 0.0), Vec2::ZERO, kg(1.0));
-    for (x, y) in [(pin, a), (a, b)] {
+    for (x, y) in [(pin.id(), a), (a, b)] {
         let rod = DistanceConstraint::between(&w.particles, x, y).unwrap();
         w.add_constraint(rod).unwrap();
     }
