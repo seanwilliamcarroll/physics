@@ -197,3 +197,40 @@ fn approximating_takes_g_and_softening_from_the_pairwise_force() {
         BarnesHut::new(G, eps(EPS), theta)
     );
 }
+
+/// A target just outside a **lopsided** cell: the north-east quadrant of a
+/// [0, 2]² root holds 90% of its mass at its east edge and 10% at its west
+/// edge, and the target is 0.6 outside that west edge. The cell's center of
+/// mass is far (`s/d ≈ 0.68 < θ = 0.7`), so the classic test used the cell
+/// as one point, though the target is beside its western body
+/// (Salmon & Warren 1994): measured 25% off (audit after A3). Counting the
+/// center of mass's offset δ from the cell's center (`s/(d − δ) < θ`)
+/// opens it.
+#[test]
+fn a_target_just_outside_a_lopsided_cell_is_accurate() {
+    let mut p = Particles::<f64>::new();
+    let target = p.add(Vec2::new(0.4, 1.5), Vec2::ZERO, kg(1.0));
+    // Featherweight corners pin the root square to [0, 2]².
+    p.add(Vec2::new(0.0, 0.0), Vec2::ZERO, kg(1.0));
+    p.add(Vec2::new(2.0, 2.0), Vec2::ZERO, kg(1.0));
+    for i in -5..5 {
+        p.add(
+            Vec2::new(1.97, 1.5 + 0.02 * f64::from(i)),
+            Vec2::ZERO,
+            kg(0.9e10),
+        );
+    }
+    p.add(Vec2::new(1.03, 1.5), Vec2::ZERO, kg(1.0e10));
+    let exact = accel(&p, &PairwiseGravity::new(G, eps(1e-3)));
+    let approx = accel(&p, &bh::<f64>(1e-3, 0.7));
+    let (a, b) = (approx[target.index()], exact[target.index()]);
+    let err = (a - b).length() / b.length();
+    println!("target's acceleration off by {:.2}%", 100.0 * err);
+    assert!(err < LOPSIDED_TOL, "{err}");
+}
+
+/// What θ = 0.7 allows a well-behaved cell at the edge of acceptance (an
+/// evenly filled one measured 5.3% off): the lopsided cell must do no
+/// worse. Measured (audit after A3): 25.5% with the classic test, 0.03%
+/// with δ (the cell is opened).
+const LOPSIDED_TOL: f64 = 0.053;
