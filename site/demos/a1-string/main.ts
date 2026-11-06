@@ -9,11 +9,12 @@ import { checkbox, select, slider } from "../../js/controls.ts";
 import { SONGS, songEvents } from "../../js/songs.ts";
 import { midiToHz, noteName } from "../../js/ks.ts";
 import { EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP } from "../../js/acoustic-abi.ts";
-import { errorText, reportSmoke, smokeMode } from "../../js/smoke.ts";
+import { reportSmoke } from "../../js/smoke.ts";
+import { runAudioPage } from "../../js/page.ts";
 import { SONG_LEAD_S, liveSynth, renderOffline } from "../../js/synth-live.ts";
 import { pianoUi } from "../../js/piano-ui.ts";
 import { drawWave } from "../../js/audio-draw.ts";
-import { onsets } from "../../js/tone.ts";
+import { onsets, peakOf } from "../../js/tone.ts";
 import type { ToWorklet } from "../../js/synth-worklet.ts";
 
 /** Settings, and their slider ranges. Decay is a log slider over T60. */
@@ -67,15 +68,6 @@ const synth = liveSynth({
   },
 });
 
-function sendSettings(): void {
-  for (const m of settingsMessages()) synth.send(m);
-}
-
-async function start(): Promise<void> {
-  await synth.start();
-  byId("start", HTMLButtonElement).hidden = true;
-}
-
 /** Smoke: render the start of a song offline; check its onsets. */
 async function smoke(): Promise<void> {
   const song = SONGS[0];
@@ -83,12 +75,7 @@ async function smoke(): Promise<void> {
   // The song's events within the render (an off past the end is moot).
   const scheduled = songEvents(song).filter((e) => e.at < SMOKE_SECONDS - 0.2);
   const data = await renderOffline({ notes: [], song: scheduled }, SMOKE_SECONDS, SMOKE_RATE);
-  let peak = 0;
-  let finite = true;
-  for (const v of data) {
-    finite &&= Number.isFinite(v);
-    peak = Math.max(peak, Math.abs(v));
-  }
+  const { peak, finite } = peakOf(data);
   drawWave(ctx2d, data.subarray(0, SMOKE_DRAWN), colors);
   const expected = scheduled.filter((e) => e.on).map((e) => SONG_LEAD_S + e.at);
   const found = onsets(data, SMOKE_RATE);
@@ -111,7 +98,7 @@ function buildControls(): void {
     checked: settings.tuned,
     onChange: (on) => {
       settings.tuned = on;
-      sendSettings();
+      synth.resend();
     },
   });
   slider(controls, {
@@ -123,7 +110,7 @@ function buildControls(): void {
     format: (v) => `T60 ${(10 ** v).toFixed(2)} s`,
     onInput: (v) => {
       settings.t60 = 10 ** v;
-      sendSettings();
+      synth.resend();
     },
   });
   select(controls, {
@@ -132,7 +119,7 @@ function buildControls(): void {
     value: settings.triangle ? "triangle" : "noise",
     onChange: (v) => {
       settings.triangle = v === "triangle";
-      sendSettings();
+      synth.resend();
     },
   });
   slider(controls, {
@@ -144,7 +131,7 @@ function buildControls(): void {
     format: (v) => `${Math.round(v * PERCENT)}% along`,
     onInput: (v) => {
       settings.peak = v;
-      sendSettings();
+      synth.resend();
     },
   });
   slider(controls, {
@@ -156,29 +143,23 @@ function buildControls(): void {
     format: (v) => `${Math.round(v * PERCENT)}%`,
     onInput: (v) => {
       settings.gain = v;
-      sendSettings();
+      synth.resend();
     },
   });
 }
 
-try {
-  drawWave(ctx2d, new Float32Array(0), colors);
-  if (smokeMode) {
-    byId("start", HTMLButtonElement).hidden = true;
-    await smoke();
-  } else {
+drawWave(ctx2d, new Float32Array(0), colors);
+await runAudioPage(hud, {
+  start: synth.start,
+  smoke,
+  live: (begin) => {
     buildControls();
     pianoUi({
       piano: byId("piano", HTMLElement),
       songs: byId("songs", HTMLElement),
-      start,
+      start: begin,
       send: (m) => synth.send(m),
       onNote: (midi) => (lastMidi = midi),
     });
-    byId("start", HTMLButtonElement).addEventListener("click", () => void start());
-  }
-} catch (err) {
-  hud.textContent = `error: ${errorText(err)}`;
-  if (smokeMode) reportSmoke(`error ${errorText(err)}`);
-  throw err;
-}
+  },
+});
