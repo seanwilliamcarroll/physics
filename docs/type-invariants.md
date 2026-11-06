@@ -100,7 +100,11 @@ re-checks (`Option`): the old argument that rounding can't leave the range
 held only for `[0, 1]`, while a valid `1e300` is `+∞` in `f32`. `Radius`,
 `Stiffness` and `Damping`, written out by hand only to get exactly that,
 are macro-built now. `World::step` takes a **`TimeStep`** (dt > 0,
-finite), the same idea for the engine's most-called function.
+finite), the same idea for the engine's most-called function. Statics
+got a handle, **`StaticId`** (from `add_static`, taken by
+`set_static_position`), and immobility by construction: `kick`, `drift`
+and the split impulse drift skip `inv_mass = 0`, so a static given a
+velocity still stays put (it drifted before).
 
 **Triggers re-checked at the end of A3:** A1's note asked to revisit
 if A2–A3 passed parameters around. A3 does, in two cases:
