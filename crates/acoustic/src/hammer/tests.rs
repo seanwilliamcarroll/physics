@@ -121,3 +121,27 @@ fn the_smoothed_hammers_meet_the_fit_targets() {
 /// See the printout (A3.3).
 const FIT_TOL: f64 = 0.35;
 const FIT_SPREAD_TOL: f64 = 0.5;
+
+/// A linear felt (`p = 1`) on a string whose reflection is still far off
+/// is a damped oscillator, `c'' + (K/2Z) c' + (K/m) c = 0`, in contact
+/// for half its damped period, `π / √(K/m − (K/4Z)²)`: 1.6223 ms here.
+/// The blow converges on it at second order (the midpoint rule); before
+/// the fix, separation was never interpolated and every contact ran to
+/// the next whole sample (1.625 ms at every rate; found by cargo-mutants).
+#[test]
+fn a_linear_blow_lasts_half_a_damped_period() {
+    let felt = Felt {
+        mass: 0.01,
+        stiffness: 1e5,
+        exponent: 1.0,
+    };
+    let z = 10.0;
+    let exact = core::f64::consts::PI
+        / (felt.stiffness / felt.mass - (felt.stiffness / (4.0 * z)).powi(2)).sqrt();
+    // A0: the reflection returns after STRIKE / f0 = 4.5 ms, long after.
+    let error = |fs: f64| contact_time(fs, 27.5, felt, z, 1.0).unwrap() / exact - 1.0;
+    let (e48, e96) = (error(48_000.0), error(96_000.0));
+    assert!(e48.abs() < 1e-3, "48 kHz: {e48:+e}");
+    let order = (e48 / e96).log2();
+    assert!((order - 2.0).abs() < 0.2, "converges at order {order}");
+}

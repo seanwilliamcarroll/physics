@@ -277,11 +277,14 @@ hammer parts and the dispersion's refinement in their own modules.
 
 Software-engineering health, not physics (PRs #122 on). Open:
 
-- **Mutation gaps** from the full cargo-mutants run: soft constraints at
-  several iterations, the elastic potential, live k and c, the synth's
-  controls, `acoustic::measure` (next PR).
-- **cargo-mutants `--in-diff` in the pre-push hook**, informational
-  (not a gate): which of a branch's changes no test notices.
+- **Decision: refit the hammers?** The cheap blow model's contact times
+  ran up to a sample long until #125 (separation wasn't interpolated);
+  `hammer/table.rs` was fitted with them. Its tests still pass.
+  Regenerating it (`regenerate_the_table`, ignored) changes the piano's
+  sound and its golden hashes.
+- **Mutation, still to do:** `test-support` and `xtask` under
+  `--test-workspace=true` (their misses are mostly artifacts); M6's
+  `collision/narrowphase.rs` and `contact_solve.rs` when M6 resumes.
 - **TODO: why the piano model is slow in debug builds.** Selecting it
   designs 88 keys' dispersion filters: 1.8 s unoptimized at 48 kHz,
   0.2 s with `acoustic`, `libm` and `math` at `opt-level = 3` (now set

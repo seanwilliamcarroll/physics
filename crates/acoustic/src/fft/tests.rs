@@ -104,3 +104,47 @@ fn the_spectrum_finds_a_tone_in_db() {
         "far from the tone: silence"
     );
 }
+
+// From the full cargo-mutants run: `is_empty`, `last`, the magnitude's
+// imaginary part and the silence floor could change unnoticed.
+
+#[test]
+fn an_fft_is_never_empty() {
+    assert!(!Fft::<f64>::new(8).unwrap().is_empty());
+}
+
+#[test]
+fn the_spectrum_reads_a_sine_in_db_and_silence_at_the_floor() {
+    const N: usize = 1024;
+    let mut s = Spectrum::<f64>::new(N).unwrap();
+    assert!(
+        s.last().iter().all(|&d| d == 0.0),
+        "zeros before the first analysis"
+    );
+    // Silence: every bin at the floor, not −∞.
+    let floor = s.analyze(&[0.0; N]).unwrap().to_vec();
+    assert!(floor.iter().all(|&d| d == super::FLOOR_DB));
+    // A sine (its energy in the imaginary part) of amplitude 0.5 exactly
+    // on bin 64: 20 log10(0.5) = −6.02 dB there.
+    let sine: Vec<f64> = (0..N)
+        .map(|t| 0.5 * (TAU * 64.0 * usize_to_f64(t) / usize_to_f64(N)).sin())
+        .collect();
+    let db = s.analyze(&sine).unwrap().to_vec();
+    assert!(
+        (db[64] - 20.0 * 0.5_f64.log10()).abs() < 0.01,
+        "{} dB",
+        db[64]
+    );
+    assert_eq!(s.last(), &db[..], "last is the latest analysis");
+    // A cosine puts its energy in the real part: 0.25 on bin 32 reads
+    // 20 log10(0.25) = −12.04 dB.
+    let cosine: Vec<f64> = (0..N)
+        .map(|t| 0.25 * (TAU * 32.0 * usize_to_f64(t) / usize_to_f64(N)).cos())
+        .collect();
+    let db = s.analyze(&cosine).unwrap().to_vec();
+    assert!(
+        (db[32] - 20.0 * 0.25_f64.log10()).abs() < 0.01,
+        "{} dB",
+        db[32]
+    );
+}

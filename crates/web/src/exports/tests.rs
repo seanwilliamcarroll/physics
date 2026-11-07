@@ -306,3 +306,49 @@ fn jelly_constructor_and_live_stiffness_check_their_input() {
 }
 
 mod sequences;
+
+#[test]
+fn every_cap_accepts_its_limit_and_refuses_one_more() {
+    // Found by the pre-push mutation report: no test asked for exactly a
+    // cap, or for a gravity scene between its cap and the fountain's.
+    use abi::{
+        MAX_CHAIN_LINKS, MAX_GRAVITY_BODIES, MAX_ITERATIONS, MAX_JELLY_SIDE, MAX_RATE_HZ,
+        MAX_SUBSTEPS,
+    };
+    let (f64_, xpbd) = (abi::SCALAR_F64, abi::JELLY_XPBD);
+    // SAFETY: every handle is from a `demo_new*` export (or null), and
+    // freed once; null is allowed everywhere.
+    unsafe {
+        let disk = demo_new(abi::DEMO_DISK, f64_, MAX_GRAVITY_BODIES, 1);
+        assert!(!disk.is_null());
+        demo_free(disk);
+        assert!(demo_new(abi::DEMO_DISK, f64_, MAX_GRAVITY_BODIES + 1, 1).is_null());
+        // The fountain's cap is higher: the gravity scenes have their own.
+        let fountain = demo_new(abi::DEMO_FOUNTAIN, f64_, MAX_GRAVITY_BODIES + 1, 1);
+        assert!(!fountain.is_null());
+        demo_free(fountain);
+
+        let chain = demo_new_chain(f64_, MAX_CHAIN_LINKS, 100.0);
+        assert!(!chain.is_null());
+        assert!(demo_new_chain(f64_, MAX_CHAIN_LINKS + 1, 100.0).is_null());
+        for (set, cap) in [
+            (
+                demo_set_substeps as unsafe extern "C" fn(_, _) -> _,
+                MAX_SUBSTEPS,
+            ),
+            (demo_set_iterations, MAX_ITERATIONS),
+            (demo_set_rate, MAX_RATE_HZ),
+        ] {
+            assert_eq!(set(chain, cap), 1, "at the cap");
+            assert_eq!(set(chain, cap + 1), 0, "past the cap");
+        }
+        demo_free(chain);
+
+        let side = MAX_JELLY_SIDE;
+        let jelly = demo_new_jelly(f64_, xpbd, side, side, 1000.0, 0.5);
+        assert!(!jelly.is_null());
+        demo_free(jelly);
+        assert!(demo_new_jelly(f64_, xpbd, side + 1, side, 1000.0, 0.5).is_null());
+        assert!(demo_new_jelly(f64_, xpbd, side, side + 1, 1000.0, 0.5).is_null());
+    }
+}
