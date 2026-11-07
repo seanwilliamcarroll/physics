@@ -7,10 +7,11 @@
 //! rejected call (status 0) changes nothing, and a grab returning −1
 //! leaves nothing held.
 //!
-//! **Work sizes are bounded**: particle counts, links, grid sides,
-//! substeps, iterations and the rate set how much work a call does, and the
-//! ABI doesn't cap them (the page's sliders do), so a hostile value would
-//! only make the test slow. Their codes and edges (0, 1) are still drawn.
+//! **Work sizes** (particle counts, links, grid sides, substeps,
+//! iterations, the rate) are drawn small, so cases stay fast, or past the
+//! ABI's caps (`abi::MAX_*`), which it must refuse: a demo of 4e9
+//! particles or `u32::MAX` substeps is null or status 0, not a 32 GB
+//! allocation or a hung tab.
 
 use core::ptr;
 
@@ -35,13 +36,12 @@ use crate::demo::Demo;
 
 /// Calls per generated sequence.
 const MAX_CALLS: usize = 24;
-/// Bounds on the work-size arguments (see the module doc).
-const MAX_BODIES: u32 = 24;
-const MAX_LINKS: u32 = 12;
-const MAX_GRID: u32 = 6;
-const MAX_SUBSTEPS: u32 = 12;
-const MAX_ITERATIONS: u32 = 4;
-const MAX_RATE: u32 = 240;
+/// The small work sizes drawn (see the module doc).
+const SMALL_BODIES: u32 = 24;
+const SMALL_LINKS: u32 = 12;
+const SMALL_GRID: u32 = 6;
+const SMALL_SUBSTEPS: u32 = 12;
+const SMALL_ITERATIONS: u32 = 4;
 /// Codes drawn from 0 up to here: every valid code and some unknown ones.
 const MAX_CODE: u32 = 8;
 
@@ -69,9 +69,16 @@ fn code() -> impl Strategy<Value = u32> {
     prop_oneof![4 => 0..=MAX_CODE, 1 => Just(u32::MAX), 1 => any::<u32>()]
 }
 
-/// A work size up to `max`, edges included.
-fn size(max: u32) -> impl Strategy<Value = u32> {
-    prop_oneof![Just(0), Just(1), 0..=max]
+/// A work size: small (edges included), or past `cap`, which the ABI
+/// refuses.
+fn size(small: u32, cap: u32) -> impl Strategy<Value = u32> {
+    prop_oneof![
+        1 => Just(0),
+        1 => Just(1),
+        4 => 0..=small,
+        1 => Just(cap + 1),
+        1 => (cap + 1)..=u32::MAX,
+    ]
 }
 
 #[derive(Clone, Debug)]
@@ -115,7 +122,7 @@ fn valid_create() -> impl Strategy<Value = Create> {
         (
             0..=abi::DEMO_PENDULUM,
             scalar(),
-            1..=MAX_BODIES,
+            1..=SMALL_BODIES,
             any::<u32>()
         )
             .prop_map(|(kind, scalar, n, seed)| Create::New {
@@ -124,7 +131,7 @@ fn valid_create() -> impl Strategy<Value = Create> {
                 n,
                 seed
             }),
-        (scalar(), 1..=MAX_LINKS, 0.1..1000.0).prop_map(|(scalar, links, ratio)| Create::Chain {
+        (scalar(), 1..=SMALL_LINKS, 0.1..1000.0).prop_map(|(scalar, links, ratio)| Create::Chain {
             scalar,
             links,
             ratio
@@ -139,8 +146,8 @@ fn valid_create() -> impl Strategy<Value = Create> {
         (
             scalar(),
             0..=abi::JELLY_IMPULSE,
-            2..=MAX_GRID,
-            2..=MAX_GRID,
+            2..=SMALL_GRID,
+            2..=SMALL_GRID,
             prop_oneof![10.0..1e5, Just(f64::INFINITY)],
             0.0..2.0,
         )
@@ -158,19 +165,30 @@ fn valid_create() -> impl Strategy<Value = Create> {
 /// Any codes and values.
 fn hostile_create() -> impl Strategy<Value = Create> {
     prop_oneof![
-        (code(), code(), size(MAX_BODIES), any::<u32>()).prop_map(|(kind, scalar, n, seed)| {
-            Create::New {
-                kind,
+        (
+            code(),
+            code(),
+            size(SMALL_BODIES, abi::MAX_PARTICLES),
+            any::<u32>()
+        )
+            .prop_map(|(kind, scalar, n, seed)| {
+                Create::New {
+                    kind,
+                    scalar,
+                    n,
+                    seed,
+                }
+            }),
+        (
+            code(),
+            size(SMALL_LINKS, abi::MAX_CHAIN_LINKS),
+            hostile_f64()
+        )
+            .prop_map(|(scalar, links, ratio)| Create::Chain {
                 scalar,
-                n,
-                seed,
-            }
-        }),
-        (code(), size(MAX_LINKS), hostile_f64()).prop_map(|(scalar, links, ratio)| Create::Chain {
-            scalar,
-            links,
-            ratio
-        }),
+                links,
+                ratio
+            }),
         (code(), code(), hostile_f64()).prop_map(|(scalar, start, offset)| {
             Create::DoublePendulum {
                 scalar,
@@ -181,8 +199,8 @@ fn hostile_create() -> impl Strategy<Value = Create> {
         (
             code(),
             code(),
-            size(MAX_GRID),
-            size(MAX_GRID),
+            size(SMALL_GRID, abi::MAX_JELLY_SIDE),
+            size(SMALL_GRID, abi::MAX_JELLY_SIDE),
             hostile_f64(),
             hostile_f64()
         )
@@ -228,13 +246,13 @@ fn call() -> impl Strategy<Value = Call> {
         1 => create().prop_map(Call::Replace),
         6 => f().prop_map(Call::Advance),
         1 => code().prop_map(Call::Integrator),
-        1 => size(MAX_RATE).prop_map(Call::Rate),
+        1 => size(abi::MAX_RATE_HZ, abi::MAX_RATE_HZ).prop_map(Call::Rate),
         1 => f().prop_map(Call::Softening),
         1 => f().prop_map(Call::Theta),
         1 => code().prop_map(Call::Solver),
         1 => f().prop_map(Call::Beta),
-        1 => size(MAX_SUBSTEPS).prop_map(Call::Substeps),
-        1 => size(MAX_ITERATIONS).prop_map(Call::Iterations),
+        1 => size(SMALL_SUBSTEPS, abi::MAX_SUBSTEPS).prop_map(Call::Substeps),
+        1 => size(SMALL_ITERATIONS, abi::MAX_ITERATIONS).prop_map(Call::Iterations),
         1 => code().prop_map(Call::Order),
         1 => code().prop_map(Call::Stabilization),
         1 => f().prop_map(Call::Stiffness),
@@ -244,7 +262,7 @@ fn call() -> impl Strategy<Value = Call> {
             .prop_map(|(x, y, r)| Call::Grab(x, y, r)),
         2 => (prop_oneof![-3.0..3.0, f()], prop_oneof![-3.0..3.0, f()]).prop_map(|(x, y)| Call::Drag(x, y)),
         1 => Just(Call::Release),
-        1 => any::<u32>().prop_map(|i| Call::Particle(i % (2 * MAX_BODIES + 4))),
+        1 => any::<u32>().prop_map(|i| Call::Particle(i % (2 * SMALL_BODIES + 4))),
     ]
 }
 
@@ -354,8 +372,8 @@ unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
             Call::Replace(_) => return Err(TestCaseError::fail("handled by the caller")),
             Call::Advance(t) => {
                 let steps = demo_advance(d, t);
-                // At most 0.25 s (the frame clamp) of steps at MAX_RATE.
-                prop_assert!(steps <= MAX_RATE / 4 + 1, "{steps} steps from {t}");
+                // At most 0.25 s (the frame clamp) of steps at the highest rate.
+                prop_assert!(steps <= abi::MAX_RATE_HZ / 4 + 1, "{steps} steps from {t}");
                 return Ok(false);
             }
             Call::Particle(i) => {
