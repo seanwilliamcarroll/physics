@@ -68,13 +68,16 @@ fn peak_lag(signal: &[f64], lo: f64, hi: f64) -> Option<f64> {
         let norm = (aa * bb).sqrt();
         if norm > 0.0 { ab / norm } else { 0.0 }
     };
-    let (best, _) = (lo..=hi)
-        .map(|lag| (lag, r(lag)))
-        .fold(
-            (0, f64::NEG_INFINITY),
-            |m, (l, v)| if v > m.1 { (l, v) } else { m },
-        );
-    if best == 0 {
+    let (best, peak) =
+        (lo..=hi)
+            .map(|lag| (lag, r(lag)))
+            .fold(
+                (0, f64::NEG_INFINITY),
+                |m, (l, v)| if v > m.1 { (l, v) } else { m },
+            );
+    // Silence correlates 0 at every lag: no peak, so no period (the first
+    // lag searched used to win).
+    if best == 0 || peak <= 0.0 {
         return None;
     }
     let (rm, r0, rp) = (r(best - 1), r(best), r(best + 1));

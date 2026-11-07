@@ -137,3 +137,85 @@ fn piano_strikes_refuse_bad_keys_and_velocities() {
     s.set_stiffness(false);
     assert!(s.note_on_velocity(62, 1.0));
 }
+
+// Each control changes what the synth does: cargo-mutants found that
+// `note_off`, `set_tuned` and `set_stiffness` could each be replaced by
+// nothing, and `sounding`, `latest_cents` and `clipped` by a constant,
+// with every test still passing.
+
+#[test]
+fn note_off_releases_the_note() {
+    let mut held = Synth::new(FS, 1).unwrap();
+    let mut released = Synth::new(FS, 1).unwrap();
+    for s in [&mut held, &mut released] {
+        assert!(s.set_t60(5.0));
+        assert!(s.note_on(57));
+        level(s, 8);
+    }
+    released.note_off(57);
+    released.note_off(300); // not a key: nothing to release
+    let (h, r) = (level(&mut held, 64), level(&mut released, 64));
+    assert!(r < 0.1 * h, "released {r:e}, held {h:e}");
+}
+
+#[test]
+fn sounding_counts_the_voices() {
+    let mut s = Synth::new(FS, 1).unwrap();
+    assert_eq!(s.sounding(), 0);
+    assert!(s.note_on(60) && s.note_on(64));
+    assert_eq!(s.sounding(), 2);
+}
+
+#[test]
+fn tuned_notes_hit_their_pitch_and_integer_loops_miss_it() {
+    let mut s = Synth::new(FS, 1).unwrap();
+    assert_eq!(s.latest_cents(), 0.0, "before any note");
+    assert!(s.note_on(69));
+    let tuned = s.latest_cents();
+    s.set_tuned(false);
+    assert!(s.note_on(69));
+    let integer = s.latest_cents();
+    // A4's 109.09-sample period rounded to a whole loop: several cents off.
+    assert!(tuned.abs() < 0.01, "tuned: {tuned} cents");
+    assert!(
+        integer.abs() > 1.0 && integer.abs() < 50.0,
+        "integer loop: {integer} cents"
+    );
+}
+
+#[test]
+fn stiffness_changes_the_piano_strike() {
+    let render = |stiff: bool| {
+        let mut s = Synth::new(FS, 1).unwrap();
+        assert!(s.set_model(MODEL_PIANO));
+        s.set_stiffness(stiff);
+        assert!(s.note_on_velocity(36, 1.58));
+        (0..16)
+            .flat_map(|_| s.render(128).unwrap().to_vec())
+            .collect::<Vec<f32>>()
+    };
+    assert_ne!(
+        render(true),
+        render(false),
+        "stiff and ideal strings sound alike"
+    );
+}
+
+#[test]
+fn a_loud_chord_clips_and_is_counted() {
+    let mut s = Synth::new(FS, 1).unwrap();
+    assert_eq!(s.clipped(), 0);
+    assert!(s.set_gain(1.0));
+    for key in 60..72 {
+        assert!(s.note_on(key));
+    }
+    level(&mut s, 8);
+    assert!(s.clipped() > 0);
+}
+
+#[test]
+fn a_triangle_peak_must_be_inside_the_line() {
+    let mut s = Synth::new(FS, 1).unwrap();
+    assert!(!s.set_excitation(EXCITATION_TRIANGLE, 0.0), "at the start");
+    assert!(s.set_excitation(EXCITATION_TRIANGLE, f64::MIN_POSITIVE));
+}

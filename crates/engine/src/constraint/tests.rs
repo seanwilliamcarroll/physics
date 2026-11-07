@@ -74,3 +74,14 @@ fn with_length_takes_an_explicit_length_and_compliance() {
         "same body"
     );
 }
+
+#[test]
+fn a_rod_refuses_an_end_outside_the_particles() {
+    // From the full cargo-mutants run: `<` → `<=` and `&&` → `||` in the
+    // ends check went unnoticed.
+    let (p, a, b) = two_bodies();
+    let outside = crate::ParticleId(2);
+    let rod = |a, b| DistanceConstraint::with_length(&p, a, b, 1.0, crate::Compliance::RIGID);
+    assert!(rod(a, b).is_some());
+    assert!(rod(outside, b).is_none() && rod(a, outside).is_none());
+}

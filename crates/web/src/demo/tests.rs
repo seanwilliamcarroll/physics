@@ -1,10 +1,12 @@
 //! `Demo` tests, by topic: `basics` (clock, render buffer, orbit,
-//! fountain), `gravity` (M2 scenes, softening, θ), `pendulum` (M3).
+//! fountain), `gravity` (M2 scenes, softening, θ), `pendulum` (M3),
+//! `jelly` (M5).
 
 use super::{Demo, DemoKind, ScalarKind};
 
 mod basics;
 mod gravity;
+mod jelly;
 mod pendulum;
 
 /// One physics step at the 60 Hz `PHYSICS_RATE`.

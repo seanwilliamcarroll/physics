@@ -11,3 +11,8 @@ site/demos/*/*.js.map
 
 # Agent worktrees (Claude Code); separate checkouts, never part of this repo
 .claude/worktrees/
+
+# cargo-mutants output (`-o DIR` writes DIR/mutants.out), including the
+# pre-push hook's (mutants.out/pre-push/)
+mutants.out*/
+mutants_*.out/

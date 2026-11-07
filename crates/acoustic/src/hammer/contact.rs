@@ -37,6 +37,8 @@ pub(super) fn contact_within(
     // What was launched toward the nut, `lag` samples back: a ring.
     let mut history = vec![0.0; lag];
     let mut last = 0.0;
+    // The compression at the end of the last sample, if the felt was
+    // still compressed then (else 0).
     let mut previous = 0.0_f64;
     for n in 0..steps {
         let slot = n % lag;
@@ -47,13 +49,16 @@ pub(super) fn contact_within(
         }
         let c = hammer.compression();
         let t = usize_to_f64(n);
-        if hammer.force() > 0.0 {
-            last = t + 1.0;
-        } else if previous > 0.0 {
-            // Separated during this sample: where the compression crossed 0.
+        // Separated during this sample: where the compression crossed 0.
+        // The compression, not `force() > 0`: the force is the sample's
+        // mean, still positive in the sample where the compression crosses
+        // 0, so testing it never interpolated (every contact ran to the
+        // next whole sample; found by cargo-mutants). A blow always ends
+        // here: the hammer retires only once the felt is uncompressed.
+        if c <= 0.0 && previous > 0.0 {
             last = t + previous / (previous - c);
         }
-        previous = if hammer.force() > 0.0 { c } else { 0.0 };
+        previous = c.max(0.0);
         if hammer.retired() {
             return (last / fs <= longest).then_some(last / fs);
         }

@@ -1,4 +1,4 @@
-use super::{amplitude, cents, pitch, t60};
+use super::{amplitude, cents, partial, pitch, t60};
 use core::f64::consts::TAU;
 use math::convert::{f64_to_usize, usize_to_f64};
 
@@ -55,4 +55,63 @@ fn amplitude_reads_a_sine_between_bins() {
         .collect();
     assert!((amplitude(&x, FS, 441.3) - 0.3).abs() < 1e-3);
     assert!((amplitude(&x, FS, 882.6) - 0.1).abs() < 1e-3);
+}
+
+// From the full cargo-mutants run: what each measurement does with
+// silence, a short signal, and the window it's told to look at.
+
+#[test]
+fn silence_has_no_pitch_or_partial() {
+    // pitch() returned 504 Hz for silence (every lag correlated 0, so the
+    // first lag searched won), though its doc promised None.
+    let silence = vec![0.0; 48_000];
+    assert_eq!(pitch(&silence, FS, 440.0, 0.06), None);
+    assert_eq!(partial(&silence, FS, 440.0, 16.0), None);
+    assert_eq!(t60(&silence, FS, 220.0, 16.0, 0.0, 1.0), None);
+}
+
+#[test]
+fn a_lag_search_needs_two_windows_of_its_longest_lag() {
+    // The window is `len − (hi + 1)` samples (so every lag fits), and must
+    // hold two of the longest lag: `len ≥ 3 hi + 1`.
+    const HI: usize = 115;
+    let shortest = 3 * HI + 1;
+    let x = tone(440.0, 0.0, 1.0);
+    let hi = usize_to_f64(HI);
+    assert!(super::peak_lag(&x[..shortest], 100.0, hi).is_some());
+    assert_eq!(super::peak_lag(&x[..shortest - 1], 100.0, hi), None);
+}
+
+#[test]
+fn t60_fits_only_the_window_it_is_given() {
+    // 60 dB/s for the first second, then 30 dB/s: the window after 1.2 s
+    // reads 2 s, the one before 0.8 s reads 1 s.
+    let fast = tone(220.0, 60.0, 1.0);
+    let level_at_1s = 10f64.powf(-60.0 / 20.0);
+    let slow: Vec<f64> = tone(220.0, 30.0, 2.0)
+        .iter()
+        .map(|x| x * level_at_1s)
+        .collect();
+    let both: Vec<f64> = fast.iter().chain(&slow).copied().collect();
+    let late = t60(&both, FS, 220.0, 16.0, 1.2, 2.8).unwrap();
+    let early = t60(&both, FS, 220.0, 16.0, 0.1, 0.8).unwrap();
+    assert!((late - 2.0).abs() < 0.02, "after the change: {late}");
+    assert!((early - 1.0).abs() < 0.02, "before it: {early}");
+}
+
+#[test]
+fn t60_skips_silent_windows_and_needs_two() {
+    // 30 dB/s (T60 = 2 s) for 13 whole windows (16 periods of 220 Hz:
+    // 3491 samples each), then exact silence: the silent windows (level
+    // −∞ dB) are left out, so the fit still reads the decay.
+    const WINDOW: usize = 3491;
+    let mut x = tone(220.0, 30.0, 1.0)[..13 * WINDOW].to_vec();
+    x.extend(core::iter::repeat_n(0.0, 13 * WINDOW));
+    let got = t60(&x, FS, 220.0, 16.0, 0.1, 1.9).unwrap();
+    assert!((got - 2.0).abs() < 0.02, "{got}");
+    // A window is 72.7 ms: a span holding two window centers (36 and
+    // 109 ms) measures, one holding one doesn't.
+    let decay = tone(220.0, 30.0, 1.0);
+    assert!(t60(&decay, FS, 220.0, 16.0, 0.0, 0.12).is_some());
+    assert_eq!(t60(&decay, FS, 220.0, 16.0, 0.0, 0.05), None);
 }

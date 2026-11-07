@@ -251,6 +251,16 @@ count behind an env var for CI or overnight runs. Commit
   shrinking, and saved regressions aren't replayed (WASI can't see the
   source tree). The native run is the one that reports and replays.
 
+**At the wasm boundary (health audit, after A3):** both wasm crates have
+a stateful property test over random sequences of their C exports
+(`web`'s and `acoustic-web`'s `exports/tests/sequences.rs`), with
+hostile values (NaN, ±∞, ±0, `f64::MAX`, unknown codes, `u32::MAX`, sizes
+past the ABI's caps). After every call: no panic, statuses 0 or 1, the
+buffers JS reads consistent, and a refused call changes nothing (the
+synth's: a shadow synth fed only the accepted calls renders bit-identical
+audio). They found a strike velocity that panicked the worklet and a
+grab whose −1 meant two things.
+
 ## Running as wasm
 
 Run the same test suite compiled to wasm under `wasmtime` (an external
@@ -531,6 +541,34 @@ PR edits. The JS percentage is mostly a statement about how much of the
 site is DOM code, so gating it would push tests toward the wrong layer.
 Revisit if CI arrives, or if a review ever finds a real bug in code the
 report showed as unexecuted.
+
+## Mutation testing
+
+Coverage says code ran during a test; mutation testing says whether a
+test would notice it breaking. `cargo-mutants` (`cargo install
+cargo-mutants`) changes the code one small edit at a time (`<` to `<=`,
+`+` to `-`, a body replaced by `()` or a constant), runs the owning
+package's tests, and reports each **missed** mutant: one every test
+still passed.
+
+- **Pre-push (informational, never a gate):** the hook mutates only the
+  lines the push changes and lists what no test caught. Up to
+  `MUTANTS_MAX` mutants (default 60) run, `-j 4`, test builds at
+  `opt-level = 1`; past that it prints the command instead.
+  `SKIP_MUTANTS=1` skips it. Output: `mutants.out/pre-push/`.
+- **A missed mutant is one of:** a real gap (write the test); dead or
+  redundant code (delete it); an **equivalent** mutant, which can't change
+  behavior (a least-squares sum's `t − t̄` against `t + t̄`, since the
+  deviations sum to zero; `|` against `^` on disjoint bits); or a result
+  robust by design (a safeguarded Newton step's slope). Equivalent ones
+  stay, noted where they're found.
+- **Only the owning package's tests run**, so code that other crates'
+  tests check (`test-support`, much of `math`) looks untested. Run those
+  with `--test-workspace=true`, or give the crate its own tests.
+- **The full run (after A3):** 415 of 3663 missed, about 130 of them for
+  that reason. The real gaps it found (soft constraints at several
+  passes, the elastic potential, live k and c, three synth controls that
+  could do nothing, `pitch` of silence returning 504 Hz) have tests.
 
 ## Phase 1 test-first order
 

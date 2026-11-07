@@ -267,3 +267,85 @@ fn the_latest_strike_is_traced() {
         "a new strike starts a new trace"
     );
 }
+
+// Found by cargo-mutants (full run): the counter that orders notes, the
+// output gain and clamp, the piano's detune readout and its design on
+// selection could each change without a test noticing.
+
+#[test]
+fn stealing_takes_the_oldest_even_after_a_replay() {
+    // Replaying 60 makes it the newest, so the oldest is 61: with a
+    // counter stuck at 0 every voice looks as old, and slot 0 (60) went.
+    let mut v = pool();
+    for key in 60..60 + u8::try_from(VOICES).unwrap() {
+        assert!(v.note_on(key, VOICING, Excitation::Noise));
+    }
+    assert!(v.note_on(60, VOICING, Excitation::Noise));
+    assert!(v.note_on(80, VOICING, Excitation::Noise));
+    let keys: Vec<_> = v.keys().flatten().collect();
+    assert!(keys.contains(&60) && keys.contains(&80), "{keys:?}");
+    assert!(!keys.contains(&61), "the oldest (61) was stolen: {keys:?}");
+}
+
+/// Twelve noise plucks at a time, rendered for 4096 samples at `gain`.
+fn chord(gain: f64) -> (Vec<f64>, u64) {
+    let mut v = pool();
+    v.set_gain(gain);
+    for key in 60..72 {
+        assert!(v.note_on(key, VOICING, Excitation::Noise));
+    }
+    let mut out = vec![0.0; 4096];
+    v.render(&mut out);
+    (out, v.clipped())
+}
+
+#[test]
+fn the_gain_scales_the_output() {
+    // Low enough that nothing clips: halving the gain halves every
+    // sample, exactly (a power of two).
+    let (quarter, c1) = chord(0.0625);
+    let (eighth, c2) = chord(0.031_25);
+    assert_eq!((c1, c2), (0, 0));
+    assert!(quarter.iter().any(|&x| x != 0.0));
+    assert!(
+        quarter
+            .iter()
+            .zip(&eighth)
+            .all(|(a, b)| b.to_bits() == (a / 2.0).to_bits())
+    );
+}
+
+#[test]
+fn the_clamp_holds_both_signs_and_counts_what_it_clips() {
+    let (out, clipped) = chord(1.0);
+    assert!(out.iter().all(|x| x.abs() <= 1.0));
+    assert!(out.contains(&1.0) && out.contains(&-1.0), "clips both ways");
+    let at_the_rail = out
+        .iter()
+        .filter(|x| x.abs().to_bits() == 1.0_f64.to_bits())
+        .count();
+    assert_eq!(usize::try_from(clipped).unwrap(), at_the_rail);
+}
+
+#[test]
+fn the_piano_reads_its_strings_mean_detune() {
+    // The strings sit about the note (±½ cent, or −1, 0, +1), so their
+    // mean is the note: well within a cent.
+    let mut v = piano();
+    assert!(v.strike(60, mezzo_forte()));
+    let cents = v.latest_detune().unwrap();
+    assert!(cents.abs() < 1.0, "{cents} cents");
+}
+
+#[test]
+fn choosing_the_piano_designs_its_keys_and_nothing_else_does() {
+    let mut v = pool();
+    v.set_model(Model::Loop);
+    v.set_model(Model::Waveguide);
+    assert!(v.designs.is_none());
+    v.set_model(Model::Piano);
+    assert!(
+        v.designs.is_some(),
+        "designed on selection, not at the first strike"
+    );
+}

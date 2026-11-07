@@ -94,3 +94,66 @@ fn potential_is_half_k_x_squared() {
         "½ · 100 · 0.2² = 2 J"
     );
 }
+
+// From the full cargo-mutants run: the ends check, live stiffness and
+// damping, and the potential's sign could each change unnoticed.
+
+#[test]
+fn a_spring_refuses_an_end_outside_the_particles() {
+    let p = two_bodies(1.0);
+    let (a, b, outside) = (
+        crate::ParticleId(0),
+        crate::ParticleId(1),
+        crate::ParticleId(2),
+    );
+    let spring = |a, b| Spring::with_rest(&p, a, b, 1.0, k(1.0), Damping::NONE);
+    assert!(spring(a, b).is_some());
+    assert!(spring(outside, b).is_none() && spring(a, outside).is_none());
+}
+
+#[test]
+fn the_potential_is_half_k_stretch_squared_and_follows_live_k() {
+    let mut p = two_bodies(1.0);
+    let spring = Spring::between(
+        &p,
+        crate::ParticleId(0),
+        crate::ParticleId(1),
+        k(100.0),
+        Damping::NONE,
+    )
+    .unwrap();
+    let f = SpringForce::new(vec![spring]);
+    for (gap, expect) in [(1.1, 0.5), (0.9, 0.5), (1.0, 0.0)] {
+        p.pos[1] = Vec2::new(gap, 0.0);
+        // ½ · 100 · 0.1² = 0.5 J, stretched or compressed.
+        assert!((f.potential(&p) - expect).abs() < 1e-12, "gap {gap}");
+    }
+    p.pos[1] = Vec2::new(1.1, 0.0);
+    assert!(
+        (f.with_stiffness(k(200.0)).potential(&p) - 1.0).abs() < 1e-12,
+        "k doubled"
+    );
+}
+
+#[test]
+fn live_damping_reaches_every_spring() {
+    let mut p = two_bodies(1.0);
+    p.vel[1] = Vec2::new(1.0, 0.0); // separating at 1 m/s
+    let spring = Spring::between(
+        &p,
+        crate::ParticleId(0),
+        crate::ParticleId(1),
+        k(100.0),
+        Damping::NONE,
+    )
+    .unwrap();
+    let undamped = SpringForce::new(vec![spring]);
+    assert_eq!(
+        accel(&p, &undamped)[0],
+        Vec2::ZERO,
+        "at rest length, no damper"
+    );
+    // c = 2 N·s/m at 1 m/s: 2 N on the 1 kg end, toward the other.
+    let damped = undamped.with_damping(Damping::new(2.0).unwrap());
+    assert!((accel(&p, &damped)[0].x - 2.0).abs() < 1e-12);
+}
