@@ -4,7 +4,7 @@
 // energy errors, and a table shows step cost growing with N.
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
-import { Smoothed } from "../../js/loop.ts";
+import { MS_PER_SECOND, Smoothed } from "../../js/loop.ts";
 import { View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
 import { DEMO_CLUSTER, DEMO_COLLAPSE, DEMO_DISK, MAX_GRAVITY_BODIES, SCALAR_F32, SCALAR_F64 } from "../../js/abi.ts";
 import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
@@ -85,6 +85,12 @@ const BODY_PX = 3;
  *  and rebuilding DOM every frame would show up in the ms/draw it reports
  *  next to. */
 const COST_REFRESH_MS = 500;
+/** How often the energy is read, ms: 4 a second is plenty for the 30 s
+ *  plot. Each reading is exact, so O(N²) (the potential sums every pair,
+ *  even on the Barnes–Hut panel): about half a pairwise step, 6.6 ms per
+ *  panel at N = 4096 in the browser. Read every frame, it took ~35 % of
+ *  the frame's compute (measured, health audit). */
+const ENERGY_REFRESH_MS = 250;
 /** Plot history in frames: 30 s at 60 fps. */
 const PLOT_SAMPLES = 1800;
 
@@ -113,8 +119,11 @@ const panels = buildPanels(byId("panels", HTMLElement), PANELS, css).map((p) => 
   ...p,
   /** Energy at the start (or the last softening change): ΔE/E's reference. */
   e0: 0,
+  /** |ΔE/E| at the last reading (every ENERGY_REFRESH_MS). */
+  err: 0,
   msPerStep: new Smoothed(),
   msPerDraw: new Smoothed(),
+  msPerEnergy: new Smoothed(),
 }));
 type Panel = (typeof panels)[number];
 
@@ -138,10 +147,13 @@ try {
   const engine = await loadEngine();
   /** Simulated seconds since the last (re)start. */
   let simTime = 0;
+  /** When the energy was last read (`now`, ms); -∞ reads it next frame. */
+  let energyReadAt = -Infinity;
 
   const resetEnergy = () => {
     for (const p of panels) p.e0 = engine.demo_energy(demoHandle(p));
     energyPlot.clear();
+    energyReadAt = -Infinity;
   };
 
   /** (Re)creates both demos from the current scene, N, seed, ε, rate. */
@@ -244,18 +256,28 @@ try {
         const demo = demoHandle(p);
         const pos = positionsView(engine, demo);
         p.msPerDraw.add(timeMs(() => drawPanel(p, pos)));
-        const err = Math.abs((engine.demo_energy(demo) - p.e0) / p.e0);
-        p.readout.textContent =
-          `|ΔE/E| ${err.toExponential(2)} · ${p.msPerStep.value.toFixed(3)} ms/step · ` +
-          `${p.msPerDraw.value.toFixed(2)} ms/draw`;
-        return { pos, err };
+        return { pos };
       });
+      const readEnergy = now - energyReadAt >= ENERGY_REFRESH_MS;
+      if (readEnergy) {
+        for (const p of panels) {
+          let e = 0;
+          p.msPerEnergy.add(timeMs(() => { e = engine.demo_energy(demoHandle(p)); }));
+          p.err = Math.abs((e - p.e0) / p.e0);
+        }
+        energyReadAt = now;
+      }
+      for (const p of panels) {
+        p.readout.textContent =
+          `|ΔE/E| ${p.err.toExponential(2)} · ${p.msPerStep.value.toFixed(3)} ms/step · ` +
+          `${p.msPerDraw.value.toFixed(2)} ms/draw · ${p.msPerEnergy.value.toFixed(2)} ms/energy (${MS_PER_SECOND / ENERGY_REFRESH_MS}/s)`;
+      }
       simTime += steps / state.rate;
       const ref = views[REFERENCE];
       if (ref !== undefined) {
         divergencePlot.push(simTime, views.filter((_, i) => i !== REFERENCE).map((v) => rmsDistance(v.pos, ref.pos)));
       }
-      energyPlot.push(simTime, views.map((v) => v.err));
+      if (readEnergy) energyPlot.push(simTime, panels.map((p) => p.err));
       divergencePlot.draw();
       energyPlot.draw();
       if (now - costShownAt >= COST_REFRESH_MS) {

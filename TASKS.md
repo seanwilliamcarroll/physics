@@ -286,8 +286,6 @@ Software-engineering health, not physics (PRs #122 on). Open:
   for dev builds). Is the time in `libm`'s transcendentals, the
   refinement's iterations, or something that could be designed lazily
   per key, or once and shared?
-- **M2's energy readout** is O(n²) per panel every frame, Barnes–Hut's
-  included (the M2 walkthrough); measure, then read it less often.
 
 ## Out of scope for A3
 
@@ -314,6 +312,10 @@ step). Options: a per-frame step budget, so the sim runs in slow motion
 instead of freezing the display; fewer panels at large N; or Web Workers,
 one per panel (the panels are independent, so that's real parallelism) and
 the main thread only draws. Leaning toward workers; revisit after M2.
+Since the health audit the exact energy readout (about half a pairwise
+step per panel: 6.6 ms at 4096 in the browser) runs 4 times a second,
+not every frame; the gap is the steps alone (~55 ms a frame for the
+three panels in the page), still well over a 60 Hz frame.
 
 **CI is disabled:** `.github/workflows/ci.yml` (added in #73, green on
 its runs) is turned off with `gh workflow disable CI`, so nothing on
