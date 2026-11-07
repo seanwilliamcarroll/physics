@@ -154,8 +154,12 @@ fn note_off_releases_the_note() {
     }
     released.note_off(57);
     released.note_off(300); // not a key: nothing to release
-    let (h, r) = (level(&mut held, 64), level(&mut released, 64));
-    assert!(r < 0.1 * h, "released {r:e}, held {h:e}");
+    // Past the release's first 43 ms (its damper comes in over 10 ms), a
+    // released note is over 20 dB under a held one.
+    level(&mut held, 16);
+    level(&mut released, 16);
+    let (h, r) = (level(&mut held, 48), level(&mut released, 48));
+    assert!(r < 0.01 * h, "released {r:e}, held {h:e}");
 }
 
 #[test]
