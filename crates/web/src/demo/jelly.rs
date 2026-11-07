@@ -14,7 +14,7 @@ use super::{BetweenSteps, Demo, ScalarKind};
 /// the force-based jelly blowing up at ~2 250–3 400 N/m; the page can
 /// change it.
 // `unwrap` in a const item runs at compile time (as `PHYSICS_RATE`).
-const JELLY_START_SUBSTEPS: NonZeroU32 = NonZeroU32::new(10).unwrap();
+pub(super) const JELLY_START_SUBSTEPS: NonZeroU32 = NonZeroU32::new(10).unwrap();
 
 impl Demo {
     /// `scenarios::jelly`: a `cols` × `rows` grid with springs of

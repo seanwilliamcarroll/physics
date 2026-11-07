@@ -1,3 +1,7 @@
+use engine::diagnostics::{kinetic_energy, uniform_gravity_potential};
+use engine::scenarios::pendulum_gravity;
+
+use super::super::any_world::AnyWorld;
 use super::super::{Demo, DemoKind, ScalarKind};
 use super::{PHYSICS_DT, demo};
 
@@ -52,4 +56,25 @@ fn pendulum_energy_falls_under_xpbd_in_f32_too() {
     }
     // XPBD at one substep loses most of the 9.8 J swing (01's table).
     assert!(d.energy().unwrap() < -8.0);
+}
+
+#[test]
+fn pendulum_energy_is_kinetic_plus_potential() {
+    // cargo-mutants (full run): `kinetic * potential` passed the tests
+    // above (0 at release, negative once swinging). Mid-swing both terms
+    // are nonzero, and the readout is exactly their sum.
+    let mut d = pendulum_demo(ScalarKind::F64);
+    for _ in 0..20 {
+        d.advance(PHYSICS_DT);
+    }
+    let AnyWorld::F64(s) = &d.world else {
+        panic!("an f64 demo")
+    };
+    let p = s.world.particles();
+    let (k, u) = (
+        kinetic_energy(p),
+        uniform_gravity_potential(p, &pendulum_gravity()),
+    );
+    assert!(k > 0.0 && u < 0.0, "kinetic {k}, potential {u}");
+    assert_eq!(d.energy().map(f64::to_bits), Some((k + u).to_bits()));
 }
