@@ -28,6 +28,18 @@ clap = { version = "4.6.7", features = ["derive"] }
 # (rust-lang/compiler-builtins), MIT, no dependencies (A1.3).
 libm = "0.2.16"
 
+# Dev and test builds optimize the acoustic crate and the math it leans
+# on: the piano's filter design (88 keys, in libm's transcendentals) took
+# 1.8 s unoptimized, 0.2 s here, and the synth's property test 70 s,
+# 12 s. Debug assertions and overflow checks stay on (opt-level is
+# separate from both). Why it's that slow unoptimized: TASKS.md.
+[profile.dev.package.acoustic]
+opt-level = 3
+[profile.dev.package.libm]
+opt-level = 3
+[profile.dev.package.math]
+opt-level = 3
+
 [profile.release]
 opt-level = 3   # try "s"/"z" later and measure size vs speed
 lto = true
