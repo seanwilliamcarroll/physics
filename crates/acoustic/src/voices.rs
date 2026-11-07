@@ -28,6 +28,12 @@ pub const DEFAULT_GAIN: f64 = 0.25;
 /// of stopping dead (a click).
 pub const RELEASE_T60: f64 = 0.1;
 
+/// How long the release's damper takes to come in, s (ours): a damper
+/// applied in one sample clicked on the piano, which sounds the change in
+/// its bridge's reflected wave (a step about 8× the note's own). Over
+/// 10 ms the extra change per sample is far under the note's.
+pub const RELEASE_RAMP: f64 = 0.01;
+
 /// The piano's output per newton of bridge force (the strings' summed
 /// force, through the body): **our choice**, so a loud chord stays off the
 /// clamp at the default gain (`tests/determinism.rs` measures it).
@@ -246,12 +252,13 @@ impl<S: Scalar> Voices<S> {
     /// voice frees. Nothing if it isn't sounding (or is already released).
     pub fn note_off(&mut self, key: u8) {
         let fs = self.fs;
+        let ramp = f64_to_usize(fs * RELEASE_RAMP).unwrap_or(0);
         for v in &mut self.pool {
             if v.key == Some(key) && v.releasing.is_none() {
                 match v.model {
-                    Model::Loop => v.string.damp(RELEASE_T60),
-                    Model::Waveguide => v.guide.damp(RELEASE_T60),
-                    Model::Piano => v.piano.damp(RELEASE_T60),
+                    Model::Loop => v.string.damp(RELEASE_T60, ramp),
+                    Model::Waveguide => v.guide.damp(RELEASE_T60, ramp),
+                    Model::Piano => v.piano.damp(RELEASE_T60, ramp),
                 }
                 let samples = f64_to_usize(fs * RELEASE_T60 * RELEASE_FREE_FACTOR).unwrap_or(0);
                 v.releasing = Some(samples);

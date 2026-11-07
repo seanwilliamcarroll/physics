@@ -138,8 +138,8 @@ impl<S: Scalar> Waveguide<S> {
     }
 
     /// The release: see [`KsString::damp`](crate::KsString::damp).
-    pub fn damp(&mut self, t60: f64) {
-        self.bridge.damp(t60);
+    pub fn damp(&mut self, t60: f64, ramp: usize) {
+        self.bridge.damp(t60, ramp);
     }
 
     /// Plucks the string into `shape(s)` (`s` from the bridge, 0 to 1),

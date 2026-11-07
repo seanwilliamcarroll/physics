@@ -349,3 +349,51 @@ fn choosing_the_piano_designs_its_keys_and_nothing_else_does() {
         "designed on selection, not at the first strike"
     );
 }
+
+/// The largest sample-to-sample step within 10 ms after `key`'s note off,
+/// over the largest in the 10 ms before it, for `model`.
+fn release_step_ratio(model: Model, key: u8) -> f64 {
+    const BLOCK: usize = 128;
+    let mut v = pool();
+    v.set_model(model);
+    if model == Model::Piano {
+        assert!(v.strike(key, mezzo_forte()));
+    } else {
+        assert!(v.note_on(key, VOICING, Excitation::Noise));
+    }
+    let off_block = f64_to_usize(0.25 * FS).unwrap() / BLOCK;
+    let mut out = Vec::new();
+    for b in 0..off_block + 8 {
+        if b == off_block {
+            v.note_off(key);
+        }
+        let mut block = vec![0.0; BLOCK];
+        v.render(&mut block);
+        out.extend(block);
+    }
+    let off = off_block * BLOCK;
+    let window = f64_to_usize(0.01 * FS).unwrap();
+    let largest = |from: usize, to: usize| {
+        (from..to)
+            .map(|n| (out[n] - out[n - 1]).abs())
+            .fold(0.0, f64::max)
+    };
+    largest(off, off + window) / largest(off - window, off)
+}
+
+#[test]
+fn releasing_a_note_doesnt_click() {
+    // The piano sounds the change in its bridge's reflected wave, so a
+    // damper applied in one sample (a 23 % drop at C4) was a step about
+    // seven times the note's own (heard on every released note of a song).
+    // The damper now comes in over RELEASE_RAMP.
+    for model in [Model::Loop, Model::Waveguide, Model::Piano] {
+        for key in [33_u8, 60, 84] {
+            let ratio = release_step_ratio(model, key);
+            assert!(
+                ratio < 1.1,
+                "{model:?}, MIDI {key}: a step {ratio:.2}× the note's own at release"
+            );
+        }
+    }
+}

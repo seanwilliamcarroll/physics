@@ -175,6 +175,15 @@ Note off can't just stop the loop (a click). It raises the loss for that
 voice (a short `T₆₀`, ~0.1 s), so the note fades in a few tens of
 milliseconds; the voice is free once it's below −80 dB.
 
+**The extra loss comes in over 10 ms** (`RELEASE_RAMP`, our choice), not
+in one sample. Raising it at once never clicked on the loop or the
+waveguide, which sound a displacement, but the piano (A3) sounds the
+*change* in its bridge's reflected wave: a 23 % drop in one sample (C4)
+was a step about eight times the note's own, on every released note of
+a song. Over 10 ms (about two periods at A0) the extra change per sample
+is far below the note's; a test holds the release's largest step under
+the note's largest before it, for all three models.
+
 ## Excitation
 
 What fills the delay line at note on:

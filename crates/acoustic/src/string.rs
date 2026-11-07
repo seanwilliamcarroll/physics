@@ -62,9 +62,10 @@ impl<S: Scalar> KsString<S> {
     /// Adds a loss on top of the voicing's, so the note's fundamental falls
     /// 60 dB in about `t60` more seconds: the release at note off. The
     /// pitch doesn't change (only the taps' gain does). Ignored unless
-    /// `t60 > 0`.
-    pub fn damp(&mut self, t60: f64) {
-        self.bridge.damp(t60);
+    /// `t60 > 0`. The loss comes in over `ramp` samples (at once for 0):
+    /// see [`RELEASE_RAMP`](crate::RELEASE_RAMP).
+    pub fn damp(&mut self, t60: f64, ramp: usize) {
+        self.bridge.damp(t60, ramp);
     }
 
     /// Subtracts the delay line's mean (see [`DelayLine::remove_mean`]).
