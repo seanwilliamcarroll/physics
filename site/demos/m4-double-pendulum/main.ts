@@ -5,8 +5,8 @@
 import { loadEngine, positionsView, linksView } from "../../js/wasm.ts";
 import { View, clear, drawPoints, drawLinks, cssColor } from "../../js/canvas.ts";
 import {
-  COORDS_PER_PARTICLE, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD,
-  START_HORIZONTAL, START_RAISED,
+  COORDS_PER_PARTICLE, MAX_SUBSTEPS, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD, START_HORIZONTAL,
+  START_RAISED,
 } from "../../js/abi.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
@@ -45,7 +45,7 @@ const OPTIONS: {
   start: { kind: "choice", values: Object.keys(STARTS), default: "raised", help: "release position (raised: both rods at 135°)" },
   solver: { kind: "choice", values: Object.keys(SOLVERS), default: "impulse", help: "impulse keeps the energy; XPBD's damping kills the chaos" },
   // 20: the substeps M4.4 measured (energy within 0.04 J over 30 s).
-  substeps: { kind: "int", min: 1, max: 100, default: 20, help: "substeps per physics step" },
+  substeps: { kind: "int", min: 1, max: MAX_SUBSTEPS, default: 20, help: "substeps per physics step" },
   rate: RATE_OPTION,
   fps: FPS_OPTION,
 };

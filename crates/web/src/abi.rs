@@ -52,6 +52,28 @@ pub(crate) const SCALAR_F64: u32 = 1;
 /// common display rate.
 pub(crate) const DEFAULT_RATE_HZ: u32 = 60;
 
+/// The most work one call may ask for: the exports refuse anything larger
+/// (null, or status 0), so the ABI can't be asked to allocate gigabytes
+/// or hang the tab (`demo_new(…, n = 4e9)` once tried to reserve a 32 GB
+/// render buffer, whatever the scene). Each is the page's own limit, and
+/// the pages read their slider ranges from here (`site/js/abi.ts`).
+///
+/// Particles in a `demo_new` scene: the M0 fountain's largest.
+pub(crate) const MAX_PARTICLES: u32 = 2_000_000;
+/// Bodies in a gravity scene (M2): pairwise gravity is O(n²), ~17 ms per
+/// step at this many natively (M2.3).
+pub(crate) const MAX_GRAVITY_BODIES: u32 = 4096;
+/// Links in the M4 chain.
+pub(crate) const MAX_CHAIN_LINKS: u32 = 40;
+/// Particles along a side of the M5 jelly.
+pub(crate) const MAX_JELLY_SIDE: u32 = 16;
+/// Substeps per physics step.
+pub(crate) const MAX_SUBSTEPS: u32 = 100;
+/// Constraint iterations per substep.
+pub(crate) const MAX_ITERATIONS: u32 = 20;
+/// Physics steps per simulated second.
+pub(crate) const MAX_RATE_HZ: u32 = 240;
+
 /// Floats per particle in the positions buffer: `[x, y]`.
 pub(crate) const COORDS_PER_PARTICLE: usize = 2;
 

@@ -5,9 +5,16 @@ use core::num::NonZeroU32;
 
 use engine::{Baumgarte, OpeningAngle, Softening};
 
+use crate::abi;
 use crate::demo::{
     Demo, integrator_from_code, order_from_code, solver_from_code, stabilization_from_code,
 };
+
+/// `n` if it's in `1..=max` (an [`abi`] cap): settings that set how much
+/// work a step does.
+fn at_most(n: u32, max: u32) -> Option<NonZeroU32> {
+    NonZeroU32::new(n).filter(|n| n.get() <= max)
+}
 
 /// Switches integrator (`code` from [`crate::abi`]); takes effect next
 /// step. Returns 1 on success, 0 for an unknown code or a null handle.
@@ -25,15 +32,16 @@ pub(crate) unsafe extern "C" fn demo_set_integrator(d: *mut Demo, code: u32) -> 
 }
 
 /// Sets the physics rate in steps per second (`dt = 1 / hz`), dropping any
-/// owed time. Returns 1 on success, 0 for `hz = 0` or a null handle: the
-/// `u32 → NonZeroU32` parse happens here, at the boundary.
+/// owed time. Returns 1 on success, 0 for `hz = 0`, above
+/// [`MAX_RATE_HZ`](abi::MAX_RATE_HZ), or a null handle: the parse happens
+/// here, at the boundary.
 ///
 /// # Safety
 /// `d` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_set_rate(d: *mut Demo, hz: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(rate)) = (unsafe { d.as_mut() }, NonZeroU32::new(hz)) else {
+    let (Some(d), Some(rate)) = (unsafe { d.as_mut() }, at_most(hz, abi::MAX_RATE_HZ)) else {
         return 0;
     };
     d.set_rate(rate);
@@ -102,30 +110,30 @@ pub(crate) unsafe extern "C" fn demo_set_beta(d: *mut Demo, beta: f64) -> u32 {
     u32::from(d.set_baumgarte(beta))
 }
 
-/// Substeps per physics step. Returns 1, or 0 for 0 (parsed into
-/// `NonZeroU32` here) or a null handle.
+/// Substeps per physics step. Returns 1, or 0 for 0, above
+/// [`MAX_SUBSTEPS`](abi::MAX_SUBSTEPS) (parsed here), or a null handle.
 ///
 /// # Safety
 /// `d` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_set_substeps(d: *mut Demo, n: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, NonZeroU32::new(n)) else {
+    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, at_most(n, abi::MAX_SUBSTEPS)) else {
         return 0;
     };
     d.set_substeps(n);
     1
 }
 
-/// Constraint-solver iterations per substep. Returns 1, or 0 for 0 or a
-/// null handle.
+/// Constraint-solver iterations per substep. Returns 1, or 0 for 0, above
+/// [`MAX_ITERATIONS`](abi::MAX_ITERATIONS), or a null handle.
 ///
 /// # Safety
 /// `d` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_set_iterations(d: *mut Demo, n: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, NonZeroU32::new(n)) else {
+    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, at_most(n, abi::MAX_ITERATIONS)) else {
         return 0;
     };
     d.set_iterations(n);

@@ -25,7 +25,7 @@ export type Status = 0 | 1;
 export interface EngineExports {
   readonly memory: WebAssembly.Memory;
 
-  /** Codes: abi.js DEMO_*, SCALAR_*. `n` and `seed` apply to the fountain. */
+  /** Codes: abi.js DEMO_*, SCALAR_*. `n` (≤ abi.ts MAX_PARTICLES, MAX_GRAVITY_BODIES for gravity) and `seed` apply to the fountain and the M2 scenes. */
   demo_new(kind: number, scalar: number, n: number, seed: number): DemoHandle;
   demo_free(demo: DemoHandle): void;
   /** Adds real elapsed seconds; returns fixed physics steps taken. */
@@ -36,7 +36,7 @@ export interface EngineExports {
   demo_positions_len(demo: DemoHandle): number;
   /** Code: abi.js INTEGRATOR_*. */
   demo_set_integrator(demo: DemoHandle, code: number): Status;
-  /** Physics steps per second; 0 is rejected. */
+  /** Physics steps per second; 0 or above abi.ts MAX_RATE_HZ is rejected. */
   demo_set_rate(demo: DemoHandle, hz: number): Status;
   /** Softening length ε, m (gravity scenes); negative, NaN, or the
    *  fountain is rejected (0). ε = 0 is allowed. */
@@ -48,13 +48,13 @@ export interface EngineExports {
   demo_set_solver(demo: DemoHandle, code: number): Status;
   /** Impulse solver's Baumgarte β in [0, 1]; else rejected (0). */
   demo_set_beta(demo: DemoHandle, beta: number): Status;
-  /** Substeps per physics step; 0 is rejected. */
+  /** Substeps per physics step; 0 or above abi.ts MAX_SUBSTEPS is rejected. */
   demo_set_substeps(demo: DemoHandle, n: number): Status;
-  /** Constraint iterations per substep; 0 is rejected. */
+  /** Constraint iterations per substep; 0 or above abi.ts MAX_ITERATIONS is rejected. */
   demo_set_iterations(demo: DemoHandle, n: number): Status;
   /** Largest constraint error |C| in meters, or NaN without constraints. */
   demo_constraint_error(demo: DemoHandle): number;
-  /** The M4 chain: `links` links, bob `massRatio` × a link; null if invalid. */
+  /** The M4 chain: `links` (≤ abi.ts MAX_CHAIN_LINKS) links, bob `massRatio` × a link; null if invalid. */
   demo_new_chain(scalar: number, links: number, massRatio: number): DemoHandle;
   /** The M4 double pendulum (abi.ts START_*), tip nudged by `offset` m. */
   demo_new_double_pendulum(scalar: number, start: number, offset: number): DemoHandle;
@@ -76,7 +76,7 @@ export interface EngineExports {
   demo_particle_y(demo: DemoHandle, i: number): number;
   /** Code: abi.ts STABILIZATION_*; the impulse solver's position correction. */
   demo_set_stabilization(demo: DemoHandle, code: number): Status;
-  /** The M5 jelly (abi.ts JELLY_*): cols × rows, stiffness k N/m, damping c; null if invalid. */
+  /** The M5 jelly (abi.ts JELLY_*): cols × rows (each ≤ abi.ts MAX_JELLY_SIDE), stiffness k N/m, damping c; null if invalid. */
   demo_new_jelly(scalar: number, body: number, cols: number, rows: number, k: number, c: number): DemoHandle;
   /** A jelly's stiffness, live; 0 for a value its body can't take (springs can't be rigid). */
   demo_set_stiffness(demo: DemoHandle, k: number): Status;

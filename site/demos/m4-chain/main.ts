@@ -5,8 +5,8 @@
 import { loadEngine, positionsView, linksView } from "../../js/wasm.ts";
 import { View, clear, drawPoints, drawLinks, cssColor } from "../../js/canvas.ts";
 import {
-  COORDS_PER_PARTICLE, ORDER_ALTERNATING, ORDER_FORWARD, ORDER_REVERSE, SCALAR_F64,
-  SOLVER_IMPULSE, SOLVER_XPBD, STABILIZATION_BAUMGARTE, STABILIZATION_SPLIT,
+  COORDS_PER_PARTICLE, MAX_CHAIN_LINKS, MAX_ITERATIONS, MAX_SUBSTEPS, ORDER_ALTERNATING, ORDER_FORWARD, ORDER_REVERSE,
+  SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD, STABILIZATION_BAUMGARTE, STABILIZATION_SPLIT,
 } from "../../js/abi.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
@@ -43,10 +43,10 @@ const OPTIONS: {
   ratio: { kind: "choice", values: MASS_RATIOS, default: "100", help: "bob mass / link mass" },
   stab: { kind: "choice", values: Object.keys(STABILIZATIONS), default: "split", help: "impulse panel: split impulses, or classic Baumgarte (blows up on heavy chains)" },
   // 10: engine::scenarios::CHAIN_LINKS.
-  links: { kind: "int", min: 1, max: 40, default: 10, help: "links in the chain (1 m total)" },
+  links: { kind: "int", min: 1, max: MAX_CHAIN_LINKS, default: 10, help: "links in the chain (1 m total)" },
   // 20: the substeps M4.4 measured the chain at (and both demos start with).
-  substeps: { kind: "int", min: 1, max: 100, default: 20, help: "substeps per physics step" },
-  iterations: { kind: "int", min: 1, max: 20, default: 1, help: "solver passes per substep" },
+  substeps: { kind: "int", min: 1, max: MAX_SUBSTEPS, default: 20, help: "substeps per physics step" },
+  iterations: { kind: "int", min: 1, max: MAX_ITERATIONS, default: 1, help: "solver passes per substep" },
   order: { kind: "choice", values: Object.keys(ORDERS), default: "forward", help: "the order each pass visits the links in" },
   rate: RATE_OPTION,
   fps: FPS_OPTION,
