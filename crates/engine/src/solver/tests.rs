@@ -64,3 +64,53 @@ fn order_changes_a_chain_but_not_a_single_rod() {
         assert_eq!(one.particles.pos(), other.particles.pos(), "{solver:?}");
     }
 }
+
+/// One step of a bob on a soft rod (stretched 0.2 m, α = 1e-3, damping
+/// `c`) under `solver` with `iterations` passes; the bob's position and
+/// velocity.
+fn soft_rod(solver: Solver, c: f64, iterations: u32) -> (Vec2<f64>, Vec2<f64>) {
+    use crate::{Compliance, Damping};
+    let mut w = World::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    w.add_force(pendulum_gravity());
+    let pin = w.particles.add_static(Vec2::ZERO);
+    let bob = w.particles.add(Vec2::new(1.2, 0.0), Vec2::ZERO, kg(1.0));
+    let rod = DistanceConstraint::with_length(
+        &w.particles,
+        pin.id(),
+        bob,
+        1.0,
+        Compliance::new(1e-3).unwrap(),
+    )
+    .unwrap()
+    .with_damping(Damping::new(c).unwrap());
+    w.add_constraint(rod).unwrap();
+    w.set_solver(solver);
+    w.set_iterations(NonZeroU32::new(iterations).unwrap());
+    w.step(time_step(1.0 / 60.0));
+    let i = bob.index();
+    (w.particles.pos()[i], w.particles.vel()[i])
+}
+
+#[test]
+fn one_soft_rod_converges_in_one_pass() {
+    // A single constraint is solved exactly by one Gauss-Seidel pass: the
+    // α̃λ term (or its impulse counterpart) cancels what's left, so more
+    // passes change nothing. From the full cargo-mutants run: that term's
+    // sign and λ's accumulation could flip unnoticed, since every soft
+    // constraint test ran one pass, where λ starts at 0.
+    for solver in Solver::ALL {
+        for c in [0.0, 0.5] {
+            let (x1, v1) = soft_rod(solver, c, 1);
+            let (x5, v5) = soft_rod(solver, c, 5);
+            let off = (x5 - x1).length() + (v5 - v1).length();
+            assert!(
+                off < 1e-12,
+                "{solver:?}, c = {c}: 5 passes moved it {off:e}"
+            );
+            assert!(
+                (x1 - Vec2::new(1.2, 0.0)).length() > 1e-3,
+                "{solver:?}: the rod pulled"
+            );
+        }
+    }
+}

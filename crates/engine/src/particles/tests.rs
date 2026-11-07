@@ -79,3 +79,31 @@ fn popping_the_largest_circle_recomputes_the_max() {
     assert!(p.pop_if_last(big));
     assert_eq!((p.radius(), p.max_radius()), (&[0.1][..], 0.1));
 }
+
+// From the full cargo-mutants run: `nearest_dynamic`'s radius test and
+// tie-break, and `is_empty`, could change unnoticed.
+
+#[test]
+fn is_empty_is_false_once_a_particle_is_added() {
+    let mut p = Particles::<f64>::new();
+    p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
+    assert!(!p.is_empty());
+}
+
+#[test]
+fn nearest_dynamic_compares_squared_distances_within_the_radius() {
+    let mut p = Particles::<f64>::new();
+    // 2.8 m away (d² = 7.84) inside a 3 m radius (r² = 9): found. Testing
+    // against 2r = 6 or r/r = 1 instead of r² would miss it.
+    let far = p.add(Vec2::new(2.8, 0.0), Vec2::ZERO, kg(1.0));
+    assert_eq!(p.nearest_dynamic(Vec2::ZERO, 3.0), Some(far));
+    assert_eq!(p.nearest_dynamic(Vec2::ZERO, 2.7), None);
+}
+
+#[test]
+fn nearest_dynamic_breaks_a_tie_by_the_first_added() {
+    let mut p = Particles::<f64>::new();
+    let first = p.add(Vec2::new(1.0, 0.0), Vec2::ZERO, kg(1.0));
+    let _ = p.add(Vec2::new(-1.0, 0.0), Vec2::ZERO, kg(1.0));
+    assert_eq!(p.nearest_dynamic(Vec2::ZERO, 2.0), Some(first));
+}

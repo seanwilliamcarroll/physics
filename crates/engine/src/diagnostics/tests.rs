@@ -1,4 +1,6 @@
-use super::{center_of_mass, gravity_potential, kinetic_energy, momentum, total_energy};
+use super::{
+    center_of_mass, constraint_potential, gravity_potential, kinetic_energy, momentum, total_energy,
+};
 use crate::params::kg;
 use crate::{PairwiseGravity, Softening};
 use crate::{Particles, Vec2};
@@ -148,4 +150,30 @@ fn constraint_error_is_max_and_rms_of_c() {
         constraint_error::<f64, DistanceConstraint<f64>>(&p, &[]),
         None
     );
+}
+
+#[test]
+fn constraint_potential_is_half_c_squared_over_alpha_for_soft_rods_only() {
+    // From the full cargo-mutants run: every operator in it could change
+    // unnoticed (the jelly's readout was its only use).
+    use crate::{Compliance, DistanceConstraint};
+    let mut p = Particles::new();
+    let pin = p.add_static(Vec2::ZERO).id();
+    let a = p.add(Vec2::new(1.2, 0.0), Vec2::ZERO, kg(1.0));
+    let b = p.add(Vec2::new(0.0, -0.5), Vec2::ZERO, kg(1.0));
+    let rod = |x, y, length, alpha: f64| {
+        DistanceConstraint::with_length(&p, x, y, length, Compliance::new(alpha).unwrap()).unwrap()
+    };
+    // Stretched 0.2 m at α = 0.01: ½ · 0.04 / 0.01 = 2 J. Compressed
+    // 0.25 m at α = 0.05: ½ · 0.0625 / 0.05 = 0.625 J. Rigid (α = 0),
+    // stretched 0.3 m: none.
+    let soft = [rod(pin, a, 1.0, 0.01), rod(pin, b, 0.75, 0.05)];
+    let rigid = rod(a, b, 1.0, 0.0);
+    assert!((constraint_potential(&p, &soft[..1]) - 2.0).abs() < 1e-12);
+    assert!((constraint_potential(&p, &soft) - 2.625).abs() < 1e-12);
+    assert_eq!(constraint_potential(&p, &[rigid]), 0.0);
+    let all = [soft[0], rigid, soft[1]];
+    assert!((constraint_potential(&p, &all) - 2.625).abs() < 1e-12);
+    // Bodies not in `p` (a mismatched set): skipped.
+    assert_eq!(constraint_potential(&Particles::<f64>::new(), &soft), 0.0);
 }
