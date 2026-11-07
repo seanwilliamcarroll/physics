@@ -122,5 +122,8 @@ fn the_fastest_strike_stays_finite_and_faster_is_refused() {
             Unison::<f32>::new(FS, key, voicing(key), 2.5e51).is_none(),
             "the test's case"
         );
+        // Up to twice ff: 9 m/s plays (found by the pre-push mutation
+        // report: `2 + ff` = 7 m/s passed the checks above).
+        assert!(Unison::<f32>::new(FS, key, voicing(key), 9.0).is_some());
     }
 }
