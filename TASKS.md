@@ -277,11 +277,6 @@ hammer parts and the dispersion's refinement in their own modules.
 
 Software-engineering health, not physics (PRs #122 on). Open:
 
-- **Decision: refit the hammers?** The cheap blow model's contact times
-  ran up to a sample long until #125 (separation wasn't interpolated);
-  `hammer/table.rs` was fitted with them. Its tests still pass.
-  Regenerating it (`regenerate_the_table`, ignored) changes the piano's
-  sound and its golden hashes.
 - **Mutation, still to do:** `test-support` and `xtask` under
   `--test-workspace=true` (their misses are mostly artifacts); M6's
   `collision/narrowphase.rs` and `contact_solve.rs` when M6 resumes.
@@ -305,7 +300,7 @@ Software-engineering health, not physics (PRs #122 on). Open:
 
 **A3 treble hammer (A3.3):** from C6 up the blow outlasts a period, the
 string takes 0.2–13 % of the hammer's energy, and brightness and level
-don't rise reliably with velocity (C6's centroid falls 1100 → 1049 Hz pp
+don't rise reliably with velocity (C6's centroid falls 1102 → 1050 Hz pp
 → ff). Our contact curve between the measured ends is interpolated, and
 C8's waveguide is five cells. Options: shorter treble contact targets,
 a higher internal rate for the top octaves, or accept (real top-octave
