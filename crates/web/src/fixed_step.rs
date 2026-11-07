@@ -16,6 +16,8 @@ pub(crate) const MAX_FRAME_TIME: f64 = 0.25;
 /// Accumulates real time and pays it out in steps of `dt`.
 #[derive(Clone, Debug)]
 pub(crate) struct FixedStep {
+    /// Steps per simulated second.
+    rate: NonZeroU32,
     /// Seconds per step, `1 / rate`: positive and finite by construction
     /// (a zero or negative `dt` would make `advance` loop forever).
     dt: f64,
@@ -33,12 +35,20 @@ impl FixedStep {
     #[must_use]
     pub(crate) fn new(rate: NonZeroU32) -> Self {
         Self {
+            rate,
             dt: 1.0 / f64::from(rate.get()),
             leftover: 0.0,
         }
     }
 
-    /// Seconds per step.
+    /// Steps per simulated second.
+    #[must_use]
+    pub(crate) const fn rate(&self) -> NonZeroU32 {
+        self.rate
+    }
+
+    /// Test-only: seconds per step, `1 / rate`.
+    #[cfg(test)]
     #[must_use]
     pub(crate) const fn dt(&self) -> f64 {
         self.dt

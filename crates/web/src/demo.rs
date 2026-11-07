@@ -126,9 +126,9 @@ impl Demo {
     /// and refreshes the render buffer. Returns the number of steps taken.
     pub(crate) fn advance(&mut self, elapsed: f64) -> u32 {
         let steps = self.clock.advance(elapsed);
-        let dt = self.clock.dt();
+        let rate = self.clock.rate();
         let between = &mut self.between_steps;
-        each_scalar!(&mut self.world, s => run_steps(&mut s.world, between, steps, dt));
+        each_scalar!(&mut self.world, s => run_steps(&mut s.world, between, steps, rate));
         self.fill_render_buf();
         steps
     }
@@ -233,11 +233,17 @@ impl Demo {
     }
 }
 
-/// Runs `steps` fixed steps of `dt` seconds, with what runs between them.
-fn run_steps<S: Scalar>(w: &mut World<S>, between: &mut BetweenSteps, steps: u32, dt: f64) {
-    // `dt` is `1 / rate` for a positive whole rate, so always a valid step;
-    // anything else steps nothing.
-    let Some(dt) = TimeStep::<S>::new(S::from_f64(dt)) else {
+/// Runs `steps` fixed steps of `1 / rate` seconds, with what runs between
+/// them.
+fn run_steps<S: Scalar>(
+    w: &mut World<S>,
+    between: &mut BetweenSteps,
+    steps: u32,
+    rate: NonZeroU32,
+) {
+    // `1 / rate` for a positive whole rate is always a valid step (even
+    // u32::MAX's, ~2.3e-10 s, is a normal f32); anything else steps nothing.
+    let Some(dt) = TimeStep::<S>::per_second(f64::from(rate.get())) else {
         return;
     };
     for _ in 0..steps {

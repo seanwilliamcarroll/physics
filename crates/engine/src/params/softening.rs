@@ -9,8 +9,8 @@ checked_param! {
     /// close pass. Negative ε (meaningless as a length) and NaN are
     /// rejected, so the force never has to re-check. (Squaring would make a
     /// negative ε harmless, but silently: a sign error at the boundary, e.g.
-    /// a bad slider value, should be reported, not absorbed.) +∞ passes and
-    /// gives zero force: harmless, not useful.
+    /// a bad slider value, should be reported, not absorbed.) +∞ is
+    /// rejected too, like every checked parameter: it isn't finite.
     Softening, |eps| eps >= S::ZERO
 }
 

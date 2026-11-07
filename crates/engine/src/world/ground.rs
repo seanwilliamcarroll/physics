@@ -7,9 +7,11 @@ use super::World;
 use crate::{Particles, Scalar};
 
 impl<S: Scalar> World<S> {
-    /// The ground's height, m, or `None` (the default) for no ground.
+    /// Test-only: the ground's height, m, or `None` (the default) for no
+    /// ground.
+    #[cfg(test)]
     #[must_use]
-    pub const fn ground(&self) -> Option<S> {
+    pub(crate) const fn ground(&self) -> Option<S> {
         self.ground
     }
 
