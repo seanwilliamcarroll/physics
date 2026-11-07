@@ -2,6 +2,9 @@
 # Slower checks once per push. Enable with: git config core.hooksPath .githooks
 set -eu
 cd "$(git rev-parse --show-toplevel)"
+# What's being pushed: git gives "<local ref> <local sha> <remote ref>
+# <remote sha>" per ref on stdin; kept for the mutation report (last).
+pushed=$(cat)
 
 echo "pre-push: cargo test"
 cargo test --workspace --quiet
@@ -33,3 +36,53 @@ cargo check --workspace --exclude xtask --exclude test-support --target wasm32-u
 # (needs python3 and Chrome; see README). ~2-3 s.
 echo "pre-push: cargo xtask smoke"
 cargo xtask smoke
+
+# Mutation report: informational, never fails the push (everything above
+# already passed). Mutates only the lines this push changes and lists the
+# mutants no test caught: changes no test would notice breaking. Needs
+# cargo-mutants (`cargo install cargo-mutants`); SKIP_MUTANTS=1 skips it,
+# MUTANTS_MAX (default 60, ~2-3 min) caps how many run before it prints
+# the command instead (docs/04-testing.md, "Mutation testing").
+mutation_report() {
+  command -v cargo-mutants >/dev/null 2>&1 || { echo "pre-push: mutants: cargo-mutants not installed, skipped"; return; }
+  zero=0000000000000000000000000000000000000000
+  diff_file=$(mktemp)
+  echo "$pushed" | while read -r _ local_sha _ remote_sha; do
+    [ -n "${local_sha:-}" ] && [ "$local_sha" != "$zero" ] || continue
+    # A new branch: its changes since it left origin/main.
+    if [ "$remote_sha" = "$zero" ]; then
+      remote_sha=$(git merge-base origin/main "$local_sha" 2>/dev/null) || continue
+    fi
+    git diff "$remote_sha" "$local_sha" -- '*.rs'
+  done > "$diff_file"
+  if [ ! -s "$diff_file" ]; then
+    echo "pre-push: mutants: no Rust changes"
+    rm -f "$diff_file"; return
+  fi
+  count=$(cargo mutants --list --in-diff "$diff_file" 2>/dev/null | wc -l | tr -d ' ')
+  max=${MUTANTS_MAX:-60}
+  if [ "$count" -eq 0 ]; then
+    echo "pre-push: mutants: no mutable code changed"
+  elif [ "$count" -gt "$max" ]; then
+    cp "$diff_file" target/pre-push.diff
+    echo "pre-push: mutants: $count mutants (over MUTANTS_MAX=$max), not run. To run them:"
+    echo "  CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo mutants -j 4 --in-diff target/pre-push.diff -o mutants.out/pre-push"
+  else
+    echo "pre-push: mutants: $count in the changed lines (informational)"
+    CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo mutants -j 4 --no-shuffle --in-diff "$diff_file" \
+      -o mutants.out/pre-push >/dev/null 2>&1 || true
+    missed=mutants.out/pre-push/mutants.out/missed.txt
+    if [ -s "$missed" ]; then
+      echo "pre-push: mutants: $(wc -l < "$missed" | tr -d ' ') missed (no test noticed); worth a look:"
+      sed 's/^/  /' "$missed"
+    else
+      echo "pre-push: mutants: every mutant in the changed lines was caught"
+    fi
+  fi
+  rm -f "$diff_file"
+}
+if [ "${SKIP_MUTANTS:-0}" = "1" ]; then
+  echo "pre-push: mutants: skipped (SKIP_MUTANTS=1)"
+else
+  mutation_report || true
+fi
