@@ -44,3 +44,33 @@ fn range_maps_unit_interval_onto_bounds() {
         assert!((-2.0..3.0).contains(&x), "{x}");
     }
 }
+
+// From the full cargo-mutants run: `next_unit_f64` and `range` returning a
+// constant (or `range` adding instead of subtracting) went unnoticed by
+// math's own tests; only other crates' scenes used them.
+
+#[test]
+fn unit_floats_and_ranges_match_the_reference() {
+    // From the first two outputs of seed 0 (above), by the same bit trick
+    // in an independent Python implementation.
+    let mut r = SplitMix64::new(0);
+    assert_eq!(
+        r.next_unit_f64().to_bits(),
+        0.883_310_808_213_642_5_f64.to_bits()
+    );
+    assert_eq!(
+        r.range(-2.0, 6.0).to_bits(),
+        1.452_223_976_388_079_8_f64.to_bits()
+    );
+}
+
+#[test]
+fn ranges_cover_their_interval() {
+    let mut r = SplitMix64::new(7);
+    let xs: Vec<f64> = (0..10_000).map(|_| r.range(-3.0, 5.0)).collect();
+    assert!(xs.iter().all(|x| (-3.0..5.0).contains(x)));
+    let (lo, hi) = xs
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
+    assert!(lo < -2.99 && hi > 4.99, "spans [{lo}, {hi}]");
+}
