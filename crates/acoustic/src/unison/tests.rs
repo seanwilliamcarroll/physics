@@ -127,3 +127,36 @@ fn the_fastest_strike_stays_finite_and_faster_is_refused() {
         assert!(Unison::<f32>::new(FS, key, voicing(key), 9.0).is_some());
     }
 }
+
+// From the full cargo-mutants run: the group's read-backs (empty,
+// pitches, hammers, energy, the middle string) could change unnoticed.
+
+#[test]
+fn an_unstruck_group_is_empty_and_silent() {
+    let u = Unison::<f64>::with_capacity(FS).unwrap();
+    assert!(u.is_empty());
+    assert_eq!(u.len(), 0);
+    assert_eq!(u.pitches().count() + u.hammers().count(), 0);
+    assert!(u.middle().is_none());
+    assert_eq!(u.energy(), 0.0);
+}
+
+#[test]
+fn a_struck_group_reads_back_its_strings() {
+    // A0 has one string, F1 two, C4 three.
+    for (key, n) in [(21_u8, 1), (29, 2), (60, 3)] {
+        let mut u = Unison::<f64>::new(FS, key, voicing(key), 1.58).unwrap();
+        assert!(!u.is_empty() && u.len() == n, "key {key}");
+        assert_eq!(u.hammers().count(), n);
+        let pitches: Vec<f64> = u.pitches().collect();
+        assert_eq!(pitches.len(), n);
+        // The middle string is the one `n / 2` in, the in-tune one for
+        // an odd count (offsets ∓½ cent for a pair).
+        let middle = u.middle().unwrap().pitch();
+        assert_eq!(middle.to_bits(), pitches[n / 2].to_bits(), "key {key}");
+        for _ in 0..480 {
+            u.next_sample();
+        }
+        assert!(u.energy() > 0.0, "key {key}: struck strings carry energy");
+    }
+}

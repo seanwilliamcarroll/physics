@@ -144,3 +144,60 @@ fn a_random_pluck_starts_at_rest() {
         assert!(r.to_bits() == l.to_bits(), "cell {c}: {r} vs {l}");
     }
 }
+
+// From the full cargo-mutants run: reading the pickup between cells,
+// restringing past the rails' capacity, and the geometry's fallback could
+// change unnoticed.
+
+fn guide(f0: f64) -> Waveguide<f64> {
+    let voicing = Voicing {
+        tuned: true,
+        decay: Decay::T60(1.5),
+        inharmonicity: 0.0,
+    };
+    Waveguide::new(FS, f0, voicing).unwrap()
+}
+
+#[test]
+fn the_pickup_reads_between_cells_linearly() {
+    let mut g = guide(220.0);
+    let m = g.right.len();
+    // Cell c holds c (all on the right rail), so the pickup reads its own
+    // cell coordinate: on a center, exactly; between two, their mean.
+    let ramp: Vec<f64> = (0..m).map(math::convert::usize_to_f64).collect();
+    g.load_rails(&ramp, &vec![0.0; m]);
+    for x in [3.0, 3.5, 10.25] {
+        g.set_pickup((x + g.first) / g.length);
+        assert!(
+            (g.displacement() - x).abs() < 1e-9,
+            "at {x}: {}",
+            g.displacement()
+        );
+    }
+}
+
+#[test]
+fn restringing_refuses_a_note_too_long_for_the_rails() {
+    let voicing = Voicing {
+        tuned: true,
+        decay: Decay::T60(1.5),
+        inharmonicity: 0.0,
+    };
+    let mut g = guide(220.0);
+    assert!(g.restring(FS, 440.0, voicing), "shorter fits");
+    assert!(
+        !g.restring(FS, 110.0, voicing),
+        "longer than the rails were made for"
+    );
+    // (A rail of no cells can't be asked for: the coefficients refuse any
+    // loop under 2 samples, so `m > 0` there is defensive.)
+}
+
+#[test]
+fn geometry_falls_back_for_a_pitch_that_isnt_positive_and_finite() {
+    for pitch in [0.0, -220.0, f64::NAN, f64::INFINITY] {
+        assert_eq!(super::geometry(FS, pitch, 10), (10.0, 0.5), "{pitch}");
+    }
+    let (length, first) = super::geometry(FS, 240.0, 99);
+    assert_eq!((length, first), (100.0, 1.5));
+}
