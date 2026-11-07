@@ -44,6 +44,16 @@ export const SCALAR_F64 = 1;
 /** Physics steps per second a new demo starts with (and pages' default). */
 export const DEFAULT_RATE_HZ = 60;
 
+/** The most work one call may ask for: larger is refused (null, or
+ *  status 0). Pages read their slider ranges from these. */
+export const MAX_PARTICLES = 2000000;
+export const MAX_GRAVITY_BODIES = 4096;
+export const MAX_CHAIN_LINKS = 40;
+export const MAX_JELLY_SIDE = 16;
+export const MAX_SUBSTEPS = 100;
+export const MAX_ITERATIONS = 20;
+export const MAX_RATE_HZ = 240;
+
 /** Floats per particle in the positions buffer: [x, y]. */
 export const COORDS_PER_PARTICLE = 2;
 

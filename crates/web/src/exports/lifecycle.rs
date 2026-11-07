@@ -3,21 +3,38 @@
 
 use core::ptr;
 
+use crate::abi;
 use crate::demo::{Demo, DemoKind, ScalarKind, jelly_body_from_code, start_from_code};
 
+/// `n` as a size, if it's at most `max` (an [`abi`] cap).
+fn capped(n: u32, max: u32) -> Option<usize> {
+    if n > max {
+        return None;
+    }
+    usize::try_from(n).ok()
+}
+
 /// Creates a demo of `n` particles. `kind` and `scalar` are codes from
-/// [`crate::abi`]. Returns null for an unknown code or invalid scene.
+/// [`crate::abi`]. Returns null for an unknown code, an invalid scene, or
+/// `n` above [`MAX_PARTICLES`](abi::MAX_PARTICLES)
+/// ([`MAX_GRAVITY_BODIES`](abi::MAX_GRAVITY_BODIES) for a gravity scene).
 /// Free with [`demo_free`].
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new(kind: u32, scalar: u32, n: u32, seed: u32) -> *mut Demo {
     // Every page creates a demo before anything else, so this is the one
     // entry point that needs it. Idempotent.
     crate::imports::install_panic_hook();
-    let (Some(kind), Some(scalar), Ok(n)) = (
-        DemoKind::from_code(kind),
-        ScalarKind::from_code(scalar),
-        usize::try_from(n),
-    ) else {
+    let (Some(kind), Some(scalar)) = (DemoKind::from_code(kind), ScalarKind::from_code(scalar))
+    else {
+        return ptr::null_mut();
+    };
+    // Every scene sizes its render buffer from `n`, so it's capped even
+    // where the scene's size is fixed.
+    let max = match kind {
+        DemoKind::Gravity(_) => abi::MAX_GRAVITY_BODIES,
+        _ => abi::MAX_PARTICLES,
+    };
+    let Some(n) = capped(n, max) else {
         return ptr::null_mut();
     };
     Demo::new(kind, scalar, n, u64::from(seed))
@@ -74,12 +91,16 @@ pub(crate) unsafe extern "C" fn demo_positions_len(d: *const Demo) -> usize {
 
 /// Creates the M4 chain (`scenarios::chain`): `links` links and a bob
 /// `mass_ratio` times a link's mass (1:100 is the M4 case), XPBD with 20
-/// substeps to start. Returns null for an unknown scalar code or a mass
-/// ratio that makes no valid mass. Free with [`demo_free`].
+/// substeps to start. Returns null for an unknown scalar code, more than
+/// [`MAX_CHAIN_LINKS`](abi::MAX_CHAIN_LINKS) links, or a mass ratio that
+/// makes no valid mass. Free with [`demo_free`].
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new_chain(scalar: u32, links: u32, mass_ratio: f64) -> *mut Demo {
     crate::imports::install_panic_hook();
-    let (Some(scalar), Ok(links)) = (ScalarKind::from_code(scalar), usize::try_from(links)) else {
+    let (Some(scalar), Some(links)) = (
+        ScalarKind::from_code(scalar),
+        capped(links, abi::MAX_CHAIN_LINKS),
+    ) else {
         return ptr::null_mut();
     };
     Demo::new_chain(scalar, links, mass_ratio)
@@ -112,7 +133,8 @@ pub(crate) extern "C" fn demo_new_double_pendulum(
 /// Creates the M5 jelly: a `cols` × `rows` grid (`JELLY_*` body code from
 /// [`crate::abi`]) with springs of stiffness `k` (N/m) and damping `c`
 /// (N·s/m), dropped onto a ground; 10 substeps to start. Returns null for
-/// an unknown code, an empty grid, or a stiffness or damping the body
+/// an unknown code, an empty grid, a side above
+/// [`MAX_JELLY_SIDE`](abi::MAX_JELLY_SIDE), or a stiffness or damping the body
 /// can't take (force springs can't be rigid: `k = ∞` is null for them).
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new_jelly(
@@ -124,11 +146,11 @@ pub(crate) extern "C" fn demo_new_jelly(
     c: f64,
 ) -> *mut Demo {
     crate::imports::install_panic_hook();
-    let (Some(scalar), Some(body), Ok(cols), Ok(rows)) = (
+    let (Some(scalar), Some(body), Some(cols), Some(rows)) = (
         ScalarKind::from_code(scalar),
         jelly_body_from_code(body),
-        usize::try_from(cols),
-        usize::try_from(rows),
+        capped(cols, abi::MAX_JELLY_SIDE),
+        capped(rows, abi::MAX_JELLY_SIDE),
     ) else {
         return ptr::null_mut();
     };

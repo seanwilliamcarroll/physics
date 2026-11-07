@@ -3,7 +3,7 @@
 // error path (DOM and smoke-mode code; the pure helpers are in panels.ts). A page keeps its own scene, settings, drawing and readouts:
 // those differ in substance, and sharing them would take a hook per page.
 
-import { DEFAULT_RATE_HZ } from "./abi.ts";
+import { DEFAULT_RATE_HZ, MAX_RATE_HZ } from "./abi.ts";
 import { cssColor } from "./canvas.ts";
 import { slider } from "./controls.ts";
 import { byId } from "./dom.ts";
@@ -15,7 +15,7 @@ import type { DemoHandle, EngineExports } from "./engine";
 
 /** `?rate=`: physics steps per second, every physics page. */
 export const RATE_OPTION: IntOption = {
-  kind: "int", min: 1, max: 240, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate",
+  kind: "int", min: 1, max: MAX_RATE_HZ, default: DEFAULT_RATE_HZ, help: "physics steps per second; dt = 1 / rate",
 };
 
 /** `?fps=`: a display-rate cap, every physics page. */

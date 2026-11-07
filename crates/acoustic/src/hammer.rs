@@ -37,7 +37,8 @@ mod table;
 
 pub use contact::contact_time;
 pub use keys::{
-    FORTISSIMO, PIANISSIMO, SPREAD, STRIKE, contact_target, exponent, impedance, mezzo_forte,
+    FORTISSIMO, MAX_VELOCITY, PIANISSIMO, SPREAD, STRIKE, contact_target, exponent, impedance,
+    mezzo_forte,
 };
 
 /// The rate the hammers were fitted at, Hz.
@@ -101,14 +102,14 @@ pub struct Hammer {
 impl Hammer {
     /// A hammer with `felt` striking a string of impedance `z` (kg/s) at
     /// `velocity` (m/s), stepped at `fs` Hz; `None` for values that aren't
-    /// positive and finite.
+    /// positive and finite, or a velocity above [`MAX_VELOCITY`].
     #[must_use]
     pub fn new(felt: Felt, z: f64, fs: f64, velocity: f64) -> Option<Self> {
         let ok = |x: f64| x > 0.0 && x.is_finite();
         let valid = [felt.mass, felt.stiffness, felt.exponent, z, fs, velocity]
             .into_iter()
             .all(ok);
-        if !valid {
+        if !valid || velocity > MAX_VELOCITY {
             return None;
         }
         let dt = 1.0 / fs;

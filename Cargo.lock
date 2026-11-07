@@ -17,6 +17,8 @@ version = "0.1.0"
 dependencies = [
  "acoustic",
  "math",
+ "proptest",
+ "test-support",
 ]
 
 [[package]]
@@ -623,6 +625,8 @@ version = "0.1.0"
 dependencies = [
  "engine",
  "math",
+ "proptest",
+ "test-support",
 ]
 
 [[package]]

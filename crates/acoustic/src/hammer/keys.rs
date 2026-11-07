@@ -29,6 +29,14 @@ const CONTACT: (f64, f64) = (4.0e-3, 0.8e-3);
 pub const PIANISSIMO: f64 = 0.5;
 pub const FORTISSIMO: f64 = 5.0;
 
+/// The fastest strike a [`Hammer`](super::Hammer) accepts, m/s: twice ff
+/// (ours; beyond any real piano's). The model is fitted and tested from
+/// pp to ff; without a bound, a finite but huge speed (the ABI's
+/// `synth_note_on_velocity` takes any `f64`) launched waves past `f32`'s
+/// range, and the next sample's `∞ − ∞` panicked in the felt's solver
+/// (found by the ABI property test).
+pub const MAX_VELOCITY: f64 = 2.0 * FORTISSIMO;
+
 /// Contact at pp over contact at ff: "about ±20 % from p to ff"
 /// (measured) read as 1.2 / 0.8.
 pub const SPREAD: f64 = 1.5;
