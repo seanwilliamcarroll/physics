@@ -49,15 +49,13 @@ pub(super) fn contact_within(
         }
         let c = hammer.compression();
         let t = usize_to_f64(n);
-        // In contact through this sample while the felt stays compressed.
-        // Not `force() > 0`: the force is the sample's mean, still positive
-        // in the sample where the compression crosses 0, so testing it
-        // counted that whole sample and never interpolated (every contact
-        // ran to the next whole sample; found by cargo-mutants).
-        if c > 0.0 {
-            last = t + 1.0;
-        } else if previous > 0.0 {
-            // Separated during this sample: where the compression crossed 0.
+        // Separated during this sample: where the compression crossed 0.
+        // The compression, not `force() > 0`: the force is the sample's
+        // mean, still positive in the sample where the compression crosses
+        // 0, so testing it never interpolated (every contact ran to the
+        // next whole sample; found by cargo-mutants). A blow always ends
+        // here: the hammer retires only once the felt is uncompressed.
+        if c <= 0.0 && previous > 0.0 {
             last = t + previous / (previous - c);
         }
         previous = c.max(0.0);
