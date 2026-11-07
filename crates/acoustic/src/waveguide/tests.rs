@@ -174,6 +174,17 @@ fn the_pickup_reads_between_cells_linearly() {
             g.displacement()
         );
     }
+    // At the ends the coordinate passes the outer centers (it reaches
+    // m − ½ at the far end), so it's clamped onto cells 0 and m − 1.
+    let last = math::convert::usize_to_f64(m - 1);
+    for (pickup, cell) in [(0.0, 0.0), (1.0, last)] {
+        g.set_pickup(pickup);
+        assert!(
+            (g.displacement() - cell).abs() < 1e-9,
+            "pickup {pickup}: {}",
+            g.displacement()
+        );
+    }
 }
 
 #[test]

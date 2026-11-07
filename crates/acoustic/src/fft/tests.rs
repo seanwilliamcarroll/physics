@@ -136,4 +136,15 @@ fn the_spectrum_reads_a_sine_in_db_and_silence_at_the_floor() {
         db[64]
     );
     assert_eq!(s.last(), &db[..], "last is the latest analysis");
+    // A cosine puts its energy in the real part: 0.25 on bin 32 reads
+    // 20 log10(0.25) = −12.04 dB.
+    let cosine: Vec<f64> = (0..N)
+        .map(|t| 0.25 * (TAU * 32.0 * usize_to_f64(t) / usize_to_f64(N)).cos())
+        .collect();
+    let db = s.analyze(&cosine).unwrap().to_vec();
+    assert!(
+        (db[32] - 20.0 * 0.25_f64.log10()).abs() < 0.01,
+        "{} dB",
+        db[32]
+    );
 }
