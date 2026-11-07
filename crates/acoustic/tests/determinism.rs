@@ -78,7 +78,7 @@ fn a_performance_is_repeatable() {
 /// the same values on wasm32-wasip1. The note-on coefficients use `libm`,
 /// so they're the same bits everywhere (`docs/00-scope.md`). If a change
 /// is intended, paste the new values from the failure message.
-const GOLDEN: (u64, u64) = (0x2611_bd3d_bdbe_f327, 0x399b_69e6_8d9d_eb67);
+const GOLDEN: (u64, u64) = (0x1aff_3f30_7adf_8fe0, 0xe420_bd73_51ea_7069);
 
 #[test]
 fn golden_hashes_are_unchanged() {
@@ -102,7 +102,7 @@ fn a_chord_at_the_default_gain_is_not_clipped() {
 
 /// Golden hashes of the performance played by A2's waveguide (pickup at
 /// the default): (f32, f64), native and on wasm.
-const WAVEGUIDE_GOLDEN: (u64, u64) = (0xc21e_f26b_b228_f133, 0x60bd_e8a0_80ca_e6b6);
+const WAVEGUIDE_GOLDEN: (u64, u64) = (0x19c6_5466_98f4_6cb4, 0xf5b5_643b_342c_dc00);
 
 #[test]
 fn waveguide_performance_golden_hashes_are_unchanged() {
@@ -122,7 +122,7 @@ fn waveguide_performance_golden_hashes_are_unchanged() {
 /// Golden hashes of the waveguide performance with each key's stiffness
 /// (`docs/14-piano.md`): the dispersion design (placement, refinement) is
 /// `libm` and fixed iteration counts, so the same bits on wasm.
-const STIFF_GOLDEN: (u64, u64) = (0x6f7b_5dda_1957_54ec, 0xac18_5183_2a98_f7d8);
+const STIFF_GOLDEN: (u64, u64) = (0x25dc_d66f_b509_26c1, 0x3dcb_5844_3023_7a24);
 
 #[test]
 fn stiff_performance_golden_hashes_are_unchanged() {
@@ -170,7 +170,7 @@ fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
 
 /// Golden hashes of [`perform_piano`]: (f32, f64), native and on wasm. The
 /// designs and the hammers are `f64` with `libm`, so the same bits.
-const PIANO_GOLDEN: (u64, u64) = (0x2f69_a8e5_8082_b03a, 0x1943_5c5c_905c_d6c2);
+const PIANO_GOLDEN: (u64, u64) = (0x3c7d_44d6_a276_fca4, 0xdf7e_6a8e_785a_e0b4);
 
 #[test]
 fn piano_performance_golden_hashes_are_unchanged() {

@@ -40,6 +40,9 @@ pub(crate) struct Bridge<S> {
     disp_y: [(S, S); MAX_BIQUADS],
     /// The pitch the loop plays, Hz.
     pitch: f64,
+    /// A release coming in: the taps' per-sample factor, and the samples
+    /// left (see [`damp`](Self::damp)).
+    ramp: Option<(S, usize)>,
 }
 
 impl<S: Scalar> Bridge<S> {
@@ -57,6 +60,7 @@ impl<S: Scalar> Bridge<S> {
             disp_x: [(S::ZERO, S::ZERO); MAX_BIQUADS],
             disp_y: [(S::ZERO, S::ZERO); MAX_BIQUADS],
             pitch: 0.0,
+            ramp: None,
         };
         b.apply(c);
         b
@@ -75,6 +79,7 @@ impl<S: Scalar> Bridge<S> {
             }
         }
         self.pitch = c.pitch;
+        self.ramp = None;
         self.clear();
     }
 
@@ -89,6 +94,14 @@ impl<S: Scalar> Bridge<S> {
 
     /// The loop filter's next output for input `x`.
     pub(crate) fn process(&mut self, x: S) -> S {
+        if let Some((k, left)) = self.ramp.as_mut() {
+            self.tap_now = self.tap_now * *k;
+            self.tap_prev = self.tap_prev * *k;
+            *left -= 1;
+            if *left == 0 {
+                self.ramp = None;
+            }
+        }
         let mut low = self.tap_now * x + self.tap_prev * self.prev;
         self.prev = x;
         // The dispersion cascade (none for an ideal string, so A1 and A2
@@ -120,15 +133,26 @@ impl<S: Scalar> Bridge<S> {
     /// Adds a loss so the fundamental falls 60 dB in about `t60` more
     /// seconds (the release); the pitch is unchanged. Ignored unless
     /// `t60 > 0`.
-    pub(crate) fn damp(&mut self, t60: f64) {
+    ///
+    /// The loss comes in over `ramp` samples (at once for 0), as a damper
+    /// settles on a string. Applied in one sample it's a step in the
+    /// reflected wave, and the piano sounds that wave's change: a click
+    /// on every release (A3, found after the health audit).
+    pub(crate) fn damp(&mut self, t60: f64, ramp: usize) {
         // `t60 > 0` is false for NaN too.
         let positive = t60 > 0.0;
         if !positive {
             return;
         }
-        let r = S::from_f64(libm::exp10(-3.0 / (self.pitch * t60)));
-        self.tap_now = self.tap_now * r;
-        self.tap_prev = self.tap_prev * r;
+        let r = libm::exp10(-3.0 / (self.pitch * t60));
+        if ramp == 0 {
+            self.tap_now = self.tap_now * S::from_f64(r);
+            self.tap_prev = self.tap_prev * S::from_f64(r);
+        } else {
+            // r^(1/ramp) per sample: r in all, after `ramp` samples.
+            let k = libm::pow(r, 1.0 / math::convert::usize_to_f64(ramp));
+            self.ramp = Some((S::from_f64(k), ramp));
+        }
     }
 
     /// The pitch the loop plays, Hz.
