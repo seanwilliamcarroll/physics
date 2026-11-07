@@ -9,10 +9,8 @@
 //! the main one accepted, and the two must render bit-identical audio:
 //! a refused call changes nothing, not even the noise generator.
 //!
-//! **The sample rate is bounded** to what Web Audio allows (up to
-//! 768 kHz) plus the invalid values below it: the buffers are sized from
-//! it, and the ABI doesn't cap it, so a huge rate would only allocate
-//! gigabytes. Frames are drawn past `MAX_FRAMES`, which the ABI refuses.
+//! Sizes are drawn past the ABI's caps (sample rates above
+//! `MAX_SAMPLE_RATE`, frames past `MAX_FRAMES`), which it must refuse.
 
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
@@ -24,12 +22,10 @@ use super::super::{
     synth_set_tuned, synth_snapshot, synth_snapshot_ptr, synth_spectrum, synth_spectrum_ptr,
     synth_strike_trace, synth_strike_trace_ptr,
 };
-use crate::synth::{MAX_FRAMES, Synth};
+use crate::synth::{MAX_FRAMES, MAX_SAMPLE_RATE, Synth};
 
 /// Calls per generated sequence.
 const MAX_CALLS: usize = 20;
-/// Web Audio's highest sample rate, Hz.
-const MAX_SAMPLE_RATE: f64 = 768_000.0;
 /// Codes drawn from 0 up to here: every valid code and some unknown ones.
 const MAX_CODE: u32 = 5;
 /// The piano's keys, as MIDI numbers.
@@ -65,7 +61,8 @@ fn key() -> impl Strategy<Value = u32> {
     prop_oneof![4 => KEYS, 1 => 0..=127u32, 1 => any::<u32>()]
 }
 
-/// A sample rate: the real ones, Web Audio's extremes, and invalid ones.
+/// A sample rate: the real ones, up to the cap, and invalid ones (past the
+/// cap too: refused before anything is allocated).
 fn sample_rate() -> impl Strategy<Value = f64> {
     prop_oneof![
         4 => prop_oneof![Just(44_100.0), Just(48_000.0)],
@@ -78,6 +75,10 @@ fn sample_rate() -> impl Strategy<Value = f64> {
             Just(-48_000.0),
             Just(f64::MIN_POSITIVE),
             Just(1.0),
+            Just(MAX_SAMPLE_RATE * 1.01),
+            Just(768_000.0),
+            Just(1e9),
+            Just(f64::MAX),
         ],
     ]
 }

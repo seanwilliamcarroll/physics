@@ -14,7 +14,9 @@ const fn status(ok: bool) -> u32 {
 }
 
 /// A synth at `sample_rate` Hz (the `AudioContext`'s), noise seeded by
-/// `seed`; null for a bad rate. Free with [`synth_free`].
+/// `seed`; null for a rate that isn't positive, or above
+/// [`MAX_SAMPLE_RATE`](crate::synth::MAX_SAMPLE_RATE) (192 kHz). Free with
+/// [`synth_free`].
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn synth_new(sample_rate: f64, seed: u32) -> *mut Synth {
     crate::imports::install_panic_hook();

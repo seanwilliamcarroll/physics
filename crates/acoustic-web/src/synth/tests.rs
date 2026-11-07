@@ -1,4 +1,4 @@
-use super::{MAX_FRAMES, SPECTRUM_SIZE, Synth};
+use super::{MAX_FRAMES, MAX_SAMPLE_RATE, SPECTRUM_SIZE, Synth};
 use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_PIANO, MODEL_WAVEGUIDE};
 use math::convert::{f64_to_usize, usize_to_f64};
 
@@ -50,6 +50,24 @@ fn setters_refuse_bad_values() {
         "noise ignores the peak"
     );
     assert!(Synth::new(0.0, 1).is_none());
+}
+
+#[test]
+fn the_sample_rate_is_capped() {
+    assert!(
+        Synth::new(MAX_SAMPLE_RATE, 1).is_some(),
+        "the cap itself is fine"
+    );
+    for fs in [
+        MAX_SAMPLE_RATE * 1.000_001,
+        768_000.0,
+        1e9,
+        f64::MAX,
+        f64::INFINITY,
+        f64::NAN,
+    ] {
+        assert!(Synth::new(fs, 1).is_none(), "{fs} Hz");
+    }
 }
 
 #[test]
