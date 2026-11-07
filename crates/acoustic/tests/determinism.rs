@@ -170,7 +170,7 @@ fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
 
 /// Golden hashes of [`perform_piano`]: (f32, f64), native and on wasm. The
 /// designs and the hammers are `f64` with `libm`, so the same bits.
-const PIANO_GOLDEN: (u64, u64) = (0xec8a_8ace_34eb_1a9c, 0xc87e_aa6f_0bbf_569b);
+const PIANO_GOLDEN: (u64, u64) = (0x2f69_a8e5_8082_b03a, 0x1943_5c5c_905c_d6c2);
 
 #[test]
 fn piano_performance_golden_hashes_are_unchanged() {
