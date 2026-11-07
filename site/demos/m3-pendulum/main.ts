@@ -4,7 +4,7 @@
 
 import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { View, clear, drawPoints, drawSegment, drawCircle, cssColor } from "../../js/canvas.ts";
-import { COORDS_PER_PARTICLE, DEMO_PENDULUM, SOLVER_IMPULSE, SOLVER_XPBD } from "../../js/abi.ts";
+import { COORDS_PER_PARTICLE, DEMO_PENDULUM, MAX_SUBSTEPS, SOLVER_IMPULSE, SOLVER_XPBD } from "../../js/abi.ts";
 import { SCALAR_CODES, isScalar, readScalar } from "../../js/scalars.ts";
 import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
 import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, rateSlider, runDemo } from "../../js/page.ts";
@@ -36,7 +36,7 @@ const OPTIONS: {
   scalar: { kind: "choice", values: ["f64", "f32"], default: "f64", help: "engine number type (f32 + many substeps: XPBD gains energy)" },
   // 20%: engine::DEFAULT_BAUMGARTE (Box2D v2), the β in 01's table.
   beta_pct: { kind: "int", min: 0, max: PCT, default: 20, help: "impulse solver's Baumgarte β × 100; 0 = no feedback" },
-  substeps: { kind: "int", min: 1, max: 100, default: 1, help: "substeps per physics step (01's table: 1, 20, 100)" },
+  substeps: { kind: "int", min: 1, max: MAX_SUBSTEPS, default: 1, help: "substeps per physics step (01's table: 1, 20, 100)" },
   iterations: { kind: "int", min: 1, max: 10, default: 1, help: "solver passes per substep (one rod converges in one; matters for chains)" },
   rate: RATE_OPTION,
   fps: FPS_OPTION,

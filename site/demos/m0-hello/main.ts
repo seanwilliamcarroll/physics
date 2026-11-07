@@ -4,7 +4,7 @@
 import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { runLoop, RateMeter, Smoothed } from "../../js/loop.ts";
 import { setupCanvas, View, clear, drawPoints, drawHorizon, cssColor } from "../../js/canvas.ts";
-import { DEMO_FOUNTAIN } from "../../js/abi.ts";
+import { DEMO_FOUNTAIN, MAX_PARTICLES } from "../../js/abi.ts";
 import { SCALAR_CODES, readScalar } from "../../js/scalars.ts";
 import { smokeMode, runSmoke } from "../../js/smoke.ts";
 import { FPS_OPTION, pageFailed } from "../../js/page.ts";
@@ -21,7 +21,7 @@ const GROUND_WIDTH_PX = 1;
  */
 const OPTIONS: { scalar: ChoiceOption; n: IntOption; seed: IntOption; fps: IntOption } = {
   scalar: { kind: "choice", values: Object.keys(SCALAR_CODES), default: "f32", help: "engine number type" },
-  n: { kind: "int", min: 1, max: 2_000_000, default: 300, help: "particle count" },
+  n: { kind: "int", min: 1, max: MAX_PARTICLES, default: 300, help: "particle count" },
   seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "launch randomness; same seed, same fountain" },
   fps: FPS_OPTION,
 };

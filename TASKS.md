@@ -273,6 +273,24 @@ hammer parts and the dispersion's refinement in their own modules.
 
 ---
 
+## Health audit (after A3)
+
+Software-engineering health, not physics (PRs #122 on). Open:
+
+- **Mutation gaps** from the full cargo-mutants run: soft constraints at
+  several iterations, the elastic potential, live k and c, the synth's
+  controls, `acoustic::measure` (next PR).
+- **cargo-mutants `--in-diff` in the pre-push hook**, informational
+  (not a gate): which of a branch's changes no test notices.
+- **TODO: why the piano model is slow in debug builds.** Selecting it
+  designs 88 keys' dispersion filters: 1.8 s unoptimized at 48 kHz,
+  0.2 s with `acoustic`, `libm` and `math` at `opt-level = 3` (now set
+  for dev builds). Is the time in `libm`'s transcendentals, the
+  refinement's iterations, or something that could be designed lazily
+  per key, or once and shared?
+- **M2's energy readout** is O(n²) per panel every frame, Barnes–Hut's
+  included (the M2 walkthrough); measure, then read it less often.
+
 ## Out of scope for A3
 
 - Coupled strings through the bridge (a stretch, decision 6).

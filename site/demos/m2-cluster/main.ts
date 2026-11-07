@@ -6,7 +6,7 @@
 import { loadEngine, positionsView } from "../../js/wasm.ts";
 import { Smoothed } from "../../js/loop.ts";
 import { View, clear, drawPoints, cssColor } from "../../js/canvas.ts";
-import { DEMO_CLUSTER, DEMO_COLLAPSE, DEMO_DISK, SCALAR_F32, SCALAR_F64 } from "../../js/abi.ts";
+import { DEMO_CLUSTER, DEMO_COLLAPSE, DEMO_DISK, MAX_GRAVITY_BODIES, SCALAR_F32, SCALAR_F64 } from "../../js/abi.ts";
 import { buildPanels, demoHandle, panelSeries, replaceDemo, requireAccepted } from "../../js/panels.ts";
 import { FPS_OPTION, RATE_OPTION, pageFailed, plotColors, rateSlider, runDemo } from "../../js/page.ts";
 import { byId } from "../../js/dom.ts";
@@ -60,7 +60,7 @@ const OPTIONS: {
   rate: IntOption; fps: IntOption;
 } = {
   scene: { kind: "choice", values: Object.keys(SCENES), default: "disk", help: "starting configuration" },
-  n: { kind: "int", min: 2, max: 4096, default: 256, help: "body count (the menu offers powers of two)" },
+  n: { kind: "int", min: 2, max: MAX_GRAVITY_BODIES, default: 256, help: "body count (the menu offers powers of two)" },
   seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "scene randomness; same seed, same scene" },
   eps_mm: { kind: "int", min: 0, max: SOFTENING_MAX_M * MM_PER_M, default: SOFTENING_DEFAULT_MM, help: "softening ε in millimeters; 0 = pure 1/r²" },
   theta_pct: { kind: "int", min: 0, max: THETA_MAX * PCT, default: THETA_DEFAULT_PCT, help: "Barnes–Hut opening angle θ × 100; 0 = exact" },

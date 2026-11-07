@@ -16,5 +16,9 @@ crate-type = ["cdylib"]
 math = { path = "../math" }
 acoustic = { path = "../acoustic" }
 
+[dev-dependencies]
+proptest.workspace = true
+test-support = { path = "../test-support" }
+
 [lints]
 workspace = true

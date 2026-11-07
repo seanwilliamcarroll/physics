@@ -14,6 +14,13 @@ use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_PIANO,
 /// allocated).
 pub const MAX_FRAMES: usize = 4096;
 
+/// The highest sample rate a [`Synth`] accepts, Hz (ours): the highest
+/// that common audio hardware runs at, four times the page's usual 48 kHz.
+/// Every buffer is sized from the rate (each voice's delay lines,
+/// `fs / 27.5 Hz` samples, and the strike trace), so an uncapped rate
+/// let `synth_new(1e9, …)` try to allocate gigabytes.
+pub const MAX_SAMPLE_RATE: f64 = 192_000.0;
+
 /// The spectrum's size, samples: 4096 at 48 kHz is 85 ms of output and
 /// 11.7 Hz per bin (`docs/13-waveguide.md`, "The spectrum").
 pub const SPECTRUM_SIZE: usize = 4096;
@@ -50,9 +57,13 @@ pub struct Synth {
 
 impl Synth {
     /// A silent synth at `fs` Hz, noise seeded by `seed`. `None` for a rate
-    /// that isn't positive and finite.
+    /// that isn't positive and finite, or above [`MAX_SAMPLE_RATE`].
     #[must_use]
     pub fn new(fs: f64, seed: u64) -> Option<Self> {
+        // NaN and non-positive rates are Voices::new's to refuse.
+        if fs > MAX_SAMPLE_RATE {
+            return None;
+        }
         let voices = Voices::new(fs, seed)?;
         // The longest line: A0. Sized once, like the output.
         let longest = acoustic::KsString::<f32>::new(

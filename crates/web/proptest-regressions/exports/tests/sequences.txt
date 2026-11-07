@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4879d32f0928516d07357745aa77eda87ddccf9514e7d8ea7e6ad321ebbbfe24 # shrinks to first = Chain { scalar: 0, links: 1, ratio: 0.1 }, calls = [Grab(0.0, 0.0, 1.268650109117442), Grab(0.0, -2.4766816878668325, 0.0)]

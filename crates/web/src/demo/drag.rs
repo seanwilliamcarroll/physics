@@ -12,15 +12,15 @@ use super::any_world::each_scalar;
 const DRAG_COMPLIANCE: f64 = 1e-3;
 
 impl Demo {
-    /// Grabs the dynamic particle nearest to `(x, y)` (m) within `radius`
-    /// (m), releasing any grab already held. Returns its index, or `None`
-    /// if nothing dynamic is that close.
     /// Whether this demo's world can be grabbed ([`engine::World::grabbable`]:
     /// only one a solver already steps).
     pub(crate) fn grabbable(&self) -> bool {
         each_scalar!(&self.world, s => s.world.grabbable())
     }
 
+    /// Grabs the dynamic particle nearest to `(x, y)` (m) within `radius`
+    /// (m), releasing any grab already held. Returns its index, or `None`
+    /// if nothing dynamic is that close.
     pub(crate) fn grab(&mut self, x: f64, y: f64, radius: f64) -> Option<usize> {
         self.release();
         let grab = each_scalar!(&mut self.world, s => grab_in(&mut s.world, x, y, radius));

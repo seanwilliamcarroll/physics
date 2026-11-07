@@ -4,7 +4,7 @@
 
 import { loadEngine, positionsView, linksView } from "../../js/wasm.ts";
 import { View, clear, devicePx, drawPoints, drawLinks, drawHorizon, cssColor } from "../../js/canvas.ts";
-import { JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, SCALAR_F64 } from "../../js/abi.ts";
+import { JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, MAX_JELLY_SIDE, SCALAR_F64 } from "../../js/abi.ts";
 import { byId } from "../../js/dom.ts";
 import { readChoice, readInt, optionsTableHtml } from "../../js/options.ts";
 import { LinePlot } from "../../js/plot.ts";
@@ -49,7 +49,7 @@ const OPTIONS: {
   // 0.5: the damping M5.5 measured the jelly with.
   damping: { kind: "choice", values: DAMPING_VALUES, default: "0.5", help: "spring damping c, N·s/m" },
   // 8: engine::scenarios::JELLY_COLS / JELLY_ROWS.
-  grid: { kind: "int", min: 2, max: 16, default: 8, help: "particles per side (the jelly's mass stays 1 kg)" },
+  grid: { kind: "int", min: 2, max: MAX_JELLY_SIDE, default: 8, help: "particles per side (the jelly's mass stays 1 kg)" },
   // 10: the web demo's starting substeps (crates/web demo/jelly.rs).
   substeps: { kind: "int", min: 1, max: 50, default: 10, help: "substeps per physics step" },
   rate: RATE_OPTION,

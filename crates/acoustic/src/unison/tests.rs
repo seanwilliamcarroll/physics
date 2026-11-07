@@ -1,5 +1,5 @@
 use super::{DETUNE_CENTS, Unison, offset, strings};
-use crate::hammer::{self, Hammer, STRIKE};
+use crate::hammer::{self, Hammer, MAX_VELOCITY, STRIKE};
 use crate::{Decay, Voicing, Waveguide, inharmonicity};
 use math::convert::{f64_to_usize, usize_to_f64};
 
@@ -106,5 +106,21 @@ fn a_group_makes_no_energy() {
             u.len()
         );
         assert!(kept < 1.005, "MIDI {key}: {kept}");
+    }
+}
+
+/// The fastest strike accepted stays finite in `f32` across the keyboard
+/// (a far faster one once overflowed the rails and panicked); one faster
+/// is refused.
+#[test]
+fn the_fastest_strike_stays_finite_and_faster_is_refused() {
+    for key in [21_u8, 48, 60, 108] {
+        let mut u = Unison::<f32>::new(FS, key, voicing(key), MAX_VELOCITY).unwrap();
+        assert!((0..4800).all(|_| u.next_sample().is_finite()), "key {key}");
+        assert!(Unison::<f32>::new(FS, key, voicing(key), MAX_VELOCITY * 1.01).is_none());
+        assert!(
+            Unison::<f32>::new(FS, key, voicing(key), 2.5e51).is_none(),
+            "the test's case"
+        );
     }
 }

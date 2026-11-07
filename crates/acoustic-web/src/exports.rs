@@ -14,7 +14,9 @@ const fn status(ok: bool) -> u32 {
 }
 
 /// A synth at `sample_rate` Hz (the `AudioContext`'s), noise seeded by
-/// `seed`; null for a bad rate. Free with [`synth_free`].
+/// `seed`; null for a rate that isn't positive, or above
+/// [`MAX_SAMPLE_RATE`](crate::synth::MAX_SAMPLE_RATE) (192 kHz). Free with
+/// [`synth_free`].
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn synth_new(sample_rate: f64, seed: u32) -> *mut Synth {
     crate::imports::install_panic_hook();
@@ -62,7 +64,8 @@ pub(crate) unsafe extern "C" fn synth_note_on(s: *mut Synth, key: u32) -> u32 {
 }
 
 /// Strikes piano key `key` at `velocity` m/s (the hammer's speed);
-/// [`STATUS_REFUSED`] off the keyboard or for a bad velocity.
+/// [`STATUS_REFUSED`] off the keyboard or for a bad velocity (not
+/// positive, or above [`acoustic::hammer::MAX_VELOCITY`], twice ff).
 ///
 /// # Safety
 /// `s` must be null or a live handle from [`synth_new`].
