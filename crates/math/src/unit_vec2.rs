@@ -36,15 +36,34 @@ impl<S: Scalar> UnitVec2<S> {
 }
 
 impl<S: Scalar> Vec2<S> {
-    /// This vector's length and direction, or `None` if it has none
-    /// (length 0, or NaN: `len > 0` fails for both).
+    /// This vector's length and direction, or `None` if it has none (zero,
+    /// or a component infinite or NaN).
     ///
     /// Divides each component by the length (correctly rounded), not by
-    /// multiplying with `1 / len`.
+    /// multiplying with `1 / len`. When `x² + y²` isn't a normal number
+    /// (it over- or underflowed) the vector is first divided by its larger
+    /// component, as `hypot` does: before that, a huge finite vector
+    /// (`f32` past ~1.8e19) came back as a "unit" vector of length 0, an
+    /// infinite one as NaN, and a tiny nonzero one as no direction
+    /// (found by the math property tests). The length is then `∞` only if
+    /// the true length exceeds the type's range. Every vector whose
+    /// `x² + y²` is normal gets exactly the old arithmetic.
     #[must_use]
     pub fn length_and_direction(self) -> Option<(S, UnitVec2<S>)> {
-        let len = self.length();
-        (len > S::ZERO).then(|| (len, UnitVec2(self / len)))
+        let len_sq = self.length_sq();
+        if len_sq.is_normal() {
+            let len = len_sq.sqrt();
+            return Some((len, UnitVec2(self / len)));
+        }
+        let (ax, ay) = (self.x.abs(), self.y.abs());
+        let big = if ay > ax { ay } else { ax };
+        // `big > 0` is false for NaN too; ∞ has no direction.
+        if !(big > S::ZERO && big.to_f64().is_finite()) {
+            return None;
+        }
+        let scaled = self / big;
+        let len = scaled.length();
+        Some((big * len, UnitVec2(scaled / len)))
     }
 
     /// This vector's direction, or `None` (see

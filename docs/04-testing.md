@@ -148,6 +148,7 @@ These guarantee the demos remain demonstrations.
 | Force spring past `k_crit = 4m/h²` (M5.2, `springs.rs`) | Energy bounded at 0.9 `k_crit`, grows > 1e6x at 1.1 (measured 2e2x at 0.99, 6e71x at 1.01) |
 | Classic Baumgarte on the 1:100 chain (M4.9, `chains.rs`) | Gains > 100 J in 10 s at 20 substeps, more than at 2 (measured +3398 J vs +15 J) |
 | XPBD pendulum in f32, 100 substeps (M3) | Energy differs from f64 by > 0.2 J (f32 *gains* 0.11 J where f64 loses 0.31 J) |
+| One ball hitting two at once, elastic (M6, both solvers) | Keeps > 1.10 of its kinetic energy (measured 1.16 at a 2 mm gap): Newton restitution bounces each contact by its own approach speed. Should flip with Generalized Reflections |
 
 Name them for what they demonstrate, e.g.
 `explicit_euler_gains_energy_on_orbit`.
@@ -541,6 +542,37 @@ PR edits. The JS percentage is mostly a statement about how much of the
 site is DOM code, so gating it would push tests toward the wrong layer.
 Revisit if CI arrives, or if a review ever finds a real bug in code the
 report showed as unexecuted.
+
+## Against the checklist
+
+`docs/numerical-testing-checklist.md` is a generic plan for a 2D
+rigid-body engine. Here's how this repo maps onto it (audited after the
+health audit, then filled in):
+
+- **Prerequisites: all met, and beyond.** A fixed timestep (`TimeStep`,
+  `FixedStep`), seeded RNGs, no `HashMap` or wall clock in library code,
+  shared tolerances (`test_support::Tol`). Determinism is checked twice in
+  a process, and **bit-exact across native and wasm**, not within a
+  tolerance.
+- **Covered, by category:**
+
+  | Checklist | Here |
+  |---|---|
+  | Math primitives | `math`'s unit tests; `math/tests/properties.rs` (identities bit for bit, unit directions over 1e-30..1e30, and the edge inputs) |
+  | Integrators | Free fall per integrator (`invariants.rs`); orbits' energy behavior (`invariants.rs`, `known_failures.rs`); convergence order per integrator, position and velocity (`convergence.rs`) |
+  | Broadphase | Unit cases; brute-force superset over uniform, clustered and mixed scenes far from the origin, insertion order (`broadphase_properties.rs`) |
+  | Narrowphase | Unit cases; swap, translation, well-formed contacts (`narrowphase_properties.rs`) |
+  | Contact solver | Analytic head-on, momentum, energy, stacks, a bullet, fast circles, 1:1e6 (`contacts.rs`); the energy gain with simultaneous contacts is a known failure until Generalized Reflections |
+  | Joints and constraints | Rod error bounds, chains, compliant and rigid pendulum periods, soft rods at several passes |
+  | World and API | The ABI property tests (`exports/tests/sequences.rs`, both wasm crates); goldens of every demo scene, native and wasm |
+
+- **Not applicable:** mass properties and inertia (point particles and
+  circles), polygon narrowphase, friction, sleeping, angular momentum.
+- **Outside the checklist:** the acoustic crate, tested in the same styles
+  (analytic tuning and decay, FFT against a naive DFT, the bit-exact
+  loop-and-waveguide equivalence, energy accounting, goldens).
+- **Deferred to M6:** contact goldens, the cradle and rack scenes,
+  contact-order properties.
 
 ## Mutation testing
 

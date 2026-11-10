@@ -52,6 +52,12 @@ pub trait Scalar:
     /// Absolute value.
     #[must_use]
     fn abs(self) -> Self;
+
+    /// Neither zero, subnormal, infinite nor NaN: a value with full
+    /// precision. In this type, not via `to_f64` (an `f32` subnormal is a
+    /// normal `f64`).
+    #[must_use]
+    fn is_normal(self) -> bool;
 }
 
 // The impls call `f64::sqrt(self)` rather than `self.sqrt()`. Both resolve to
@@ -77,6 +83,10 @@ impl Scalar for f64 {
     fn abs(self) -> Self {
         f64::abs(self)
     }
+
+    fn is_normal(self) -> bool {
+        f64::is_normal(self)
+    }
 }
 
 impl Scalar for f32 {
@@ -97,6 +107,10 @@ impl Scalar for f32 {
 
     fn abs(self) -> Self {
         f32::abs(self)
+    }
+
+    fn is_normal(self) -> bool {
+        f32::is_normal(self)
     }
 }
 
