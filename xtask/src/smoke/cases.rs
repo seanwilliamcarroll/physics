@@ -27,6 +27,8 @@ const M2: &str = "demos/m2-cluster/";
 const M3: &str = "demos/m3-pendulum/";
 const M4_CHAIN: &str = "demos/m4-chain/";
 const M5: &str = "demos/m5-jelly/";
+const M6: &str = "demos/m6-collisions/";
+const M6_CRADLE: &str = "demos/m6-cradle/";
 const M4_DP: &str = "demos/m4-double-pendulum/";
 const A1: &str = "demos/a1-string/";
 const A2: &str = "demos/a2-waveguide/";
@@ -39,8 +41,10 @@ const A3: &str = "demos/a3-piano/";
 /// unsoftened collapse (energy must stay finite through the blow-up), and
 /// a heavier cluster. M3: both solver panels, default and the f32 stress
 /// case (100 substeps). M4: the chain (both solver panels) and the double
-/// pendulum in both comparison modes.
-pub(super) const CASES: [Case; 20] = [
+/// pendulum in both comparison modes. M6: the box (full, with the
+/// broadphase overlay), the break with gaps, the cradle and its
+/// one-substep case.
+pub(super) const CASES: [Case; 24] = [
     Case {
         name: "default",
         page: M0,
@@ -143,6 +147,30 @@ pub(super) const CASES: [Case; 20] = [
         name: "m5rigid",
         page: M5,
         query: "?smoke&logk=rigid&grid=4",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m6box",
+        page: M6,
+        query: "?smoke&balls=60&overlay=on",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m6break",
+        page: M6,
+        query: "?smoke&scene=break&gap_mm=5",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m6cradle",
+        page: M6_CRADLE,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m6cradle1",
+        page: M6_CRADLE,
+        query: "?smoke&substeps=1&balls=8&pulled=3",
         check: Check::Draws,
     },
     // A1: one second rendered offline (OfflineAudioContext): the worklet

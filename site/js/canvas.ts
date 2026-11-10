@@ -244,3 +244,54 @@ export function drawCircle(
   ctx.arc(center[0], center[1], r, 0, 2 * Math.PI);
   ctx.stroke();
 }
+
+/** Filled circles: particle i at interleaved `pos` with world radius
+ *  `radii[i]`, all in one path and one fill. Particles of radius 0 (pins)
+ *  and past the end of `radii` are skipped. Assumes `view.apply(ctx)` was
+ *  called. */
+export function drawDisks(
+  ctx: CanvasRenderingContext2D,
+  pos: Float32Array,
+  radii: Float64Array,
+  color: string,
+): void {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  const count = Math.min(Math.floor(pos.length / COORDS_PER_PARTICLE), radii.length);
+  for (let i = 0; i < count; i++) {
+    const r = radii[i];
+    if (!(r > 0)) continue;
+    const x = pos[i * COORDS_PER_PARTICLE];
+    const y = pos[i * COORDS_PER_PARTICLE + 1];
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+  }
+  ctx.fill();
+}
+
+/** Vertical and horizontal lines every `cell` world units across the
+ *  visible area, aligned to multiples of `cell` (as the broadphase's
+ *  cells, `⌊x / cell⌋`). Assumes `view.apply(ctx)` was called. */
+export function drawGrid(
+  ctx: CanvasRenderingContext2D,
+  view: View,
+  cell: number,
+  widthPx: number,
+  color: string,
+): void {
+  if (!(cell > 0)) return;
+  const [left, right] = view.visibleX(ctx.canvas);
+  const [bottom, top] = [view.yMin, view.yMax];
+  ctx.strokeStyle = color;
+  ctx.lineWidth = devicePx(widthPx) / view.scale(ctx.canvas);
+  ctx.beginPath();
+  for (let x = Math.ceil(left / cell) * cell; x <= right; x += cell) {
+    ctx.moveTo(x, bottom);
+    ctx.lineTo(x, top);
+  }
+  for (let y = Math.ceil(bottom / cell) * cell; y <= top; y += cell) {
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
+  }
+  ctx.stroke();
+}

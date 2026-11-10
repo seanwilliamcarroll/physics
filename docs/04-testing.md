@@ -382,7 +382,9 @@ M3 (both solver panels: the default, and f32 at 100 substeps), and M4
 (the chain's two solver panels; the double pendulum in both comparison
 modes), and M5
 (the jelly's three panels at the default k, and at rigid on a 4 × 4 grid,
-where the force panel keeps its finite default), and A1 (the start of a
+where the force panel keeps its finite default), and M6 (the full box
+with the broadphase overlay, the break with 5 mm gaps, the cradle at its
+defaults and at one substep with eight balls, three pulled), and A1 (the start of a
 song rendered by an `OfflineAudioContext` through the real worklet and
 `acoustic.wasm`; `Check::Sounds` wants finite samples with an audible,
 unclipped peak, and, for a song, an onset found for every scheduled note

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M6 · Newton's cradle: XPBD against impulses</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Newton's cradle: XPBD against impulses</h1>
+    <p class="muted">
+      Balls on rigid rods, pins one diameter apart, so neighbors just touch.
+      Pull one back and let go: an ideal cradle swings exactly one ball out
+      on the far side. Every contact in the row is hit in the same substep,
+      and how a solver handles <i>simultaneous</i> contacts decides whether
+      the impulse travels down the row or smears across it. Here bounces are
+      resolved in rounds (Generalized Reflections, Smith et al. 2012), so
+      both solvers pass it down. What's left is the rods: XPBD projects
+      positions, and the projection takes a share of the swing that halves
+      each time the <b>substeps</b> double (1.3% at 10). The impulse solver
+      is closer at every count. There's no iterations slider: each ball
+      hangs on its own rod, so extra iterations change nothing (measured,
+      <code>docs/08-collision.md</code>). <b>Grab a ball and pull more of them.</b>
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="panels" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Energy</h2>
+    <p class="muted">
+      Total energy (kinetic + gravity) over its start. At restitution 1
+      it stays near 1; what a solver loses shows here.
+    </p>
+    <div class="plot"><canvas id="energy"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>

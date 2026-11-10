@@ -421,6 +421,15 @@ would show nothing.
   free-space break (a momentum plot).
 - **`m6-cradle`**: the cradle, XPBD and impulse side by side.
 
+**As built (M6.10):** both pages show XPBD and impulse side by side.
+`m6-collisions` switches between the box (plot: energy over its start)
+and the break (plot: momentum drift, log scale), with restitution, ball
+count, rack gap, substeps and rate; the broadphase overlay draws the
+engine's own grid (`collision::broadphase_cell`, which depends on h and
+the fastest ball) and the candidate pairs as lines. `m6-cradle` has balls,
+pulled, substeps, restitution and rate, and an energy plot; no iterations
+slider, since they change nothing (above). Balls can be grabbed on both.
+
 ## Tests
 
 - Head-on elastic collision of unequal masses matches the analytic final
