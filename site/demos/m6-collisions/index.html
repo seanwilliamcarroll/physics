@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M6 · Collisions: a box of balls and a break</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Collisions: a box of balls and a break</h1>
+    <p class="muted">
+      Balls as circles, contacts as one-sided constraints, the same scene
+      stepped by <b>XPBD</b> and by the <b>impulse</b> solver side by side.
+      In the <b>box</b>, gravity and four walls: at restitution 1 the total
+      energy stays flat (within 0.1% over 20 s), below 1 it runs down until
+      the balls lie still. In the <b>break</b>, a cue ball hits a rack in
+      free space: nothing outside pushes, so the momentum holds to rounding
+      through every collision (the rack leaves the view in a few seconds;
+      <b>reset</b> racks it again). Bounces are resolved by <i>Generalized
+      Reflections</i> (Smith et al. 2012): contacts hit at the same instant
+      share one bounce, so a ball hitting two at once neither gains nor
+      loses energy. Turn on the <b>broadphase</b> overlay to see the grid
+      and the pairs it hands the narrowphase. <b>Grab a ball and throw
+      it.</b>
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="panels" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2 id="plot-title">Energy</h2>
+    <p class="muted" id="plot-note"></p>
+    <div class="plot"><canvas id="plot"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
