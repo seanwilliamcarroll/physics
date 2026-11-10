@@ -94,7 +94,7 @@ compliant constraints damp at backward Euler's rate by themselves; an
 exploding force jelly leaves the view within a frame or two, so the page
 freezes on the last sane frame. **Before M6 (#73):** CI, `UnitVec2`.
 
-## ✅ M6: Colliding masses (done, PRs #76–#82, #133–#138)
+## ✅ M6: Colliding masses (done, PRs #76–#82, #133–#139)
 
 `docs/08-collision.md`; `Radius`, `Restitution`, walls; a sorted-cell-list
 broadphase and speculative contacts in XPBD and the impulse solver.
