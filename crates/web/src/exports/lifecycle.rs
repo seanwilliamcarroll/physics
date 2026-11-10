@@ -7,7 +7,7 @@ use crate::abi;
 use crate::demo::{Demo, DemoKind, ScalarKind, jelly_body_from_code, start_from_code};
 
 /// `n` as a size, if it's at most `max` (an [`abi`] cap).
-fn capped(n: u32, max: u32) -> Option<usize> {
+pub(super) fn capped(n: u32, max: u32) -> Option<usize> {
     if n > max {
         return None;
     }

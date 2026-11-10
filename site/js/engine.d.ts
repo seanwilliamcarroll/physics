@@ -88,6 +88,26 @@ export interface EngineExports {
   demo_set_order(demo: DemoHandle, code: number): Status;
   /** Total energy in joules, or NaN where undefined (the fountain). */
   demo_energy(demo: DemoHandle): number;
+  /** The M6 box: `n` (≤ abi.ts MAX_BOX_BALLS) balls, velocities from `seed`; null if invalid. */
+  demo_new_ball_box(scalar: number, n: number, seed: number): DemoHandle;
+  /** The M6 break: rack `gap` m apart (0 … abi.ts MAX_BREAK_GAP); null if invalid. */
+  demo_new_break_shot(scalar: number, gap: number): DemoHandle;
+  /** The M6 cradle: `balls` (≤ abi.ts MAX_CRADLE_BALLS) on rods, the first `pulled` swung out. */
+  demo_new_cradle(scalar: number, balls: number, pulled: number): DemoHandle;
+  /** Restitution e in [0, 1] for every collision; 0 if outside or nothing collides. */
+  demo_set_restitution(demo: DemoHandle, e: number): Status;
+  /** Particle i's radius in meters (0 for a pin); NaN past the end. */
+  demo_particle_radius(demo: DemoHandle, i: number): number;
+  /** Total momentum's x / y, kg·m/s. */
+  demo_momentum_x(demo: DemoHandle): number;
+  demo_momentum_y(demo: DemoHandle): number;
+  /** Recomputes the broadphase's candidate pairs; returns its cell size in
+   *  meters, or NaN (no collisions). Re-read demo_pairs_ptr after. */
+  demo_update_pairs(demo: DemoHandle): number;
+  /** [a0, b0, a1, b1, ...] u32 candidate pairs from demo_update_pairs. */
+  demo_pairs_ptr(demo: DemoHandle): Ptr;
+  /** Number of u32s at demo_pairs_ptr (two per pair). */
+  demo_pairs_len(demo: DemoHandle): number;
   /** Test hook: panics on purpose (smoke test only). */
   demo_panic_for_test(): void;
 }

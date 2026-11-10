@@ -67,6 +67,14 @@ pub(crate) const MAX_GRAVITY_BODIES: u32 = 4096;
 pub(crate) const MAX_CHAIN_LINKS: u32 = 40;
 /// Particles along a side of the M5 jelly.
 pub(crate) const MAX_JELLY_SIDE: u32 = 16;
+/// Balls in the M6 box: the scene's slots (`scenarios::BOX_MAX_BALLS`,
+/// checked equal in `abi/tests.rs`).
+pub(crate) const MAX_BOX_BALLS: u32 = 60;
+/// Balls in the M6 cradle: 8 spans 0.8 m, still a cradle on the page.
+pub(crate) const MAX_CRADLE_BALLS: u32 = 8;
+/// The M6 break's rack gap, m: past a ball's diameter (0.1 m) the rack
+/// stops looking like one.
+pub(crate) const MAX_BREAK_GAP: f64 = 0.1;
 /// Substeps per physics step.
 pub(crate) const MAX_SUBSTEPS: u32 = 100;
 /// Constraint iterations per substep.

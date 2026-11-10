@@ -1,3 +1,7 @@
+use super::collisions::{
+    demo_momentum_x, demo_momentum_y, demo_new_ball_box, demo_new_break_shot, demo_new_cradle,
+    demo_pairs_len, demo_pairs_ptr, demo_particle_radius, demo_set_restitution, demo_update_pairs,
+};
 use super::drag::{demo_drag, demo_grab, demo_release};
 use super::lifecycle::{
     demo_advance, demo_free, demo_links_len, demo_links_ptr, demo_new, demo_new_chain,
@@ -350,5 +354,69 @@ fn every_cap_accepts_its_limit_and_refuses_one_more() {
         demo_free(jelly);
         assert!(demo_new_jelly(f64_, xpbd, side + 1, side, 1000.0, 0.5).is_null());
         assert!(demo_new_jelly(f64_, xpbd, side, side + 1, 1000.0, 0.5).is_null());
+
+        let ball_box = demo_new_ball_box(f64_, abi::MAX_BOX_BALLS, 1);
+        assert_eq!(
+            demo_positions_len(ball_box),
+            2 * abi::MAX_BOX_BALLS as usize
+        );
+        demo_free(ball_box);
+        assert!(demo_new_ball_box(f64_, abi::MAX_BOX_BALLS + 1, 1).is_null());
+        let cradle = demo_new_cradle(f64_, abi::MAX_CRADLE_BALLS, 1);
+        assert!(!cradle.is_null());
+        demo_free(cradle);
+        assert!(demo_new_cradle(f64_, abi::MAX_CRADLE_BALLS + 1, 1).is_null());
+        let wide = demo_new_break_shot(f64_, abi::MAX_BREAK_GAP);
+        assert!(!wide.is_null());
+        demo_free(wide);
+        assert!(demo_new_break_shot(f64_, abi::MAX_BREAK_GAP * 1.01).is_null());
+    }
+}
+
+#[test]
+fn collision_scenes_check_their_input_and_read_out() {
+    let f64_ = abi::SCALAR_F64;
+    assert!(demo_new_ball_box(99, 10, 1).is_null(), "unknown scalar");
+    assert!(demo_new_cradle(99, 5, 1).is_null());
+    for gap in [f64::NAN, -1e-3, f64::INFINITY] {
+        assert!(demo_new_break_shot(f64_, gap).is_null(), "gap {gap}");
+    }
+    // SAFETY: every handle is from a `demo_new*` export (or null), and
+    // freed once; null is allowed everywhere.
+    unsafe {
+        let d = demo_new_break_shot(f64_, 0.0);
+        assert!(!d.is_null());
+        assert!(demo_momentum_x(d) > 0.0 && demo_momentum_y(d) == 0.0);
+        for e in [f64::NAN, -0.1, 1.1] {
+            assert_eq!(demo_set_restitution(d, e), 0, "e = {e}");
+        }
+        assert_eq!(demo_set_restitution(d, 0.5), 1);
+        assert_eq!(demo_particle_radius(d, 0), 0.05);
+        assert!(demo_particle_radius(d, 99).is_nan());
+        let cell = demo_update_pairs(d);
+        assert!(cell > 0.1, "cell {cell}");
+        let len = demo_pairs_len(d);
+        assert!(len > 0 && len.is_multiple_of(2));
+        assert!(!demo_pairs_ptr(d).is_null());
+        demo_free(d);
+
+        // More pulled than balls swings them all; a fountain doesn't collide.
+        let cradle = demo_new_cradle(f64_, 3, u32::MAX);
+        assert!(!cradle.is_null());
+        demo_free(cradle);
+        let fountain = demo_new(abi::DEMO_FOUNTAIN, f64_, 10, 1);
+        assert_eq!(demo_set_restitution(fountain, 0.5), 0, "nothing collides");
+        assert!(demo_update_pairs(fountain).is_nan());
+        assert_eq!(demo_pairs_len(fountain), 0);
+        demo_free(fountain);
+
+        let null = ptr::null_mut();
+        assert!(demo_momentum_x(null).is_nan() && demo_momentum_y(null).is_nan());
+        assert!(demo_particle_radius(null, 0).is_nan() && demo_update_pairs(null).is_nan());
+        assert_eq!(
+            (demo_pairs_len(null), demo_pairs_ptr(null)),
+            (0, ptr::null())
+        );
+        assert_eq!(demo_set_restitution(null, 0.5), 0);
     }
 }

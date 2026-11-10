@@ -66,3 +66,14 @@ export function linksView(engine: EngineExports, demo: DemoHandle): Uint32Array 
     engine.demo_links_len(demo),
   );
 }
+
+/** A Uint32Array view of a demo's broadphase pairs, `[a0, b0, a1, b1,
+ *  ...]`, as the last demo_update_pairs left them. Fresh per frame, like
+ *  positionsView. */
+export function pairsView(engine: EngineExports, demo: DemoHandle): Uint32Array {
+  return new Uint32Array(
+    engine.memory.buffer,
+    engine.demo_pairs_ptr(demo),
+    engine.demo_pairs_len(demo),
+  );
+}
