@@ -2,7 +2,8 @@ use super::{f64_key, index_key, sort, u64_from_key, u64_key};
 
 #[test]
 fn index_keys_keep_the_order_of_indices() {
-    let ix = [0, 1, 7, 1 << 31, usize::MAX >> 1, usize::MAX];
+    // Sorted on 32- and 64-bit alike (wasm32 runs this too).
+    let ix = [0, 1, 7, usize::MAX >> 1, usize::MAX];
     for w in ix.windows(2) {
         assert!(index_key(w[0]) <= index_key(w[1]), "{w:?}");
     }
