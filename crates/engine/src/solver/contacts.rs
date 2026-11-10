@@ -17,9 +17,6 @@ pub(crate) struct Contacts<S> {
     /// The impulse (or XPBD multiplier) applied this substep; never
     /// negative: a contact only pushes.
     pub(crate) lambda: Vec<S>,
-    /// `v_n⁻`: the normal velocity when found, after the force kick and
-    /// before the solve (negative = approaching). Restitution reverses it.
-    pub(crate) approach: Vec<S>,
     /// Approach speeds at or below this get no bounce: `2 |a_b − a_a| h`,
     /// what the forces alone add in two substeps (Müller et al. 2020's
     /// `2 |g| h`, for any force). Keeps resting contacts at rest.
@@ -28,14 +25,10 @@ pub(crate) struct Contacts<S> {
     /// `h n · (a_b − a_a)`: the impact stage runs before the kick, but asks
     /// whether a contact closes *after* it.
     pub(crate) kick_n: Vec<S>,
-    /// Every particle's velocity when the contacts were found (after the
-    /// kick, before the solve): XPBD's velocity pass measures `v_n⁻` from
-    /// these along the contact's *current* normal (Müller et al. 2020).
-    pub(crate) vel_before: Vec<Vec2<S>>,
     /// The impulse solver's split pseudo-impulse per contact, this
     /// substep only (one-sided, like λ; never warm-started).
     pub(crate) pseudo_lambda: Vec<S>,
-    /// The impact stage's scratch (`solver/impulse/impacts.rs`): whether
+    /// The impact stage's scratch (`solver/impacts.rs`): whether
     /// each contact is in the current round, and its impulse there.
     /// Impact impulses are never remembered for the warm start.
     pub(crate) in_round: Vec<bool>,
@@ -52,10 +45,8 @@ impl<S: Scalar> Contacts<S> {
         Self {
             list: Vec::new(),
             lambda: Vec::new(),
-            approach: Vec::new(),
             rest_speed: Vec::new(),
             kick_n: Vec::new(),
-            vel_before: Vec::new(),
             pseudo_lambda: Vec::new(),
             in_round: Vec::new(),
             round_impulse: Vec::new(),
@@ -65,22 +56,18 @@ impl<S: Scalar> Contacts<S> {
     }
 
     /// Finds this substep's contacts (`collision::find_contacts`) and
-    /// records each one's approach speed and resting threshold. `acc` is
+    /// records each one's resting threshold and the kick's normal part. `acc` is
     /// this substep's per-particle acceleration from the forces.
     pub(crate) fn find(&mut self, p: &Particles<S>, walls: &[Wall<S>], acc: &[Vec2<S>], h: S) {
         find_contacts(p, walls, h, &mut self.pairs, &mut self.list);
-        self.vel_before.clear();
-        self.vel_before.extend_from_slice(p.vel());
         self.lambda.clear();
         self.lambda.resize(self.list.len(), S::ZERO);
         self.pseudo_lambda.clear();
         self.pseudo_lambda.resize(self.list.len(), S::ZERO);
-        self.approach.clear();
         self.rest_speed.clear();
         self.kick_n.clear();
         let two = S::ONE + S::ONE;
         for c in &self.list {
-            self.approach.push(normal_velocity(p, c, c.normal));
             let a_rel = body_acc(acc, c.b) - acc.get(c.a.index()).copied().unwrap_or(Vec2::ZERO);
             self.rest_speed.push(two * a_rel.length() * h);
             self.kick_n.push(c.normal.dot(a_rel) * h);
