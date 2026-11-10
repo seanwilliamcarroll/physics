@@ -217,3 +217,99 @@ fn a_stack_rests_without_sinking() {
         assert!(ke < 1e-9, "{solver:?}: {ke} J");
     }
 }
+
+// Edge cases (docs/numerical-testing-checklist.md §2.6 FUZZ and §2.8):
+// speeds that cross many radii per substep, and extreme mass ratios.
+
+/// A ball fired at `speed` m/s (no gravity) at a wall 1 m away, for 1 s:
+/// whether it ever ended a step inside the wall, and its final velocity.
+/// Walls are half-planes, so a ball can't get *through* one; the risk at
+/// many radii per substep is a missed bounce, leaving it inside.
+fn bullet(solver: Solver, speed: f64) -> (bool, Vec2<f64>) {
+    let mut w = world(solver, 1.0);
+    // A wall at x = 1, free on the left (its normal is −x).
+    w.add_wall(Wall::through(Vec2::new(1.0, 0.0), -UnitVec2::X));
+    ball(&mut w, (0.0, 0.0), (speed, 0.0), 1.0);
+    let mut inside = false;
+    for _ in 0..60 {
+        w.step(time_step(DT));
+        inside |= w.particles().pos()[0].x + R > 1.0 + 1e-9;
+    }
+    (inside, w.particles().vel()[0])
+}
+
+#[test]
+fn a_bullet_bounces_off_a_wall() {
+    // 1 000 m/s is 1.7 m a substep (17 radii); 100 000 m/s, 170 m.
+    // Measured: −speed to 2e-14 (XPBD) and exactly (impulse).
+    for solver in SOLVERS {
+        for speed in [1e3, 1e5] {
+            let (inside, v) = bullet(solver, speed);
+            assert!(
+                !inside,
+                "{solver:?} at {speed} m/s ended a step inside the wall"
+            );
+            assert!(
+                (v.x + speed).abs() < 1e-12 * speed && v.y == 0.0,
+                "{solver:?} at {speed}: {v:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn fast_circles_dont_pass_through_each_other() {
+    // ±1 000 m/s, 20 m apart: they close 33 m a frame. The speculative
+    // contact (a gap counts if it can close this substep) stops them.
+    for solver in SOLVERS {
+        let mut w = world(solver, 1.0);
+        ball(&mut w, (-10.0, 0.0), (1e3, 0.0), 1.0);
+        ball(&mut w, (10.0, 0.0), (-1e3, 0.0), 1.0);
+        for _ in 0..60 {
+            w.step(time_step(DT));
+            let x = w.particles().pos();
+            assert!(x[0].x < x[1].x, "{solver:?}: they passed through");
+        }
+        // Equal masses, elastic: they swap velocities.
+        let v = w.particles().vel();
+        assert!(
+            (v[0].x + 1e3).abs() < 1e-9 && (v[1].x - 1e3).abs() < 1e-9,
+            "{solver:?}: {v:?}"
+        );
+    }
+}
+
+#[test]
+fn a_one_to_a_million_collision_is_exact_and_finite() {
+    // 1 kg at 1 m/s on 1e6 kg at rest, elastic:
+    // v1' = (m1 − m2)/(m1 + m2), v2' = 2 m1 / (m1 + m2).
+    // Measured: both within 1e-8 (relative); momentum drift 3.4e-8 (XPBD),
+    // 1e-16 (impulse); bounds ~30x.
+    let (m1, m2) = (1.0, 1e6);
+    let (want1, want2) = ((m1 - m2) / (m1 + m2), 2.0 * m1 / (m1 + m2));
+    for solver in SOLVERS {
+        let mut w = world(solver, 1.0);
+        ball(&mut w, (-0.5, 0.0), (1.0, 0.0), m1);
+        ball(&mut w, (0.5, 0.0), (0.0, 0.0), m2);
+        let p0 = momentum(w.particles());
+        for _ in 0..60 {
+            w.step(time_step(DT));
+        }
+        let v = w.particles().vel();
+        assert!(v.iter().all(|v| v.x.is_finite() && v.y.is_finite()));
+        assert!(
+            (v[0].x / want1 - 1.0).abs() < 3e-7,
+            "{solver:?}: light {}",
+            v[0].x
+        );
+        assert!(
+            (v[1].x / want2 - 1.0).abs() < 3e-7,
+            "{solver:?}: heavy {}",
+            v[1].x
+        );
+        assert!(
+            (momentum(w.particles()) - p0).length() < 1e-6,
+            "{solver:?}: momentum"
+        );
+    }
+}
