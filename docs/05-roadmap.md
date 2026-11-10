@@ -36,11 +36,16 @@ graph TD
   M3 --> C2
   C1 --> C3[C3 Ball on a plate]
   M6 --> C3
+  M0 --> S1[S1 Boids]
+  S1 --> S2[S2 Vicsek]
+  S1 --> S3[S3 Ant foraging]
+  S3 --> S4[S4 Physarum]
+  S4 --> S5[S5 Evolve & build]
 ```
 
 The core path is M0 → M1 → M3 → M6 → M7. M8 (fixed point) can move
-earlier once M3 exists. M9 and the acoustic track (A1–A5) are independent
-branches and can be picked up any time after M0.
+earlier once M3 exists. M9, the acoustic track (A1–A5) and the swarm track
+(S1–S5) are independent branches and can be picked up any time after M0.
 
 ---
 
@@ -446,6 +451,124 @@ on a platform, with disturbances from mouse pokes.
 **Needs:** C1, and contacts (M6) for a real ball on a surface; platform
 tilt is the actuator. A 2D extension of C1's 1D model would also work if
 contacts aren't the point.
+
+## Swarm track (proposed)
+
+Source: `swarm-resources.md` (papers, explainers, performance reading) and
+`swarm-rust-implementation.md` (implementation notes), both 2026-11-02.
+Not yet scheduled. This section adapts those notes to the repo as it
+stands; read them for the models and the reading list.
+
+**What's different from the physics.** Agents follow *rules* (steer,
+align, sense a field), not forces, so there's no energy or momentum to
+conserve. Tests check invariants (speed bounds, field accounting),
+compare against brute force, and reproduce a published *statistical*
+result (Vicsek's transition), the way M1–M6 reproduce analytic ones.
+
+**How it fits** (the notes' open questions, answered):
+- **Its own crates and module, as the acoustic track did:** `swarm`
+  (the core: agents, grid, models; no web code) and `swarm-web` (a
+  `cdylib`, `swarm.wasm`). The repo has no `wasm-bindgen` (`03-wasm-shell.md`,
+  "Not now"). Both modules export a hand-written C ABI read by a small
+  loader (`site/js/wasm.ts`), and swarm follows that. The smoke harness,
+  goldens on native and wasm, and the page helpers carry over.
+- **Shared already:** `math` has `Scalar`, `Vec2` and `SplitMix64` (the
+  notes' "10-line seeded PRNG"). The notes' "keep the scalar generic" is
+  the engine's rule too, and a boids panel in Q16.16 belongs with M8's
+  `Fixed` (the ECE 4760 RP2040 lab's comparison).
+- **Not shared from day one: the grid.** The engine's broadphase is a
+  *sorted cell list* (M6.3) because its world is unbounded. One runaway
+  particle can't blow up a dense array. Swarms live in a bounded or
+  periodic box with cell size = perception radius, where the notes'
+  *counting sort* is O(n) and needs no comparison sort (no sort
+  instantiation either: `03-wasm-shell.md`, M6.11). Different bounds and
+  a different query: build the counting-sort grid in `swarm`, and extract
+  a shared one if M10 (thousands of DEM circles in a closed box) wants
+  the same structure. Measure the two side by side there.
+- **Update order is the teaching contrast.** Swarm steps are
+  double-buffered (read `cur`, write `next`), so the order doesn't
+  matter (Jacobi-like). The engine's solvers are deliberately in place
+  (Gauss–Seidel), so order matters (M4's `Order`). Same determinism
+  rules: fixed step, seeded RNG, goldens on native and wasm.
+- **Rendering:** an RGBA pixel buffer in wasm memory, blitted with
+  `putImageData`. That's the renderer M9 and A4 plan as well; build it
+  once in `site/js`, whichever track gets there first.
+- **Scale:** past what one core does, `workers.md` (workers per panel;
+  wasm threads deferred). The GPU tier (`wgpu` on WebGPU, compute
+  shaders) would be the repo's first large runtime dependency and is
+  WebGPU-only (no compute on the WebGL2 fallback). A decision for S4, not
+  before; the CPU path stays the fallback either way.
+- **References:** papers go into `references.md`, checked on Crossref,
+  when their milestone starts (the rule for every track).
+
+### S1 — Boids
+
+**Showcases:** Reynolds' three rules (separation, alignment, cohesion)
+with edge avoidance and a speed clamp, then the cost story: brute force
+O(n²) against the grid.
+
+**New:** the `swarm` and `swarm-web` crates; structure-of-arrays agents,
+double-buffered; the counting-sort grid; pixel-buffer agents; ns per
+agent-step for brute force and grid at 1k, 10k and 100k (the crossover is
+the first result); then agents reordered by cell, and `simd128`, each
+measured separately.
+
+**Tests:** the grid's neighbor sets *equal* brute force's (proptest:
+exact, unlike the broadphase's superset, since cell = radius); speeds
+stay within `[min, max]`; repeatable and golden on native and wasm.
+
+**Done when:** a flock of 10k runs at 60 Hz, with the crossover plot.
+
+### S2 — Vicsek model
+
+**Showcases:** the quantitative check. Constant speed, align with
+neighbors plus noise η, in a periodic box; the order parameter `v_a`
+falls from 1 to ~0 as η rises, a continuous transition (Vicsek et al.
+1995).
+
+**New:** periodic wrap in the grid lookup; a sweep of η with `v_a`
+plotted; the 0/0 rule (neighbors' headings cancel: keep the old heading),
+documented.
+
+**Tests:** `v_a` stays 1 at η = 0 from an aligned start; at η = 2π it's
+~1/√N (no order); the curve between is monotone within a measured band.
+
+**Done when:** the page sweeps η and draws the transition.
+
+### S3 — Ant foraging
+
+**Showcases:** stigmergy. Agents read and write shared fields
+(`to_food`, `to_home`) instead of each other. Trails form, reinforce and
+evaporate.
+
+**New:** field grids with diffusion (3×3 blur) and decay; three-point
+sensing; deposit (serial on the CPU: write contention starts here); food
+sources and a nest painted with the mouse.
+
+**Tests:** field accounting (deposit − decay, the blur conserves mass in a
+closed box); foragers beat a random-walk baseline on food returned per
+tick.
+
+### S4 — Physarum
+
+**Showcases:** Jones 2010's slime mold. One trail field, many agents
+(sense, rotate, move, deposit, then diffuse and decay), networks that
+approximate Steiner trees (Jones 2011).
+
+**New:** the trail-map renderer (field to color ramp); Jenson's parameter
+set and sliders for the sensor angle, rotation angle and sensor offset.
+The CPU path reaches ~10⁵ agents. The GPU tier decision lives here.
+
+**Tests:** field accounting, as S3; determinism.
+
+### S5 — Stretch: evolve the rules, build
+
+- **Evolve rules:** a genetic algorithm over boids or ant parameters,
+  fitness from a headless native run (natively, many runs in parallel are
+  fine: no browser constraints).
+- **Collective construction:** TERMES-style agents placing blocks by
+  local rules until a target structure stands (Werfel et al. 2014). The
+  hardest to get right.
 
 ## Web track (ideas)
 
