@@ -19,11 +19,11 @@ pub const BREAK_ROWS: usize = 4;
 pub const BREAK_CUE_DISTANCE: f64 = 0.5;
 
 /// A cue ball at [`BREAK_SPEED`] into a triangle of [`BREAK_ROWS`] rows of
-/// touching balls, with no gravity and no walls: nothing outside pushes, so
-/// total momentum is conserved (to rounding) through every collision, the
-/// M6 momentum showcase (`docs/08-collision.md`). Elastic; the page's
-/// slider changes it. The rack's balls touch exactly (centers `2r` apart),
-/// so the cue ball's impact meets simultaneous contacts.
+/// balls `gap` m apart (0: touching), with no gravity and no walls: nothing
+/// outside pushes, so total momentum is conserved (to rounding) through
+/// every collision, the M6 momentum showcase (`docs/08-collision.md`).
+/// Elastic; the page's slider changes it. Touching, the cue ball's impact
+/// meets simultaneous contacts; with gaps, a ball meets two at once.
 ///
 /// # Errors
 /// [`ConfigError::InvalidMass`] or [`ConfigError::InvalidRadius`] if a
@@ -31,6 +31,7 @@ pub const BREAK_CUE_DISTANCE: f64 = 0.5;
 pub fn break_shot<S: Scalar>(
     solver: Solver,
     substeps: NonZeroU32,
+    gap: f64,
 ) -> Result<World<S>, ConfigError> {
     let m = mass(BREAK_BALL_MASS)?;
     let r = radius(BREAK_BALL_RADIUS)?;
@@ -43,15 +44,16 @@ pub fn break_shot<S: Scalar>(
         m,
         r,
     );
-    // Rows `√3 r` apart along x (touching neighbors form equilateral
-    // triangles), balls `2r` apart along y. `sqrt` is correctly rounded,
-    // so this is deterministic on every platform.
-    let row_step = 3.0_f64.sqrt() * BREAK_BALL_RADIUS;
+    // Neighbors form equilateral triangles of side `2r + gap`: balls that
+    // far apart along y, rows `√3 (r + gap/2)` apart along x. `sqrt` is
+    // correctly rounded, so this is deterministic on every platform.
+    let side = 2.0 * BREAK_BALL_RADIUS + gap;
+    let row_step = 3.0_f64.sqrt() * side / 2.0;
     for row in 0..BREAK_ROWS {
         for k in 0..=row {
             let (x, y) = (
                 usize_to_f64(row) * row_step,
-                (usize_to_f64(k) - usize_to_f64(row) / 2.0) * 2.0 * BREAK_BALL_RADIUS,
+                (usize_to_f64(k) - usize_to_f64(row) / 2.0) * side,
             );
             w.particles
                 .add_circle(Vec2::new(S::from_f64(x), S::from_f64(y)), Vec2::ZERO, m, r);
