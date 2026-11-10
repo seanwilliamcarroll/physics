@@ -130,6 +130,7 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M6.6 | `F32`, `F64` | 192,680 B | 60,661 B | + collision: broadphase, narrowphase, contacts in both solvers (no M6 page or exports yet; measured at A1.5). **+65 KB over M5.6** (below) |
 | M6.7 | `F32`, `F64` | 197,543 B | 62,605 B | + the impact stage (Generalized Reflections), both solvers |
 | M6.9 | `F32`, `F64` | 215,612 B | 66,591 B | + the box, break and cradle constructors, restitution, radius, momentum and broadphase-pairs exports (+18.1 KB: three scene builders ×2 scalars) |
+| M6.11 | `F32`, `F64` | 179,755 B | 55,435 B | one sort key for every sort (below): **−35.9 KB**; sorting code 39.1 → 6.9 KB |
 
 **Where M6's +65 KB went** (A1.7; per-function sizes from the module's
 `name` section, M5.8 against M6.6; the code section grew 59.7 KB):
@@ -141,11 +142,25 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | `Contacts::find` | +11.5 KB | ×2 scalars |
 | drop glue, other | +4.7 KB | |
 
-Sorting is the lever, as M2 already found (~7–9 KB per element type). Not
-fixed here (M6 is paused); candidates when it resumes: drop the
-broadphase's final sort of pairs (its cell keys are already sorted, so the
-order is deterministic without it), sort the warm-start keys without the
-scalar (one copy, not two), and fold the cell key into one integer.
+Sorting is the lever, as M2 already found (~7–9 KB per element type).
+
+**Fixed in M6.11: one sort key** (`engine/src/sort_key.rs`). Every sort in
+the engine now sorts `(i64, i64, usize)`, one non-generic instantiation:
+the broadphase's cells and its output pairs (`(a, b, b)`), the warm start
+(keys with an index into a separate λ vector, so not once per scalar),
+Barnes–Hut's Morton keys (a `u64` as two non-negative halves) and the
+disk's radii (an `f64` as its IEEE total-order bits). Five element types,
+seven instantiations, became one; every golden is unchanged, so the
+orders are too. Measured per-function from the name section (a script
+over the code and name sections; `wasm-tools` has no per-function sizes):
+sorting went from 39.1 KB to 6.9 KB.
+
+The cost is speed in the broadphase, +6–12% (128 to 4,096 circles:
+24-byte keys instead of 16-byte pairs, and one more pass), ~15 µs per
+substep at 1,024 circles. Not taken: dropping the broadphase's final sort
+of pairs altogether (its cell keys are already sorted, so the order is
+deterministic without it), which would be smaller *and* faster but
+reorders contacts, so every collision golden would change.
 
 The acoustic track ships its own module, `acoustic.wasm`
 (`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`.

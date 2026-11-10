@@ -89,7 +89,9 @@ number of circles, not the area they span (one runaway particle can't
 blow up a dense grid), and the sort makes the output order deterministic
 for free. Cost (`cargo bench -p engine --bench step -- broadphase`, f64,
 lattice of nearly touching 5 cm circles, Apple silicon): 12.6 µs at 128
-circles, 158 µs at 1,024, 802 µs at 4,096; about N log N (the sort). Once
+circles, 158 µs at 1,024, 802 µs at 4,096; about N log N (the sort).
+M6.11 sorts through the engine's one key type to save `.wasm` size
+(`03-wasm-shell.md`), at 13.8, 175 and 908 µs. Once
 per substep, so a few hundred balls at 10 substeps stay well under a
 millisecond a frame. It allocates its key list per call; reusing a buffer
 is the first optimization if it ever shows up in a profile.
