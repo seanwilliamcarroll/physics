@@ -4,6 +4,7 @@
 //! holds what they share.
 
 mod contacts;
+mod impacts;
 mod impulse;
 mod xpbd;
 

@@ -1,11 +1,11 @@
 //! The sequential-impulse substep (Catto 2005, 2006; soft form 2011).
 
 mod contact_solve;
-mod impacts;
 
 use contact_solve::ContactGains;
 
 use super::contacts::CONTACT_SLOP;
+use super::impacts;
 use super::{Stabilization, Step};
 use crate::integrate::{drift, drift_split, evaluate, kick};
 use crate::{Constraint, Particles, Scalar, Vec2};

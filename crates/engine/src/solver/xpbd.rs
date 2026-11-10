@@ -1,7 +1,8 @@
 //! The XPBD substep (Macklin et al. 2016): predict, project, derive.
 
 use super::Step;
-use super::contacts::{bodies, geometry, normal_velocity, normal_velocity_in, push_apart};
+use super::contacts::{bodies, geometry, normal_velocity, push_apart};
+use super::impacts;
 use crate::collision::Contact;
 use crate::integrate::{drift, evaluate, kick};
 use crate::{Constraint, Particles, Scalar, Vec2, Wall};
@@ -18,17 +19,25 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// v = (x − x_prev) / h                      derive
     /// ```
     ///
-    /// With contacts (M6): found after the kick, projected after the rods
-    /// in every pass (only while overlapping), and followed by the
-    /// restitution pass on the derived velocities (Müller et al. 2020;
-    /// `docs/08-collision.md`).
+    /// With contacts (M6): found before the kick, impacts resolved by the
+    /// impact stage between two half kicks (Generalized Reflections,
+    /// `solver/impacts.rs`, as in the impulse solver); then projected
+    /// after the rods in every pass (only while overlapping), and the
+    /// derived velocities' leftover separation removed by an inelastic
+    /// velocity pass (Müller et al. 2020's, at `e = 0`: bouncing is the
+    /// impact stage's; `docs/08-collision.md`).
     pub(crate) fn xpbd(self, h: S) {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
-        kick(p, self.acc, h);
         let contacts = self.contacts;
         if self.collides {
+            let half = h / (S::ONE + S::ONE);
             contacts.find(p, self.walls, self.acc, h);
+            kick(p, self.acc, half);
+            impacts::resolve(p, contacts, h, self.restitution.get());
+            kick(p, self.acc, half);
+        } else {
+            kick(p, self.acc, h);
         }
         self.scratch.clear();
         self.scratch.extend_from_slice(&p.pos);
@@ -52,15 +61,13 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
             *v = (x - x0) / h;
         }
 
-        let e = self.restitution.get();
-        for ((c, &lambda), &rest) in contacts
-            .list
-            .iter()
-            .zip(&contacts.lambda)
-            .zip(&contacts.rest_speed)
-        {
+        // Impacts already bounced in the impact stage: what still pushed
+        // here is resting, or approached too slowly to bounce, so its
+        // derived normal velocity goes to 0 (no separation left over from
+        // the projection).
+        for (c, &lambda) in contacts.list.iter().zip(&contacts.lambda) {
             if lambda > S::ZERO {
-                restitute(p, self.walls, c, &contacts.vel_before, rest, e);
+                settle(p, self.walls, c);
             }
         }
     }
@@ -91,23 +98,12 @@ fn project_contact<S: Scalar>(
     push_apart(&mut p.pos, a, b, n * (wa * d_lambda), n * (wb * d_lambda));
 }
 
-/// The velocity pass for one contact that pushed this substep (Müller et
-/// al. 2020): replace its normal velocity with `max(−e v_n⁻, 0)`. Both
-/// are measured along the contact's **current** normal: `v_n⁻` from the
-/// velocities saved before the solve (`vel_before`). Measuring `v_n⁻`
-/// along the normal from when the contact was found instead gains energy
-/// on every glancing elastic hit, in proportion to `h` (the normal turns
-/// during the substep; found in M6.5). Approaches no faster than `rest`
-/// get `e = 0`. With `e = 0` this removes whatever separating speed the
-/// position projection left behind.
-fn restitute<S: Scalar>(
-    p: &mut Particles<S>,
-    walls: &[Wall<S>],
-    c: &Contact<S>,
-    vel_before: &[Vec2<S>],
-    rest: S,
-    e: S,
-) {
+/// The velocity pass for one contact that pushed this substep: its
+/// normal velocity, along the contact's **current** normal, goes to 0
+/// (Müller et al. 2020's pass at `e = 0`). The projection can leave a
+/// resting pair separating; this keeps stacks at rest. Bouncing is the
+/// impact stage's (`solver/impacts.rs`).
+fn settle<S: Scalar>(p: &mut Particles<S>, walls: &[Wall<S>], c: &Contact<S>) {
     let Some((a, b, wa, wb)) = bodies(p, c) else {
         return;
     };
@@ -118,11 +114,7 @@ fn restitute<S: Scalar>(
     if w == S::ZERO {
         return;
     }
-    let approach = normal_velocity_in(vel_before, c, n);
-    let e = if -approach > rest { e } else { S::ZERO };
-    let target = -e * approach;
-    let target = if target > S::ZERO { target } else { S::ZERO };
-    let dv = target - normal_velocity(p, c, n);
+    let dv = -normal_velocity(p, c, n);
     push_apart(&mut p.vel, a, b, n * (wa / w * dv), n * (wb / w * dv));
 }
 

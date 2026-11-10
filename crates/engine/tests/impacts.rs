@@ -12,14 +12,28 @@ use test_support::{kg, nonzero, time_step};
 const DT: f64 = 1.0 / 60.0;
 const SUBSTEPS: u32 = 10;
 
-/// Bounds, each about 10x the worst measured (impulse solver, f64):
-/// elastic impacts in free space keep their energy to 1.8e-13 and their
-/// momentum to 1.1e-15.
-const ENERGY_TOL: f64 = 2e-12;
-const MOMENTUM_TOL: f64 = 1e-14;
-/// The cradle's swing against `[0, 0, 0, 0, 1]`, as a fraction of the pull:
-/// measured ball 5 at 0.9982, the others under 5e-5.
-const CRADLE_TOL: f64 = 0.02;
+/// Bounds, each about 10x the worst measured (f64): elastic impacts in
+/// free space keep their energy to 3e-13 (both solvers) and their momentum
+/// to 1.1e-15 (impulse) and 5.7e-13 (XPBD, whose velocities are derived
+/// from positions, `(x − x_prev) / h`: its baseline drift before the impact
+/// stage was 6.1e-13 too).
+const ENERGY_TOL: f64 = 3e-12;
+fn momentum_tol(solver: Solver) -> f64 {
+    match solver {
+        Solver::Impulse => 1e-14,
+        Solver::Xpbd => 6e-12,
+    }
+}
+/// The cradle's swing against `[0, 0, 0, 0, 1]`, as a fraction of the
+/// pull: measured impulse ball 5 at 0.9982 (others under 5e-5), bound
+/// ~10x; XPBD ball 5 at 0.9867 and ball 4 at 0.0029 (its rods are
+/// projected positions, which take ~1.3% of the swing), bound ~2x.
+fn cradle_tol(solver: Solver) -> f64 {
+    match solver {
+        Solver::Impulse => 0.02,
+        Solver::Xpbd => 0.03,
+    }
+}
 /// The ball box's energy over 20 s at 10 substeps (gravity, walls, 20
 /// balls): measured +0.11%, each bounce off by `g h (τ − ½)` (where in the
 /// substep it lands), which averages out but not exactly.
@@ -96,45 +110,61 @@ fn box_kept(solver: Solver) -> f64 {
     energy(&w) / e0
 }
 
-/// The impulse solver's impact stage (Generalized Reflections) against
-/// each failure Newton restitution had. XPBD still uses Newton's rule
-/// (its port is next): `known_failures.rs` keeps its numbers.
+/// The impact stage (Generalized Reflections), in both solvers, against
+/// each failure Newton restitution had.
 
 #[test]
 fn one_ball_hitting_two_keeps_its_energy() {
-    for gap in [0.0, 0.002, 0.01] {
-        let kept = one_hits_two(Solver::Impulse, gap);
-        println!("gap {gap}: kept 1 {:+e}", kept - 1.0);
-        assert!((kept - 1.0).abs() < ENERGY_TOL, "gap {gap}: kept {kept}");
+    for solver in Solver::ALL {
+        for gap in [0.0, 0.002, 0.01] {
+            let kept = one_hits_two(solver, gap);
+            println!("{solver:?} gap {gap}: kept 1 {:+e}", kept - 1.0);
+            assert!(
+                (kept - 1.0).abs() < ENERGY_TOL,
+                "{solver:?} gap {gap}: kept {kept}"
+            );
+        }
     }
 }
 
 #[test]
 fn the_break_keeps_its_energy_and_momentum_touching_or_not() {
-    for gap in [0.0, 0.002, 0.01] {
-        let (kept, dp) = break_kept(Solver::Impulse, gap);
-        println!("gap {gap}: kept 1 {:+e}, |Δp| {dp:e}", kept - 1.0);
-        assert!((kept - 1.0).abs() < ENERGY_TOL, "gap {gap}: kept {kept}");
-        assert!(dp < MOMENTUM_TOL, "gap {gap}: |Δp| {dp}");
+    for solver in Solver::ALL {
+        for gap in [0.0, 0.002, 0.01] {
+            let (kept, dp) = break_kept(solver, gap);
+            println!(
+                "{solver:?} gap {gap}: kept 1 {:+e}, |Δp| {dp:e}",
+                kept - 1.0
+            );
+            assert!(
+                (kept - 1.0).abs() < ENERGY_TOL,
+                "{solver:?} gap {gap}: kept {kept}"
+            );
+            assert!(dp < momentum_tol(solver), "{solver:?} gap {gap}: |Δp| {dp}");
+        }
     }
 }
 
 #[test]
 fn the_cradle_passes_its_impact_down_the_row() {
-    let swing = cradle_swing(Solver::Impulse);
-    println!("swing / pull: {swing:?}");
-    let ideal = [0.0, 0.0, 0.0, 0.0, 1.0];
-    for (k, (got, want)) in swing.iter().zip(ideal).enumerate() {
-        assert!(
-            (got - want).abs() < CRADLE_TOL,
-            "ball {k}: {got} (ideal {want})"
-        );
+    for solver in Solver::ALL {
+        let swing = cradle_swing(solver);
+        println!("{solver:?} swing / pull: {swing:?}");
+        let ideal = [0.0, 0.0, 0.0, 0.0, 1.0];
+        for (k, (got, want)) in swing.iter().zip(ideal).enumerate() {
+            assert!(
+                (got - want).abs() < cradle_tol(solver),
+                "{solver:?} ball {k}: {got} (ideal {want})"
+            );
+        }
     }
 }
 
 #[test]
 fn the_ball_box_keeps_its_energy() {
-    let kept = box_kept(Solver::Impulse);
-    println!("box, 20 s: kept {kept}");
-    assert!((kept - 1.0).abs() < BOX_TOL, "kept {kept}");
+    for solver in Solver::ALL {
+        let kept = box_kept(solver);
+        println!("{solver:?} box, 20 s: kept {kept}");
+        assert!((kept - 1.0).abs() < BOX_TOL, "{solver:?} kept {kept}");
+    }
 }

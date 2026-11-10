@@ -184,6 +184,11 @@ v_a −= w_a / (w_a + w_b) · n Δv,  v_b += w_b / (w_a + w_b) · n Δv
 
 Both normal velocities are measured along the **same, current** normal.
 
+**Since M6.7 the pass runs at `e = 0`:** bouncing is the impact stage's
+(below, "Simultaneous impacts"). What still pushes in the projection is
+resting, or approached too slowly to bounce, and the pass only removes
+the separation the projection leaves behind, so stacks stay at rest.
+
 ### The resting threshold, in both
 
 At rest, gravity makes every resting contact approach at `g h` per
@@ -347,8 +352,23 @@ don't collide keep the whole kick, unchanged.
 
 Every earlier contact test still passes: the analytic head-on, the `e²`
 bounces, stacks at rest, momentum, the bullet, fast circles, 1:1e6.
-**XPBD** still uses Newton's rule, so its numbers above stand
-(`known_failures.rs`); porting the stage to its velocity pass is next.
+
+**XPBD (M6.7b): the same stage, the same place.** It works on velocities
+and needs only the contacts found at the start of the substep, so it
+runs between XPBD's two half kicks, before predict, project and derive.
+Contacts it bounced are separating, so they never overlap and never get
+projected. The velocity pass stays, at `e = 0`. Measured (`e = 1`,
+10 substeps):
+
+| scene | before (Newton) | after |
+|---|---|---|
+| one ball hits two (0, 2 mm, 1 cm) | 1.14–1.24 | 1 ± 3e-13 |
+| break (touching, 2 mm, 1 cm), 2 s | 0.18–1.34 | 1 ± 2e-13; momentum 6e-13 (as before: velocities derived from positions) |
+| cradle, swing / pull | `[0, .22, .27, .30, .30]` | `[0, 0, 0, 0.003, 0.987]` (the rods' projection takes ~1.3%) |
+| box (20 balls, gravity, walls), 20 s | 0.26 | 1.00007 |
+
+The known failure (one ball hitting two) is gone from
+`known_failures.rs`: both solvers keep its energy.
 
 ## `Restitution`
 
