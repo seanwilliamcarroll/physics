@@ -7,7 +7,10 @@ fn index_keys_keep_the_order_of_indices() {
     for w in ix.windows(2) {
         assert!(index_key(w[0]) <= index_key(w[1]), "{w:?}");
     }
-    assert_eq!(index_key(usize::MAX), i64::MAX, "saturates");
+    // Only a 64-bit index can exceed i64 (wasm32's all fit).
+    if usize::BITS == 64 {
+        assert_eq!(index_key(usize::MAX), i64::MAX, "saturates");
+    }
 }
 
 #[test]
