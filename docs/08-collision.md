@@ -384,14 +384,35 @@ diameter apart, so neighbors just touch at rest (`C = 0`). Pull the first
 ball back and release: an ideal cradle swings exactly one ball out on the
 far side.
 
-A sequential solver visits the four contacts one at a time. Whether the
-impulse passes cleanly through the row in one pass depends on the order
-and the number of iterations, so with one pass several balls may swing
-out together, and more iterations or substeps get closer to the ideal.
-The tests **record** what each solver does (how many balls leave, how much
-energy reaches the last ball) rather than demand the ideal, as M4 did for
-chains; the page shows both solvers side by side with an iterations
-slider.
+The plan was to record how far a sequential solver falls short: visiting
+the four contacts one at a time, it would pass the impulse down the row
+only partly per iteration. The impact stage (M6.7) changed that: it
+passes the impulse down in rounds, to convergence, before the iterations
+run, so a cradle swings one ball out in both solvers.
+
+**As built** (`tests/impacts.rs`; the swing of each ball over the first
+swing, as a fraction of the pull; ideal `[0, 0, 0, 0, 1]`):
+
+| Substeps | XPBD, worst ball | Impulse, worst ball |
+|---|---|---|
+| 1 | 0.119 | 0.028 |
+| 2 | 0.062 | 0.008 |
+| 5 | 0.026 | 0.009 |
+| 10 | 0.013 | 0.002 |
+| 20 | 0.007 | 0.001 |
+| 40 | 0.003 | 0.0006 |
+
+- **Iterations don't matter** (1 vs 16: 1.8e-13 XPBD, 2.4e-8 impulse).
+  Each ball hangs on its own rod, so there's nothing for Gauss–Seidel to
+  pass between rods, and the impact stage converges on its own.
+- **XPBD is first order in substeps** (error × n stays at 0.12–0.14). Its
+  rods are projected positions, and the projection takes a share of the
+  swing (ball 5 short, ball 4 nudged) that shrinks with h.
+- **The impulse solver** is closer at every count but not monotone (2
+  substeps beat 5).
+
+The page's sliders are therefore substeps first; an iterations slider
+would show nothing.
 
 ## Pages
 
@@ -411,6 +432,13 @@ slider.
   for `e < 1`, never increasing.
 - Broadphase: superset of brute force (proptest); deterministic order.
 - Goldens for each new scene, native and wasm.
+
+**As built (M6.8):** the scenes' layouts (`scenarios/*/tests.rs`); the box
+flat at `e = 1` (+0.11% over 20 s) and, at `e = 0.9, 0.5, 0`, never rising
+between 2 s samples and settling at 0.255–0.259 of its start (balls at
+rest); the break's energy and momentum, touching or not; the cradle by
+iterations and substeps (above); goldens for the box, the break and the
+cradle in both solvers (`tests/determinism.rs`, same on wasm32).
 
 ## Out of scope
 

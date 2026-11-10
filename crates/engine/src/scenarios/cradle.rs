@@ -29,10 +29,10 @@ const PULL: (f64, f64) = (-0.6, 0.2);
 /// the first `pulled` balls start swung out to the left together (about
 /// 37°), under [`pendulum_gravity`]. Elastic.
 ///
-/// An ideal cradle swings exactly `pulled` balls out on the far side. A
-/// sequential solver meets the row's simultaneous contacts one at a time,
-/// and how close it gets depends on the solver, iterations and substeps:
-/// measured, not assumed (`docs/08-collision.md`, "Newton's cradle").
+/// An ideal cradle swings exactly `pulled` balls out on the far side. The
+/// impact stage passes the impulse down the row, so both solvers get
+/// close; how close depends on the solver and substeps, not iterations
+/// (measured: `docs/08-collision.md`, "Newton's cradle").
 /// `pulled` above `balls` is clamped.
 ///
 /// # Errors
