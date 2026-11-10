@@ -39,6 +39,21 @@ pub struct Contact<S> {
     pub gap: S,
 }
 
+/// The broadphase cell size, m, [`find_contacts`] uses for a substep of
+/// `h` s: any pair that can be a contact this substep is within both radii,
+/// plus what both can travel (at the fastest circle's speed), plus
+/// [`CONTACT_MARGIN`]. Public so a page can draw the grid the engine uses.
+pub fn broadphase_cell<S: Scalar>(p: &Particles<S>, h: S) -> S {
+    let two = S::ONE + S::ONE;
+    let max_speed = p
+        .vel()
+        .iter()
+        .zip(p.radius())
+        .filter(|(_, r)| **r > S::ZERO)
+        .fold(S::ZERO, |m, (v, _)| max(m, v.length()));
+    two * p.max_radius() + two * max_speed * h + S::from_f64(CONTACT_MARGIN)
+}
+
 /// Every contact this substep, into `out` (cleared first), in a fixed
 /// order: circle pairs sorted by `(a, b)`, then wall contacts by particle
 /// and wall. `pairs` is the broadphase's scratch.
@@ -55,18 +70,8 @@ pub fn find_contacts<S: Scalar>(
     out: &mut Vec<Contact<S>>,
 ) {
     out.clear();
-    let two = S::ONE + S::ONE;
     let margin = S::from_f64(CONTACT_MARGIN);
-    let max_speed = p
-        .vel()
-        .iter()
-        .zip(p.radius())
-        .filter(|(_, r)| **r > S::ZERO)
-        .fold(S::ZERO, |m, (v, _)| max(m, v.length()));
-    // Any pair that can be a contact this substep: within both radii,
-    // plus what both can travel, plus the margin.
-    let cell = two * p.max_radius() + two * max_speed * h + margin;
-    candidate_pairs(p.pos(), p.radius(), cell, pairs);
+    candidate_pairs(p.pos(), p.radius(), broadphase_cell(p, h), pairs);
     for &(a, b) in pairs.iter() {
         if let Some(c) = pair_contact(p, a, b, h, margin) {
             out.push(c);

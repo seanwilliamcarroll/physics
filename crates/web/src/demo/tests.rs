@@ -1,11 +1,12 @@
 //! `Demo` tests, by topic: `basics` (clock, render buffer, orbit,
 //! fountain), `gravity` (M2 scenes, softening, θ), `pendulum` (M3),
-//! `chain` (M4), `jelly` (M5).
+//! `chain` (M4), `jelly` (M5), `collisions` (M6).
 
 use super::{Demo, DemoKind, ScalarKind};
 
 mod basics;
 mod chain;
+mod collisions;
 mod gravity;
 mod jelly;
 mod pendulum;

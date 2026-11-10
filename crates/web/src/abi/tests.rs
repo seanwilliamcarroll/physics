@@ -1,11 +1,11 @@
 use super::{
     COORDS_PER_PARTICLE, DEFAULT_RATE_HZ, DEMO_CLUSTER, DEMO_COLLAPSE, DEMO_DISK, DEMO_FOUNTAIN,
     DEMO_ORBIT, DEMO_PENDULUM, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
-    INTEGRATOR_VELOCITY_VERLET, JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, MAX_CHAIN_LINKS,
-    MAX_GRAVITY_BODIES, MAX_ITERATIONS, MAX_JELLY_SIDE, MAX_PARTICLES, MAX_RATE_HZ, MAX_SUBSTEPS,
-    ORDER_ALTERNATING, ORDER_FORWARD, ORDER_REVERSE, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE,
-    SOLVER_XPBD, STABILIZATION_BAUMGARTE, STABILIZATION_SPLIT, START_HORIZONTAL, START_RAISED,
-    TEST_PANIC_MESSAGE,
+    INTEGRATOR_VELOCITY_VERLET, JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, MAX_BOX_BALLS,
+    MAX_BREAK_GAP, MAX_CHAIN_LINKS, MAX_CRADLE_BALLS, MAX_GRAVITY_BODIES, MAX_ITERATIONS,
+    MAX_JELLY_SIDE, MAX_PARTICLES, MAX_RATE_HZ, MAX_SUBSTEPS, ORDER_ALTERNATING, ORDER_FORWARD,
+    ORDER_REVERSE, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD, STABILIZATION_BAUMGARTE,
+    STABILIZATION_SPLIT, START_HORIZONTAL, START_RAISED, TEST_PANIC_MESSAGE,
 };
 
 const ABI_JS: &str = include_str!("../../../../site/js/abi.ts");
@@ -54,6 +54,8 @@ fn js_mirror_matches() {
         ("MAX_GRAVITY_BODIES", u64::from(MAX_GRAVITY_BODIES)),
         ("MAX_CHAIN_LINKS", u64::from(MAX_CHAIN_LINKS)),
         ("MAX_JELLY_SIDE", u64::from(MAX_JELLY_SIDE)),
+        ("MAX_BOX_BALLS", u64::from(MAX_BOX_BALLS)),
+        ("MAX_CRADLE_BALLS", u64::from(MAX_CRADLE_BALLS)),
         ("MAX_SUBSTEPS", u64::from(MAX_SUBSTEPS)),
         ("MAX_ITERATIONS", u64::from(MAX_ITERATIONS)),
         ("MAX_RATE_HZ", u64::from(MAX_RATE_HZ)),
@@ -62,7 +64,18 @@ fn js_mirror_matches() {
         let line = format!("export const {name} = {value};");
         assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
     }
+    // Floats: Rust's Debug prints the shortest round-trip form, as JS does.
+    let line = format!("export const MAX_BREAK_GAP = {MAX_BREAK_GAP:?};");
+    assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
     // Strings: Rust's Debug quoting matches a plain JS double-quoted literal.
     let line = format!("export const TEST_PANIC_MESSAGE = {TEST_PANIC_MESSAGE:?};");
     assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
+}
+
+#[test]
+fn box_cap_is_the_scenes_slots() {
+    assert_eq!(
+        usize::try_from(MAX_BOX_BALLS).ok(),
+        Some(engine::scenarios::BOX_MAX_BALLS)
+    );
 }

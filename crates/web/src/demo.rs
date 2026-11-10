@@ -8,6 +8,7 @@
 
 mod any_world;
 mod codes;
+mod collisions;
 mod constraint_scenes;
 mod drag;
 mod jelly;
@@ -62,6 +63,9 @@ pub(crate) struct Demo {
     /// `[a0, b0, a1, b1, ...]`: the particles each constraint joins, for
     /// drawing rods. Rebuilt when constraints change (new, grab, release).
     links: Vec<u32>,
+    /// `[a0, b0, a1, b1, ...]`: the broadphase's candidate pairs, filled
+    /// on request (`demo/collisions.rs`).
+    pairs: Vec<u32>,
 }
 
 impl Demo {
@@ -116,6 +120,7 @@ impl Demo {
             render_buf: Vec::with_capacity(abi::COORDS_PER_PARTICLE * n),
             grab: None,
             links: Vec::new(),
+            pairs: Vec::new(),
         };
         demo.fill_render_buf();
         demo.refresh_links();

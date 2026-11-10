@@ -10,9 +10,11 @@
 //! visibility, and `unreachable_pub` asks visibility to say only what
 //! Rust code can reach.
 //!
-//! One file per group (`exports/{lifecycle, settings, readouts, drag}.rs`);
+//! One file per group (`exports/{lifecycle, settings, readouts, drag,
+//! collisions}.rs`);
 //! the `unsafe_code` expectation on `mod exports` in `lib.rs` covers them.
 
+mod collisions;
 mod drag;
 mod lifecycle;
 mod readouts;

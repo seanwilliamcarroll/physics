@@ -121,7 +121,13 @@ Layout tests, goldens (native and wasm), the box running down below
 `e = 1`, the cradle by iterations (no effect) and substeps (XPBD first
 order); `08-collision.md`, "Newton's cradle".
 
-### 9. Web layer (PR)
+### ✅ 9. Web layer (PR)
+Constructors for the box, the break and the cradle (impulse, 10 substeps
+to start); restitution, radius, momentum; the broadphase's cell size and
+candidate pairs (`engine::collision::broadphase_cell`, now public); every
+export in the ABI property test. `engine.wasm` +18.1 KB
+(`03-wasm-shell.md`).
+
 ### 10. Pages (PR)
 ### 11. Cleanup (PR)
 - [ ] Trim the sorts (`engine.wasm` +65 KB, 26.7 KB of it sorting:

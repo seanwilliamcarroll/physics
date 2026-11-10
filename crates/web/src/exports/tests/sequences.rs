@@ -18,6 +18,10 @@ use core::ptr;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
 
+use super::super::collisions::{
+    demo_momentum_x, demo_momentum_y, demo_new_ball_box, demo_new_break_shot, demo_new_cradle,
+    demo_pairs_len, demo_pairs_ptr, demo_particle_radius, demo_set_restitution, demo_update_pairs,
+};
 use super::super::drag::{demo_drag, demo_grab, demo_grabbable, demo_release};
 use super::super::lifecycle::{
     demo_advance, demo_free, demo_links_len, demo_links_ptr, demo_new, demo_new_chain,
@@ -40,6 +44,7 @@ const MAX_CALLS: usize = 24;
 const SMALL_BODIES: u32 = 24;
 const SMALL_LINKS: u32 = 12;
 const SMALL_GRID: u32 = 6;
+const SMALL_BALLS: u32 = 12;
 const SMALL_SUBSTEPS: u32 = 12;
 const SMALL_ITERATIONS: u32 = 4;
 /// Codes drawn from 0 up to here: every valid code and some unknown ones.
@@ -107,6 +112,20 @@ enum Create {
         k: f64,
         c: f64,
     },
+    BallBox {
+        scalar: u32,
+        n: u32,
+        seed: u32,
+    },
+    Break {
+        scalar: u32,
+        gap: f64,
+    },
+    Cradle {
+        scalar: u32,
+        balls: u32,
+        pulled: u32,
+    },
 }
 
 /// A constructor call: mostly valid ones (so the calls after it reach a
@@ -158,6 +177,23 @@ fn valid_create() -> impl Strategy<Value = Create> {
                 rows,
                 k,
                 c
+            }),
+        (scalar(), 0..=SMALL_BALLS, any::<u32>()).prop_map(|(scalar, n, seed)| Create::BallBox {
+            scalar,
+            n,
+            seed
+        }),
+        (scalar(), 0.0..=abi::MAX_BREAK_GAP)
+            .prop_map(|(scalar, gap)| Create::Break { scalar, gap }),
+        (
+            scalar(),
+            0..=abi::MAX_CRADLE_BALLS,
+            0..=abi::MAX_CRADLE_BALLS
+        )
+            .prop_map(|(scalar, balls, pulled)| Create::Cradle {
+                scalar,
+                balls,
+                pulled
             }),
     ]
 }
@@ -212,6 +248,19 @@ fn hostile_create() -> impl Strategy<Value = Create> {
                 k,
                 c
             }),
+        (code(), size(SMALL_BALLS, abi::MAX_BOX_BALLS), any::<u32>())
+            .prop_map(|(scalar, n, seed)| Create::BallBox { scalar, n, seed }),
+        (code(), hostile_f64()).prop_map(|(scalar, gap)| Create::Break { scalar, gap }),
+        (
+            code(),
+            size(SMALL_BALLS, abi::MAX_CRADLE_BALLS),
+            any::<u32>()
+        )
+            .prop_map(|(scalar, balls, pulled)| Create::Cradle {
+                scalar,
+                balls,
+                pulled
+            }),
     ]
 }
 
@@ -236,8 +285,11 @@ enum Call {
     Grab(f64, f64, f64),
     Drag(f64, f64),
     Release,
-    /// Read particle `i`'s exact position.
+    Restitution(f64),
+    /// Read particle `i`'s exact position and radius.
     Particle(u32),
+    /// Recompute the broadphase's pairs.
+    Pairs,
 }
 
 fn call() -> impl Strategy<Value = Call> {
@@ -262,6 +314,8 @@ fn call() -> impl Strategy<Value = Call> {
             .prop_map(|(x, y, r)| Call::Grab(x, y, r)),
         2 => (prop_oneof![-3.0..3.0, f()], prop_oneof![-3.0..3.0, f()]).prop_map(|(x, y)| Call::Drag(x, y)),
         1 => Just(Call::Release),
+        1 => f().prop_map(Call::Restitution),
+        1 => Just(Call::Pairs),
         1 => any::<u32>().prop_map(|i| Call::Particle(i % (2 * SMALL_BODIES + 4))),
     ]
 }
@@ -292,6 +346,13 @@ fn make(c: &Create) -> *mut Demo {
             k,
             c,
         } => demo_new_jelly(scalar, body, cols, rows, k, c),
+        Create::BallBox { scalar, n, seed } => demo_new_ball_box(scalar, n, seed),
+        Create::Break { scalar, gap } => demo_new_break_shot(scalar, gap),
+        Create::Cradle {
+            scalar,
+            balls,
+            pulled,
+        } => demo_new_cradle(scalar, balls, pulled),
     }
 }
 
@@ -301,7 +362,7 @@ fn make(c: &Create) -> *mut Demo {
 struct Observed {
     positions: Vec<u32>,
     links: Vec<u32>,
-    readouts: [u64; 3],
+    readouts: [u64; 5],
     grabbable: u32,
 }
 
@@ -353,6 +414,8 @@ unsafe fn observe(d: *mut Demo) -> Result<Observed, TestCaseError> {
                 demo_energy(d),
                 demo_kinetic_energy(d),
                 demo_constraint_error(d),
+                demo_momentum_x(d),
+                demo_momentum_y(d),
             ]
             .map(f64::to_bits),
             grabbable,
@@ -379,8 +442,14 @@ unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
             Call::Particle(i) => {
                 let (x, y) = (demo_particle_x(d, i), demo_particle_y(d, i));
                 let count = demo_positions_len(d) / 2;
+                let r = demo_particle_radius(d, i);
                 if (i as usize) >= count {
-                    prop_assert!(x.is_nan() && y.is_nan(), "past the end reads NaN");
+                    prop_assert!(
+                        x.is_nan() && y.is_nan() && r.is_nan(),
+                        "past the end reads NaN"
+                    );
+                } else {
+                    prop_assert!(r >= 0.0, "radius {r}");
                 }
                 return Ok(false);
             }
@@ -394,6 +463,23 @@ unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
                 }
                 return Ok(false);
             }
+            Call::Pairs => {
+                // Not a setting: it fills a buffer JS reads. Pairs are
+                // `a < b`, both particles that exist.
+                let cell = demo_update_pairs(d);
+                prop_assert!(cell.is_nan() || cell > 0.0, "cell {cell}");
+                let len = demo_pairs_len(d);
+                prop_assert_eq!(len % 2, 0);
+                if len > 0 {
+                    let count = demo_positions_len(d) / 2;
+                    let pairs = core::slice::from_raw_parts(demo_pairs_ptr(d), len);
+                    for p in pairs.chunks(2) {
+                        prop_assert!(p[0] < p[1] && (p[1] as usize) < count, "pair {p:?}");
+                    }
+                }
+                return Ok(false);
+            }
+            Call::Restitution(e) => demo_set_restitution(d, e),
             Call::Integrator(c) => demo_set_integrator(d, c),
             Call::Rate(hz) => demo_set_rate(d, hz),
             Call::Softening(e) => demo_set_softening(d, e),
@@ -469,6 +555,7 @@ fn every_call_on_null_is_refused() {
         Call::Grab(0.0, 0.0, 1.0),
         Call::Drag(0.0, 0.0),
         Call::Release,
+        Call::Restitution(0.5),
     ] {
         // SAFETY: null is allowed by every export's contract.
         let refused = unsafe { apply(null, &call) }.unwrap();

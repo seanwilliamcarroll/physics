@@ -27,6 +27,8 @@ pub(super) enum SceneForce<S> {
         exact: PairwiseGravity<S>,
         theta: Option<OpeningAngle<S>>,
     },
+    /// No force at all (the break, in free space): energy is kinetic.
+    Free,
     /// Uniform gravity (the pendulum).
     Uniform(UniformGravity<S>),
     /// A jelly: uniform gravity, and for the force-based realization a
@@ -49,6 +51,13 @@ impl<S: Scalar> Sim<S> {
         Self {
             world,
             force: SceneForce::Unmeasured,
+        }
+    }
+
+    pub(super) const fn free(world: World<S>) -> Self {
+        Self {
+            world,
+            force: SceneForce::Free,
         }
     }
 
@@ -172,6 +181,7 @@ impl<S: Scalar> Sim<S> {
         let p = self.world.particles();
         match &self.force {
             SceneForce::Unmeasured => None,
+            SceneForce::Free => Some(kinetic_energy(p).to_f64()),
             SceneForce::Jelly { gravity, springs } => {
                 let elastic = springs.as_ref().map_or_else(
                     || constraint_potential(p, self.world.constraints()),
@@ -191,7 +201,10 @@ impl<S: Scalar> Sim<S> {
     pub(super) const fn theta(&self) -> Option<OpeningAngle<S>> {
         match self.force {
             SceneForce::Pairwise { theta, .. } => theta,
-            SceneForce::Unmeasured | SceneForce::Uniform(_) | SceneForce::Jelly { .. } => None,
+            SceneForce::Unmeasured
+            | SceneForce::Free
+            | SceneForce::Uniform(_)
+            | SceneForce::Jelly { .. } => None,
         }
     }
 
