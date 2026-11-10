@@ -86,3 +86,6 @@ pub fn ball_box<S: Scalar>(
     }
     Ok(w)
 }
+
+#[cfg(test)]
+mod tests;

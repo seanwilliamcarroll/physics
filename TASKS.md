@@ -116,9 +116,10 @@ at the scenes: Newton restitution failed with simultaneous contacts
       0.003, 0.987]`, the box 1.00007 over 20 s; the known failure is
       gone.
 
-### 8. Scenes (PR)
-- [ ] Tests and goldens for the box, the break and the cradle; the
-      cradle's measured behavior per solver.
+### ✅ 8. Scenes (PR)
+Layout tests, goldens (native and wasm), the box running down below
+`e = 1`, the cradle by iterations (no effect) and substeps (XPBD first
+order); `08-collision.md`, "Newton's cradle".
 
 ### 9. Web layer (PR)
 ### 10. Pages (PR)
