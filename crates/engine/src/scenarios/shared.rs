@@ -2,7 +2,7 @@
 //! every scene constant goes through, and the rejection sampler.
 
 use crate::rng::SplitMix64;
-use crate::{ConfigError, Mass, PairwiseGravity, Scalar, Softening, Vec2, World};
+use crate::{ConfigError, Mass, PairwiseGravity, Radius, Scalar, Softening, Vec2, World};
 
 /// Standard gravity g₀, m/s²: a magnitude, applied downward (y is up) as
 /// `(0, -g₀)`. Exact by definition (3rd CGPM, 1901), not a measurement.
@@ -29,6 +29,11 @@ pub(super) fn softening<S: Scalar>(eps: f64) -> Result<Softening<S>, ConfigError
 /// Checks a scene's computed mass once, in `S`.
 pub(super) fn mass<S: Scalar>(m: f64) -> Result<Mass<S>, ConfigError> {
     Mass::new(S::from_f64(m)).ok_or(ConfigError::InvalidMass)
+}
+
+/// A scene radius as `S` (M6).
+pub(super) fn radius<S: Scalar>(r: f64) -> Result<Radius<S>, ConfigError> {
+    Radius::new(S::from_f64(r)).ok_or(ConfigError::InvalidRadius)
 }
 
 /// A point uniform in the annulus `inner ≤ r ≤ outer` around the origin

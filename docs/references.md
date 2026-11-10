@@ -55,6 +55,18 @@ XPBD for rigid bodies, including the velocity pass for restitution and friction.
 demos in the browser. Useful companion for M3–M5.
 - http://matthiasmueller.info/tenMinutePhysics
 
+**Smith, B., Kaufman, D. M., Vouga, E., Tamstorf, R., Grinspun, E.
+(2012).** *Reflections on Simultaneous Impact.* ACM Transactions on
+Graphics 31(4) (SIGGRAPH 2012). Why simultaneous impacts are hard: the
+LCP sticks (no break-away, Newton's cradle), pairwise Gauss–Seidel
+breaks symmetry; Generalized Reflections (rounds of jointly reflected
+approaching contacts) keeps both, and energy. The impulse solver's
+impact stage (M6.7, `08-collision.md`). A later paper by the same
+group, *All's Well That Ends Well* (2017,
+https://doi.org/10.1145/3072959.3073689), guarantees termination.
+- DOI: https://doi.org/10.1145/2185520.2185602
+- Project page: https://www.cs.columbia.edu/cg/rosi/
+
 ## Integrators and stability (`07-soft-bodies.md`, M1–M5)
 
 **Hairer, E., Lubich, C., Wanner, G. (2006).** *Geometric Numerical

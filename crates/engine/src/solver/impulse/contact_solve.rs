@@ -1,6 +1,7 @@
 //! Contacts in the sequential-impulse substep (`docs/08-collision.md`,
-//! "Sequential impulses"): the accumulated clamp, speculative targets,
-//! split pseudo-impulses, and the restitution pass.
+//! "Sequential impulses"): the accumulated clamp, speculative targets, and
+//! split pseudo-impulses. Restitution is the impact stage's
+//! (`impacts.rs`).
 
 use crate::collision::Contact;
 use crate::solver::contacts::{bodies, normal_velocity, normal_velocity_in, push_apart};
@@ -107,27 +108,4 @@ pub(super) fn solve_pseudo<S: Scalar>(
     };
     let vn = normal_velocity_in(pseudo, c, c.normal);
     solve_toward(pseudo, inv, c, vn, bias(c.gap, g), pseudo_lambda);
-}
-
-/// The restitution pass for one contact, after the iterations: if it
-/// pushed (`lambda > 0`) and was approaching faster than `rest` before
-/// the solve (`approach`), solve once more for `v_n = −e · approach`.
-/// Separate from the iterations because a speculative contact stops the
-/// ball exactly at the surface, so the next substep sees no approach.
-pub(super) fn restitute<S: Scalar>(
-    p: &mut Particles<S>,
-    c: &Contact<S>,
-    lambda: &mut S,
-    approach: S,
-    rest: S,
-    e: S,
-) {
-    if *lambda <= S::ZERO || -approach <= rest || e == S::ZERO {
-        return;
-    }
-    let Some(inv) = bodies(p, c) else {
-        return;
-    };
-    let vn = normal_velocity(p, c, c.normal);
-    solve_toward(&mut p.vel, inv, c, vn, -e * approach, lambda);
 }

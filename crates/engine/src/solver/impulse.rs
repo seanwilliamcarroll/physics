@@ -1,6 +1,7 @@
 //! The sequential-impulse substep (Catto 2005, 2006; soft form 2011).
 
 mod contact_solve;
+mod impacts;
 
 use contact_solve::ContactGains;
 
@@ -29,18 +30,33 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// With [`Stabilization::Split`], a rigid rod's bias goes to a separate
     /// pseudo-velocity instead (`solve_split`), and `x += h (v + v_pseudo)`.
     ///
-    /// With contacts (M6): found after the kick and warm-started by pair;
-    /// solved after the rods each pass (accumulated clamp, speculative
-    /// targets, a one-sided pseudo-impulse in split mode); then the
-    /// restitution pass; their impulses are kept for the next substep
-    /// (`docs/08-collision.md`).
+    /// With contacts (M6): found before the kick; impacts resolved by the
+    /// impact stage (Generalized Reflections, `impulse/impacts.rs`)
+    /// between two half kicks; then warm-started by pair and solved after
+    /// the rods each pass, inelastically (accumulated clamp, speculative
+    /// targets, a one-sided pseudo-impulse in split mode); their impulses
+    /// are kept for the next substep's warm start (`docs/08-collision.md`).
     pub(crate) fn impulse(self, h: S) {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
-        kick(p, self.acc, h);
         let contacts = self.contacts;
+        // Impacts resolve between two half kicks. A bounce's true outcome
+        // depends on when in the substep it lands (`v − g h (1 − 2τ)` for a
+        // falling ball hitting at fraction τ): reflecting after the whole
+        // kick assumes τ = 1 and gains `g h` a bounce (a lone bounce rose
+        // 2% above its drop), before it τ = 0 and loses it (−0.86% a
+        // bounce, a third of the box's energy in 20 s). Between halves is
+        // τ = ½: unbiased, off by `g h (τ − ½)` either way.
+        let half = h / (S::ONE + S::ONE);
         if self.collides {
             contacts.find(p, self.walls, self.acc, h);
+            kick(p, self.acc, half);
+            impacts::resolve(p, contacts, h, self.restitution.get());
+            kick(p, self.acc, half);
+        } else {
+            kick(p, self.acc, h);
+        }
+        if self.collides {
             contacts.recall();
             for (c, &lambda) in contacts.list.iter().zip(&contacts.lambda) {
                 contact_solve::apply(p, c, lambda);
@@ -85,7 +101,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                         });
                 }
                 drift(p, h);
-                restitution_pass(p, contacts, self.restitution.get());
+                contacts.remember();
             }
             Stabilization::Split => {
                 let pseudo = self.scratch;
@@ -110,37 +126,9 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                 // Positions move by the real and the pseudo-velocity; only
                 // the real one is kept.
                 drift_split(p, pseudo, h);
-                restitution_pass(p, contacts, self.restitution.get());
+                contacts.remember();
             }
         }
-    }
-}
-
-/// Keeps the contacts' impulses for the next substep's warm start, then
-/// applies restitution to every contact that pushed this substep. Runs
-/// after positions move (`Box2D` v3's order), so a bounce takes effect
-/// from the next substep.
-///
-/// Both orders matter (M6.6, a box of balls at `e = 1`):
-/// - **Remember before restituting.** A bounced pair usually stays within
-///   `CONTACT_MARGIN` for the next substep, so warm-starting with the
-///   bounce impulse re-applies the bounce; with two contacts on a ball
-///   (one against a wall) one pass can't take it back, and the leftover is
-///   energy: +14 J of step-to-step rises over 20 s at 10 substeps, vs
-///   +4 J without it.
-/// - **Restitute after the drift.** Before it, the ball rebounded from
-///   where it started the substep, never travelling the gap to the
-///   surface: a dropped ball bounced 2% above its release height.
-fn restitution_pass<S: Scalar>(p: &mut Particles<S>, contacts: &mut super::Contacts<S>, e: S) {
-    contacts.remember();
-    for (((c, lambda), &approach), &rest) in contacts
-        .list
-        .iter()
-        .zip(contacts.lambda.iter_mut())
-        .zip(&contacts.approach)
-        .zip(&contacts.rest_speed)
-    {
-        contact_solve::restitute(p, c, lambda, approach, rest, e);
     }
 }
 
