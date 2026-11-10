@@ -99,3 +99,59 @@ fn integrator_is_ignored_with_constraints() {
         assert_eq!(run(integrator), reference, "{integrator:?}");
     }
 }
+
+/// One rigid pendulum period at amplitude `theta0` (rad), length
+/// `PENDULUM_LENGTH`,
+/// under `solver` at 20 substeps: from the bob's zero crossings over 20 s
+/// of 1/60 s steps, each interpolated within its step.
+fn small_angle_period(solver: Solver, theta0: f64) -> f64 {
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(20));
+    w.add_force(engine::scenarios::pendulum_gravity());
+    let pin = w.add_static(Vec2::ZERO);
+    let bob = w.add_particle(
+        Vec2::new(
+            PENDULUM_LENGTH * theta0.sin(),
+            -PENDULUM_LENGTH * theta0.cos(),
+        ),
+        Vec2::ZERO,
+        kg(1.0),
+    );
+    w.add_constraint(DistanceConstraint::between(w.particles(), pin, bob).unwrap())
+        .unwrap();
+    w.set_solver(solver);
+    let (mut prev, mut first, mut last, mut crossings) =
+        (PENDULUM_LENGTH * theta0.sin(), None, 0.0, 0_u32);
+    for i in 1..=1200_u32 {
+        w.step(time_step(DT));
+        let x = w.particles().pos()[1].x;
+        if prev.signum() != x.signum() {
+            let t = (f64::from(i) - x / (x - prev)) * DT;
+            first.get_or_insert(t);
+            last = t;
+            crossings += 1;
+        }
+        prev = x;
+    }
+    // Crossings come every half period.
+    2.0 * (last - first.unwrap()) / f64::from(crossings - 1)
+}
+
+/// The rigid pendulum's small-angle period, `2π √(L/g)`, with the
+/// finite-amplitude factor `1 + θ₀²/16` (θ₀ = 0.05 rad: +1.6e-4), for
+/// both solvers (docs/numerical-testing-checklist.md §2.7, AN). Measured
+/// at 20 substeps: XPBD −0.0010 %, impulse −0.00002 % (at 1 substep
+/// +0.080 % and −0.011 %); bound 0.01 %.
+#[test]
+fn a_rigid_pendulum_swings_at_the_small_angle_period() {
+    let theta0: f64 = 0.05;
+    let g = engine::scenarios::STANDARD_GRAVITY;
+    let want =
+        2.0 * std::f64::consts::PI * (PENDULUM_LENGTH / g).sqrt() * (1.0 + theta0 * theta0 / 16.0);
+    for solver in Solver::ALL {
+        let got = small_angle_period(solver, theta0);
+        assert!(
+            (got / want - 1.0).abs() < 1e-4,
+            "{solver:?}: {got} vs {want}"
+        );
+    }
+}
