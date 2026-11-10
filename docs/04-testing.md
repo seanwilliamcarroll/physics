@@ -148,7 +148,6 @@ These guarantee the demos remain demonstrations.
 | Force spring past `k_crit = 4m/h²` (M5.2, `springs.rs`) | Energy bounded at 0.9 `k_crit`, grows > 1e6x at 1.1 (measured 2e2x at 0.99, 6e71x at 1.01) |
 | Classic Baumgarte on the 1:100 chain (M4.9, `chains.rs`) | Gains > 100 J in 10 s at 20 substeps, more than at 2 (measured +3398 J vs +15 J) |
 | XPBD pendulum in f32, 100 substeps (M3) | Energy differs from f64 by > 0.2 J (f32 *gains* 0.11 J where f64 loses 0.31 J) |
-| One ball hitting two at once, elastic (M6, XPBD) | Keeps > 1.10 of its kinetic energy (measured 1.16 at a 2 mm gap): Newton restitution bounces each contact by its own approach speed. The impulse solver's impact stage fixed it (`impacts.rs`); goes when XPBD gets the stage |
 
 Name them for what they demonstrate, e.g.
 `explicit_euler_gains_energy_on_orbit`.

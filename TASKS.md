@@ -105,14 +105,16 @@ at the scenes: Newton restitution failed with simultaneous contacts
 (a touching rack kept 18–62% of its energy, a gapped one 115–136%).
 
 ### 7. Simultaneous impacts (Generalized Reflections)
-- [x] **The impulse solver** (this PR): an impact stage between two half
+- [x] **The impulse solver** (#133): an impact stage between two half
       kicks (`docs/08-collision.md`, "Simultaneous impacts"). One ball
       hitting two and the break shots keep their energy to 1e-13, the
       cradle swings `[0, 0, 0, 0, 0.998]`, the box keeps 1.0011 over
       20 s. The scenes (`ball_box`, `break_shot` with a gap, `cradle`)
       come in with it, as its measurements.
-- [ ] **XPBD** (PR): the same stage in its velocity pass; then the known
-      failure in `known_failures.rs` goes.
+- [x] **XPBD** (this PR): the same stage, between its half kicks; the
+      velocity pass at `e = 0`. Energy to 3e-13, the cradle `[0, 0, 0,
+      0.003, 0.987]`, the box 1.00007 over 20 s; the known failure is
+      gone.
 
 ### 8. Scenes (PR)
 - [ ] Tests and goldens for the box, the break and the cradle; the
