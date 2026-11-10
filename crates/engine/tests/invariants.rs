@@ -326,3 +326,45 @@ fn velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_euler<S: Tol>() 
     );
 }
 for_each_scalar!(velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_euler);
+
+/// The slow tier (`cargo xtask slow`): the symplectic integrators over
+/// 2 000 orbits (20x the every-commit run), same bounds: bounded, no
+/// trend, separation in its band.
+const LONG_ORBITS: f64 = 2000.0;
+
+fn long_orbit_holds<S: Tol>(integrator: Integrator, bound: f64, band: f64) {
+    let mut w = orbit::<S>(integrator, 1.0).unwrap();
+    let (errors, (lo, hi)) = energy_errors(&mut w, ORBIT_DT, steps_for(LONG_ORBITS, ORBIT_DT));
+    let max = envelope(&errors);
+    let (first, last) = trend_envelopes(&errors);
+    eprintln!(
+        "{integrator:?}: max {max:e} (bound {bound:e}), first {first:e}, last {last:e}, [{lo}, {hi}]"
+    );
+    assert!(max <= bound + S::ENERGY_FLOOR, "max |ΔE/E| {max:e}");
+    assert!(
+        last <= TREND_FACTOR * first + S::ENERGY_FLOOR,
+        "trends: {first:e} → {last:e}"
+    );
+    let d = ORBIT_SEPARATION;
+    assert!(
+        lo >= d * (1.0 - band) && hi <= d * (1.0 + band),
+        "[{lo}, {hi}]"
+    );
+}
+
+#[test]
+#[ignore = "slow: cargo xtask slow"]
+fn slow_symplectic_orbits_hold_for_two_thousand_orbits() {
+    let wh = omega_h();
+    for scalar_f32 in [false, true] {
+        let se = BOUND_FACTOR * wh * wh;
+        let vv = BOUND_FACTOR * wh.powi(4) / 4.0;
+        if scalar_f32 {
+            long_orbit_holds::<f32>(Integrator::SymplecticEuler, se, SE_RADIUS_BAND);
+            long_orbit_holds::<f32>(Integrator::VelocityVerlet, vv, VV_RADIUS_BAND);
+        } else {
+            long_orbit_holds::<f64>(Integrator::SymplecticEuler, se, SE_RADIUS_BAND);
+            long_orbit_holds::<f64>(Integrator::VelocityVerlet, vv, VV_RADIUS_BAND);
+        }
+    }
+}

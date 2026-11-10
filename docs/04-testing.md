@@ -574,6 +574,35 @@ health audit, then filled in):
 - **Deferred to M6:** contact goldens, the cradle and rack scenes,
   contact-order properties.
 
+## Running strategy
+
+Three tiers (the checklist's §3):
+
+- **Every push (the pre-push hook):** every test at its default size,
+  with property tests at 64 cases; doc links; wasm tests; smoke; and an
+  informational mutation report on the push's own lines.
+- **The slow tier, `cargo xtask slow`:** not in any hook. Run it before a
+  release, or nightly (on the compute node, next to the mutation runs).
+  - **Every test with each property test at 10 000 cases**
+    (`--cases N` to change it).
+  - **The long runs:** tests named `slow_*` and marked
+    `#[ignore = "slow: …"]`, so plain `cargo test` skips them. The name is
+    the filter, so other ignored tests (generators, such as the hammer
+    table's) stay out. Today: the integrator orders at 8 halvings, the
+    symplectic orbits over 2 000 orbits, the chain for a minute.
+  - **Built with the `slow` profile:** optimized, with debug assertions
+    and overflow checks kept. About 6 minutes in all, most of it the
+    synth's property test.
+  - **Its first run found a bug:** a strike refused for its velocity
+    silenced the ringing key first. The ABI property test needed 10 000
+    cases to draw the sequence (a strike, then a refused restrike of the
+    same key); a direct regression test now covers it at every push.
+- **By hand, when it matters:** `cargo xtask coverage`, full mutation
+  runs, `cargo bench`.
+
+A new long-running check goes in as a `slow_*` test, with what it
+measured written next to its bound, as every tolerance here is.
+
 ## Mutation testing
 
 Coverage says code ran during a test; mutation testing says whether a

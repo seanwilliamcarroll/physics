@@ -397,3 +397,22 @@ fn releasing_a_note_doesnt_click() {
         }
     }
 }
+
+#[test]
+fn a_refused_strike_leaves_the_ringing_note_alone() {
+    // A strike the hammer refuses (too fast) on a key that's ringing used
+    // to silence it first (found by the synth's property test at 10 000
+    // cases). Now it changes nothing: the output matches an undisturbed
+    // run, bit for bit.
+    let run = |refused: bool| {
+        let mut v = piano();
+        assert!(v.strike(67, 0.1));
+        let mut out = render(&mut v, 0.01);
+        if refused {
+            assert!(!v.strike(67, 1e300));
+        }
+        out.extend(render(&mut v, 0.05));
+        out.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+    };
+    assert_eq!(run(true), run(false));
+}

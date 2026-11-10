@@ -17,6 +17,7 @@ use clap::{Parser, Subcommand};
 mod bench_wasm;
 mod coverage;
 mod serve;
+mod slow;
 mod smoke;
 
 /// Where `cargo build` puts the wasm artifact, relative to the target dir.
@@ -71,6 +72,14 @@ enum Command {
     Coverage,
     /// Point git at the tracked hooks in .githooks/
     InstallHooks,
+    /// The slow tier, not in any hook: every test with property tests at
+    /// 10 000 cases, then the long `slow_*` runs (ignored by `cargo test`),
+    /// built optimized with overflow checks kept
+    Slow {
+        /// Cases per property test
+        #[arg(long, default_value_t = slow::DEFAULT_CASES, value_parser = clap::value_parser!(u32).range(1..))]
+        cases: u32,
+    },
 }
 
 fn main() -> ExitCode {
@@ -95,6 +104,7 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
         Command::Coverage => coverage::coverage(&root),
         Command::InstallHooks => install_hooks(&root),
+        Command::Slow { cases } => slow::slow(&root, cases),
     }
 }
 

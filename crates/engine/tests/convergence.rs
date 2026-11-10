@@ -48,7 +48,11 @@ fn errors(integrator: Integrator, n: usize) -> (f64, f64) {
 
 /// The observed orders between successive levels: log2(e(h) / e(h/2)).
 fn orders(integrator: Integrator) -> (Vec<f64>, Vec<f64>) {
-    let e: Vec<(f64, f64)> = LEVELS.iter().map(|&n| errors(integrator, n)).collect();
+    orders_at(integrator, &LEVELS)
+}
+
+fn orders_at(integrator: Integrator, levels: &[usize]) -> (Vec<f64>, Vec<f64>) {
+    let e: Vec<(f64, f64)> = levels.iter().map(|&n| errors(integrator, n)).collect();
     let order = |a: f64, b: f64| (a / b).log2();
     (
         e.windows(2).map(|w| order(w[0].0, w[1].0)).collect(),
@@ -119,5 +123,26 @@ fn a_world_at_rest_with_no_force_stays_bit_identical() {
         }
         assert_eq!(w.particles().pos(), &before[..], "{integrator:?}");
         assert!(w.particles().vel().iter().all(|v| *v == Vec2::ZERO));
+    }
+}
+
+/// The slow tier (`cargo xtask slow`): 8 halvings, down to ωh = 0.0004.
+const FINE_LEVELS: [usize; 8] = [100, 200, 400, 800, 1600, 3200, 6400, 12_800];
+
+#[test]
+#[ignore = "slow: cargo xtask slow"]
+fn slow_every_integrator_converges_at_its_order_down_to_fine_steps() {
+    for integrator in Integrator::ALL {
+        let (x, v) = orders_at(integrator, &FINE_LEVELS);
+        eprintln!("{integrator:?}: position {x:.4?}, velocity {v:.4?}");
+        let (px, pv) = expected(integrator);
+        assert!(
+            x.iter().all(|o| (o - px).abs() < ORDER_TOL),
+            "{integrator:?} position: {x:?}"
+        );
+        assert!(
+            v.iter().all(|o| (o - pv).abs() < ORDER_TOL),
+            "{integrator:?} velocity: {v:?}"
+        );
     }
 }

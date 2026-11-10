@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 4b01c7ec00e417780e57d0060eb5b318cb183e419105e24742e83b9b7d146920 # shrinks to first = (44100.0, 0), calls = [NoteOnVelocity(48, 2.5357729898613393e51)]
+cc 7f8d426376feb46ca1fb424a064d91006ca969243bc364f3d59262423431b91a # shrinks to first = (44100.0, 0), calls = [NoteOnVelocity(67, 0.1), NoteOnVelocity(67, 1e300), Render(128)]

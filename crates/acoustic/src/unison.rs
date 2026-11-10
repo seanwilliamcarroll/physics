@@ -101,8 +101,12 @@ impl<S: Scalar> Unison<S> {
 
     /// Re-strings these strings for key `midi` with `voicing` and the
     /// stored dispersion `design`, and strikes them at `velocity` m/s,
-    /// without allocating. `false`, leaving them silent, off the keyboard
-    /// or for settings the strings or hammer can't take.
+    /// without allocating. `false`, **changing nothing** (a ringing note
+    /// keeps ringing), off the keyboard or for a velocity the hammer can't
+    /// take: both are checked before the strings are touched. (Strings
+    /// that can't be restrung, which no key on the keyboard asks for, are
+    /// left silent.) A refused strike used to silence the key first (found
+    /// by the synth's property test at 10 000 cases).
     pub(crate) fn restrike(
         &mut self,
         midi: u8,
@@ -110,18 +114,20 @@ impl<S: Scalar> Unison<S> {
         design: Option<&Dispersion>,
         velocity: f64,
     ) -> bool {
-        self.active = 0;
         let Some(felt) = hammer::felt(midi) else {
             return false;
         };
         let z = hammer::impedance(midi);
+        // One hammer for every string of the key: the same felt, impedance
+        // and speed.
+        let Some(h) = Hammer::new(felt, z, self.fs, velocity) else {
+            return false;
+        };
+        self.active = 0;
         let f0 = crate::piano::frequency(midi);
         let n = strings(midi);
         for (i, s) in self.strings.iter_mut().take(n).enumerate() {
             let tuned = f0 * libm::exp2(offset(i, n) / CENTS_PER_OCTAVE);
-            let Some(h) = Hammer::new(felt, z, self.fs, velocity) else {
-                return false;
-            };
             if !(s.restring_designed(self.fs, tuned, voicing, design) && s.strike(h, 1.0 - STRIKE))
             {
                 return false;
