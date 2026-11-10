@@ -94,30 +94,35 @@ compliant constraints damp at backward Euler's rate by themselves; an
 exploding force jelly leaves the view within a frame or two, so the page
 freezes on the last sane frame. **Before M6 (#73):** CI, `UnitVec2`.
 
-## ⏸ M6: Colliding masses (paused after section 6, PRs #76–#82)
+## M6: Colliding masses (resumed after the health audit)
 
-`docs/08-collision.md`; `Radius`, `Restitution`, walls; a sorted-cell-
-list broadphase (proptest superset of brute force); the narrowphase
-(speculative contacts, `CONTACT_MARGIN`); contacts in XPBD and the
-impulse solver (accumulated clamp, warm start by pair, split pseudo-
-impulse, restitution pass), tested on both: analytic head-on, momentum to
-rounding, `e²` bounces, stacks at rest. **Paused (your call)** at the
-scenes: Newton restitution with simultaneous contacts loses energy
-through touching chains (a touching rack keeps 18–62%) and gains it when
-one ball hits two (a gapped rack keeps 115–136%). The scenes and the
-measurements are a local WIP commit on `m6/7-scenes` (rebase first).
-**Next to try (your call): Generalized Reflections** (Smith, Kaufman,
-Vouga, Tamstorf, Grinspun, "Reflections on Simultaneous Impact",
-SIGGRAPH 2012): repeatedly take the contacts approaching now and solve
-them jointly to the elastic target, until none approach. It keeps
-break-away (the cradle passes its impact down the row), symmetry and
-energy (one ball hitting two bounces off both together), so it covers
-both failures; game engines (Box2D's restitution pass, ours) have
-neither. In the impulse solver first, measured on the break shots, the
-box and the cradle; then XPBD's velocity pass. Poisson restitution is
-the fallback. Sections 7–10 (scenes, web, pages, cleanup)
-remain; M6's cleanup should also trim its sorts (`engine.wasm` +65 KB,
-26.7 KB of it sorting: `03-wasm-shell.md`).
+**Done, sections 1–6 (PRs #76–#82):** `docs/08-collision.md`; `Radius`,
+`Restitution`, walls; a sorted-cell-list broadphase (proptest superset
+of brute force); the narrowphase (speculative contacts,
+`CONTACT_MARGIN`); contacts in XPBD and the impulse solver (accumulated
+clamp, warm start by pair, split pseudo-impulse), tested on both. Paused
+at the scenes: Newton restitution failed with simultaneous contacts
+(a touching rack kept 18–62% of its energy, a gapped one 115–136%).
+
+### 7. Simultaneous impacts (Generalized Reflections)
+- [x] **The impulse solver** (this PR): an impact stage between two half
+      kicks (`docs/08-collision.md`, "Simultaneous impacts"). One ball
+      hitting two and the break shots keep their energy to 1e-13, the
+      cradle swings `[0, 0, 0, 0, 0.998]`, the box keeps 1.0011 over
+      20 s. The scenes (`ball_box`, `break_shot` with a gap, `cradle`)
+      come in with it, as its measurements.
+- [ ] **XPBD** (PR): the same stage in its velocity pass; then the known
+      failure in `known_failures.rs` goes.
+
+### 8. Scenes (PR)
+- [ ] Tests and goldens for the box, the break and the cradle; the
+      cradle's measured behavior per solver.
+
+### 9. Web layer (PR)
+### 10. Pages (PR)
+### 11. Cleanup (PR)
+- [ ] Trim the sorts (`engine.wasm` +65 KB, 26.7 KB of it sorting:
+      `03-wasm-shell.md`).
 
 ## ✅ A1: Plucked string, Karplus–Strong (done, PRs #84–#93)
 

@@ -271,6 +271,85 @@ rises (11 J), and made the box erratic (−47% at 40 substeps, −15% at
 hypothesis behind it, that the box's loss came from where the ball sits
 after a bounce, was wrong; the chain impacts above are the loss.
 
+### Simultaneous impacts: the impact stage (M6.7, impulse; `tests/impacts.rs`)
+
+**Why.** Both solvers used *Newton's* rule: after the inelastic
+iterations, each contact that pushed bounces by **its own** approach
+speed, recorded before the solve, one contact at a time. With
+simultaneous contacts that fails both ways (`e = 1`, 10 substeps):
+
+| scene | XPBD KE kept | impulse KE kept |
+|---|---|---|
+| one ball hits two (2 mm apart) | 116% | 116% |
+| break, touching rack | 18% | 62% |
+| break, 2 mm gaps | 134% | 136% |
+| cradle, swing / pull (ideal `[0, 0, 0, 0, 1]`) | `[0, .22, .27, .30, .30]` | `[0, .01, .34, .43, .43]` |
+
+- **A touching row loses:** its contacts were at rest before the solve,
+  so they get no bounce, though the impact passes through them.
+- **One ball hitting two gains:** each contact gives a full bounce of its
+  own.
+- **A joint solve alone wouldn't fix it.** Solved together with Newton's
+  targets (the global LCP), energy is kept but the cradle sticks: ball 1
+  rebounds and balls 2–5 leave together. The order of the hits is
+  missing.
+
+**The impact stage, Generalized Reflections** (Smith, Kaufman, Vouga,
+Tamstorf & Grinspun 2012). It runs before the iterations, on the
+velocities as they arrive, in rounds:
+
+```
+V ← the contacts approaching now (faster than the resting speed) that
+    close this substep
+if V is empty: done
+λ̃ ← V's inelastic impulses, solved jointly (projected Gauss–Seidel
+    over V alone, to convergence)
+add e λ̃: in all (1 + e) λ̃, V's approach reflected, scaled by e
+```
+
+- **The cradle propagates.** Round 1 has only contact 1–2, so balls 1 and
+  2 swap; round 2 has 2–3; and so on.
+- **One ball hitting two** is one round of two contacts, solved together.
+- **Then the iterations,** inelastic as before, hold the resting contacts
+  and stacks: their approach is under the resting speed, so they're never
+  in V.
+- **The restitution pass is gone.** Impact impulses are never remembered
+  for the warm start.
+- **Caps:** at most `4n` rounds for `n` contacts (and 100), and 100 sweeps
+  per round (or until the largest change is 1e-12 of the largest
+  impulse). With `e < 1`, propagation can shrink geometrically without
+  ending (the paper's *inelastic collapse*); what's left past the cap,
+  the iterations treat inelastically.
+
+**Where in the substep: between two half kicks.** A falling ball that
+lands at fraction τ of a substep ends it at `v − g h (1 − 2τ)`. Where the
+stage sits fixes τ:
+
+| Stage position | Implied τ | Effect |
+|---|---|---|
+| After the whole kick | 1 | Gains `g h` a bounce: a lone bounce rose 2% above its drop |
+| Before the kick | 0 | Loses it: −0.86% a bounce, and the box lost a third of its energy in 20 s |
+| **Between two half kicks** | **½** | **Unbiased:** each bounce is off by `g h (τ − ½)`, which averages out |
+
+A contact belongs in V if it closes this substep *after* the second half
+kick (`gap + (v_n + ½ h n·Δa) h ≤ 0`). Otherwise the iterations' speculative
+stop would catch it at the surface, with no bounce left. Worlds that
+don't collide keep the whole kick, unchanged.
+
+**Measured** (impulse, `e = 1`, 10 substeps):
+
+| scene | before | after |
+|---|---|---|
+| one ball hits two (0, 2 mm, 1 cm) | 1.14–1.25 | 1 ± 5e-14 |
+| break (touching, 2 mm, 1 cm), 2 s | 0.62–1.36 | 1 ± 2e-13; momentum 1e-15 |
+| cradle, swing / pull | `[0, .01, .34, .43, .43]` | `[0, 3e-8, 1e-8, 5e-5, 0.998]` |
+| box (20 balls, gravity, walls), 20 s | 0.50 | 1.0011 (40 substeps: 1.0001; 100: 1.0000) |
+
+Every earlier contact test still passes: the analytic head-on, the `e²`
+bounces, stacks at rest, momentum, the bullet, fast circles, 1:1e6.
+**XPBD** still uses Newton's rule, so its numbers above stand
+(`known_failures.rs`); porting the stage to its velocity pass is next.
+
 ## `Restitution`
 
 A new parameter type, `Restitution<S>`, `e ∈ [0, 1]` (`checked_param!`):
@@ -330,3 +409,5 @@ Full entries in `references.md`.
   the velocity pass for restitution, the resting threshold.
 - Macklin et al. (2019), *Small Steps in Physics Simulation*: substeps
   over iterations; detecting collisions once per step.
+- Smith, Kaufman, Vouga, Tamstorf, Grinspun (2012), *Reflections on
+  Simultaneous Impact*: Generalized Reflections, the impact stage.
