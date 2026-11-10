@@ -495,13 +495,14 @@ runtime dependencies unless noted.
   slow, and later `OffscreenCanvas` to draw off the main thread. *When:* a
   demo's frame time makes the controls feel sluggish. Sharing memory
   between threads (`SharedArrayBuffer`) needs cross-origin isolation
-  headers on the host (`hosting.md`).
+  headers on the host (`hosting.md`). Options and costs: `workers.md`.
 
 ## Deferred / stretch
 
 - Rigid bodies with rotation and convex polygons (`Mat2`, SAT/GJK)
 - Continuous collision detection (alternative to substeps for M7)
 - Sweep-and-prune vs grid broadphase comparison
-- Threads (`SharedArrayBuffer`; needs cross-origin isolation on the host)
+- Threads (`SharedArrayBuffer`; needs cross-origin isolation on the host;
+  how they'd work in Rust: `workers.md`)
 - WebGL2 renderer if any demo outgrows Canvas 2D
 - Render interpolation between physics states

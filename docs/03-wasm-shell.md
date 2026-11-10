@@ -298,7 +298,8 @@ Rust exposes metric values per step the same way as positions.
   the `AudioWorklet` acoustic track. If adopted, use the `wasm-bindgen` CLI
   directly; wasm-pack moved to an individual maintainer and adds little here.
 - **Threads / SharedArrayBuffer:** require cross-origin isolation headers on
-  the website host. Revisit for large-N benchmarks.
+  the website host. Revisit for large-N benchmarks. Workers, a step budget
+  and wasm threads compared: `workers.md`.
 - **SIMD:** `-C target-feature=+simd128` with `core::arch::wasm32`.
   Benchmark against scalar once phase 1 works.
 
