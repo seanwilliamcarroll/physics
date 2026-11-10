@@ -219,15 +219,18 @@ fn xpbd_f32_substeps_derive_noisy_velocities() {
 /// | 2 mm | 1.160 | 1.162 |
 /// | 1 cm | 1.243 | 1.250 |
 ///
-/// Kept above 1.10 here. M6's next step, Generalized Reflections (solve
-/// the approaching contacts jointly), should conserve it: then this test
-/// fails, and the scene moves to `tests/contacts.rs` asserting ≤ 1.
+/// Kept above 1.10 here, for XPBD. The impulse solver's impact stage
+/// (Generalized Reflections) conserves it: `tests/impacts.rs`. When XPBD
+/// gets the stage too, this test fails on purpose and goes.
 #[test]
 fn one_ball_hitting_two_gains_energy() {
     use engine::diagnostics::kinetic_energy;
     use engine::{Radius, Restitution, Solver};
     let (r, gap) = (0.1, 0.002);
-    for solver in Solver::ALL {
+    // The impulse solver resolves impacts with Generalized Reflections now
+    // (`tests/impacts.rs`, where its scene conserves energy); XPBD's port
+    // is next.
+    for solver in [Solver::Xpbd] {
         let mut w = World::<f64>::new(Integrator::SymplecticEuler, test_support::nonzero(10));
         w.set_solver(solver);
         w.set_restitution(Restitution::new(1.0).unwrap());
