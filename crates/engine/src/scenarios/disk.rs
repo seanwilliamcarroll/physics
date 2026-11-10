@@ -4,6 +4,7 @@
 use super::cluster::{CLUSTER_SOFTENING, CLUSTER_SUBSTEPS, cluster_gravity};
 use super::shared::{BodyF64, GRAVITATIONAL_CONSTANT, add_bodies, point_in_annulus};
 use crate::rng::SplitMix64;
+use crate::sort_key::{SortKey, f64_key, sort};
 use crate::{ConfigError, Integrator, Scalar, World};
 use math::convert::usize_to_f64;
 
@@ -66,10 +67,20 @@ pub(super) fn disk_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
 
     // Enclosed mass: the center plus every orbiter strictly closer in.
     // Sorted squared radii make that a binary search per orbiter.
-    // Unstable: equal f64 keys are indistinguishable, and std's unstable
-    // sort is smaller in the `.wasm` (~7.4 KB vs ~8.9 KB stable).
-    let mut r_sq_sorted: Vec<f64> = pos.iter().map(|&(x, y)| x * x + y * y).collect();
-    r_sq_sorted.sort_unstable_by(f64::total_cmp);
+    // Sorted through the engine's one key type (`sort_key.rs`: an f64 key
+    // in total order) rather than its own f64 sort (~6 KB of `.wasm`);
+    // equal radii are indistinguishable, so the unstable order is moot.
+    let r_sq: Vec<f64> = pos.iter().map(|&(x, y)| x * x + y * y).collect();
+    let mut keys: Vec<SortKey> = r_sq
+        .iter()
+        .enumerate()
+        .map(|(i, &q)| (f64_key(q), 0, i))
+        .collect();
+    sort(&mut keys);
+    let r_sq_sorted: Vec<f64> = keys
+        .iter()
+        .filter_map(|&(_, _, i)| r_sq.get(i).copied())
+        .collect();
     let eps_sq = CLUSTER_SOFTENING * CLUSTER_SOFTENING;
     let vel: Vec<(f64, f64)> = pos
         .iter()

@@ -94,48 +94,17 @@ compliant constraints damp at backward Euler's rate by themselves; an
 exploding force jelly leaves the view within a frame or two, so the page
 freezes on the last sane frame. **Before M6 (#73):** CI, `UnitVec2`.
 
-## M6: Colliding masses (resumed after the health audit)
+## ✅ M6: Colliding masses (done, PRs #76–#82, #133–#139)
 
-**Done, sections 1–6 (PRs #76–#82):** `docs/08-collision.md`; `Radius`,
-`Restitution`, walls; a sorted-cell-list broadphase (proptest superset
-of brute force); the narrowphase (speculative contacts,
-`CONTACT_MARGIN`); contacts in XPBD and the impulse solver (accumulated
-clamp, warm start by pair, split pseudo-impulse), tested on both. Paused
-at the scenes: Newton restitution failed with simultaneous contacts
-(a touching rack kept 18–62% of its energy, a gapped one 115–136%).
-
-### 7. Simultaneous impacts (Generalized Reflections)
-- [x] **The impulse solver** (#133): an impact stage between two half
-      kicks (`docs/08-collision.md`, "Simultaneous impacts"). One ball
-      hitting two and the break shots keep their energy to 1e-13, the
-      cradle swings `[0, 0, 0, 0, 0.998]`, the box keeps 1.0011 over
-      20 s. The scenes (`ball_box`, `break_shot` with a gap, `cradle`)
-      come in with it, as its measurements.
-- [x] **XPBD** (this PR): the same stage, between its half kicks; the
-      velocity pass at `e = 0`. Energy to 3e-13, the cradle `[0, 0, 0,
-      0.003, 0.987]`, the box 1.00007 over 20 s; the known failure is
-      gone.
-
-### ✅ 8. Scenes (PR)
-Layout tests, goldens (native and wasm), the box running down below
-`e = 1`, the cradle by iterations (no effect) and substeps (XPBD first
-order); `08-collision.md`, "Newton's cradle".
-
-### ✅ 9. Web layer (PR)
-Constructors for the box, the break and the cradle (impulse, 10 substeps
-to start); restitution, radius, momentum; the broadphase's cell size and
-candidate pairs (`engine::collision::broadphase_cell`, now public); every
-export in the ABI property test. `engine.wasm` +18.1 KB
-(`03-wasm-shell.md`).
-
-### ✅ 10. Pages (PR)
-`m6-collisions` (the box and the break, XPBD and impulse side by side,
-the broadphase overlay) and `m6-cradle` (substeps, not iterations); four
-smoke cases; gallery links. Manual check pending.
-
-### 11. Cleanup (PR)
-- [ ] Trim the sorts (`engine.wasm` +65 KB, 26.7 KB of it sorting:
-      `03-wasm-shell.md`).
+`docs/08-collision.md`; `Radius`, `Restitution`, walls; a sorted-cell-list
+broadphase and speculative contacts in XPBD and the impulse solver.
+Simultaneous impacts by Generalized Reflections (Smith et al. 2012), an
+impact stage between two half kicks in both solvers: one ball hitting two
+and the break keep their energy to 1e-13, the cradle swings one ball out.
+Scenes (box, break, cradle) with goldens; the cradle ignores iterations
+and XPBD's shortfall is first order in substeps. Pages `m6-collisions`
+(box and break, broadphase overlay) and `m6-cradle`. One sort key for
+every sort: `engine.wasm` −35.9 KB. **Manual check of the pages pending.**
 
 ## ✅ A1: Plucked string, Karplus–Strong (done, PRs #84–#93)
 

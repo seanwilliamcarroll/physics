@@ -3,6 +3,7 @@
 //! Design, accuracy, and what it gives up (momentum): `docs/barnes-hut.md`.
 //! Reference: Barnes & Hut (1986), <https://doi.org/10.1038/324446a0>.
 
+use crate::sort_key::{SortKey, sort, u64_from_key, u64_key};
 use crate::{Force, OpeningAngle, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
 mod tree;
@@ -150,16 +151,20 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
         // Sort (key, index) pairs, then gather the bodies in that order.
         // (key, index) is unique, so the order is fully determined by the
         // input whatever the sort algorithm: unstable is safe, and doesn't
-        // allocate. Sorting a non-generic type keeps one copy of the sort
-        // in the `.wasm` for every scalar type (sorting `Body<S>` compiled
-        // one per S, ~7 KB each).
-        let mut order: Vec<(u64, usize)> = dynamic()
-            .map(|(index, (&pos, _))| (root.key(pos), index))
+        // allocate. Sorting the engine's one key type (`sort_key.rs`)
+        // keeps one copy of the sort in the `.wasm` for every scalar and
+        // every caller (sorting `Body<S>` compiled one per S, ~7 KB each).
+        let mut order: Vec<SortKey> = dynamic()
+            .map(|(index, (&pos, _))| {
+                let (hi, lo) = u64_key(root.key(pos));
+                (hi, lo, index)
+            })
             .collect();
-        order.sort_unstable();
+        sort(&mut order);
         let bodies: Vec<Body<S>> = order
             .into_iter()
-            .filter_map(|(key, index)| {
+            .filter_map(|(hi, lo, index)| {
+                let key = u64_from_key(hi, lo);
                 let (&pos, &w) = p.pos().get(index).zip(p.inv_mass().get(index))?;
                 Some(Body {
                     pos,
