@@ -61,3 +61,6 @@ pub fn break_shot<S: Scalar>(
     }
     Ok(w)
 }
+
+#[cfg(test)]
+mod tests;

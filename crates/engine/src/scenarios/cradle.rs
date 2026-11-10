@@ -66,3 +66,6 @@ pub fn cradle<S: Scalar>(
     }
     Ok(w)
 }
+
+#[cfg(test)]
+mod tests;
