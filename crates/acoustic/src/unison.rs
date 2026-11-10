@@ -135,7 +135,7 @@ impl<S: Scalar> Unison<S> {
     }
 
     /// The release: every string's damper (see [`Waveguide::damp`]).
-    pub fn damp(&mut self, t60: f64, ramp: usize) {
+    pub fn damp(&mut self, t60: f64, ramp: core::num::NonZeroUsize) {
         for s in self.strings.iter_mut().take(self.active) {
             s.damp(t60, ramp);
         }

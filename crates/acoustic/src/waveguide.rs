@@ -138,7 +138,7 @@ impl<S: Scalar> Waveguide<S> {
     }
 
     /// The release: see [`KsString::damp`](crate::KsString::damp).
-    pub fn damp(&mut self, t60: f64, ramp: usize) {
+    pub fn damp(&mut self, t60: f64, ramp: core::num::NonZeroUsize) {
         self.bridge.damp(t60, ramp);
     }
 

@@ -145,3 +145,14 @@ fn a_linear_blow_lasts_half_a_damped_period() {
     let order = (e48 / e96).log2();
     assert!((order - 2.0).abs() < 0.2, "converges at order {order}");
 }
+
+#[test]
+fn mezzo_forte_is_the_geometric_mean_of_pp_and_ff() {
+    // From the full cargo-mutants run: returning 1.0, or √(pp + ff), passed
+    // every test, and mf is the speed of every plain piano note on.
+    assert_eq!(
+        mezzo_forte().to_bits(),
+        (PIANISSIMO * FORTISSIMO).sqrt().to_bits()
+    );
+    assert!((mezzo_forte() - 1.581).abs() < 1e-3);
+}

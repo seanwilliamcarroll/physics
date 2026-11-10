@@ -105,8 +105,17 @@ rounding, `e²` bounces, stacks at rest. **Paused (your call)** at the
 scenes: Newton restitution with simultaneous contacts loses energy
 through touching chains (a touching rack keeps 18–62%) and gains it when
 one ball hits two (a gapped rack keeps 115–136%). The scenes and the
-measurements are a local WIP commit on `m6/7-scenes`; the candidate fix
-is Poisson restitution. Sections 7–10 (scenes, web, pages, cleanup)
+measurements are a local WIP commit on `m6/7-scenes` (rebase first).
+**Next to try (your call): Generalized Reflections** (Smith, Kaufman,
+Vouga, Tamstorf, Grinspun, "Reflections on Simultaneous Impact",
+SIGGRAPH 2012): repeatedly take the contacts approaching now and solve
+them jointly to the elastic target, until none approach. It keeps
+break-away (the cradle passes its impact down the row), symmetry and
+energy (one ball hitting two bounces off both together), so it covers
+both failures; game engines (Box2D's restitution pass, ours) have
+neither. In the impulse solver first, measured on the break shots, the
+box and the cradle; then XPBD's velocity pass. Poisson restitution is
+the fallback. Sections 7–10 (scenes, web, pages, cleanup)
 remain; M6's cleanup should also trim its sorts (`engine.wasm` +65 KB,
 26.7 KB of it sorting: `03-wasm-shell.md`).
 

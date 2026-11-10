@@ -212,3 +212,62 @@ fn geometry_falls_back_for_a_pitch_that_isnt_positive_and_finite() {
     let (length, first) = super::geometry(FS, 240.0, 99);
     assert_eq!((length, first), (100.0, 1.5));
 }
+
+// From the full cargo-mutants run: which cell a strike lands on, and that
+// striking a ringing string silences it first, could change unnoticed.
+
+fn hammer() -> crate::hammer::Hammer {
+    let key = 57;
+    crate::hammer::Hammer::new(
+        crate::hammer::felt(key).unwrap(),
+        crate::hammer::impedance(key),
+        FS,
+        1.58,
+    )
+    .unwrap()
+}
+
+#[test]
+fn a_strike_lands_on_the_junction_nearest_its_point() {
+    let mut g = guide(220.0);
+    let m = g.right.len();
+    // The junction after cell c (between c and c + 1) is at
+    // (c + ½ + first) / length along the string.
+    for c in [0, 3, m / 2, m - 2] {
+        let s = (math::convert::usize_to_f64(c) + 0.5 + g.first) / g.length;
+        assert!(g.strike(hammer(), s));
+        assert_eq!(
+            g.hammer.as_ref().map(|(_, at)| *at),
+            Some(c),
+            "aimed at junction {c}"
+        );
+    }
+    // Past the ends: the outer junctions.
+    for (s, c) in [(0.0, 0), (1.0, m - 2)] {
+        assert!(g.strike(hammer(), s));
+        assert_eq!(g.hammer.as_ref().map(|(_, at)| *at), Some(c), "s = {s}");
+    }
+}
+
+#[test]
+fn striking_a_ringing_string_silences_it_first() {
+    let mut g = guide(220.0);
+    let m = g.right.len();
+    g.load_rails(&vec![0.5; m], &vec![0.25; m]);
+    assert!(g.strike(hammer(), 0.125));
+    assert!(
+        (0..m).all(|c| g.rails_at(c) == (0.0, 0.0)),
+        "the old vibration is gone"
+    );
+}
+
+#[test]
+fn a_two_cell_rail_takes_a_strike_and_one_cell_doesnt() {
+    // A junction needs two cells: 10 kHz has two at 48 kHz, 12 kHz one.
+    let mut two = guide(10_000.0);
+    assert_eq!(two.right.len(), 2);
+    assert!(two.strike(hammer(), 0.125));
+    let mut one = guide(12_000.0);
+    assert_eq!(one.right.len(), 1);
+    assert!(!one.strike(hammer(), 0.125));
+}

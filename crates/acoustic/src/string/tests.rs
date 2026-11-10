@@ -125,3 +125,23 @@ fn bad_settings_are_refused() {
     assert!(KsString::<f64>::new(48_000.0, 440.0, no_decay).is_none());
     assert!(KsString::<f64>::new(f64::NAN, 440.0, LOSSLESS).is_none());
 }
+
+#[test]
+fn a_release_of_no_time_is_ignored() {
+    // `damp` needs a positive T60: at 0 the loss would be total (a decay
+    // factor of 10^−∞ = 0), so it's refused, not applied.
+    let voicing = Voicing {
+        tuned: true,
+        decay: Decay::T60(2.0),
+        inharmonicity: 0.0,
+    };
+    let render = |damp: bool| {
+        let mut s = KsString::<f64>::new(48_000.0, 220.0, voicing).unwrap();
+        s.pluck(|i, _| hash_noise(i));
+        if damp {
+            s.damp(0.0, core::num::NonZeroUsize::MIN);
+        }
+        (0..2_000).map(|_| s.next_sample()).collect::<Vec<f64>>()
+    };
+    assert_eq!(render(true), render(false));
+}
