@@ -25,6 +25,9 @@ pub enum ConfigError {
     /// An update tried to change which particles a constraint joins
     /// ([`crate::World::update_constraints`]); nothing was changed.
     ChangedBodies,
+    /// A circle's radius must be positive and finite; see
+    /// [`crate::Radius`].
+    InvalidRadius,
 }
 
 impl fmt::Display for ConfigError {
@@ -42,6 +45,7 @@ impl fmt::Display for ConfigError {
             Self::ChangedBodies => {
                 f.write_str("an update can't change which particles a constraint joins")
             }
+            Self::InvalidRadius => f.write_str("radius must be positive and finite"),
         }
     }
 }

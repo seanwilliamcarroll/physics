@@ -4,9 +4,12 @@
 //! One file per scene (`scenarios/<scene>.rs`), re-exported here, so
 //! callers write `scenarios::cluster` whatever file it lives in.
 
+mod ball_box;
+mod break_shot;
 mod chain;
 mod cluster;
 mod collapse;
+mod cradle;
 mod disk;
 mod double_pendulum;
 mod fountain;
@@ -15,12 +18,20 @@ mod orbit;
 mod pendulum;
 mod shared;
 
+pub use ball_box::{
+    BOX_BALL_MASS, BOX_BALL_RADIUS, BOX_BALLS, BOX_HALF_WIDTH, BOX_HEIGHT, BOX_MAX_BALLS,
+    BOX_SPEED, ball_box,
+};
+pub use break_shot::{
+    BREAK_BALL_MASS, BREAK_BALL_RADIUS, BREAK_CUE_DISTANCE, BREAK_ROWS, BREAK_SPEED, break_shot,
+};
 pub use chain::{CHAIN_LENGTH, CHAIN_LINK_MASS, CHAIN_LINKS, chain};
 pub use cluster::{
     CLUSTER_RADIUS, CLUSTER_SOFTENING, CLUSTER_SPEED, CLUSTER_SUBSTEPS, CLUSTER_TOTAL_MASS,
     CLUSTER_WEIGHT, cluster, cluster_gravity,
 };
 pub use collapse::{COLLAPSE_TOTAL_MASS, collapse};
+pub use cradle::{CRADLE_BALLS, CRADLE_LENGTH, CRADLE_MASS, CRADLE_RADIUS, cradle};
 pub use disk::{DISK_CENTRAL_MASS, DISK_INNER_RADIUS, DISK_ORBITERS_TOTAL_MASS, DISK_RADIUS, disk};
 pub use double_pendulum::{
     DOUBLE_PENDULUM_LENGTH, DOUBLE_PENDULUM_MASS, DoublePendulumStart, double_pendulum,
