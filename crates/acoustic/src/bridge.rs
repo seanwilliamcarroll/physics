@@ -2,6 +2,8 @@
 //! (`docs/12-acoustic-foundations.md`, "Tuning" and "Decay";
 //! `docs/13-waveguide.md`, "Rails and ends").
 
+use core::num::NonZeroUsize;
+
 use crate::Scalar;
 use crate::dispersion::MAX_BIQUADS;
 use crate::voicing::Coefficients;
@@ -134,25 +136,20 @@ impl<S: Scalar> Bridge<S> {
     /// seconds (the release); the pitch is unchanged. Ignored unless
     /// `t60 > 0`.
     ///
-    /// The loss comes in over `ramp` samples (at once for 0), as a damper
-    /// settles on a string. Applied in one sample it's a step in the
+    /// The loss comes in over `ramp` samples, as a damper settles on a
+    /// string. Applied in one sample it's a step in the
     /// reflected wave, and the piano sounds that wave's change: a click
     /// on every release (A3, found after the health audit).
-    pub(crate) fn damp(&mut self, t60: f64, ramp: usize) {
+    pub(crate) fn damp(&mut self, t60: f64, ramp: NonZeroUsize) {
         // `t60 > 0` is false for NaN too.
         let positive = t60 > 0.0;
         if !positive {
             return;
         }
         let r = libm::exp10(-3.0 / (self.pitch * t60));
-        if ramp == 0 {
-            self.tap_now = self.tap_now * S::from_f64(r);
-            self.tap_prev = self.tap_prev * S::from_f64(r);
-        } else {
-            // r^(1/ramp) per sample: r in all, after `ramp` samples.
-            let k = libm::pow(r, 1.0 / math::convert::usize_to_f64(ramp));
-            self.ramp = Some((S::from_f64(k), ramp));
-        }
+        // r^(1/ramp) per sample: r in all, after `ramp` samples.
+        let k = libm::pow(r, 1.0 / math::convert::usize_to_f64(ramp.get()));
+        self.ramp = Some((S::from_f64(k), ramp.get()));
     }
 
     /// The pitch the loop plays, Hz.

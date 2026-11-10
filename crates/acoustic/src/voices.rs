@@ -252,7 +252,10 @@ impl<S: Scalar> Voices<S> {
     /// voice frees. Nothing if it isn't sounding (or is already released).
     pub fn note_off(&mut self, key: u8) {
         let fs = self.fs;
-        let ramp = f64_to_usize(fs * RELEASE_RAMP).unwrap_or(0);
+        // At least one sample, whatever the rate.
+        let ramp = f64_to_usize(fs * RELEASE_RAMP)
+            .and_then(core::num::NonZeroUsize::new)
+            .unwrap_or(core::num::NonZeroUsize::MIN);
         for v in &mut self.pool {
             if v.key == Some(key) && v.releasing.is_none() {
                 match v.model {
