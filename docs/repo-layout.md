@@ -20,6 +20,7 @@ physics/
 │   ├── repo-layout.md      # this file
 │   ├── types.md            # key types, one line each, with links
 │   ├── hosting.md          # future work
+│   ├── workers.md          # design note: step budget, Web Workers, wasm threads
 │   └── references.md
 │
 ├── crates/
