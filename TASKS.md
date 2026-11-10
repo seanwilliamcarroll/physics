@@ -128,7 +128,11 @@ candidate pairs (`engine::collision::broadphase_cell`, now public); every
 export in the ABI property test. `engine.wasm` +18.1 KB
 (`03-wasm-shell.md`).
 
-### 10. Pages (PR)
+### ✅ 10. Pages (PR)
+`m6-collisions` (the box and the break, XPBD and impulse side by side,
+the broadphase overlay) and `m6-cradle` (substeps, not iterations); four
+smoke cases; gallery links. Manual check pending.
+
 ### 11. Cleanup (PR)
 - [ ] Trim the sorts (`engine.wasm` +65 KB, 26.7 KB of it sorting:
       `03-wasm-shell.md`).

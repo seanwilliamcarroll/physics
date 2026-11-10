@@ -79,7 +79,7 @@ physics/
     ├── js/                 # TypeScript library; tsc emits .js beside it (gitignored)
     │   ├── wasm.ts         # load + instantiate engine.wasm
     │   ├── loop.ts         # rAF loop → demo_advance
-    │   ├── canvas.ts       # world↔screen, high-DPI, batched drawing (points, links)
+    │   ├── canvas.ts       # world↔screen, high-DPI, batched drawing (points, links, disks, grid)
     │   ├── pointer.ts      # pointer drags → world coordinates (grab/drag/release)
     │   ├── plot.ts         # ring-buffer line plots
     │   ├── controls.ts     # sliders/dropdowns → demo_set_*
@@ -105,6 +105,8 @@ physics/
     │   ├── m4-chain/
     │   ├── m4-double-pendulum/
     │   ├── m5-jelly/
+    │   ├── m6-collisions/
+    │   ├── m6-cradle/
     │   ├── a1-string/
     │   └── a2-waveguide/
     └── pkg/                # build output (gitignored): engine.wasm, acoustic.wasm
