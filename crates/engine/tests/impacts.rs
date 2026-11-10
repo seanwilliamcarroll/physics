@@ -1,6 +1,8 @@
 //! Simultaneous impacts (M6, `docs/08-collision.md`): restitution when a
 //! ball meets several contacts at once, on the scenes that showed Newton
-//! restitution's failures. Both solvers, elastic, 10 substeps.
+//! restitution's failures, then the scenes' behavior (the box running down
+//! when inelastic, the cradle by iterations and substeps). Both solvers;
+//! elastic at 10 substeps unless a test says otherwise.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -74,8 +76,9 @@ fn break_kept(solver: Solver, gap: f64) -> (f64, f64) {
 /// The cradle (5 balls, the first pulled): each ball's furthest swing to
 /// the right of its rest position over the first right-hand swing, as a
 /// fraction of the pull's horizontal distance. Ideal [0, 0, 0, 0, 1].
-fn cradle_swing(solver: Solver) -> Vec<f64> {
-    let mut w = cradle::<f64>(solver, nonzero(SUBSTEPS), 5, 1).unwrap();
+fn cradle_swing(solver: Solver, substeps: u32, iterations: u32) -> Vec<f64> {
+    let mut w = cradle::<f64>(solver, nonzero(substeps), 5, 1).unwrap();
+    w.set_iterations(nonzero(iterations));
     // Balls are particles 1, 3, 5, … (each after its pin); rest x is the
     // pin's x.
     let n = w.particles().len();
@@ -148,7 +151,7 @@ fn the_break_keeps_its_energy_and_momentum_touching_or_not() {
 #[test]
 fn the_cradle_passes_its_impact_down_the_row() {
     for solver in Solver::ALL {
-        let swing = cradle_swing(solver);
+        let swing = cradle_swing(solver, SUBSTEPS, 1);
         println!("{solver:?} swing / pull: {swing:?}");
         let ideal = [0.0, 0.0, 0.0, 0.0, 1.0];
         for (k, (got, want)) in swing.iter().zip(ideal).enumerate() {
@@ -166,5 +169,111 @@ fn the_ball_box_keeps_its_energy() {
         let kept = box_kept(solver);
         println!("{solver:?} box, 20 s: kept {kept}");
         assert!((kept - 1.0).abs() < BOX_TOL, "{solver:?} kept {kept}");
+    }
+}
+
+/// The ball box at restitution `e`, 20 s: total energy every 2 s, as a
+/// fraction of the start.
+fn box_energy_every_2s(solver: Solver, e: f64) -> Vec<f64> {
+    let mut w = ball_box::<f64>(solver, nonzero(SUBSTEPS), 20, 1).unwrap();
+    w.set_restitution(Restitution::new(e).unwrap());
+    let g = pendulum_gravity();
+    let energy = |w: &World<f64>| {
+        kinetic_energy(w.particles()) + uniform_gravity_potential(w.particles(), &g)
+    };
+    let e0 = energy(&w);
+    let mut samples = Vec::new();
+    for _ in 0..10 {
+        for _ in 0..120 {
+            w.step(time_step(DT));
+        }
+        samples.push(energy(&w) / e0);
+    }
+    samples
+}
+
+/// Each 2 s sample may rise by this much (measured: 1.6e-11, XPBD e = 0;
+/// otherwise 0 or 1 ulp), bound ~10x.
+const BOX_RISE_TOL: f64 = 2e-10;
+/// Below this, the box has run down: measured 0.2552–0.2593 at 20 s
+/// (balls at rest, potential energy only; the impulse solver's piles
+/// settle a little higher), against 1 when elastic.
+const BOX_RUN_DOWN: f64 = 0.3;
+
+#[test]
+fn the_ball_box_runs_down_when_inelastic() {
+    for solver in Solver::ALL {
+        for e in [0.9, 0.5, 0.0] {
+            let s = box_energy_every_2s(solver, e);
+            println!("{solver:?} e {e}: {s:.4?}");
+            for (k, pair) in s.windows(2).enumerate() {
+                if let [a, b] = pair {
+                    assert!(b - a < BOX_RISE_TOL, "{solver:?} e {e}: rose at {k}: {s:?}");
+                }
+            }
+            let last = s.last().copied().unwrap_or(1.0);
+            assert!(last < BOX_RUN_DOWN, "{solver:?} e {e}: kept {last}");
+        }
+    }
+}
+
+/// One rod per ball, nothing between them for Gauss–Seidel to pass on, and
+/// the impact stage solves to convergence on its own: so iterations change
+/// nothing. Measured 1 vs 16 iterations: 1.8e-13 (XPBD), 2.4e-8 (impulse),
+/// bound ~10x.
+fn iterations_tol(solver: Solver) -> f64 {
+    match solver {
+        Solver::Impulse => 3e-7,
+        Solver::Xpbd => 2e-12,
+    }
+}
+
+#[test]
+fn the_cradle_ignores_iterations() {
+    for solver in Solver::ALL {
+        let (one, many) = (
+            cradle_swing(solver, SUBSTEPS, 1),
+            cradle_swing(solver, SUBSTEPS, 16),
+        );
+        let d = one
+            .iter()
+            .zip(&many)
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0, f64::max);
+        assert!(d < iterations_tol(solver), "{solver:?}: {d}");
+    }
+}
+
+/// The cradle's worst ball against `[0, 0, 0, 0, 1]`.
+fn cradle_error(solver: Solver, substeps: u32) -> f64 {
+    cradle_swing(solver, substeps, 1)
+        .iter()
+        .zip([0.0, 0.0, 0.0, 0.0, 1.0])
+        .map(|(got, want)| (got - want).abs())
+        .fold(0.0, f64::max)
+}
+
+/// XPBD's error times the substeps: first order, so about constant.
+/// Measured 0.119 (1 substep) rising to 0.140 (40); bounds around it.
+const XPBD_CRADLE_ORDER: (f64, f64) = (0.1, 0.2);
+/// The impulse solver's error at any substeps: measured at most 0.028 (1
+/// substep), and not monotone (0.0083 at 2, 0.0091 at 5).
+const IMPULSE_CRADLE_TOL: f64 = 0.05;
+
+#[test]
+fn the_cradle_by_substeps() {
+    for substeps in [1, 2, 5, 10, 20, 40] {
+        let xpbd = cradle_error(Solver::Xpbd, substeps) * f64::from(substeps);
+        let impulse = cradle_error(Solver::Impulse, substeps);
+        println!("{substeps} substeps: XPBD error × n {xpbd:.4}, impulse error {impulse:.4}");
+        let (lo, hi) = XPBD_CRADLE_ORDER;
+        assert!(
+            (lo..hi).contains(&xpbd),
+            "XPBD, {substeps} substeps: {xpbd}"
+        );
+        assert!(
+            impulse < IMPULSE_CRADLE_TOL,
+            "impulse, {substeps} substeps: {impulse}"
+        );
     }
 }
