@@ -229,10 +229,9 @@ impl<S: Scalar> World<S> {
         self.substeps = substeps;
     }
 
-    /// Test-only: substeps per step.
-    #[cfg(test)]
+    /// Substeps per step.
     #[must_use]
-    pub(crate) const fn substeps(&self) -> NonZeroU32 {
+    pub const fn substeps(&self) -> NonZeroU32 {
         self.substeps
     }
 
