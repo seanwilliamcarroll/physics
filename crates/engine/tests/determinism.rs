@@ -3,8 +3,9 @@
 #![cfg(test)]
 
 use engine::scenarios::{
-    CHAIN_LINKS, DoublePendulumStart, Fountain, JELLY_COLS, JELLY_ROWS, JellyBody, chain, cluster,
-    collapse, disk, double_pendulum, jelly, orbit, pendulum,
+    BOX_BALLS, CHAIN_LINKS, CRADLE_BALLS, DoublePendulumStart, Fountain, JELLY_COLS, JELLY_ROWS,
+    JellyBody, ball_box, break_shot, chain, cluster, collapse, cradle, disk, double_pendulum,
+    jelly, orbit, pendulum,
 };
 use engine::{Integrator, Scalar, Solver};
 use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, state_hash, time_step};
@@ -42,9 +43,19 @@ enum Run {
     /// The double pendulum (1e-9 m offset), impulse with 20 substeps (the
     /// page's default), 600 steps: chaotic, so any change shows up.
     DoublePendulum,
+    /// The ball box ([`BOX_BALLS`] balls, seed 1), 10 substeps, 600 steps
+    /// (10 s): walls, gravity and many impacts, so the contact order and
+    /// the impact stage's rounds are pinned (M6).
+    BallBox(Solver),
+    /// The break shot (rack touching), 10 substeps, 120 steps (2 s):
+    /// one impact through a touching rack, the impact stage's hardest case.
+    BreakShot(Solver),
+    /// The cradle ([`CRADLE_BALLS`] balls, one pulled), 10 substeps, 300
+    /// steps (5 s): impacts down a row, with rods.
+    Cradle(Solver),
 }
 
-const RUNS: [Run; 16] = [
+const RUNS: [Run; 22] = [
     Run::Fountain,
     Run::Cluster,
     Run::Disk,
@@ -61,6 +72,12 @@ const RUNS: [Run; 16] = [
     Run::Jelly(JellyBody::Springs),
     Run::Jelly(JellyBody::Constraints(Solver::Xpbd)),
     Run::Jelly(JellyBody::Constraints(Solver::Impulse)),
+    Run::BallBox(Solver::Xpbd),
+    Run::BallBox(Solver::Impulse),
+    Run::BreakShot(Solver::Xpbd),
+    Run::BreakShot(Solver::Impulse),
+    Run::Cradle(Solver::Xpbd),
+    Run::Cradle(Solver::Impulse),
 ];
 
 /// Builds the run's world, steps it, and hashes the final state.
@@ -126,6 +143,27 @@ fn run<S: Scalar>(r: Run) -> u64 {
             }
             state_hash(w.particles())
         }
+        Run::BallBox(solver) => {
+            let mut w = ball_box::<S>(solver, nonzero(10), BOX_BALLS, 1).unwrap();
+            for _ in 0..600 {
+                w.step(time_step(DT));
+            }
+            state_hash(w.particles())
+        }
+        Run::BreakShot(solver) => {
+            let mut w = break_shot::<S>(solver, nonzero(10), 0.0).unwrap();
+            for _ in 0..120 {
+                w.step(time_step(DT));
+            }
+            state_hash(w.particles())
+        }
+        Run::Cradle(solver) => {
+            let mut w = cradle::<S>(solver, nonzero(10), CRADLE_BALLS, 1).unwrap();
+            for _ in 0..300 {
+                w.step(time_step(DT));
+            }
+            state_hash(w.particles())
+        }
         Run::ClusterBarnesHut => {
             let mut w = cluster_barnes_hut::<S>(64, 1, 0.5);
             for _ in 0..300 {
@@ -156,7 +194,7 @@ for_each_scalar!(every_run_is_repeatable);
 /// (then paste the new values from the failure message) or a bug.
 /// Recorded on aarch64-apple-darwin, Rust 1.99.1; `cargo xtask test-wasm`
 /// checks the same values on wasm32-wasip1 (`docs/04-testing.md`).
-const GOLDEN: [(u64, u64); 16] = [
+const GOLDEN: [(u64, u64); 22] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster
     (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
@@ -173,6 +211,12 @@ const GOLDEN: [(u64, u64); 16] = [
     (0xa62e_3f2f_299a_3174, 0x5ec9_8ade_fa46_b8ce), // Jelly(Springs)
     (0x2079_e496_6081_d007, 0xa96f_bdb3_87ea_cd29), // Jelly(Constraints(Xpbd))
     (0x417b_f5ac_8bf7_f82b, 0x3182_4044_ab02_85a0), // Jelly(Constraints(Impulse))
+    (0x0470_b2bb_2242_95a6, 0x6338_72b7_c15a_2319), // BallBox(Xpbd)
+    (0x9560_1536_882f_8ed8, 0xd9e6_90ab_899f_8188), // BallBox(Impulse)
+    (0xb7c4_e8f7_919a_f2a0, 0xfdcb_233a_f79e_93fa), // BreakShot(Xpbd)
+    (0xb0a9_deb3_aba9_437b, 0x7f33_0771_bca2_7725), // BreakShot(Impulse)
+    (0xf667_9d6c_0444_e5ff, 0x68ca_577f_554d_e9e2), // Cradle(Xpbd)
+    (0xe519_90c9_da81_2a12, 0x4715_7907_1f90_632d), // Cradle(Impulse)
 ];
 
 #[test]
