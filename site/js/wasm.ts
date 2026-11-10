@@ -2,6 +2,7 @@
 // by the Rust panic hook; see crates/web/src/imports.rs).
 
 // `import type` is erased when compiling: no runtime import of engine.d.ts.
+import { COORDS_PER_PARTICLE } from "./abi.ts";
 import type { DemoHandle, EngineExports, EngineImports } from "./engine";
 
 /** Default location, resolved relative to this file (not the page), so any
@@ -76,4 +77,11 @@ export function pairsView(engine: EngineExports, demo: DemoHandle): Uint32Array 
     engine.demo_pairs_ptr(demo),
     engine.demo_pairs_len(demo),
   );
+}
+
+/** Every particle's radius, m (0 for a pin), read once: radii never
+ *  change in a demo, so pages keep this per demo. */
+export function radiiOf(engine: EngineExports, demo: DemoHandle): Float64Array {
+  const n = engine.demo_positions_len(demo) / COORDS_PER_PARTICLE;
+  return Float64Array.from({ length: n }, (_, i) => engine.demo_particle_radius(demo, i));
 }
