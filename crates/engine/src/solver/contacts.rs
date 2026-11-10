@@ -2,7 +2,8 @@
 //! "The contact constraint").
 
 use crate::collision::{Body, Contact, find_contacts};
-use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2, Wall};
+use crate::sort_key::{SortKey, index_key, sort};
+use crate::{Particles, Scalar, UnitVec2, Vec2, Wall};
 
 /// Overlap the impulse solver leaves uncorrected, m: resting contacts sit
 /// this deep instead of flickering between touching and not
@@ -33,9 +34,13 @@ pub(crate) struct Contacts<S> {
     /// Impact impulses are never remembered for the warm start.
     pub(crate) in_round: Vec<bool>,
     pub(crate) round_impulse: Vec<S>,
-    /// Last substep's contacts and impulses, sorted by bodies: the impulse
-    /// solver's warm start.
-    warm: Vec<(ParticleId, Body, S)>,
+    /// Last substep's contacts as sorted keys `(a, b, i)`, `i` indexing
+    /// `warm_lambda`: the impulse solver's warm start. Keys, not `(a, b,
+    /// λ)` tuples, so the sort is the engine's one shared instantiation
+    /// (`sort_key.rs`) rather than one more per scalar.
+    warm: Vec<SortKey>,
+    /// Last substep's impulses, in contact order.
+    warm_lambda: Vec<S>,
     /// The broadphase's scratch.
     pairs: Vec<(usize, usize)>,
 }
@@ -51,6 +56,7 @@ impl<S: Scalar> Contacts<S> {
             in_round: Vec::new(),
             round_impulse: Vec::new(),
             warm: Vec::new(),
+            warm_lambda: Vec::new(),
             pairs: Vec::new(),
         }
     }
@@ -81,26 +87,28 @@ impl<S: Scalar> Contacts<S> {
     /// solver's warm start, matched by bodies.
     pub(crate) fn recall(&mut self) {
         for (c, lambda) in self.list.iter().zip(self.lambda.iter_mut()) {
-            let key = (c.a, c.b);
+            let key = pair_key(c);
             *lambda = self
                 .warm
                 .binary_search_by(|&(a, b, _)| (a, b).cmp(&key))
                 .ok()
                 .and_then(|i| self.warm.get(i))
-                .map_or(S::ZERO, |&(_, _, l)| l);
+                .and_then(|&(_, _, j)| self.warm_lambda.get(j))
+                .copied()
+                .unwrap_or(S::ZERO);
         }
     }
 
     /// Keeps this substep's impulses for the next substep's [`recall`](Self::recall).
     pub(crate) fn remember(&mut self) {
         self.warm.clear();
-        self.warm.extend(
-            self.list
-                .iter()
-                .zip(&self.lambda)
-                .map(|(c, &l)| (c.a, c.b, l)),
-        );
-        self.warm.sort_unstable_by_key(|&(a, b, _)| (a, b));
+        self.warm.extend(self.list.iter().enumerate().map(|(i, c)| {
+            let (a, b) = pair_key(c);
+            (a, b, i)
+        }));
+        sort(&mut self.warm);
+        self.warm_lambda.clear();
+        self.warm_lambda.extend_from_slice(&self.lambda);
     }
 
     /// Forgets everything (a world that stopped colliding, or a solver
@@ -109,7 +117,20 @@ impl<S: Scalar> Contacts<S> {
         self.list.clear();
         self.lambda.clear();
         self.warm.clear();
+        self.warm_lambda.clear();
     }
+}
+
+/// A contact's bodies as the first two fields of a [`SortKey`]: `a`'s
+/// index, then `b`'s for a particle or `−1 − i` for wall `i`. Any
+/// consistent order serves the warm start's lookup; each pair of bodies
+/// has one contact per substep, so keys are distinct.
+fn pair_key<S>(c: &Contact<S>) -> (i64, i64) {
+    let b = match c.b {
+        Body::Particle(b) => index_key(b.index()),
+        Body::Wall(i) => -1 - index_key(i),
+    };
+    (index_key(c.a.index()), b)
 }
 
 /// `(a, b, w_a, w_b)`: the particle indices (`b` is `None` for a wall,

@@ -14,6 +14,7 @@ mod particles;
 mod rng;
 pub mod scenarios;
 mod solver;
+mod sort_key;
 #[cfg(test)]
 mod test_util;
 mod world;

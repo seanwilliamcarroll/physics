@@ -1,10 +1,12 @@
 //! The broadphase: a uniform grid, as a sorted cell list
 //! (`docs/08-collision.md`, "Contact generation").
 
+use crate::sort_key::{SortKey, index_key, sort};
 use crate::{Scalar, Vec2};
 
-/// A circle's cell and index, sorted by cell.
-type Key = (i64, i64, usize);
+/// A circle's cell and index, sorted by cell: the engine's one sort key
+/// (`sort_key.rs`).
+type Key = SortKey;
 
 /// Neighbor offsets checked from each cell besides itself: four of the
 /// eight, so each neighboring pair of cells is visited once (the other
@@ -43,7 +45,7 @@ pub fn candidate_pairs<S: Scalar>(
         .filter(|(_, (_, r))| **r > S::ZERO)
         .map(|(i, (x, _))| (cell_of(x.x.to_f64(), cell), cell_of(x.y.to_f64(), cell), i))
         .collect();
-    keys.sort_unstable();
+    sort(&mut keys);
     // Each run of equal cells is one occupied cell.
     for here in keys.chunk_by(|p, q| (p.0, p.1) == (q.0, q.1)) {
         let Some(&(cx, cy, _)) = here.first() else {
@@ -64,7 +66,23 @@ pub fn candidate_pairs<S: Scalar>(
             }
         }
     }
-    out.sort_unstable();
+    sort_pairs(out);
+}
+
+/// Sorts `pairs` by `(a, b)` through the shared key (`(a, b, b)`: the
+/// third field only carries `b` back), so no `(usize, usize)` sort is
+/// compiled.
+fn sort_pairs(pairs: &mut Vec<(usize, usize)>) {
+    let mut keys: Vec<SortKey> = pairs
+        .iter()
+        .map(|&(a, b)| (index_key(a), index_key(b), b))
+        .collect();
+    sort(&mut keys);
+    pairs.clear();
+    pairs.extend(
+        keys.iter()
+            .filter_map(|&(a, _, b)| usize::try_from(a).ok().map(|a| (a, b))),
+    );
 }
 
 /// The cell index of coordinate `v` (m): `⌊v / cell⌋`. Saturates at the
