@@ -307,3 +307,37 @@ fn raised_start_separates_sooner() {
     let t = time_to_separate(&mut a, &mut b, 15);
     assert!(t.is_some_and(|t| t > 5.0), "{t:?}");
 }
+
+/// The slow tier (`cargo xtask slow`): the 1:100 chain for a minute at 20
+/// substeps, both solvers. Over a long run its worst link error must not
+/// grow (the last 10 s within 2x the first), and it may not gain energy
+/// past the 10 s table's limit.
+#[test]
+#[ignore = "slow: cargo xtask slow"]
+fn slow_the_chain_holds_for_a_minute() {
+    const TEN_SECONDS: u32 = 600;
+    for solver in Solver::ALL {
+        let mut w = chain::<f64>(solver, nonzero(20), CHAIN_LINKS, RATIO).unwrap();
+        let e0 = pendulum_energy(&w);
+        let mut worst = Vec::new();
+        let mut gain = 0.0_f64;
+        for _ in 0..6 {
+            let mut window = 0.0_f64;
+            for _ in 0..TEN_SECONDS {
+                w.step(time_step(1.0 / 60.0));
+                let err =
+                    constraint_error(w.particles(), w.constraints()).map_or(0.0, |(max, _)| max);
+                window = window.max(err);
+                gain = gain.max(pendulum_energy(&w) - e0);
+            }
+            worst.push(window);
+        }
+        eprintln!("{solver:?}: worst link error per 10 s {worst:?}, max gain {gain:.3} J");
+        let (first, last) = (worst[0], worst[5]);
+        assert!(
+            last <= 2.0 * first,
+            "{solver:?}: link error grew {first:e} → {last:e}"
+        );
+        assert!(gain <= MAX_STABLE_GAIN, "{solver:?}: gained {gain} J");
+    }
+}

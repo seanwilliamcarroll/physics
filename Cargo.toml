@@ -40,6 +40,18 @@ opt-level = 3
 [profile.dev.package.math]
 opt-level = 3
 
+# `cargo xtask slow`: optimized, but keeping debug assertions and overflow
+# checks, so 10 000-case property tests and the long `slow_*` runs finish
+# in minutes without losing the checks that catch overflow. Tests unwind
+# whatever the profile's `panic` (cargo ignores it for tests).
+[profile.slow]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true
+lto = false
+codegen-units = 16
+incremental = true
+
 [profile.release]
 opt-level = 3   # try "s"/"z" later and measure size vs speed
 lto = true
