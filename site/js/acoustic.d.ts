@@ -1,4 +1,6 @@
 // Types for acoustic.wasm's exports (crates/acoustic-web/src/exports.rs).
+// `cargo xtask site` checks AcousticExports against the .wasm's export
+// table (names, parameter and result counts): one signature per line.
 
 /** A `*mut Synth`: 0 is null. Branded so it can't be mixed up with a count. */
 export type SynthHandle = number & { readonly __synth: unique symbol };

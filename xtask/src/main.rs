@@ -14,6 +14,7 @@ use std::process::{self, ExitCode};
 
 use clap::{Parser, Subcommand};
 
+mod abi_check;
 mod bench_wasm;
 mod coverage;
 mod serve;
@@ -179,6 +180,22 @@ fn site(root: &Path) -> Result<(), String> {
         let bytes = fs::copy(&src, &dest).map_err(|e| format!("copying {}: {e}", src.display()))?;
         println!("wrote {} ({bytes} bytes)", dest.display());
     }
+    check_dts(root, &dest_dir)
+}
+
+/// Each module's export table against its hand-written `.d.ts`
+/// (`abi_check.rs`): the C ABI's types, which no compiler checks.
+fn check_dts(root: &Path, pkg: &Path) -> Result<(), String> {
+    let js = root.join("site").join("js");
+    for (wasm, dts, interface) in [
+        ("engine.wasm", "engine.d.ts", "EngineExports"),
+        ("acoustic.wasm", "acoustic.d.ts", "AcousticExports"),
+    ] {
+        let bytes = fs::read(pkg.join(wasm)).map_err(|e| format!("reading {wasm}: {e}"))?;
+        let text = fs::read_to_string(js.join(dts)).map_err(|e| format!("reading {dts}: {e}"))?;
+        abi_check::check(&bytes, &text, interface, &format!("{wasm} vs {dts}"))?;
+    }
+    println!("checked engine.d.ts and acoustic.d.ts against the .wasm exports");
     Ok(())
 }
 

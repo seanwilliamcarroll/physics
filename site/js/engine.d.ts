@@ -1,6 +1,8 @@
 // Types for engine.wasm's exports and imports: the contract implemented in
 // crates/web/src/exports.rs and imports.rs. Integer codes live in abi.js
-// (mirrored from abi.rs and checked by a Rust test).
+// (mirrored from abi.rs and checked by a Rust test). `cargo xtask site`
+// checks EngineExports against the .wasm's export table (names, parameter
+// and result counts, bigint for i64): one signature per line.
 //
 // Types only: browsers never load this file. It lets `tsc --checkJs` catch
 // wrong argument order, a handle passed where a count belongs, and similar
@@ -62,10 +64,10 @@ export interface EngineExports {
   demo_links_ptr(demo: DemoHandle): Ptr;
   /** Number of u32s at demo_links_ptr (two per constraint). */
   demo_links_len(demo: DemoHandle): number;
-  /** Grabs the nearest dynamic particle within `radius` m; its index or -1. */
   /** 1 if the demo can be grabbed: a world a solver steps (constraints, or
    *  collisions). A world its integrator steps refuses. */
   demo_grabbable(demo: DemoHandle): number;
+  /** Grabs the nearest dynamic particle within `radius` m; its index or -1. */
   demo_grab(demo: DemoHandle, x: number, y: number, radius: number): number;
   /** Moves the held grab's anchor; 0 if nothing is held. */
   demo_drag(demo: DemoHandle, x: number, y: number): Status;
