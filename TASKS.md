@@ -289,17 +289,17 @@ good"). Wasm busy 640 × 360: 1.84 ms a step (125 M cells/s); render 8.6
 
 ---
 
-## 1. `docs/15-swarm.md` (PR)
+## ✅ 1. `docs/15-swarm.md` (PR)
 
-- [ ] The track's doc, S1 first: the model at the source (ECE 4760's
-      pseudocode, Reynolds 1987), Δt = 1, double buffering against M9's
-      in-place scan, the counting-sort grid and why not the engine's,
-      what's tested when nothing is conserved, the measurement plan.
-- [ ] `references.md`: the papers above (Reynolds 1987, Couzin et al.
-      2002, Vicsek et al. 1995, Allen & Tildesley 2017, Hockney &
-      Eastwood) with their DOIs; the secondary sources marked as such.
-      Every claim in the doc cites a paper; the course page only for the
-      parameter values.
+The track's doc, S1 first: Reynolds' rules in ECE 4760's form (Couzin et
+al.'s zones with constant gains), the update order as published, the
+clamp at zero speed, a map with Δt = 1, double buffering against M9's
+in-place scan, f32 only, brute force and a counting-sort cell list
+(Allen & Tildesley; Hockney & Eastwood) and why not the engine's
+broadphase, what's tested with nothing conserved (polarization: Couzin
+et al., Vicsek et al.), the measurements. `references.md`: a Swarms
+section, the papers with Crossref-checked DOIs, volumes and pages; the
+course page and GDC talk marked secondary.
 
 ## 2. Boids, brute force (PR)
 

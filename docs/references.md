@@ -110,6 +110,42 @@ Environment for Modeling.* MIT Press. The Margolus (block) neighbourhood:
 order-free and conserving by construction; weighed for M9, noted for M10.
 - DOI: https://doi.org/10.7551/mitpress/1763.001.0001
 
+## Swarms (`15-swarm.md`, S1–S5)
+
+**Reynolds, C. W. (1987).** *Flocks, herds and schools: a distributed
+behavioral model.* SIGGRAPH Computer Graphics 21(4), 25–34. Boids:
+separation, alignment and cohesion from local perception.
+- DOI: https://doi.org/10.1145/37402.37406
+
+**Couzin, I. D., Krause, J., James, R., Ruxton, G. D. & Franks, N. R.
+(2002).** *Collective memory and spatial sorting in animal groups.* J.
+Theor. Biol. 218(1), 1–11. Zones of repulsion, orientation and
+attraction; group polarization, S1's order measure.
+- DOI: https://doi.org/10.1006/jtbi.2002.3065
+
+**Vicsek, T., Czirók, A., Ben-Jacob, E., Cohen, I. & Shochet, O.
+(1995).** *Novel type of phase transition in a system of self-driven
+particles.* Phys. Rev. Lett. 75(6), 1226–1229. The order parameter `v_a`
+and its transition with noise (S2).
+- DOI: https://doi.org/10.1103/PhysRevLett.75.1226
+
+**Allen, M. P. & Tildesley, D. J. (2017).** *Computer Simulation of
+Liquids*, 2nd ed. Oxford University Press. Cell lists for fixed-radius
+neighbours: S1's grid.
+- DOI: https://doi.org/10.1093/oso/9780198803195.001.0001
+
+**Hockney, R. W. & Eastwood, J. W.** *Computer Simulation Using
+Particles* (1981; CRC Press reprint 2021). The chaining mesh, the cell
+list's origin.
+- DOI: https://doi.org/10.1201/9780367806934
+
+*Secondary:* Adams, V. H., *Boids algorithm* (ECE 4760, Cornell; the
+parameter values and update order, read 2026-11-11):
+https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html.
+Reynolds, C. W. (1999), *Steering behaviors for autonomous characters*,
+GDC (flee): http://www.red3d.com/cwr/steer/gdc99/. Le Grand, S. (2007),
+*Broad-phase collision detection with CUDA*, GPU Gems 3, ch. 32.
+
 ## Integrators and stability (`07-soft-bodies.md`, M1–M5)
 
 **Hairer, E., Lubich, C., Wanner, G. (2006).** *Geometric Numerical
