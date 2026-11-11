@@ -196,3 +196,24 @@ pub(crate) unsafe extern "C" fn demo_set_damping(d: *mut Demo, c: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
     unsafe { d.as_mut() }.map_or(0, |d| u32::from(d.set_damping(c)))
 }
+
+/// Caps the physics steps one `demo_advance` may run at `n` (`0`: no cap),
+/// dropping owed time past it: a page's step budget, so a page too slow
+/// for real time runs in slow motion instead of freezing
+/// (`docs/workers.md`). Returns 1, or 0 above
+/// [`MAX_RATE_HZ`](abi::MAX_RATE_HZ) or for a null handle.
+///
+/// # Safety
+/// `d` must be null or a live handle from a `demo_new*` export.
+#[unsafe(no_mangle)]
+pub(crate) unsafe extern "C" fn demo_set_step_cap(d: *mut Demo, n: u32) -> u32 {
+    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
+    let Some(d) = (unsafe { d.as_mut() }) else {
+        return 0;
+    };
+    if n > abi::MAX_RATE_HZ {
+        return 0;
+    }
+    d.set_step_cap(NonZeroU32::new(n));
+    1
+}

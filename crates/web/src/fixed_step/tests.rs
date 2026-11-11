@@ -105,3 +105,25 @@ fn negative_and_nan_elapsed_are_ignored() {
     let (steps, _) = run([f64::NAN, DT]);
     assert_eq!(steps, 1);
 }
+
+#[test]
+fn a_cap_pays_out_at_most_its_steps_and_drops_the_rest() {
+    let mut clock = clock_60hz();
+    clock.set_cap(NonZeroU32::new(2));
+    // A 0.25 s frame owes 15 steps: 2 run, 13 are dropped, not owed.
+    assert_eq!(clock.advance(MAX_FRAME_TIME), 2);
+    assert!(clock.leftover() < DT);
+    // The next normal frame takes its one step, not a backlog.
+    assert_eq!(clock.advance(DT), 1);
+    // Uncapped again: a long frame runs everything it owes.
+    clock.set_cap(None);
+    assert_eq!(clock.advance(5.0 * DT), 5);
+}
+
+#[test]
+fn a_rate_change_keeps_the_cap() {
+    let mut clock = clock_60hz();
+    clock.set_cap(NonZeroU32::new(1));
+    clock.set_rate(NonZeroU32::new(120).unwrap());
+    assert_eq!(clock.advance(MAX_FRAME_TIME), 1);
+}

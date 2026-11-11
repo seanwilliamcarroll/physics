@@ -136,6 +136,9 @@ export interface EngineExports {
   /** [x, y, r, ...] f32: the pockets. */
   demo_pockets_ptr(demo: DemoHandle): Ptr;
   demo_pockets_len(demo: DemoHandle): number;
+  /** At most n physics steps per demo_advance (0: no cap), dropping owed
+   *  time past it: the page's step budget (loop.ts StepBudget). */
+  demo_set_step_cap(demo: DemoHandle, n: number): Status;
   /** Test hook: panics on purpose (smoke test only). */
   demo_panic_for_test(): void;
 }

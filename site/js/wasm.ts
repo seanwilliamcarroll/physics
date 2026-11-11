@@ -2,7 +2,8 @@
 // by the Rust panic hook; see crates/web/src/imports.rs).
 
 // `import type` is erased when compiling: no runtime import of engine.d.ts.
-import { COORDS_PER_PARTICLE } from "./abi.ts";
+import { COORDS_PER_PARTICLE, MAX_RATE_HZ } from "./abi.ts";
+import { STEP_BUDGET_MS, StepBudget } from "./loop.ts";
 import type { DemoHandle, EngineExports, EngineImports } from "./engine";
 
 /** Default location, resolved relative to this file (not the page), so any
@@ -43,7 +44,34 @@ export async function loadEngine(url: URL | string = ENGINE_URL): Promise<Engine
   // asserts their shape. The smoke test is what verifies it at runtime.
   const exports = instance.exports as unknown as EngineExports;
   memory = exports.memory;
-  return exports;
+  return withStepBudget(exports);
+}
+
+/** The page's step budget (loop.ts): every `demo_advance` through the
+ *  engine `loadEngine` returns is capped and timed by it. */
+export const stepBudget = new StepBudget(STEP_BUDGET_MS, MAX_RATE_HZ);
+
+/** `exports` with `demo_advance` capped by `stepBudget` and timed (physics
+ *  only: drawing isn't in it), and `demo_free` forgetting the demo. The
+ *  exports object itself is frozen, so this is a copy. */
+function withStepBudget(exports: EngineExports): EngineExports {
+  const advance = exports.demo_advance;
+  const free = exports.demo_free;
+  return {
+    ...exports,
+    demo_advance(demo, elapsed) {
+      const cap = stepBudget.cap;
+      exports.demo_set_step_cap(demo, cap);
+      const t0 = performance.now();
+      const steps = advance(demo, elapsed);
+      stepBudget.record(demo, steps, performance.now() - t0, cap);
+      return steps;
+    },
+    demo_free(demo) {
+      stepBudget.forget(demo);
+      free(demo);
+    },
+  };
 }
 
 /** A Float32Array view of a demo's interleaved [x0, y0, x1, y1, ...]

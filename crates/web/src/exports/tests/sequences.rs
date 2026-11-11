@@ -37,8 +37,8 @@ use super::super::readouts::{
 };
 use super::super::settings::{
     demo_set_beta, demo_set_damping, demo_set_integrator, demo_set_iterations, demo_set_order,
-    demo_set_rate, demo_set_softening, demo_set_solver, demo_set_stabilization, demo_set_stiffness,
-    demo_set_substeps, demo_set_theta,
+    demo_set_rate, demo_set_softening, demo_set_solver, demo_set_stabilization, demo_set_step_cap,
+    demo_set_stiffness, demo_set_substeps, demo_set_theta,
 };
 use crate::abi;
 use crate::demo::Demo;
@@ -301,6 +301,7 @@ enum Call {
     /// Recompute the broadphase's pairs.
     Pairs,
     Strike(f64, f64, f64, f64),
+    StepCap(u32),
     Speculative(u32),
     Respot,
 }
@@ -334,6 +335,7 @@ fn call() -> impl Strategy<Value = Call> {
             .prop_map(|(x, y, v, t)| Call::Strike(x, y, v, t)),
         1 => code().prop_map(Call::Speculative),
         1 => Just(Call::Respot),
+        1 => size(4, abi::MAX_RATE_HZ).prop_map(Call::StepCap),
         1 => any::<u32>().prop_map(|i| Call::Particle(i % (2 * SMALL_BODIES + 4))),
     ]
 }
@@ -541,6 +543,7 @@ unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
             Call::Strike(x, y, v, t) => demo_strike(d, x, y, v, t),
             Call::Speculative(c) => demo_set_speculative(d, c),
             Call::Respot => demo_respot_cue(d),
+            Call::StepCap(n) => demo_set_step_cap(d, n),
             Call::Integrator(c) => demo_set_integrator(d, c),
             Call::Rate(hz) => demo_set_rate(d, hz),
             Call::Softening(e) => demo_set_softening(d, e),
@@ -620,6 +623,7 @@ fn every_call_on_null_is_refused() {
         Call::Strike(1.0, 0.0, 1.0, 0.0),
         Call::Speculative(1),
         Call::Respot,
+        Call::StepCap(1),
     ] {
         // SAFETY: null is allowed by every export's contract.
         let refused = unsafe { apply(null, &call) }.unwrap();

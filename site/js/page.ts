@@ -8,6 +8,7 @@ import { cssColor } from "./canvas.ts";
 import { slider } from "./controls.ts";
 import { byId } from "./dom.ts";
 import { MS_PER_SECOND, RateMeter, runLoop } from "./loop.ts";
+import { stepBudget } from "./wasm.ts";
 import { errorText, runSmoke, smokeError, smokeMode } from "./smoke.ts";
 import type { IntOption } from "./options.ts";
 import type { PlotColors } from "./plot.ts";
@@ -82,8 +83,9 @@ export function runDemo<P extends { demo: DemoHandle | null; ctx: CanvasRenderin
     const { steps, status } = o.frame(elapsed, now);
     fps.add(now);
     sps.add(now, steps);
+    const slow = stepBudget.limited ? " (slow motion: step budget)" : "";
     hud.textContent =
-      `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s · ${status}` +
+      `display ${fps.perSecond} fps · physics ${sps.perSecond} steps/s${slow} · ${status}` +
       (Number.isFinite(o.maxFps) ? ` · capped at ${o.maxFps} fps` : "");
   }, { maxFps: o.maxFps });
 }
