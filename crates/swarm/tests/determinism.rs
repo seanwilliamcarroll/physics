@@ -46,3 +46,15 @@ fn the_grid_golden_hash_is_unchanged() {
     let h = run_with(Neighbours::Grid);
     assert_eq!(h, GOLDEN_GRID, "if intended, set GOLDEN_GRID = {h:#018x}");
 }
+
+/// And sorted (the default): lane sums, another order again.
+const GOLDEN_SORTED: u64 = 0x63d2_df7d_ad03_a772;
+
+#[test]
+fn the_sorted_golden_hash_is_unchanged() {
+    let h = run_with(Neighbours::Sorted);
+    assert_eq!(
+        h, GOLDEN_SORTED,
+        "if intended, set GOLDEN_SORTED = {h:#018x}"
+    );
+}

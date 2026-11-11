@@ -96,6 +96,24 @@ impl Grid {
     /// Every boid in the 3 × 3 block of cells around `(x, y)`'s (itself
     /// included, if it's one of them): the candidates within one cell.
     pub(crate) fn around(&self, x: f32, y: f32) -> impl Iterator<Item = usize> + '_ {
+        self.spans_around(x, y).flat_map(move |span| {
+            self.order
+                .get(span)
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|&j| usize::try_from(j).ok())
+        })
+    }
+
+    /// The slots in `order` of the 3 × 3 block around `(x, y)`'s cell, as
+    /// up to three ranges: a row's three cells are adjacent in cell order,
+    /// so their slots are one run. Boids stored in cell order
+    /// ([`Self::order`] applied) are those same ranges of the arrays.
+    pub(crate) fn spans_around(
+        &self,
+        x: f32,
+        y: f32,
+    ) -> impl Iterator<Item = core::ops::Range<usize>> + '_ {
         let (cx, cy) = self.coords(x, y);
         let (x0, x1) = (
             cx.saturating_sub(1),
@@ -105,21 +123,20 @@ impl Grid {
             cy.saturating_sub(1),
             (cy + 1).min(self.rows.saturating_sub(1)),
         );
-        (y0..=y1).flat_map(move |ny| {
-            // A row's three cells are contiguous in `order`.
+        (y0..=y1).map(move |ny| {
             let (a, b) = (ny * self.cols + x0, ny * self.cols + x1 + 1);
-            let span = match (self.start.get(a), self.start.get(b)) {
+            match (self.start.get(a), self.start.get(b)) {
                 (Some(&s), Some(&e)) => {
                     usize::try_from(s).unwrap_or(0)..usize::try_from(e).unwrap_or(0)
                 }
                 _ => 0..0,
-            };
-            self.order
-                .get(span)
-                .unwrap_or_default()
-                .iter()
-                .filter_map(|&j| usize::try_from(j).ok())
+            }
         })
+    }
+
+    /// Boid indices in cell order (after [`Self::rebuild`]).
+    pub(crate) fn order(&self) -> &[u32] {
+        &self.order
     }
 }
 

@@ -69,8 +69,11 @@ fn boids_stray_past_the_edge_but_come_back() {
 fn storage_order_changes_only_rounding() {
     let f = Flock::new(300, arena(), P, 5).unwrap();
     let reversed: Vec<Boid> = f.boids().collect::<Vec<_>>().into_iter().rev().collect();
+    // Brute force: a boid keeps its index (Sorted renumbers them).
     let mut a = f.clone();
+    a.set_neighbours(Neighbours::Brute);
     let mut b = Flock::with_boids(arena(), P, reversed).unwrap();
+    b.set_neighbours(Neighbours::Brute);
     for _ in 0..10 {
         a.step();
         b.step();
@@ -118,6 +121,7 @@ fn alignment_makes_a_flock() {
 #[test]
 fn grid_and_brute_force_agree_to_rounding() {
     let mut grid = Flock::new(1000, Arena::new(1280.0, 720.0).unwrap(), P, 9).unwrap();
+    grid.set_neighbours(Neighbours::Grid);
     let mut brute = grid.clone();
     brute.set_neighbours(Neighbours::Brute);
     for steps in [1_u64, 10] {
@@ -131,5 +135,40 @@ fn grid_and_brute_force_agree_to_rounding() {
             .map(|(a, b)| (a.x - b.x).abs().max((a.y - b.y).abs()))
             .fold(0.0_f32, f32::max);
         assert!(worst < 1e-3, "after {steps} steps: {worst} px apart");
+    }
+}
+
+/// Sorted renumbers the boids, so it's compared with the grid as a set:
+/// every grid boid has a sorted one within the bound (position and
+/// velocity). Measured, 1,000 boids: 3.1e-5 after a step, 1.2e-4 after
+/// 10 (lane sums: another order). Bound 1e-3.
+#[test]
+fn sorted_and_grid_agree_as_sets() {
+    let mut grid = Flock::new(1000, Arena::new(1280.0, 720.0).unwrap(), P, 9).unwrap();
+    grid.set_neighbours(Neighbours::Grid);
+    let mut sorted = grid.clone();
+    sorted.set_neighbours(Neighbours::Sorted);
+    for steps in [1_u64, 10] {
+        while grid.steps() < steps {
+            grid.step();
+            sorted.step();
+        }
+        let theirs: Vec<Boid> = sorted.boids().collect();
+        let worst = grid
+            .boids()
+            .map(|a| {
+                theirs
+                    .iter()
+                    .map(|b| {
+                        (a.x - b.x)
+                            .abs()
+                            .max((a.y - b.y).abs())
+                            .max((a.vx - b.vx).abs())
+                            .max((a.vy - b.vy).abs())
+                    })
+                    .fold(f32::INFINITY, f32::min)
+            })
+            .fold(0.0_f32, f32::max);
+        assert!(worst < 1e-3, "after {steps} steps: {worst}");
     }
 }
