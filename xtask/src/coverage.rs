@@ -135,13 +135,20 @@ fn rust(root: &Path, cargo: &OsString) -> Result<(), String> {
 
     // Run once (instrumented build in target/llvm-cov-target), then report
     // twice from the same profile data.
-    let status = llvm_cov(&[
-        "--quiet",
-        "--workspace",
-        "--exclude",
-        "xtask",
-        "--no-report",
-    ])
+    // Under nextest when it's installed (`cargo llvm-cov nextest`), as the
+    // other test runs are; the workspace has no doctests to merge in.
+    let runner: &[&str] = if crate::has_nextest(cargo) {
+        &["nextest"]
+    } else {
+        &[]
+    };
+    let status = llvm_cov(
+        &[
+            runner,
+            &["--workspace", "--exclude", "xtask", "--no-report"],
+        ]
+        .concat(),
+    )
     .status()
     .map_err(|e| format!("failed to run cargo llvm-cov: {e}"))?;
     if !status.success() {

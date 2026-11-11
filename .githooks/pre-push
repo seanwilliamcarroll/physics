@@ -6,8 +6,19 @@ cd "$(git rev-parse --show-toplevel)"
 # <remote sha>" per ref on stdin; kept for the mutation report (last).
 pushed=$(cat)
 
-echo "pre-push: cargo test"
-cargo test --workspace --quiet
+# Tests: nextest when installed (every test in its own process, all
+# binaries' tests in one pool: ~15 s here against cargo test's ~90 s),
+# else cargo test. Nextest doesn't run doctests, so they get their own
+# step (the workspace has none today; it costs ~1 s).
+if cargo nextest --version >/dev/null 2>&1; then
+  echo "pre-push: cargo nextest run"
+  cargo nextest run --workspace --no-fail-fast --status-level fail --final-status-level slow
+  echo "pre-push: cargo test --doc"
+  cargo test --workspace --doc --quiet
+else
+  echo "pre-push: cargo test (cargo-nextest not installed: cargo install --locked cargo-nextest)"
+  cargo test --workspace --quiet
+fi
 
 # Site JS unit tests (pure modules only; node's built-in runner, no deps).
 # A glob, not a directory: node --test treats a directory as a module path.
@@ -45,11 +56,34 @@ echo "pre-push: cargo xtask smoke"
 cargo xtask smoke
 
 # Mutation report: informational, never fails the push (everything above
-# already passed). Mutates only the lines this push changes and lists the
-# mutants no test caught: changes no test would notice breaking. Needs
-# cargo-mutants (`cargo install cargo-mutants`); SKIP_MUTANTS=1 skips it,
-# MUTANTS_MAX (default 60, ~2-3 min) caps how many run before it prints
-# the command instead (docs/04-testing.md, "Mutation testing").
+# already passed), and opt-in (MUTANTS=1, below). Mutates only the lines
+# this push changes and lists the mutants no test caught. Needs
+# cargo-mutants; MUTANTS_MAX (default 60) caps how many run before it
+# prints the command instead (docs/04-testing.md, "Mutation testing").
+
+# The push's Rust diff into $1; empty if none.
+push_diff() {
+  zero=0000000000000000000000000000000000000000
+  echo "$pushed" | while read -r _ local_sha _ remote_sha; do
+    [ -n "${local_sha:-}" ] && [ "$local_sha" != "$zero" ] || continue
+    if [ "$remote_sha" = "$zero" ]; then
+      remote_sha=$(git merge-base origin/main "$local_sha" 2>/dev/null) || continue
+    fi
+    git diff "$remote_sha" "$local_sha" -- '*.rs'
+  done > "$1"
+}
+
+mutation_count() {
+  command -v cargo-mutants >/dev/null 2>&1 || return 0
+  mkdir -p target
+  push_diff target/pre-push.diff
+  [ -s target/pre-push.diff ] || return 0
+  count=$(cargo mutants --list --in-diff target/pre-push.diff 2>/dev/null | wc -l | tr -d ' ')
+  [ "$count" -gt 0 ] || return 0
+  echo "pre-push: mutants: $count in the changed lines, not run (MUTANTS=1 runs them; or:"
+  echo "  cargo xtask mutants --in-diff target/pre-push.diff -o mutants.out/pre-push )"
+}
+
 mutation_report() {
   command -v cargo-mutants >/dev/null 2>&1 || { echo "pre-push: mutants: cargo-mutants not installed, skipped"; return; }
   zero=0000000000000000000000000000000000000000
@@ -73,10 +107,10 @@ mutation_report() {
   elif [ "$count" -gt "$max" ]; then
     cp "$diff_file" target/pre-push.diff
     echo "pre-push: mutants: $count mutants (over MUTANTS_MAX=$max), not run. To run them:"
-    echo "  CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo mutants -j 4 --in-diff target/pre-push.diff -o mutants.out/pre-push"
+    echo "  cargo xtask mutants --in-diff target/pre-push.diff -o mutants.out/pre-push"
   else
     echo "pre-push: mutants: $count in the changed lines (informational)"
-    CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo mutants -j 4 --no-shuffle --in-diff "$diff_file" \
+    CARGO_PROFILE_TEST_OPT_LEVEL=1 cargo xtask mutants -j 4 --in-diff "$diff_file" \
       -o mutants.out/pre-push >/dev/null 2>&1 || true
     missed=mutants.out/pre-push/mutants.out/missed.txt
     if [ -s "$missed" ]; then
@@ -88,8 +122,12 @@ mutation_report() {
   fi
   rm -f "$diff_file"
 }
-if [ "${SKIP_MUTANTS:-0}" = "1" ]; then
-  echo "pre-push: mutants: skipped (SKIP_MUTANTS=1)"
-else
+# Opt in with MUTANTS=1: a run can take minutes, and git holds the
+# connection to GitHub open (idle) for the whole hook, which GitHub drops
+# (a stack push failed that way). Otherwise it reports the count and the
+# command to run it.
+if [ "${MUTANTS:-0}" = "1" ]; then
   mutation_report || true
+else
+  mutation_count || true
 fi

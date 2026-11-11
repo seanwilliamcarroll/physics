@@ -200,21 +200,45 @@ const BOX_RISE_TOL: f64 = 2e-10;
 /// settle a little higher), against 1 when elastic.
 const BOX_RUN_DOWN: f64 = 0.3;
 
-#[test]
-fn the_ball_box_runs_down_when_inelastic() {
-    for solver in Solver::ALL {
-        for e in [0.9, 0.5, 0.0] {
-            let s = box_energy_every_2s(solver, e);
-            println!("{solver:?} e {e}: {s:.4?}");
-            for (k, pair) in s.windows(2).enumerate() {
-                if let [a, b] = pair {
-                    assert!(b - a < BOX_RISE_TOL, "{solver:?} e {e}: rose at {k}: {s:?}");
-                }
-            }
-            let last = s.last().copied().unwrap_or(1.0);
-            assert!(last < BOX_RUN_DOWN, "{solver:?} e {e}: kept {last}");
+/// The box at restitution `e` runs down: energy never rising between 2 s
+/// samples, and at rest by 20 s. One test per (solver, e), so a parallel
+/// runner (nextest) spreads them: as one test they took 30 s, the longest
+/// in the workspace.
+fn runs_down(solver: Solver, e: f64) {
+    let s = box_energy_every_2s(solver, e);
+    println!("{solver:?} e {e}: {s:.4?}");
+    for (k, pair) in s.windows(2).enumerate() {
+        if let [a, b] = pair {
+            assert!(b - a < BOX_RISE_TOL, "{solver:?} e {e}: rose at {k}: {s:?}");
         }
     }
+    let last = s.last().copied().unwrap_or(1.0);
+    assert!(last < BOX_RUN_DOWN, "{solver:?} e {e}: kept {last}");
+}
+
+#[test]
+fn the_ball_box_runs_down_at_e_0_9_xpbd() {
+    runs_down(Solver::Xpbd, 0.9);
+}
+#[test]
+fn the_ball_box_runs_down_at_e_0_5_xpbd() {
+    runs_down(Solver::Xpbd, 0.5);
+}
+#[test]
+fn the_ball_box_runs_down_at_e_0_xpbd() {
+    runs_down(Solver::Xpbd, 0.0);
+}
+#[test]
+fn the_ball_box_runs_down_at_e_0_9_impulse() {
+    runs_down(Solver::Impulse, 0.9);
+}
+#[test]
+fn the_ball_box_runs_down_at_e_0_5_impulse() {
+    runs_down(Solver::Impulse, 0.5);
+}
+#[test]
+fn the_ball_box_runs_down_at_e_0_impulse() {
+    runs_down(Solver::Impulse, 0.0);
 }
 
 /// One rod per ball, nothing between them for Gauss–Seidel to pass on, and

@@ -1,0 +1,7 @@
+# cargo-nextest (docs/04-testing.md, "Test runner"): every test in its own
+# process, all binaries' tests in one pool, so the slow ones overlap.
+
+[profile.default]
+# Flag a test past 15 s; stop one at 2 min (8 periods): a hung test fails
+# the run instead of stalling a push.
+slow-timeout = { period = "15s", terminate-after = 8 }

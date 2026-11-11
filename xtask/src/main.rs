@@ -129,6 +129,18 @@ fn run(cmd: Command) -> Result<(), String> {
     }
 }
 
+/// Whether `cargo nextest` is installed (`docs/04-testing.md`, "Test
+/// runner"): `slow`, `coverage` and the pre-push hook use it when it is,
+/// and fall back to `cargo test`, with a note, when it isn't.
+pub(crate) fn has_nextest(cargo: &std::ffi::OsStr) -> bool {
+    process::Command::new(cargo)
+        .args(["nextest", "--version"])
+        .stdout(process::Stdio::null())
+        .stderr(process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 /// The workspace root: this crate's manifest dir is `<root>/xtask`, baked
 /// in at compile time, so commands work from any working directory.
 fn workspace_root() -> Result<PathBuf, String> {
@@ -256,6 +268,11 @@ fn test_wasm(root: &Path) -> Result<(), String> {
         // before libtest prints the output it captured, so the panic message
         // would be lost. --nocapture prints it as it happens.
         .args(["--", "--nocapture"])
+        // Test builds optimized: debug wasm under wasmtime took 88 s, this
+        // 15 s. Overflow checks and debug assertions stay on (they're
+        // separate settings), and optimization doesn't change float results
+        // in Rust (no fast-math), so the goldens still compare exactly.
+        .env("CARGO_PROFILE_TEST_OPT_LEVEL", "1")
         .status()
         .map_err(|e| format!("failed to run cargo: {e}"))?;
     if status.success() {

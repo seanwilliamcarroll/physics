@@ -590,13 +590,37 @@ health audit, then filled in):
 - **Deferred to M6:** contact goldens, the cradle and rack scenes,
   contact-order properties.
 
+## Test runner: nextest
+
+`cargo nextest run` (`cargo install --locked cargo-nextest`) runs the
+native tests in the pre-push hook, `cargo xtask slow` and `cargo xtask
+coverage`, each falling back to `cargo test` with a note where it isn't
+installed. `cargo test` still works as ever by hand.
+
+- **Why:** `cargo test` runs one test binary at a time; nextest runs
+  every binary's tests in one pool, one process each, so the long tests
+  overlap. Measured (warm): **89 s with `cargo test`, 19 s with nextest**
+  (623 tests), after the one 30 s test (the ball box running down) was
+  split per solver and restitution, so the longest is now ~15 s.
+- **`.config/nextest.toml`:** a test past 15 s is flagged slow; one past
+  2 min is stopped, so a hang fails a push instead of stalling it.
+- **Not under nextest:** doctests (it can't run them on stable; a `cargo
+  test --doc` step follows it, though the workspace has none today), and
+  `cargo xtask test-wasm` (a process per test would be a wasmtime start
+  per test).
+
 ## Running strategy
 
 Three tiers (the checklist's §3):
 
-- **Every push (the pre-push hook):** every test at its default size,
-  with property tests at 64 cases; doc links; wasm tests; smoke; and an
-  informational mutation report on the push's own lines.
+- **Every push (the pre-push hook, ~60 s warm):** every test at its
+  default size (nextest), with property tests at 64 cases; the public API
+  snapshots; doc links; wasm tests (built at `opt-level = 1`: 88 s became
+  15 s); smoke. The mutation report on the push's own lines is **opt-in**
+  (`MUTANTS=1`): otherwise the hook prints how many there are and the
+  command. It was the unbounded part, and git holds the connection to
+  GitHub open, idle, for the whole hook: a stack push of 3–6 minutes was
+  dropped by GitHub ("Connection closed by remote host").
 - **The slow tier, `cargo xtask slow`:** not in any hook. Run it before a
   release, or nightly (on the compute node, next to the mutation runs).
   - **Every test with each property test at 10 000 cases**
@@ -637,11 +661,12 @@ still passed.
   `cargo-mutants-*.tmp` build dirs from killed runs removed before and
   after, nothing else touched; `-j 8 --no-shuffle` unless given; every
   other argument passed through, and its exit code returned.
-- **Pre-push (informational, never a gate):** the hook mutates only the
-  lines the push changes and lists what no test caught. Up to
-  `MUTANTS_MAX` mutants (default 60) run, `-j 4`, test builds at
-  `opt-level = 1`; past that it prints the command instead.
-  `SKIP_MUTANTS=1` skips it. Output: `mutants.out/pre-push/`.
+- **Pre-push (opt-in, informational, never a gate):** without
+  `MUTANTS=1` the hook only counts the mutants in the push's changed
+  lines and prints the `cargo xtask mutants --in-diff …` command. With
+  it, it mutates those lines (up to `MUTANTS_MAX`, default 60, `-j 4`,
+  test builds at `opt-level = 1`) and lists what no test caught. Output:
+  `mutants.out/pre-push/`.
 - **A missed mutant is one of:** a real gap (write the test); dead or
   redundant code (delete it); an **equivalent** mutant, which can't change
   behavior (a least-squares sum's `t − t̄` against `t + t̄`, since the
