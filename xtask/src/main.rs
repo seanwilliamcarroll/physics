@@ -22,7 +22,7 @@ mod slow;
 mod smoke;
 
 /// Where `cargo build` puts the wasm artifact, relative to the target dir.
-const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/web.wasm";
+const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/engine_web.wasm";
 /// The acoustic track's module (A1.5): `crates/acoustic-web`, served as
 /// `site/pkg/acoustic.wasm`.
 const ACOUSTIC_ARTIFACT: &str = "wasm32-unknown-unknown/release/acoustic_web.wasm";
@@ -43,7 +43,7 @@ struct Cli {
 
 #[derive(Subcommand, Copy, Clone, Debug, PartialEq, Eq)]
 enum Command {
-    /// Compile the site TypeScript and build crates/web and crates/acoustic-web for wasm32 into site/pkg/{engine,acoustic}.wasm
+    /// Compile the site TypeScript and build crates/engine-web and crates/acoustic-web for wasm32 into site/pkg/{engine,acoustic}.wasm
     Site,
     /// Build the site, then serve it with tsc --watch alongside; Ctrl-C stops both
     Serve {
@@ -159,7 +159,7 @@ fn site(root: &Path) -> Result<(), String> {
             "--target",
             "wasm32-unknown-unknown",
             "-p",
-            "web",
+            "engine-web",
             "-p",
             "acoustic-web",
         ])

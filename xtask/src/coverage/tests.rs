@@ -50,7 +50,10 @@ fn empty_or_garbled_input_gives_nothing() {
 #[test]
 fn crate_is_the_component_before_src() {
     assert_eq!(crate_of("engine/src/world.rs"), Some("engine"));
-    assert_eq!(crate_of("/repo/crates/web/src/demo/x.rs"), Some("web"));
+    assert_eq!(
+        crate_of("/repo/crates/engine-web/src/demo/x.rs"),
+        Some("engine-web")
+    );
     assert_eq!(crate_of(r"crates\math\src\vec2.rs"), Some("math"));
     assert_eq!(crate_of("src/lib.rs"), None);
     assert_eq!(crate_of("world.rs"), None);

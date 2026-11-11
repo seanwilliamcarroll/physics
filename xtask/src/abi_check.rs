@@ -5,7 +5,7 @@
 //! `bigint` exactly where wasm has `i64` (`number` covers `i32`, `f32`
 //! and `f64`). Run by `cargo xtask site`, so `serve`, `smoke` and the
 //! pre-push hook all check it. The integer codes are checked separately,
-//! by `crates/web/src/abi/tests.rs`.
+//! by `crates/engine-web/src/abi/tests.rs`.
 //!
 //! Not checked: argument *order* among parameters of the same JS type,
 //! or what a `number` means (a handle, a count). Those need a reader.

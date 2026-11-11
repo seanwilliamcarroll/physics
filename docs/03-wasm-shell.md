@@ -28,7 +28,7 @@ physics/
     pkg/engine.wasm   // copied from the build (gitignored)
 ```
 
-`crates/web/Cargo.toml`:
+`crates/engine-web/Cargo.toml`:
 
 ```toml
 [lib]
@@ -52,7 +52,7 @@ panic = "abort"
 ## Build and run
 
 ```sh
-cargo xtask site                      # release build of `web` → site/pkg/engine.wasm
+cargo xtask site                      # release build of `engine-web` → site/pkg/engine.wasm
 python3 -m http.server -d site        # instantiateStreaming won't load from file://
 ```
 
@@ -64,7 +64,7 @@ M3 page with a pre-M3 engine (`demo_new` returned null for the new kind).
 `cargo xtask site` wraps the manual steps:
 
 ```sh
-cargo build --release --target wasm32-unknown-unknown -p web
+cargo build --release --target wasm32-unknown-unknown -p engine-web
 cp target/wasm32-unknown-unknown/release/web.wasm site/pkg/engine.wasm
 ```
 

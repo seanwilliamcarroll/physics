@@ -1,5 +1,5 @@
 // Loads the engine module and supplies its one import (console_error, used
-// by the Rust panic hook; see crates/web/src/imports.rs).
+// by the Rust panic hook; see crates/engine-web/src/imports.rs).
 
 // `import type` is erased when compiling: no runtime import of engine.d.ts.
 import { COORDS_PER_PARTICLE, MAX_RATE_HZ } from "./abi.ts";

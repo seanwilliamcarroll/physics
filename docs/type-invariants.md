@@ -35,7 +35,7 @@ and a test are cheaper.
 | `World::new`, `set_substeps` | `substeps ≥ 1` | `NonZeroU32` (since the M3/M4 audit; was a `Result`) |
 | `ScalarKind`, `DemoKind`, xtask `Command` | Only known codes/commands | Enums parsed once at the boundary (`from_code`, `parse`); `None`/`Err` otherwise |
 | `Vec2`, scalar-returning methods | Results aren't silently discarded | `#[must_use]` (`docs/lint-policy.md`) |
-| `crates/web/src/abi.rs` | Rust and JS agree on wasm codes | One owner, a mirror, and a test that compares them |
+| `crates/engine-web/src/abi.rs` | Rust and JS agree on wasm codes | One owner, a mirror, and a test that compares them |
 | `demo_set_integrator` (M1) | Only known integrators | Wire code decoded once at the boundary (`integrator_from_code`); unknown codes return 0 |
 | `diagnostics::center_of_mass` (M1) | No mean of zero mass | Returns `Option`: `None` rather than `0/0` |
 | Exports | Raw pointers only in one module, each with a contract | `unsafe extern "C"`, `# Safety` docs, `#[expect(unsafe_code)]` on the module |

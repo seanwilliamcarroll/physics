@@ -89,16 +89,16 @@ Scenes without state are functions, not types, one file each under
 `break_shot`, `cradle`, `pool_table` / `pool_rack` / `pool_break`),
 re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 
-## `web` — the wasm boundary
+## `engine-web` — the wasm boundary
 
 | Type | Why it exists |
 |---|---|
-| [`Demo`](../crates/web/src/demo.rs) | One running demo (world, clock, render buffer) behind an opaque handle; all export logic as safe, natively tested Rust. |
-| [`AnyWorld`](../crates/web/src/demo/any_world.rs) | Runtime scalar choice: JS picks f32 or f64 per demo; each variant is a full engine copy in the `.wasm`. `each_scalar!` / `build_any!` keep every per-scalar `match` to one line. |
-| [`Sim<S>`](../crates/web/src/demo/sim.rs) | A world plus what the demo must remember about its force, because `World` keeps forces as `dyn` and can't hand them back. |
-| [`SceneForce<S>`](../crates/web/src/demo/sim.rs) | That memory as one enum (none, pairwise with optional θ, uniform), so a θ can't exist without the gravity it approximates. |
-| [`BetweenSteps`](../crates/web/src/demo.rs) | What runs between steps: the fountain's respawn, or nothing. |
-| [`DemoKind`](../crates/web/src/demo/codes.rs), [`GravityScene`](../crates/web/src/demo/codes.rs), [`ScalarKind`](../crates/web/src/demo/codes.rs) | Wire codes decoded once at the boundary; unknown codes become `None`, never a wrong scene. |
+| [`Demo`](../crates/engine-web/src/demo.rs) | One running demo (world, clock, render buffer) behind an opaque handle; all export logic as safe, natively tested Rust. |
+| [`AnyWorld`](../crates/engine-web/src/demo/any_world.rs) | Runtime scalar choice: JS picks f32 or f64 per demo; each variant is a full engine copy in the `.wasm`. `each_scalar!` / `build_any!` keep every per-scalar `match` to one line. |
+| [`Sim<S>`](../crates/engine-web/src/demo/sim.rs) | A world plus what the demo must remember about its force, because `World` keeps forces as `dyn` and can't hand them back. |
+| [`SceneForce<S>`](../crates/engine-web/src/demo/sim.rs) | That memory as one enum (none, pairwise with optional θ, uniform), so a θ can't exist without the gravity it approximates. |
+| [`BetweenSteps`](../crates/engine-web/src/demo.rs) | What runs between steps: the fountain's respawn, or nothing. |
+| [`DemoKind`](../crates/engine-web/src/demo/codes.rs), [`GravityScene`](../crates/engine-web/src/demo/codes.rs), [`ScalarKind`](../crates/engine-web/src/demo/codes.rs) | Wire codes decoded once at the boundary; unknown codes become `None`, never a wrong scene. |
 | [`FixedStep`](../crates/web-common/src/fixed_step.rs) (`web-common`) | Turns real frame time into fixed physics steps, so simulation speed doesn't depend on the display's refresh rate; rate is `NonZeroU32`, so it can't hang. |
 
 ## `site` — TypeScript

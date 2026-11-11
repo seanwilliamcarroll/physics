@@ -16,7 +16,7 @@ per crate.
 - `f32::mul_add` / `f64::mul_add` disallowed (determinism)
 - rustc's `unreachable_pub` (M2): `pub` only on what a crate actually
   exports. `dead_code` ignores `pub` items, so a stray `pub` in a private
-  module hid unused code. Enabling it found none. In `web`, the
+  module hid unused code. Enabling it found none. In `engine-web` (then `web`), the
   `#[no_mangle]` exports are `pub(crate)`: in a `cdylib`, `#[no_mangle]`
   is what makes the `.wasm` export them, not Rust visibility.
 
@@ -45,7 +45,7 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
   with `clap`'s derive API its doc comments are the `--help` text, where
   backticks would print literally. Cargo can't mix `workspace = true` with per-crate
   overrides, so the override goes in source.
-- **`web`:** `#[expect(unsafe_code, reason = "...")]` on exactly two modules,
+- **`engine-web`:** `#[expect(unsafe_code, reason = "...")]` on exactly two modules,
   the FFI boundary in each direction: `exports` (JS calls in) and `imports`
   (Rust calls out; wasm-only, so its expectation is
   `cfg_attr(target_arch = "wasm32", ...)`). Wasm-only code is linted by a
@@ -86,7 +86,7 @@ PR template (`.github/pull_request_template.md`) asks about it on every PR.
   `1.0_f64.to_bits()`, not `0x3ff0_0000_0000_0000`;
   `u64::BITS - (f64::MANTISSA_DIGITS - 1)`, not `12`.
 - **Cross-language values have one owner plus a checked mirror.** The wasm
-  ABI lives in `crates/web/src/abi.rs`; `site/js/abi.js` mirrors it, and a
+  ABI lives in `crates/engine-web/src/abi.rs`; `site/js/abi.js` mirrors it, and a
   Rust test fails if they disagree. Colors live once, in CSS custom
   properties.
 - **Exempt:** `0`, `1`, `2` as in "half" or "pair", array indices, and test
