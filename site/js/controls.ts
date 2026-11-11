@@ -31,14 +31,27 @@ function labeled(parent: HTMLElement, text: string, children: HTMLElement[]): vo
   parent.append(label);
 }
 
-/** A range slider with a live readout. */
+/** Decimal places in `step` as written (0.005 → 3, 1e-4 → 4, 1 → 0): a
+ *  slider's values are multiples of it, so its readout needs no more. */
+export function decimalsOf(step: number): number {
+  const s = String(step);
+  const exp = /e-(\d+)$/.exec(s);
+  if (exp) return Number(exp[1]) + (s.split("e")[0]?.split(".")[1]?.length ?? 0);
+  return s.split(".")[1]?.length ?? 0;
+}
+
+/** A range slider with a live readout. Without `format`, the readout
+ *  shows the step's decimal places: a value from Rust's `f32` reads
+ *  0.0005, not 0.0005000000237487257. */
 export function slider(
   parent: HTMLElement,
-  { label, min, max, step = 1, value, format = String, onInput }: SliderSpec,
+  { label, min, max, step = 1, value, format, onInput }: SliderSpec,
 ): HTMLInputElement {
+  const decimals = decimalsOf(step);
+  format ??= (v: number) => v.toFixed(decimals);
   const input = document.createElement("input");
   Object.assign(input, { type: "range", min: String(min), max: String(max), step: String(step) });
-  input.value = String(value);
+  input.value = value.toFixed(decimals);
   // <output>: the element for a computed value; screen readers announce it.
   const out = document.createElement("output");
   out.textContent = format(value);

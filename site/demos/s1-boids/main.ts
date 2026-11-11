@@ -156,8 +156,12 @@ try {
         label, min, max, step,
         value: s.swarm_param(d, code),
         onInput: (v) => {
-          // Refused (protected ≥ visual, min > max): back to what's set.
-          if (s.swarm_set_param(d, code, v) === 0) input.value = String(s.swarm_param(d, code));
+          // Refused (protected ≥ visual, min > max): back to what's set,
+          // readout included (the re-sent value is accepted: no loop).
+          if (s.swarm_set_param(d, code, v) === 0) {
+            input.value = String(s.swarm_param(d, code));
+            input.dispatchEvent(new Event("input"));
+          }
         },
       });
     }

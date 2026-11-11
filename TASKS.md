@@ -1,4 +1,4 @@
-# TASKS — S1: Boids
+# TASKS — S1: Boids (done; next milestone to plan)
 
 Source: `docs/05-roadmap.md` ("Swarm track", S1), the swarm notes
 (`docs/swarm-rust-implementation.md`, `docs/swarm-resources.md`).
@@ -205,160 +205,23 @@ a brush, scenes drawn with it, cells/s in the HUD (your check: "looks
 good"). Wasm busy 640 × 360: 1.84 ms a step (125 M cells/s); render 8.6
 → 0.47 ms at 1920 × 1080 with a palette.
 
----
 
-## Decisions to review before starting
+## ✅ S1: Boids (done, PRs #176–#184)
 
-1. **Its own crates and module**, as the acoustic track and M9 did:
-   `swarm` (the core: agents, the grid, the rules; no web code; on
-   `math` for `Vec2`, `Scalar`, `SplitMix64`) and `swarm-web` (a cdylib,
-   `swarm.wasm`, on `web-common`: the panic hook, `FixedStep`, the step
-   cap). The hand-written C ABI and the loader (`instantiateWithPanicHook`)
-   as `sand.wasm`. The notes' `wasm-bindgen` + `web-sys` front end isn't
-   used: the repo has neither (`03-wasm-shell.md`).
-2. **The model: Reynolds' three rules (1987) in ECE 4760's concrete
-   form**, which is Couzin et al.'s zone structure (repulsion inside,
-   orientation and attraction beyond) with constant gains. Per neighbour
-   within the visual range: inside the protected range it counts toward
-   **separation** (push away by the summed offsets) and *not* toward the
-   others; outside it, toward **alignment** (match the mean velocity) and
-   **cohesion** (steer to the mean position). Then **edge turning** (a
-   constant push back inside a margin: a box with soft walls), then the
-   **speed clamp** to `[min, max]`. The published values, our defaults:
-   visual range 40, protected 8, centering 0.0005, avoid 0.05, matching
-   0.05, turn 0.2, speed 3–6, a margin of 100. The notes' summary had
-   them wrong (20, 2, 3, 2), which is why the source is read. Their
-   scout "bias" (a course variant) is left out. The defaults are a
-   course's tuning, not measured biology; the doc says so.
-3. **A discrete map, not an ODE: per step, Δt = 1.** The published
-   parameters are in pixels per frame, and the rules are a map from one
-   step to the next, like M9's (no forces, nothing to integrate
-   accurately). World units are the arena's pixels at 1:1. The rate
-   (default 60 steps/s, `FixedStep`) sets how fast the flock moves on
-   screen, not its behaviour. The alternative (velocities per second
-   and a `dt`) would make the rate a numerical choice and the published
-   numbers need converting: no gain for rules.
-4. **Double-buffered, structure of arrays.** `x, y, vx, vy` as separate
-   `Vec`s; each step reads `cur` and writes `next`, then swaps. The
-   result doesn't depend on agent order (in-place, boid 7 would see boid
-   3's new velocity and boid 9's old one) and the update is the shape a
-   GPU pass needs (S4). The contrast with M9's in-place scan, where order
-   is the problem to solve, goes in the doc. The lab's own C updates in
-   place; we don't follow it there.
-5. **f32 only, not generic.** The engine is generic over `Scalar`; here
-   that buys a second copy of the module for a comparison nobody needs
-   (agents aren't an accuracy story). M8's fixed point is the scalar
-   comparison worth having, and the notes' "boids in s15.16" can be its
-   panel then. Goldens still match native and wasm (no transcendentals:
-   `sqrt` is exact in IEEE; no FMA contraction in Rust).
-6. **The speed clamp at zero:** the source divides by the speed without
-   a guard. A boid exactly at rest (speed 0) keeps its previous
-   heading's direction at `min` speed; tested.
-7. **Neighbour search, twice, both kept:** brute force (every pair; the
-   reference) and a **uniform grid by counting sort** (cell = visual
-   range, so every neighbour is in the 3 × 3 block around a boid; a
-   histogram, a prefix sum and a scatter: O(n), no comparison sort, so
-   no sort instantiation in the `.wasm`). Bounded arena, so a dense
-   array of cells: not the engine's sorted cell list (built for an
-   unbounded world), as the roadmap decided. **Tested exact:** the grid
-   finds the same neighbour *set* as brute force (proptest). Trajectories
-   agree only to rounding (summation order differs), measured.
-8. **The cost experiments, each measured on its own** (native criterion
-   and wasm in Node, as `bench-wasm`): ns per agent-step, brute force
-   against grid, at 1k, 10k and 100k (the crossover); then **agents
-   reordered by cell** every step against indexing through the order
-   (the cache experiment); then **`simd128`** for `swarm.wasm` only
-   (autovectorization from the SoA layout, no intrinsics, no `unsafe`).
-   Each is adopted only if it wins, and the numbers go in the doc either
-   way.
-9. **Rendering: splatted into an RGBA buffer by Rust**, `pixels.ts`
-   from M9. Each boid a few pixels, **coloured by heading** (a hue
-   wheel), so aligned groups show as one colour. Canvas path calls stop
-   scaling at a few thousand agents (the notes; M0's measurement agrees).
-   The heading's hue from a pseudo-angle (no trig); rendering only, so
-   not in the goldens.
-10. **Sizes and caps.** Agents fixed at creation, up to `MAX_AGENTS` =
-    262,144 (2¹⁸). Brute force is refused above 16,384 on the page (at
-    100k it would be ~10¹⁰ pair checks, seconds a step: the step budget
-    can't help when one step blows the frame). The benches go further.
-    The arena: the canvas's size (default 1280 × 720).
-11. **The page's extra: the pointer as a predator.** Boids within a
-    radius of the pointer flee it (Reynolds' 1999 "flee"; one more
-    steering term, off when the pointer is away). It's the only way to
-    *poke* a flock. Small; drop it if you'd rather not.
-
----
-
-## ✅ 1. `docs/15-swarm.md` (PR)
-
-The track's doc, S1 first: Reynolds' rules in ECE 4760's form (Couzin et
-al.'s zones with constant gains), the update order as published, the
-clamp at zero speed, a map with Δt = 1, double buffering against M9's
-in-place scan, f32 only, brute force and a counting-sort cell list
-(Allen & Tildesley; Hockney & Eastwood) and why not the engine's
-broadphase, what's tested with nothing conserved (polarization: Couzin
-et al., Vicsek et al.), the measurements. `references.md`: a Swarms
-section, the papers with Crossref-checked DOIs, volumes and pages; the
-course page and GDC talk marked secondary.
-
-## ✅ 2. Boids, brute force (PR)
-
-`swarm`: checked `Params` (ECE 4760's), `Arena`, a double-buffered SoA
-`Flock`, the rules in the source's order, the clamp at zero, brute-force
-`step`, `polarization`. Measured: speeds in the band; boids **leave the
-arena** (2–3.4% of boid-steps, up to ~400 px) because alignment makes a
-flock turn as a body, not a bug; reversed storage identical after a
-step, rounding after; mean polarization 0.49–0.77 with alignment,
-0.03–0.08 without. A golden, same on wasm. `swarm` in `test-wasm`, `xtask
-api` and the dev profile at `opt-level = 3`.
-
-## ✅ 3. The grid (PR)
-
-A counting-sort cell list; `Neighbours::{Brute, Grid}`, the grid by
-default. **Found by the property test:** two boids exactly a range apart
-rounding into cells two apart; cells now 1/1024 wider than the range.
-Exact at 2,000 cases; trajectories within an f32 ulp of brute force per
-step; two goldens. Native, at the page's density: no crossover (the
-grid wins from 300 boids); 10k in 13.6 ms (brute 72.7), ~4.5 ns per
-candidate against brute force's 0.73 per pair: scattered reads, section
-4's target.
-
-## ✅ 4. Cache and SIMD (PR)
-
-Reordering by cell alone: no gain (the data was in cache; the cost was
-branchy per-candidate work, not reads). The page's density was 10× the
-course's: the world is now 2560 × 1440 at half scale. **Contiguous runs
-made a branchless 8-lane loop possible: 10k boids 1.42 ms natively
-against the grid's 7.3**; `simd128` 350 → 206 ns/boid (wasmtime), 310 →
-242 (V8). Adopted: `Neighbours::Sorted` by default, `swarm.wasm` with
-`simd128`; goldens identical with and without it.
-
-## ✅ 5. Web layer (PR)
-
-`swarm-web` → `swarm.wasm` (48.5 KB, `simd128`, its own target dir):
-create, advance with the step cap, neighbours (brute refused past 16k),
-every rule constant by code, the predator (Reynolds' flee, in `swarm`),
-heading-coloured dots, polarization. `swarm-abi.ts` mirrored,
-`swarm.d.ts` checked, a call-sequence property test. **Found:**
-`simd128` made the scalar brute-force loop 20× slower; brute force now
-runs the lane loop (1.65 ns a pair in V8). `test-wasm` also runs `swarm`
-with `simd128`: goldens hold. 10k boids: 2.37 ms a step in V8, 0.26 ms
-to draw.
-
-## 6. The page (PR)
-
-- [x] `s1-boids`: the 2560 × 1440 world at half scale on `pixels.ts`,
-      the predator on the pointer, a slider per rule constant (defaults
-      from Rust), the neighbour mode, a polarization plot, ns per
-      boid-step in the HUD, the cost table measured in the browser
-      (`swarm-cost.ts`); three smoke cases; a "Swarms" gallery heading.
-- [ ] Your check against **Done when**.
-
-## 7. Cleanup (PR)
-
-- [x] `types.md`: the `swarm` and `swarm-web` types.
-- [ ] S1 collapsed here after your check.
-
+`docs/15-swarm.md`, papers checked on Crossref. A `swarm` crate:
+Reynolds' rules in ECE 4760's form and values (read at the source: the
+notes had them wrong), a map with Δt = 1, double-buffered SoA, f32.
+Boids **leave the arena** (alignment turns a flock as a body: measured,
+bounded); **alignment makes the flock** (polarization 0.49–0.77 with
+it, 0.03–0.08 without). A counting-sort grid, **exact after one fix**
+the property test found (cells 1/1024 wider than the range). Reordering
+by cell alone gained nothing; it made a **branchless 8-lane loop**
+possible, 5× faster (10k boids 1.42 ms natively); `simd128` adopted for
+`swarm.wasm` (1.3–1.7×, goldens unchanged), after finding it made the
+scalar brute force 20× slower. The `s1-boids` page: a 2560 × 1440
+world at half scale, the pointer as predator, every constant on a
+slider, polarization, a cost table measured in the browser (your check:
+"looks good"). 10k boids 2.37 ms a step in V8.
 ---
 
 ## Health (after M7)
@@ -393,7 +256,7 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 
 ---
 
-## Out of scope for S1
+## Out of scope for S1 (carried forward)
 
 - Vicsek's model and periodic boundaries (S2); fields and stigmergy (S3,
   S4); the GPU (S4 decides); threads (`docs/workers.md`).
