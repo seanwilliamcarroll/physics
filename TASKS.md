@@ -274,11 +274,13 @@ events), `World::retire` (static, radius 0, at rest, spin zeroed) and
 substep's travel of the pocket's edge; a near miss isn't; a retired ball
 collides with nothing; a reinstated one does.
 
-## 6. Scenes (PR)
+## ✅ 6. Scenes (PR)
 
-- [ ] `table` (cushions, pockets), the rack, `break_shot(speed, offset)`;
-      tests: the table settles (every ball at rest within a measured
-      time), energy accounting; goldens, native and wasm.
+`pool_table` (18 segments from WPA's mouths and cut angles, 6 pocket
+sensors, the cloth), `pool_rack` (8-ball, `POOL_RACK` numbers),
+`pool_break(speed, tip)`; `ConfigError::{InvalidTable, InvalidShot}`.
+A break settles by 6.0–6.5 s (bound 8), energy never rising, no tunnels,
+nothing off the table; goldens (`PoolBreak`), same on wasm.
 
 ## 7. Web layer (PR)
 

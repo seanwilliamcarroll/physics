@@ -288,6 +288,32 @@ relative tolerance (1e-6 of the ball's speeds), not exact zero: after
 snapping to rolling, `v_x − R (v_x / R)` can be an ulp off, and an exact
 test never saw the ball roll, so it never stopped.
 
+## The table as built (M7.6, `scenarios/billiards.rs`)
+
+`pool_table`: 6 rails and 12 jaws as segments, 6 pockets, the cloth,
+`e_b` for balls and `e_c` on every cushion. Our readings and choices:
+- **Mouths** at the middle of WPA's ranges (115.9 and 128.6 mm). A
+  corner mouth is a 45° line across the corner, so its points sit
+  `M / √2` back along each rail.
+- **Jaws** leave each point turned outward from the rail by 180° minus
+  the WPA cut angle (38° at the corners, 76° at the sides), 6 cm long, so
+  each throat narrows toward the pocket, as real ones do. Reading
+  "cut angle" as the angle through the cushion rubber between the nose
+  and the facing is ours.
+- **Pocket sensors:** a corner's is centred on the table's corner and
+  reaches the mouth's midpoint; a side's sits a ball's radius behind the
+  mouth, as wide as it.
+
+`pool_rack`: the cue ball (particle 0) on the head spot, 15 balls
+touching with the apex on the foot spot, numbered by `POOL_RACK` (the 1
+at the apex, the 8 in the middle, a solid and a stripe in the back
+corners). `pool_break(speed, tip)` strikes the cue ball at the apex.
+
+**Measured (`tests/billiards.rs`, both solvers, 10 substeps):** a break at
+6–12 m/s comes to rest, energy exactly 0, by 6.0–6.5 s; energy never
+rises; nothing tunnels; no ball leaves the table except into a pocket
+(0–6 potted). Goldens for the break, native and wasm.
+
 ## Tests (planned)
 
 - **Cushions:** the reflection angle (in = out at `e = 1`; the normal part
