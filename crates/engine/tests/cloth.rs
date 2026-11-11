@@ -4,8 +4,8 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-use engine::diagnostics::kinetic_energy;
-use engine::table::{rotational_energy, slip};
+use engine::diagnostics::{kinetic_energy, rotational_energy};
+use engine::table::slip;
 use engine::{Integrator, ParticleId, Radius, Restitution, Solver, Table, UnitVec2, Vec2, World};
 use test_support::{kg, nonzero, time_step};
 

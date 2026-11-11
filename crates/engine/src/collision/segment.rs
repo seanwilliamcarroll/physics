@@ -69,14 +69,14 @@ impl<S: Scalar> Segment<S> {
 /// Everything static that circles collide with: half-plane walls (M6) and
 /// segments (M7). Borrowed from the world for a substep.
 #[derive(Copy, Clone, Debug)]
-pub struct Statics<'a, S> {
+pub(crate) struct Statics<'a, S> {
     pub walls: &'a [Wall<S>],
     pub segments: &'a [Segment<S>],
 }
 
 impl<S: 'static> Statics<'static, S> {
     /// Nothing static.
-    pub const NONE: Self = Statics {
+    pub(crate) const NONE: Self = Statics {
         walls: &[],
         segments: &[],
     };

@@ -2,9 +2,8 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-use engine::diagnostics::kinetic_energy;
+use engine::diagnostics::{kinetic_energy, rotational_energy};
 use engine::scenarios::{POOL_LENGTH, POOL_WIDTH, pool_break};
-use engine::table::rotational_energy;
 use engine::{Solver, World};
 use test_support::{nonzero, time_step};
 

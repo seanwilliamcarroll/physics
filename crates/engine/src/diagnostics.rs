@@ -28,6 +28,23 @@ pub fn kinetic_energy<S: Scalar>(p: &Particles<S>) -> S {
     dynamic(p).fold(S::ZERO, |acc, (v, w)| acc + v.length_sq() / (w + w))
 }
 
+/// Rotational kinetic energy `Σ ½ I |ω|²`, `I = (2/5) m R²`, over the
+/// balls (moving circles) in `p` with spins `spin` (`World::spin`, M7):
+/// a table's energy is this plus [`kinetic_energy`].
+#[must_use]
+pub fn rotational_energy<S: Scalar>(p: &Particles<S>, spin: &[Vec2<S>]) -> S {
+    let five = S::from_f64(5.0);
+    p.inv_mass()
+        .iter()
+        .zip(p.radius())
+        .zip(spin)
+        .filter(|((w, r), _)| **w != S::ZERO && **r != S::ZERO)
+        // ½ (2/5) m R² |ω|² = m R² |ω|² / 5.
+        .fold(S::ZERO, |acc, ((w, r), om)| {
+            acc + *r * *r * om.length_sq() / (five * *w)
+        })
+}
+
 /// Mass-weighted mean position `Σ m x / Σ m` of the dynamic particles, or
 /// `None` if there are none (total mass 0, so the mean is undefined).
 ///

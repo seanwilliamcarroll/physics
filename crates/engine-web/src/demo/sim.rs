@@ -193,7 +193,7 @@ impl<S: Scalar> Sim<S> {
             SceneForce::Unmeasured => None,
             SceneForce::Free => Some(kinetic_energy(p).to_f64()),
             SceneForce::Table => {
-                let spin = engine::table::rotational_energy(p, self.world.spin());
+                let spin = engine::diagnostics::rotational_energy(p, self.world.spin());
                 Some((kinetic_energy(p) + spin).to_f64())
             }
             SceneForce::Jelly { gravity, springs } => {
