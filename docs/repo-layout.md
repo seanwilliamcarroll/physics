@@ -22,6 +22,7 @@ physics/
 │   ├── hosting.md          # future work
 │   ├── workers.md          # design note: step budget, Web Workers, wasm threads
 │   ├── api/                # each library crate's public API, generated (cargo xtask api)
+│   ├── api-audit.md        # each crate's public surface, and what to narrow
 │   ├── swarm-resources.md  # swarm track: reading list (05-roadmap, "Swarm track")
 │   ├── swarm-rust-implementation.md  # swarm track: implementation notes
 │   └── references.md
