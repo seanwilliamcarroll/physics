@@ -32,6 +32,16 @@ fn crossing_is_strict() {
         !crosses(v(2.0, 1.0), v(2.0, -1.0), v(-1.0, 0.0), v(1.0, 0.0)),
         "past the end"
     );
+    // Away from the origin and not axis-aligned (the targeted mutation
+    // run: about the origin, `b − a` and `b + a` agree in sign).
+    let (q0, q1) = (v(1.0, 1.0), v(3.0, 2.0));
+    assert!(crosses(v(2.0, 3.0), v(2.0, 0.0), q0, q1), "down through");
+    assert!(
+        crosses(v(2.5, 0.0), v(1.5, 3.0), q0, q1),
+        "slanted, up through"
+    );
+    assert!(!crosses(v(2.0, 3.0), v(2.0, 1.6), q0, q1), "short of it");
+    assert!(!crosses(v(4.0, 3.0), v(4.0, 0.0), q0, q1), "past its end");
 }
 
 // count_tunnels itself (the full mutation run: only `passed_through` and

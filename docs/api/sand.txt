@@ -20,7 +20,6 @@ pub const fn sand::Grid::height(&self) -> usize
 pub fn sand::Grid::new(usize, usize, u64) -> core::option::Option<Self>
 pub fn sand::Grid::set(&mut self, usize, usize, sand::Material) -> bool
 pub fn sand::Grid::set_chunked(&mut self, bool)
-pub fn sand::Grid::shade_at(&self, usize, usize) -> core::option::Option<u8>
 pub const fn sand::Grid::steps(&self) -> u64
 pub const fn sand::Grid::width(&self) -> usize
 impl sand::Grid
