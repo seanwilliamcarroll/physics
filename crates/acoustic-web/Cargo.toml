@@ -15,6 +15,7 @@ crate-type = ["cdylib"]
 [dependencies]
 math = { path = "../math" }
 acoustic = { path = "../acoustic" }
+web-shell = { path = "../web-shell" }
 
 [dev-dependencies]
 proptest.workspace = true

@@ -26,7 +26,6 @@ use engine::{
 };
 
 use crate::abi;
-use crate::fixed_step::FixedStep;
 use any_world::{AnyWorld, build_any, each_scalar, fill_positions};
 #[cfg(test)]
 pub(crate) use codes::GravityScene;
@@ -35,6 +34,7 @@ pub(crate) use codes::{
     solver_from_code, stabilization_from_code, start_from_code,
 };
 use sim::{Sim, gravity_scene};
+use web_shell::FixedStep;
 
 /// Physics steps per simulated second a demo starts with ([`abi::DEFAULT_RATE_HZ`]).
 /// Displays at any refresh rate advance the simulation at this rate via

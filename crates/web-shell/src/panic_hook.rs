@@ -1,6 +1,7 @@
-//! Functions JS provides to the module (wasm imports), and the panic hook
-//! that uses them. With `exports.rs`, the only `unsafe` code in the
-//! workspace: `exports` is JS calling in, `imports` is Rust calling out.
+//! The panic hook and the import it uses (`env.console_error`, which every
+//! page's loader provides). With the `*-web` crates' `exports`, the only
+//! `unsafe` code in the workspace: `exports` is JS calling in, this is
+//! Rust calling out.
 //!
 //! Imports exist only on wasm. Native builds (tests, the native cdylib)
 //! have no JS to link against, so everything here is `cfg`-gated and
@@ -11,7 +12,8 @@
 mod wasm {
     use std::sync::Once;
 
-    // Provided by `site/js/wasm.js` under the default import module, "env".
+    // Provided by each module's loader (`site/js/wasm.ts`, the synth
+    // worklet) under the default import module, "env".
     #[link(wasm_import_module = "env")]
     unsafe extern "C" {
         /// Decodes `len` UTF-8 bytes at `ptr` in wasm memory and passes
@@ -25,7 +27,7 @@ mod wasm {
     /// `RuntimeError: unreachable`. The hook runs first, so it can send the
     /// message and location ("panicked at src/x.rs:1:2:\n<message>") to the
     /// browser console before the module traps.
-    pub(crate) fn install_panic_hook() {
+    pub fn install_panic_hook() {
         INSTALL.call_once(|| {
             std::panic::set_hook(Box::new(|info| {
                 let text = info.to_string();
@@ -39,8 +41,8 @@ mod wasm {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) use wasm::install_panic_hook;
+pub use wasm::install_panic_hook;
 
 /// Native: nothing to install (std's default hook prints to stderr).
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) const fn install_panic_hook() {}
+pub const fn install_panic_hook() {}

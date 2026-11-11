@@ -19,6 +19,7 @@ dependencies = [
  "math",
  "proptest",
  "test-support",
+ "web-shell",
 ]
 
 [[package]]
@@ -630,7 +631,12 @@ dependencies = [
  "math",
  "proptest",
  "test-support",
+ "web-shell",
 ]
+
+[[package]]
+name = "web-shell"
+version = "0.1.0"
 
 [[package]]
 name = "winapi"
