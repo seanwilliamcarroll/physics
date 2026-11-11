@@ -1,4 +1,4 @@
-use super::{Material, cell, material, shade};
+use super::{Material, cell, material, shade, unpack};
 
 #[test]
 fn codes_round_trip_and_unknown_codes_are_none() {
@@ -14,6 +14,7 @@ fn a_cell_keeps_its_material_and_shade_apart() {
         for s in 0..16 {
             let c = cell(m, s);
             assert_eq!((material(c), shade(c)), (m, s));
+            assert_eq!(unpack(c), (m, s));
         }
     }
     assert_eq!(shade(cell(Material::Sand, 0xff)), 15, "only 4 shade bits");

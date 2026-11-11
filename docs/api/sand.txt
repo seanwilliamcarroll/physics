@@ -30,3 +30,4 @@ pub const sand::CONDENSE_ONE_IN: u64
 pub const sand::DISPERSION: usize
 pub const sand::LAVA_FLOW_ONE_IN: u64
 pub const sand::MAX_CELLS: usize
+pub const fn sand::unpack(u8) -> (sand::Material, u8)

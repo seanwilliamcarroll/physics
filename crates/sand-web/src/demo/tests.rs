@@ -41,3 +41,18 @@ fn shades_vary_a_material_but_stay_in_range() {
     assert_ne!(lo, hi);
     assert_eq!(colour(Material::Empty, 0), colour(Material::Empty, 15));
 }
+
+#[test]
+fn the_palette_renders_every_cell_as_its_colour() {
+    let mut d = SandDemo::new(64, 32, 3).unwrap();
+    for (i, m) in Material::ALL.into_iter().enumerate() {
+        let x = i64::try_from(i).unwrap() * 10 + 5;
+        d.paint(x, 16, 4, m);
+    }
+    let cells = d.grid().cells().to_vec();
+    let px = d.render().to_vec();
+    for (c, p) in cells.into_iter().zip(px) {
+        let (m, shade) = sand::unpack(c);
+        assert_eq!(p, colour(m, shade), "cell {c:#04x}");
+    }
+}

@@ -66,6 +66,13 @@ pub(crate) const fn shade(cell: u8) -> u8 {
     (cell >> SHADE_SHIFT) & SHADE_MASK
 }
 
+/// A cell byte (from [`Grid::cells`](crate::Grid::cells)) as its material
+/// and shade (`0..16`): for renderers, which can tabulate all 256.
+#[must_use]
+pub const fn unpack(cell: u8) -> (Material, u8) {
+    (material(cell), shade(cell))
+}
+
 /// The byte for `material` with `shade` (its low 4 bits).
 pub(crate) const fn cell(material: Material, shade: u8) -> u8 {
     material.code() | ((shade & SHADE_MASK) << SHADE_SHIFT)
