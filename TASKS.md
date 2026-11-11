@@ -1,48 +1,42 @@
-# TASKS — S1: Boids (done; next milestone to plan)
+# TASKS — S2: The Vicsek model
 
-Source: `docs/05-roadmap.md` ("Swarm track", S1), the swarm notes
-(`docs/swarm-rust-implementation.md`, `docs/swarm-resources.md`).
+Source: `docs/05-roadmap.md` ("Swarm track", S2), `docs/15-swarm.md`
+(S1, whose crate, grid and polarization this reuses).
 
-**Papers** (DOIs checked on Crossref, 2026-11-11), each for what it
-grounds:
-- Reynolds (1987), *Flocks, herds and schools: a distributed behavioral
-  model*, SIGGRAPH Computer Graphics 21(4). doi:10.1145/37402.37406 —
-  the model: separation, alignment, cohesion from local perception.
-- Couzin, Krause, James, Ruxton & Franks (2002), *Collective memory and
-  spatial sorting in animal groups*, J. Theor. Biol. 218.
-  doi:10.1006/jtbi.2002.3065 — zones (repulsion inside, orientation and
-  attraction beyond: the protected range's role) and **group
-  polarization**, the order measure the flocking test uses.
+**Papers** (read 2026-11-11; DOIs checked on Crossref):
 - Vicsek, Czirók, Ben-Jacob, Cohen & Shochet (1995), *Novel type of
-  phase transition in a system of self-driven particles*, PRL 75.
-  doi:10.1103/PhysRevLett.75.1226 — the same measure as `v_a`; S2's
-  model, cited here so S1's number is S2's.
-- Allen & Tildesley (2017), *Computer Simulation of Liquids*, 2nd ed.,
-  OUP. doi:10.1093/oso/9780198803195.001.0001 — cell lists for
-  fixed-radius neighbours (cell ≥ cutoff, search the 3 × 3 block),
-  the grid's basis; and Hockney & Eastwood, *Computer Simulation Using
-  Particles* (1981; CRC reprint doi:10.1201/9780367806934), where the
-  chaining-mesh idea comes from.
+  phase transition in a system of self-driven particles*, PRL 75(6),
+  1226–1229. doi:10.1103/PhysRevLett.75.1226 (read in full: arXiv
+  cond-mat/0611743) — the model, its parameters, `v_a`, Fig. 2a's sizes.
+- Grégoire & Chaté (2004), *Onset of collective and cohesive motion*,
+  PRL 92(2), 025702. doi:10.1103/PhysRevLett.92.025702 — the transition
+  is "always discontinuous, including for the minimal model of Vicsek et
+  al.", against the original's continuous one.
+- Chaté, Ginelli, Grégoire & Raynaud (2008), *Collective motion of
+  self-propelled particles interacting without cohesion*, PRE 77(4),
+  046113. doi:10.1103/PhysRevE.77.046113 — first-order-like, with
+  "propagating solitary structures" (high-density, high-order) near the
+  transition, at sizes beyond small simulations.
+- Chen & Zhang (2007), *Comment on "Novel type of phase transition..."*,
+  arXiv cond-mat/0703532 (a preprint; no journal version found) — the
+  0/0 case ("direction annihilation") and three fixes.
+- Baglietto & Albano (2008), PRE 78(2), 021125.
+  doi:10.1103/PhysRevE.78.021125 — a finite-size scaling study of the
+  same model; cited for its existence, not yet read.
 
-**Secondary, for values and practice, not claims:** the ECE 4760 boids
-algorithm (Hunter Adams; read directly, 2026-11-11:
-https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html):
-the parameter set and the per-step update order, a course page, so the
-defaults are labelled "ECE 4760's", not "measured". Reynolds (1999),
-*Steering behaviors for autonomous characters*, GDC (no DOI): flee. Le
-Grand (2007), GPU Gems 3 ch. 32: grids by sorting, on the GPU (S4).
+**Goal:** the swarm track's quantitative check. The minimal flocking
+model (constant speed, align with neighbours, add noise) and its
+order–disorder transition: `v_a` falls from 1 to ~0 as the noise η
+rises, measured as Fig. 2a measured it, and set beside what later,
+larger studies found (the transition is discontinuous).
 
-**Goal:** the swarm track's first milestone. Agents that follow *rules*
-(steer, align, cohere), not forces: no energy to conserve, so the tests
-are invariants, agreement with brute force, and an emergent order that's
-measured. Then the cost story: brute force is O(n²), a grid makes it
-O(n), and the crossover is the first result.
-
-**Done when:** a flock of 10k runs at 60 Hz, with the crossover plot.
+**Done when:** the page sweeps η and draws `v_a(η)` for several sizes at
+the paper's density, the curves sharpening with N as Fig. 2a's do, and
+the tests pin the model's limits and the paper's parameters.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`s1/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`s2/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -224,6 +218,123 @@ slider, polarization, a cost table measured in the browser (your check:
 "looks good"). 10k boids 2.37 ms a step in V8.
 ---
 
+## What the paper says (read, not recalled)
+
+- **Rule:** each step, a particle takes "the average direction of the
+  velocities of particles (including particle i) being within a circle
+  of radius r", plus `Δθ` uniform on `[−η/2, η/2]`. The average is
+  written `arctg[⟨sin θ⟩/⟨cos θ⟩]`.
+- **Update (Eq. 1):** `x(t + 1) = x(t) + v(t) Δt`: positions move with
+  the *old* velocity; the new angle is for the next step.
+- **Units:** `r = 1`, `Δt = 1`, `v = 0.03` ("in a wide range of the
+  velocities (0.003 < v < 0.3) the actual value of v does not affect
+  the results"); a square cell of side L, periodic.
+- **Start:** random positions, speed v, random directions.
+- **Fig. 2a** (v_a against η): N = 40 (L = 3.1), 100 (5), 400 (10),
+  4000 (31.6), 10000 (50): density ρ = N/L² ≈ 4. Errors from 5 runs.
+- **Reported:** `β = 0.45 ± 0.07`; `η_c(∞) = 2.9 ± 0.05` "for ρ = 0.4".
+  **A discrepancy:** Fig. 2a's sizes give ρ ≈ 4, not 0.4, and Fig. 3a's
+  caption says ρ = 0.4 too. We measure at ρ = 4 (the figure's) and say
+  which.
+
+## Decisions to review before starting
+
+1. **In the `swarm` crate and `swarm.wasm`**, not new ones: a `vicsek`
+   module beside the boids (`Vicsek`, its own SoA state), new
+   `vicsek_*` exports, a page `s2-vicsek`. S1's `pixels.ts`, step
+   budget, smoke and cost machinery carry over.
+2. **The paper's units**: `r = 1`, `Δt = 1`, `v = 0.03` by default (a
+   slider), L and N chosen as Fig. 2a's. The page scales the L × L box
+   to the canvas.
+3. **Headings as unit vectors**, not angles: the neighbourhood's
+   average direction is `Σ (cos θ, sin θ)` normalized, which is the
+   paper's `arctg` with the quadrant right (the literal `arctg` of a
+   ratio can't tell θ from θ + π; every implementation means `atan2`).
+   The noise rotates it by `Δθ`, `sin`/`cos` from `libm` (pure Rust:
+   bit-identical on wasm, as `acoustic` already relies on). No `atan2`
+   needed.
+4. **The 0/0 case: keep the previous direction** (Chen & Zhang's first
+   fix, and S1's clamp's choice), and **count it**. Their comment
+   plots its probability at up to ~20% (it grows with noise and falls
+   with density); in floating point an *exact*
+   zero sum needs exact cancellation, so we expect it essentially never
+   outside constructed cases. A test constructs it (two particles
+   exactly opposite); the long runs report the count. Which is right is
+   then a measurement, not an argument.
+5. **Eq. 1 literally**: move with `v(t)`, then take the new heading
+   (double-buffered, as S1). Many implementations move with the new
+   heading instead (a one-step lag either way); we follow the paper and
+   say so. Your call if you'd rather the other.
+6. **Vicsek's angular noise only.** Grégoire & Chaté's vectorial
+   ("extrinsic") noise is the variant behind their discontinuity
+   results; noted, not built (a candidate extra if the page wants it).
+7. **Periodic neighbour search**: S1's cell list with wrap-around and
+   minimum-image distances; an integer number of cells per side, each
+   at least `r` (1/1024 wider, S1.3's lesson), and **brute force when
+   fewer than 3 cells fit** (L < 3r: the 3 × 3 block would wrap onto
+   itself and see particles twice; Fig. 2a's N = 40 box, L = 3.1, is
+   right at that edge). Tested exact against brute force, as S1's. At ρ
+   = 4 a particle has ~ρπr² ≈ 13 neighbours: the scalar loop is enough;
+   S1's lanes only if measurement says so.
+8. **The transition, measured as the paper did:** for each η, discard a
+   transient, then average `v_a` over a window; several seeds; mean ±
+   s.d. Native sweeps for N = 40, 100, 400, 4000 at ρ = 4 (10,000 on
+   the compute node, `cargo xtask slow`). Tests: `η = 0` from an aligned
+   start stays at `v_a = 1`; `η = 2π` gives `v_a ≈ 1/√N`'s scale;
+   `v_a(η)` decreasing; the curves sharper with N; the transition region
+   against the paper's `η_c ≈ 2.9`. **Not** the exponent β (the later
+   papers dispute that there is one) and not the discontinuity (it
+   needs sizes beyond these); the doc reports what the curves show and
+   what the later papers say.
+9. **The page**: the live system (η, ρ via N and L, v, the rate),
+   coloured by heading as S1; a sweep that runs η from 0 to 2π in
+   chunks off the main loop and plots `v_a(η)` for N = 40, 100, 400,
+   4000 together, Fig. 2a's layout; the 0/0 count in the HUD.
+
+---
+
+## 1. The doc (PR)
+
+- [ ] `docs/15-swarm.md`, S2: the model as the paper states it, our
+      readings of it (unit vectors, Eq. 1, the 0/0 rule), the ρ
+      discrepancy, the periodic grid, the measurement plan, the later
+      papers. `references.md`: the five above.
+
+## 2. The model (PR)
+
+- [ ] `swarm::vicsek`: SoA positions and unit headings, double buffer,
+      brute-force neighbours (minimum image), the noise, the 0/0 rule
+      and its count.
+- [ ] Tests: speed exactly v (to rounding) every step; `η = 0` aligned
+      stays aligned; the constructed 0/0 keeps its heading; periodic
+      wrap; goldens, native and wasm.
+
+## 3. The periodic grid (PR)
+
+- [ ] Cells with wrap, integer per side, brute force below 3; exact
+      against brute force (proptest, boxes near 3r included); cost.
+
+## 4. The transition (PR)
+
+- [ ] Sweeps for N = 40–4000 at ρ = 4 (several seeds); the limit and
+      monotonicity tests; finite-size sharpening; the comparison with
+      `η_c ≈ 2.9`; the 0/0 count over every run. 10,000 on the node.
+
+## 5. Web layer (PR)
+
+- [ ] `vicsek_*` exports in `swarm.wasm`; `swarm-abi.ts`, `swarm.d.ts`,
+      the call-sequence property test.
+
+## 6. The page (PR)
+
+- [ ] `s2-vicsek`: the live box, η and density controls, the sweep plot
+      (Fig. 2a's sizes), the 0/0 count; smoke; gallery.
+- [ ] Your check against **Done when**.
+
+## 7. Cleanup (PR)
+
+---
+
 ## Health (after M7)
 
 Done: the API audit and its PRs (#159–#164: `web-common`, `engine-web`,
@@ -255,6 +366,13 @@ testing"); `docs/setup.md`, Node through nvm. Open:
   smaller and faster, but every collision golden changes.
 
 ---
+
+## Out of scope for S2
+
+- Vectorial noise and the large-system bands (Grégoire & Chaté 2004;
+  Chaté et al. 2008): noted, not reproduced.
+- Critical exponents (β, δ): the later papers dispute a critical point.
+- Fields (S3), the GPU (S4), 3D, variable speed.
 
 ## Out of scope for S1 (carried forward)
 
