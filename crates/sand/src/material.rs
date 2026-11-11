@@ -9,11 +9,22 @@ pub enum Material {
     Water = 2,
     /// Static: never moves.
     Stone = 3,
+    /// A slow liquid; with water it makes stone and steam (section 4).
+    Lava = 4,
+    /// Rises; condenses back to water when it can't (section 4).
+    Steam = 5,
 }
 
 impl Material {
     /// Every material, in code order.
-    pub const ALL: [Self; 4] = [Self::Empty, Self::Sand, Self::Water, Self::Stone];
+    pub const ALL: [Self; 6] = [
+        Self::Empty,
+        Self::Sand,
+        Self::Water,
+        Self::Stone,
+        Self::Lava,
+        Self::Steam,
+    ];
 
     /// The material with code `code`, if any.
     #[must_use]
@@ -23,6 +34,8 @@ impl Material {
             1 => Some(Self::Sand),
             2 => Some(Self::Water),
             3 => Some(Self::Stone),
+            4 => Some(Self::Lava),
+            5 => Some(Self::Steam),
             _ => None,
         }
     }

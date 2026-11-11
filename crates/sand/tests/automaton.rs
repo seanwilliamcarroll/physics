@@ -19,7 +19,7 @@ fn signed(n: usize) -> i64 {
     i64::try_from(n).unwrap()
 }
 
-fn counts(g: &Grid) -> [usize; 4] {
+fn counts(g: &Grid) -> [usize; 6] {
     Material::ALL.map(|m| g.count(m))
 }
 

@@ -79,6 +79,15 @@ impl Chunks {
         }
     }
 
+    /// Keeps the chunk holding `(x, y)` awake next step, without waking its
+    /// neighbours: a cell that could still change by chance (slow lava,
+    /// blocked steam) though nothing moved, so its chunk mustn't sleep.
+    pub(crate) fn keep(&mut self, x: usize, y: usize) {
+        if let Some(a) = self.next.get_mut((y / CHUNK) * self.across + x / CHUNK) {
+            *a = true;
+        }
+    }
+
     /// Ends a step: what woke for the next becomes now.
     pub(crate) fn advance(&mut self) {
         core::mem::swap(&mut self.now, &mut self.next);

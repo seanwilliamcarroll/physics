@@ -16,7 +16,9 @@ fn random(w: usize, h: usize, seed: u64, fill: f64) -> Grid {
     for y in 0..h {
         for x in 0..w {
             if rng.next_unit_f64() < fill {
-                let m = Material::ALL[1 + (rng.next_u64() % 3) as usize];
+                // Any non-empty material, lava and steam included (their
+                // chances keep chunks awake: `Chunks::keep`).
+                let m = Material::ALL[1 + (rng.next_u64() % 5) as usize];
                 g.set(x, y, m);
             }
         }
@@ -37,7 +39,7 @@ proptest! {
         h in 20_usize..90,
         seed in any::<u64>(),
         fill in 0.05_f64..0.6,
-        paints in prop::collection::vec((0_usize..150, any::<usize>(), any::<usize>(), 0_u8..4), 0..40),
+        paints in prop::collection::vec((0_usize..150, any::<usize>(), any::<usize>(), 0_u8..6), 0..40),
     ) {
         let mut chunked = random(w, h, seed, fill);
         let mut full = chunked.clone();
