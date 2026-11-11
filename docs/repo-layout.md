@@ -70,7 +70,7 @@ physics/
 │   │       └── exports.rs  # extern "C" exports, one file per group
 │   ├── web-common/         # what every *-web crate shares: panic hook, FixedStep, boundary parsing
 │   │
-│   ├── sand/               # M9
+│   ├── sand/               # M9: the falling-sand automaton (grid, rules; integers only)
 │   └── acoustic/           # A1+
 │
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)

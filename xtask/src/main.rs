@@ -231,7 +231,7 @@ fn check_dts(root: &Path, pkg: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Runs the math, engine and acoustic test suites compiled to `wasm32-wasip1`,
+/// Runs the math, engine, acoustic and sand test suites compiled to `wasm32-wasip1`,
 /// executed by wasmtime (the runner set in `.cargo/config.toml`). The same
 /// golden hashes then have to match on wasm as natively: the cross-platform
 /// determinism check (`docs/04-testing.md`).
@@ -261,6 +261,8 @@ fn test_wasm(root: &Path) -> Result<(), String> {
             "engine",
             "-p",
             "acoustic",
+            "-p",
+            "sand",
             "--target",
             "wasm32-wasip1",
         ])
