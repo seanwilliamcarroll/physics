@@ -1,5 +1,6 @@
 use super::{
-    center_of_mass, constraint_potential, gravity_potential, kinetic_energy, momentum, total_energy,
+    center_of_mass, constraint_potential, gravity_potential, kinetic_energy, momentum,
+    rotational_energy, total_energy,
 };
 use crate::params::kg;
 use crate::{PairwiseGravity, Softening};
@@ -176,4 +177,36 @@ fn constraint_potential_is_half_c_squared_over_alpha_for_soft_rods_only() {
     assert!((constraint_potential(&p, &all) - 2.625).abs() < 1e-12);
     // Bodies not in `p` (a mismatched set): skipped.
     assert_eq!(constraint_potential(&Particles::<f64>::new(), &soft), 0.0);
+}
+
+/// `m R² |ω|² / 5` over spinning circles; statics and points carry none
+/// (the full mutation run: `&&` → `||` in the filter survived, which
+/// divides a static circle's 0 by its inverse mass 0: NaN).
+#[test]
+fn rotational_energy_skips_statics_and_points() {
+    let mut p = Particles::new();
+    p.add_circle(
+        Vec2::ZERO,
+        Vec2::ZERO,
+        kg(2.0),
+        crate::Radius::new(0.5).unwrap(),
+    );
+    p.add_circle(
+        Vec2::new(5.0, 0.0),
+        Vec2::ZERO,
+        kg(1.0),
+        crate::Radius::new(0.5).unwrap(),
+    );
+    assert!(
+        p.set_body(1, Vec2::new(5.0, 0.0), 0.0, 0.5),
+        "a static circle"
+    );
+    p.add(Vec2::new(9.0, 0.0), Vec2::ZERO, kg(1.0));
+    let spin = [
+        Vec2::new(3.0, 4.0),
+        Vec2::new(1.0, 0.0),
+        Vec2::new(1.0, 0.0),
+    ];
+    // 2 kg × 0.25 m² × 25 / 5.
+    assert_eq!(rotational_energy(&p, &spin), 2.5);
 }

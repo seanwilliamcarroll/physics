@@ -82,3 +82,29 @@ fn raised_start_puts_both_rods_at_135_degrees() {
         assert!((c.length() - DOUBLE_PENDULUM_LENGTH).abs() < 1e-15);
     }
 }
+
+/// From the raised start, the offset moves the tip perpendicular to the
+/// rods (counterclockwise), not along y (the full mutation run: from the
+/// level start the `offset · dy` terms are 0, so their signs went
+/// untested).
+#[test]
+fn offset_from_the_raised_start_is_perpendicular_to_the_rods() {
+    let at = |offset: f64| {
+        double_pendulum::<f64>(
+            Solver::Impulse,
+            NonZeroU32::MIN,
+            DoublePendulumStart::Raised,
+            offset,
+        )
+        .unwrap()
+        .particles
+        .pos()[2]
+    };
+    let h = 0.5_f64.sqrt();
+    let moved = at(0.01) - at(0.0);
+    // (−h, h) · 0.01: counterclockwise from the rods' direction (h, h).
+    assert!(
+        (moved - Vec2::new(-0.01 * h, 0.01 * h)).length() < 1e-15,
+        "{moved:?}"
+    );
+}

@@ -157,3 +157,29 @@ fn live_damping_reaches_every_spring() {
     let damped = undamped.with_damping(Damping::new(2.0).unwrap());
     assert!((accel(&p, &damped)[0].x - 2.0).abs() < 1e-12);
 }
+
+/// `½ k x²` per spring, summed (the full mutation run: `L + rest` in
+/// place of `L − rest` survived; M5's energy plot reads this).
+#[test]
+fn potential_is_half_k_stretch_squared_summed() {
+    let mut p = two_bodies(1.0);
+    let _ = p.add(Vec2::new(0.0, 2.0), Vec2::ZERO, kg(1.0));
+    let ids = [
+        crate::ParticleId(0),
+        crate::ParticleId(1),
+        crate::ParticleId(2),
+    ];
+    let a = Spring::between(&p, ids[0], ids[1], k(100.0), Damping::NONE).unwrap();
+    let b = Spring::between(&p, ids[0], ids[2], k(10.0), Damping::NONE).unwrap();
+    let force = SpringForce::new(vec![a, b]);
+    assert_eq!(force.potential(&p), 0.0, "at rest length");
+    // Stretch the first by 0.1 and compress the second by 0.5.
+    p.pos[1] = Vec2::new(1.1, 0.0);
+    p.pos[2] = Vec2::new(0.0, 1.5);
+    let expected = 0.5 * 100.0 * 0.1 * 0.1 + 0.5 * 10.0 * 0.5 * 0.5;
+    assert!(
+        (force.potential(&p) - expected).abs() < 1e-12,
+        "{}",
+        force.potential(&p)
+    );
+}
