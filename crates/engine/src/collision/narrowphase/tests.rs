@@ -1,4 +1,5 @@
 use super::{Body, CONTACT_MARGIN, Contact, broadphase_cell, find_contacts};
+use crate::collision::Statics;
 use crate::params::kg;
 use crate::{ParticleId, Particles, Radius, UnitVec2, Vec2, Wall};
 
@@ -23,7 +24,11 @@ fn circles(specs: &[Spec]) -> Particles<f64> {
 
 fn contacts(p: &Particles<f64>, walls: &[Wall<f64>]) -> Vec<Contact<f64>> {
     let (mut pairs, mut out) = (Vec::new(), Vec::new());
-    find_contacts(p, walls, H, &mut pairs, &mut out);
+    let statics = Statics {
+        walls,
+        segments: &[],
+    };
+    find_contacts(p, statics, H, &mut pairs, &mut out);
     out
 }
 

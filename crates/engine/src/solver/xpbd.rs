@@ -4,8 +4,9 @@ use super::Step;
 use super::contacts::{bodies, geometry, normal_velocity, push_apart};
 use super::impacts;
 use crate::collision::Contact;
+use crate::collision::Statics;
 use crate::integrate::{drift, evaluate, kick};
-use crate::{Constraint, Particles, Scalar, Vec2, Wall};
+use crate::{Constraint, Particles, Scalar, Vec2};
 
 impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// One XPBD substep of length `h`:
@@ -32,9 +33,9 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         let contacts = self.contacts;
         if self.collides {
             let half = h / (S::ONE + S::ONE);
-            contacts.find(p, self.walls, self.acc, h);
+            contacts.find(p, self.statics, self.restitution, self.acc, h);
             kick(p, self.acc, half);
-            impacts::resolve(p, contacts, h, self.restitution.get());
+            impacts::resolve(p, contacts, h);
             kick(p, self.acc, half);
         } else {
             kick(p, self.acc, h);
@@ -53,7 +54,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                 });
             self.order
                 .sweep(pass, &contacts.list, &mut contacts.lambda, |c, lambda| {
-                    project_contact(p, self.walls, c, lambda);
+                    project_contact(p, self.statics, c, lambda);
                 });
         }
 
@@ -67,7 +68,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         // the projection).
         for (c, &lambda) in contacts.list.iter().zip(&contacts.lambda) {
             if lambda > S::ZERO {
-                settle(p, self.walls, c);
+                settle(p, self.statics, c);
             }
         }
     }
@@ -79,7 +80,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
 /// a touching or separated contact does nothing, so λ never decreases.
 fn project_contact<S: Scalar>(
     p: &mut Particles<S>,
-    walls: &[Wall<S>],
+    statics: Statics<'_, S>,
     c: &Contact<S>,
     lambda: &mut S,
 ) {
@@ -87,7 +88,7 @@ fn project_contact<S: Scalar>(
         return;
     };
     let w = wa + wb;
-    let Some((gap, n)) = geometry(p, walls, c) else {
+    let Some((gap, n)) = geometry(p, statics, c) else {
         return;
     };
     if gap >= S::ZERO || w == S::ZERO {
@@ -103,12 +104,12 @@ fn project_contact<S: Scalar>(
 /// (Müller et al. 2020's pass at `e = 0`). The projection can leave a
 /// resting pair separating; this keeps stacks at rest. Bouncing is the
 /// impact stage's (`solver/impacts.rs`).
-fn settle<S: Scalar>(p: &mut Particles<S>, walls: &[Wall<S>], c: &Contact<S>) {
+fn settle<S: Scalar>(p: &mut Particles<S>, statics: Statics<'_, S>, c: &Contact<S>) {
     let Some((a, b, wa, wb)) = bodies(p, c) else {
         return;
     };
     let w = wa + wb;
-    let Some((_, n)) = geometry(p, walls, c) else {
+    let Some((_, n)) = geometry(p, statics, c) else {
         return;
     };
     if w == S::ZERO {

@@ -1,7 +1,7 @@
 //! The narrowphase: contacts from candidate pairs and walls
 //! (`docs/08-collision.md`, "Contact generation").
 
-use super::{Wall, candidate_pairs};
+use super::{Statics, candidate_pairs};
 use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2};
 
 /// Pairs this close (m) are contacts even when they aren't approaching.
@@ -24,6 +24,8 @@ pub enum Body {
     Particle(ParticleId),
     /// Index into the world's walls.
     Wall(usize),
+    /// Index into the world's segments (M7).
+    Segment(usize),
 }
 
 /// A contact for one substep: body `a` (a circle) touching, or about to
@@ -55,8 +57,8 @@ pub fn broadphase_cell<S: Scalar>(p: &Particles<S>, h: S) -> S {
 }
 
 /// Every contact this substep, into `out` (cleared first), in a fixed
-/// order: circle pairs sorted by `(a, b)`, then wall contacts by particle
-/// and wall. `pairs` is the broadphase's scratch.
+/// order: circle pairs sorted by `(a, b)`, then wall and segment contacts
+/// by particle, walls before segments. `pairs` is the broadphase's scratch.
 ///
 /// A contact is kept when its gap is at most what the pair can close in
 /// `h` at their current approach speed (the speculative margin), plus
@@ -64,7 +66,7 @@ pub fn broadphase_cell<S: Scalar>(p: &Particles<S>, h: S) -> S {
 /// points (radius 0) make none.
 pub fn find_contacts<S: Scalar>(
     p: &Particles<S>,
-    walls: &[Wall<S>],
+    statics: Statics<'_, S>,
     h: S,
     pairs: &mut Vec<(usize, usize)>,
     out: &mut Vec<Contact<S>>,
@@ -83,7 +85,7 @@ pub fn find_contacts<S: Scalar>(
             continue;
         }
         let v = p.vel().get(a).copied().unwrap_or(Vec2::ZERO);
-        for (i, wall) in walls.iter().enumerate() {
+        for (i, wall) in statics.walls.iter().enumerate() {
             let normal = -wall.normal();
             let gap = wall.distance(x) - r;
             // The wall doesn't move: v_n = n · (0 − v_a).
@@ -91,6 +93,19 @@ pub fn find_contacts<S: Scalar>(
                 out.push(Contact {
                     a: ParticleId(a),
                     b: Body::Wall(i),
+                    normal,
+                    gap,
+                });
+            }
+        }
+        for (i, seg) in statics.segments.iter().enumerate() {
+            let (dist, normal) = seg.toward(x);
+            let gap = dist - r;
+            // Static, as a wall: v_n = n · (0 − v_a).
+            if speculative(gap, -normal.dot(v), h, margin) {
+                out.push(Contact {
+                    a: ParticleId(a),
+                    b: Body::Segment(i),
                     normal,
                     gap,
                 });

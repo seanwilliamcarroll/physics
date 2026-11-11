@@ -1,9 +1,9 @@
 //! Contact state and geometry both solvers share (`docs/08-collision.md`,
 //! "The contact constraint").
 
-use crate::collision::{Body, Contact, find_contacts};
+use crate::collision::{Body, Contact, Statics, find_contacts};
 use crate::sort_key::{SortKey, index_key, sort};
-use crate::{Particles, Scalar, UnitVec2, Vec2, Wall};
+use crate::{Particles, Restitution, Scalar, UnitVec2, Vec2};
 
 /// Overlap the impulse solver leaves uncorrected, m: resting contacts sit
 /// this deep instead of flickering between touching and not
@@ -26,6 +26,10 @@ pub(crate) struct Contacts<S> {
     /// `h n · (a_b − a_a)`: the impact stage runs before the kick, but asks
     /// whether a contact closes *after* it.
     pub(crate) kick_n: Vec<S>,
+    /// Each contact's restitution: a segment's own, or the world's for
+    /// circles and walls (`docs/09-billiards.md`, "Restitution per
+    /// contact").
+    pub(crate) restitution: Vec<S>,
     /// The impulse solver's split pseudo-impulse per contact, this
     /// substep only (one-sided, like λ; never warm-started).
     pub(crate) pseudo_lambda: Vec<S>,
@@ -52,6 +56,7 @@ impl<S: Scalar> Contacts<S> {
             lambda: Vec::new(),
             rest_speed: Vec::new(),
             kick_n: Vec::new(),
+            restitution: Vec::new(),
             pseudo_lambda: Vec::new(),
             in_round: Vec::new(),
             round_impulse: Vec::new(),
@@ -62,10 +67,28 @@ impl<S: Scalar> Contacts<S> {
     }
 
     /// Finds this substep's contacts (`collision::find_contacts`) and
-    /// records each one's resting threshold and the kick's normal part. `acc` is
-    /// this substep's per-particle acceleration from the forces.
-    pub(crate) fn find(&mut self, p: &Particles<S>, walls: &[Wall<S>], acc: &[Vec2<S>], h: S) {
-        find_contacts(p, walls, h, &mut self.pairs, &mut self.list);
+    /// records each one's resting threshold, the kick's normal part and
+    /// its restitution (`e` for circles and walls). `acc` is this
+    /// substep's per-particle acceleration from the forces.
+    pub(crate) fn find(
+        &mut self,
+        p: &Particles<S>,
+        statics: Statics<'_, S>,
+        e: Restitution<S>,
+        acc: &[Vec2<S>],
+        h: S,
+    ) {
+        find_contacts(p, statics, h, &mut self.pairs, &mut self.list);
+        self.restitution.clear();
+        self.restitution.extend(self.list.iter().map(|c| {
+            match c.b {
+                Body::Segment(i) => statics
+                    .segments
+                    .get(i)
+                    .map_or(e.get(), |s| s.restitution().get()),
+                Body::Particle(_) | Body::Wall(_) => e.get(),
+            }
+        }));
         self.lambda.clear();
         self.lambda.resize(self.list.len(), S::ZERO);
         self.pseudo_lambda.clear();
@@ -129,6 +152,8 @@ fn pair_key<S>(c: &Contact<S>) -> (i64, i64) {
     let b = match c.b {
         Body::Particle(b) => index_key(b.index()),
         Body::Wall(i) => -1 - index_key(i),
+        // Below every wall's key: distinct from them up to 2⁴⁰ walls.
+        Body::Segment(i) => -(1_i64 << 40) - index_key(i),
     };
     (index_key(c.a.index()), b)
 }
@@ -144,7 +169,7 @@ pub(crate) fn bodies<S: Scalar>(
     let wa = *p.inv_mass().get(a)?;
     match c.b {
         Body::Particle(b) => Some((a, Some(b.index()), wa, *p.inv_mass().get(b.index())?)),
-        Body::Wall(_) => Some((a, None, wa, S::ZERO)),
+        Body::Wall(_) | Body::Segment(_) => Some((a, None, wa, S::ZERO)),
     }
 }
 
@@ -152,7 +177,7 @@ pub(crate) fn bodies<S: Scalar>(
 /// positions: XPBD re-measures as positions move within a substep.
 pub(crate) fn geometry<S: Scalar>(
     p: &Particles<S>,
-    walls: &[Wall<S>],
+    statics: Statics<'_, S>,
     c: &Contact<S>,
 ) -> Option<(S, UnitVec2<S>)> {
     let a = c.a.index();
@@ -168,8 +193,12 @@ pub(crate) fn geometry<S: Scalar>(
             Some((dist - ra - rb, n))
         }
         Body::Wall(i) => {
-            let wall = walls.get(i)?;
+            let wall = statics.walls.get(i)?;
             Some((wall.distance(xa) - ra, -wall.normal()))
+        }
+        Body::Segment(i) => {
+            let (dist, n) = statics.segments.get(i)?.toward(xa);
+            Some((dist - ra, n))
         }
     }
 }
@@ -185,7 +214,7 @@ pub(crate) fn normal_velocity_in<S: Scalar>(vel: &[Vec2<S>], c: &Contact<S>, n: 
     let va = vel.get(c.a.index()).copied().unwrap_or(Vec2::ZERO);
     let vb = match c.b {
         Body::Particle(b) => vel.get(b.index()).copied().unwrap_or(Vec2::ZERO),
-        Body::Wall(_) => Vec2::ZERO,
+        Body::Wall(_) | Body::Segment(_) => Vec2::ZERO,
     };
     n.dot(vb - va)
 }
@@ -194,7 +223,7 @@ pub(crate) fn normal_velocity_in<S: Scalar>(vel: &[Vec2<S>], c: &Contact<S>, n: 
 fn body_acc<S: Scalar>(acc: &[Vec2<S>], b: Body) -> Vec2<S> {
     match b {
         Body::Particle(b) => acc.get(b.index()).copied().unwrap_or(Vec2::ZERO),
-        Body::Wall(_) => Vec2::ZERO,
+        Body::Wall(_) | Body::Segment(_) => Vec2::ZERO,
     }
 }
 

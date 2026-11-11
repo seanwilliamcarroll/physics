@@ -39,20 +39,21 @@ const MAX_ROUNDS: usize = 100;
 const MAX_SWEEPS: usize = 100;
 const CONVERGED: f64 = 1e-12;
 
-/// Resolves this substep's impacts at restitution `e` (see the module
-/// doc). Nothing at `e = 0`: the iterations' inelastic solve is that case
-/// already.
-pub(crate) fn resolve<S: Scalar>(p: &mut Particles<S>, contacts: &mut Contacts<S>, h: S, e: S) {
+/// Resolves this substep's impacts, each contact at its own restitution
+/// (`Contacts::restitution`; see the module doc). Nothing when every `e`
+/// is 0: the iterations' inelastic solve is that case already.
+pub(crate) fn resolve<S: Scalar>(p: &mut Particles<S>, contacts: &mut Contacts<S>, h: S) {
     let Contacts {
         list,
         rest_speed,
         kick_n,
+        restitution,
         in_round,
         round_impulse: impulse,
         ..
     } = contacts;
     let n = list.len();
-    if e == S::ZERO || n == 0 {
+    if restitution.iter().all(|&e| e == S::ZERO) {
         return;
     }
     in_round.clear();
@@ -83,7 +84,12 @@ pub(crate) fn resolve<S: Scalar>(p: &mut Particles<S>, contacts: &mut Contacts<S
             return;
         }
         solve_inelastic(p, list, in_round, impulse);
-        for ((c, &member), &lambda) in list.iter().zip(in_round.iter()).zip(impulse.iter()) {
+        for (((c, &member), &lambda), &e) in list
+            .iter()
+            .zip(in_round.iter())
+            .zip(impulse.iter())
+            .zip(restitution.iter())
+        {
             if member {
                 apply(p, c, e * lambda);
             }

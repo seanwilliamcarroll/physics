@@ -5,7 +5,7 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-use engine::collision::{Body, Contact, find_contacts};
+use engine::collision::{Body, Contact, Statics, find_contacts};
 use engine::{Particles, Radius, Vec2, Wall};
 use proptest::prelude::*;
 use test_support::{kg, proptest_config};
@@ -43,7 +43,11 @@ fn particles(circles: &[Circle], offset: (f64, f64)) -> Particles<f64> {
 
 fn contacts(p: &Particles<f64>, walls: &[Wall<f64>]) -> Vec<Contact<f64>> {
     let (mut pairs, mut out) = (Vec::new(), Vec::new());
-    find_contacts(p, walls, H, &mut pairs, &mut out);
+    let statics = Statics {
+        walls,
+        segments: &[],
+    };
+    find_contacts(p, statics, H, &mut pairs, &mut out);
     out
 }
 
