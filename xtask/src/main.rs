@@ -74,7 +74,7 @@ enum Command {
     Coverage,
     /// Point git at the tracked hooks in .githooks/
     InstallHooks,
-    /// Write each library crate's public API to docs/api/<crate>.txt (cargo
+    /// Write each library crate's public API to docs/api/CRATE.txt (cargo
     /// public-api on a pinned nightly); with --check, fail if any is stale
     Api {
         /// Compare instead of writing (pre-push)
