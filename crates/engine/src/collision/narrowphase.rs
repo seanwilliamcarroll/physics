@@ -41,10 +41,11 @@ pub(crate) struct Contact<S> {
     pub gap: S,
 }
 
-/// The broadphase cell size, m, [`find_contacts`] uses for a substep of
+/// The broadphase cell size, m, the narrowphase uses for a substep of
 /// `h` s: any pair that can be a contact this substep is within both radii,
 /// plus what both can travel (at the fastest circle's speed), plus
-/// [`CONTACT_MARGIN`]. Public so a page can draw the grid the engine uses.
+/// the contact margin (1 mm). Public so a page can draw the grid the
+/// engine uses.
 pub fn broadphase_cell<S: Scalar>(p: &Particles<S>, h: S) -> S {
     let two = S::ONE + S::ONE;
     let max_speed = p
