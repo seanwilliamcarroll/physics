@@ -1,7 +1,7 @@
 use super::{Body, CONTACT_MARGIN, Contact, broadphase_cell, find_contacts};
-use crate::collision::Statics;
+use crate::collision::{Segment, Statics};
 use crate::params::kg;
-use crate::{ParticleId, Particles, Radius, UnitVec2, Vec2, Wall};
+use crate::{ParticleId, Particles, Radius, Restitution, UnitVec2, Vec2, Wall};
 
 const H: f64 = 0.01;
 const R: f64 = 0.1;
@@ -170,4 +170,37 @@ fn points_and_pins_make_no_wall_contacts() {
     p.add(Vec2::new(0.0, 0.0), Vec2::new(0.0, -1.0), kg(1.0));
     p.add_static(Vec2::new(1.0, 0.0));
     assert_eq!(contacts(&p, &[floor]).len(), 0);
+}
+
+#[test]
+fn a_segment_contact_points_from_the_circle_to_the_segment() {
+    // A floor segment; the ball 2 cm into it, then one off its end.
+    let seg = [Segment::new(
+        Vec2::new(-1.0, 0.0),
+        Vec2::new(1.0, 0.0),
+        Restitution::ELASTIC,
+    )];
+    let statics = Statics {
+        walls: &[],
+        segments: &seg,
+    };
+    let p = circles(&[((0.0, 0.08), (0.0, 0.0)), ((1.5, 0.0), (0.0, 0.0))]);
+    let (mut pairs, mut c) = (Vec::new(), Vec::new());
+    find_contacts(&p, statics, H, &mut pairs, &mut c);
+    assert_eq!(c.len(), 1, "the far ball is clear of the end");
+    assert_eq!((c[0].a, c[0].b), (ParticleId(0), Body::Segment(0)));
+    assert_eq!(c[0].normal.get(), Vec2::new(0.0, -1.0));
+    assert!((c[0].gap + 0.02).abs() < 1e-15, "{}", c[0].gap);
+}
+
+#[test]
+fn a_glancing_pair_that_touches_mid_substep_is_a_contact() {
+    // Passing side by side 0.19 m apart (reach 0.2) at 10 m/s relative:
+    // along the start's normal (+x, from 0.4 m behind) they close at
+    // 10 m/s, but the true path grazes. The swept test decides: they
+    // touch within h = 0.01 s only when the start is close enough.
+    let near = circles(&[((0.0, 0.0), (0.0, 0.0)), ((-0.08, 0.19), (10.0, 0.0))]);
+    assert_eq!(contacts(&near, &[]).len(), 1);
+    let far = circles(&[((0.0, 0.0), (0.0, 0.0)), ((-0.4, 0.19), (10.0, 0.0))]);
+    assert_eq!(contacts(&far, &[]).len(), 0);
 }

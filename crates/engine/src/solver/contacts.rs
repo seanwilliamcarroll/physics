@@ -1,7 +1,9 @@
 //! Contact state and geometry both solvers share (`docs/08-collision.md`,
 //! "The contact constraint").
 
-use crate::collision::{Body, Contact, Statics, find_contacts};
+use crate::collision::{
+    Body, CONTACT_MARGIN, Contact, Statics, find_contacts, pair_impact, segment_impact,
+};
 use crate::sort_key::{SortKey, index_key, sort};
 use crate::{Particles, Restitution, Scalar, UnitVec2, Vec2};
 
@@ -38,6 +40,12 @@ pub(crate) struct Contacts<S> {
     /// Impact impulses are never remembered for the warm start.
     pub(crate) in_round: Vec<bool>,
     pub(crate) round_impulse: Vec<S>,
+    /// The impact stage's scratch when restitutions differ: a union-find
+    /// parent per particle (the round's coupled groups), each group's
+    /// smallest `e`, and the `e` each contact bounces with this round.
+    pub(crate) group: Vec<usize>,
+    pub(crate) group_e: Vec<S>,
+    pub(crate) round_e: Vec<S>,
     /// Last substep's contacts as sorted keys `(a, b, i)`, `i` indexing
     /// `warm_lambda`: the impulse solver's warm start. Keys, not `(a, b,
     /// λ)` tuples, so the sort is the engine's one shared instantiation
@@ -60,6 +68,9 @@ impl<S: Scalar> Contacts<S> {
             pseudo_lambda: Vec::new(),
             in_round: Vec::new(),
             round_impulse: Vec::new(),
+            group: Vec::new(),
+            group_e: Vec::new(),
+            round_e: Vec::new(),
             warm: Vec::new(),
             warm_lambda: Vec::new(),
             pairs: Vec::new(),
@@ -79,6 +90,7 @@ impl<S: Scalar> Contacts<S> {
         h: S,
     ) {
         find_contacts(p, statics, h, &mut self.pairs, &mut self.list);
+        self.list.retain_mut(|c| at_impact(p, statics, c, h));
         self.restitution.clear();
         self.restitution.extend(self.list.iter().map(|c| {
             match c.b {
@@ -156,6 +168,65 @@ fn pair_key<S>(c: &Contact<S>) -> (i64, i64) {
         Body::Segment(i) => -(1_i64 << 40) - index_key(i),
     };
     (index_key(c.a.index()), b)
+}
+
+/// Moves a speculative contact (separated, approaching) to the moment of
+/// impact: the normal and gap where the pair first touches this substep,
+/// if it does, moving in straight lines at their current velocities. The
+/// normal found at the substep's start is up to a substep's travel early,
+/// and on a glancing hit it's still turning as the gap closes: cut shots
+/// went 1–8° off at 10 substeps (`tests/cushions.rs`, `docs/09-billiards.md`).
+/// A head-on hit and a touching contact are unchanged; so are walls, whose
+/// normal never turns. The gap becomes `(closing speed along the new
+/// normal) · t`, so the contact still closes at the time of impact.
+///
+/// Returns whether to keep the contact: one that doesn't touch this
+/// substep is dropped, unless it's within [`CONTACT_MARGIN`] (resting). Along
+/// the start's normal a glancing pair can look as if it closes when its
+/// true path only touches next substep; kept, it bounced a substep early
+/// at the stale normal (an 80° cut left at 60°). Next substep it's found
+/// again, closer, with the right normal.
+fn at_impact<S: Scalar>(
+    p: &Particles<S>,
+    statics: Statics<'_, S>,
+    c: &mut Contact<S>,
+    h: S,
+) -> bool {
+    if c.gap <= S::ZERO {
+        return true;
+    }
+    // Within the margin but not touching this substep: a resting
+    // neighbour, kept as found (`CONTACT_MARGIN`'s reason).
+    let near = c.gap <= S::from_f64(CONTACT_MARGIN);
+    let a = c.a.index();
+    let (Some(&xa), Some(&va), Some(&ra)) = (p.pos().get(a), p.vel().get(a), p.radius().get(a))
+    else {
+        return true;
+    };
+    let hit = match c.b {
+        Body::Particle(b) => {
+            let b = b.index();
+            let (Some(&xb), Some(&vb), Some(&rb)) =
+                (p.pos().get(b), p.vel().get(b), p.radius().get(b))
+            else {
+                return true;
+            };
+            pair_impact(xb - xa, vb - va, ra + rb, h)
+        }
+        Body::Segment(i) => {
+            let Some(seg) = statics.segments.get(i) else {
+                return true;
+            };
+            segment_impact(*seg, xa, va, ra, h)
+        }
+        Body::Wall(_) => return true,
+    };
+    let Some((normal, gap)) = hit else {
+        return near;
+    };
+    c.normal = normal;
+    c.gap = gap;
+    true
 }
 
 /// `(a, b, w_a, w_b)`: the particle indices (`b` is `None` for a wall,
