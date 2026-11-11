@@ -5,6 +5,7 @@
 //! callers write `scenarios::cluster` whatever file it lives in.
 
 mod ball_box;
+mod billiards;
 mod break_shot;
 mod chain;
 mod cluster;
@@ -21,6 +22,11 @@ mod shared;
 pub use ball_box::{
     BOX_BALL_MASS, BOX_BALL_RADIUS, BOX_BALLS, BOX_HALF_WIDTH, BOX_HEIGHT, BOX_MAX_BALLS,
     BOX_SPEED, ball_box,
+};
+pub use billiards::{
+    POOL_BALL_MASS, POOL_BALL_RADIUS, POOL_CORNER_MOUTH, POOL_E_BALL, POOL_E_CUSHION, POOL_G,
+    POOL_LENGTH, POOL_MAX_SPEED, POOL_MU_ROLL, POOL_MU_SLIDE, POOL_RACK, POOL_SIDE_MOUTH,
+    POOL_WIDTH, pool_break, pool_rack, pool_table,
 };
 pub use break_shot::{
     BREAK_BALL_MASS, BREAK_BALL_RADIUS, BREAK_CUE_DISTANCE, BREAK_ROWS, BREAK_SPEED, break_shot,

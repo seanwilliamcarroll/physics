@@ -28,6 +28,13 @@ pub enum ConfigError {
     /// A circle's radius must be positive and finite; see
     /// [`crate::Radius`].
     InvalidRadius,
+    /// A billiards table's cloth, cushions or pockets: coefficients must
+    /// be `≥ 0` and finite, `g` and pocket radii positive, restitutions in
+    /// `[0, 1]`; see [`crate::Table`].
+    InvalidTable,
+    /// A cue shot: the speed must be `≥ 0` and finite, the tip within
+    /// half a radius of the centre (past that, a miscue).
+    InvalidShot,
 }
 
 impl fmt::Display for ConfigError {
@@ -46,6 +53,12 @@ impl fmt::Display for ConfigError {
                 f.write_str("an update can't change which particles a constraint joins")
             }
             Self::InvalidRadius => f.write_str("radius must be positive and finite"),
+            Self::InvalidTable => {
+                f.write_str("table coefficients, cushions or pockets out of range")
+            }
+            Self::InvalidShot => {
+                f.write_str("a shot's speed must be finite and its tip within half a radius")
+            }
         }
     }
 }

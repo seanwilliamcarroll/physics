@@ -5,7 +5,7 @@
 use engine::scenarios::{
     BOX_BALLS, CHAIN_LINKS, CRADLE_BALLS, DoublePendulumStart, Fountain, JELLY_COLS, JELLY_ROWS,
     JellyBody, ball_box, break_shot, chain, cluster, collapse, cradle, disk, double_pendulum,
-    jelly, orbit, pendulum,
+    jelly, orbit, pendulum, pool_break,
 };
 use engine::{Integrator, Scalar, Solver};
 use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, state_hash, time_step};
@@ -53,9 +53,12 @@ enum Run {
     /// The cradle ([`CRADLE_BALLS`] balls, one pulled), 10 substeps, 300
     /// steps (5 s): impacts down a row, with rods.
     Cradle(Solver),
+    /// The pool break (10 m/s, a stun), 10 substeps, 240 steps (4 s):
+    /// cushions, pockets, the cloth and the moment-of-impact normals (M7).
+    PoolBreak(Solver),
 }
 
-const RUNS: [Run; 22] = [
+const RUNS: [Run; 24] = [
     Run::Fountain,
     Run::Cluster,
     Run::Disk,
@@ -78,6 +81,8 @@ const RUNS: [Run; 22] = [
     Run::BreakShot(Solver::Impulse),
     Run::Cradle(Solver::Xpbd),
     Run::Cradle(Solver::Impulse),
+    Run::PoolBreak(Solver::Xpbd),
+    Run::PoolBreak(Solver::Impulse),
 ];
 
 /// Builds the run's world, steps it, and hashes the final state.
@@ -99,10 +104,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
                 _ => collapse::<S>,
             };
             let mut w = build(16, 1).unwrap();
-            for _ in 0..300 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 300)
         }
         Run::Jelly(body) => {
             let k = if body == JellyBody::Springs {
@@ -118,17 +120,11 @@ fn run<S: Scalar>(r: Run) -> u64 {
         }
         Run::Pendulum(solver) => {
             let mut w = pendulum::<S>(solver, nonzero(4)).unwrap();
-            for _ in 0..600 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 600)
         }
         Run::Chain(solver) => {
             let mut w = chain::<S>(solver, nonzero(4), CHAIN_LINKS, 100.0).unwrap();
-            for _ in 0..600 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 600)
         }
         Run::DoublePendulum => {
             let mut w = double_pendulum::<S>(
@@ -138,47 +134,41 @@ fn run<S: Scalar>(r: Run) -> u64 {
                 1e-9,
             )
             .unwrap();
-            for _ in 0..600 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 600)
         }
         Run::BallBox(solver) => {
             let mut w = ball_box::<S>(solver, nonzero(10), BOX_BALLS, 1).unwrap();
-            for _ in 0..600 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 600)
         }
         Run::BreakShot(solver) => {
             let mut w = break_shot::<S>(solver, nonzero(10), 0.0).unwrap();
-            for _ in 0..120 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 120)
         }
         Run::Cradle(solver) => {
             let mut w = cradle::<S>(solver, nonzero(10), CRADLE_BALLS, 1).unwrap();
-            for _ in 0..300 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 300)
+        }
+        Run::PoolBreak(solver) => {
+            let mut w = pool_break::<S>(solver, nonzero(10), 10.0, 0.0).unwrap();
+            stepped(&mut w, 240)
         }
         Run::ClusterBarnesHut => {
             let mut w = cluster_barnes_hut::<S>(64, 1, 0.5);
-            for _ in 0..300 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 300)
         }
         Run::Orbit(integrator) => {
             let mut w = orbit::<S>(integrator, 1.0).unwrap();
-            for _ in 0..600 {
-                w.step(time_step(DT));
-            }
-            state_hash(w.particles())
+            stepped(&mut w, 600)
         }
     }
+}
+
+/// Steps `w` `steps` times at [`DT`] and hashes the final state.
+fn stepped<S: Scalar>(w: &mut engine::World<S>, steps: usize) -> u64 {
+    for _ in 0..steps {
+        w.step(time_step(DT));
+    }
+    state_hash(w.particles())
 }
 
 /// Repeatability: the same run twice is bit-identical, for every scalar.
@@ -194,7 +184,7 @@ for_each_scalar!(every_run_is_repeatable);
 /// (then paste the new values from the failure message) or a bug.
 /// Recorded on aarch64-apple-darwin, Rust 1.99.1; `cargo xtask test-wasm`
 /// checks the same values on wasm32-wasip1 (`docs/04-testing.md`).
-const GOLDEN: [(u64, u64); 22] = [
+const GOLDEN: [(u64, u64); 24] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster
     (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
@@ -217,6 +207,8 @@ const GOLDEN: [(u64, u64); 22] = [
     (0xb0a9_deb3_aba9_437b, 0xea50_db0f_3a7b_e67b), // BreakShot(Impulse)
     (0x4023_045c_a431_d110, 0x0e32_9ef6_1a2e_e434), // Cradle(Xpbd)
     (0x8600_3eb7_30b4_ea5c, 0x7c86_e9d1_ce89_5d5b), // Cradle(Impulse)
+    (0x9ec2_fd1b_f4bd_e264, 0x9038_9a24_fca0_cac2), // PoolBreak(Xpbd)
+    (0x7d22_34db_a781_a107, 0x3e46_5211_91e1_7f6f), // PoolBreak(Impulse)
 ];
 
 #[test]
