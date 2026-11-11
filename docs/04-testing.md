@@ -366,7 +366,16 @@ cases through `engine.wasm` in Node 22, vs criterion's native means):
 - The `extern "C"` exports have a native round-trip test (create, advance,
   read positions, free; null handles).
 - **ABI mirror:** `crates/web/src/abi.rs` owns the `demo_new` codes and
-  buffer layout; a test reads `site/js/abi.js` and fails on any mismatch.
+  buffer layout; a test reads `site/js/abi.ts` and fails on any mismatch.
+- **Declared types against the real exports** (`xtask/src/abi_check.rs`):
+  `cargo xtask site` reads each built `.wasm`'s export table (a small
+  parser for the type, import, function and export sections) and compares
+  it with the hand-written `engine.d.ts` / `acoustic.d.ts` interfaces:
+  every export declared and every declaration exported, the same parameter
+  and result counts, `bigint` exactly for `i64`. `tsc` only checks the
+  pages against the `.d.ts`; this checks the `.d.ts` against Rust. Not
+  covered: the order of same-typed parameters and what a number means.
+  Runs in `site`, so `serve`, `smoke` and pre-push all check it.
 
 ## Browser smoke test
 
