@@ -3,16 +3,10 @@
 
 use core::ptr;
 
+use web_common::boundary::capped;
+
 use crate::abi;
 use crate::demo::{Demo, DemoKind, ScalarKind, jelly_body_from_code, start_from_code};
-
-/// `n` as a size, if it's at most `max` (an [`abi`] cap).
-pub(super) fn capped(n: u32, max: u32) -> Option<usize> {
-    if n > max {
-        return None;
-    }
-    usize::try_from(n).ok()
-}
 
 /// Creates a demo of `n` particles. `kind` and `scalar` are codes from
 /// [`crate::abi`]. Returns null for an unknown code, an invalid scene, or
@@ -23,7 +17,7 @@ pub(super) fn capped(n: u32, max: u32) -> Option<usize> {
 pub(crate) extern "C" fn demo_new(kind: u32, scalar: u32, n: u32, seed: u32) -> *mut Demo {
     // Every page creates a demo before anything else, so this is the one
     // entry point that needs it. Idempotent.
-    crate::imports::install_panic_hook();
+    web_common::install_panic_hook();
     let (Some(kind), Some(scalar)) = (DemoKind::from_code(kind), ScalarKind::from_code(scalar))
     else {
         return ptr::null_mut();
@@ -96,7 +90,7 @@ pub(crate) unsafe extern "C" fn demo_positions_len(d: *const Demo) -> usize {
 /// makes no valid mass. Free with [`demo_free`].
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new_chain(scalar: u32, links: u32, mass_ratio: f64) -> *mut Demo {
-    crate::imports::install_panic_hook();
+    web_common::install_panic_hook();
     let (Some(scalar), Some(links)) = (
         ScalarKind::from_code(scalar),
         capped(links, abi::MAX_CHAIN_LINKS),
@@ -118,7 +112,7 @@ pub(crate) extern "C" fn demo_new_double_pendulum(
     start: u32,
     offset: f64,
 ) -> *mut Demo {
-    crate::imports::install_panic_hook();
+    web_common::install_panic_hook();
     let (Some(scalar), Some(start)) = (ScalarKind::from_code(scalar), start_from_code(start))
     else {
         return ptr::null_mut();
@@ -145,7 +139,7 @@ pub(crate) extern "C" fn demo_new_jelly(
     k: f64,
     c: f64,
 ) -> *mut Demo {
-    crate::imports::install_panic_hook();
+    web_common::install_panic_hook();
     let (Some(scalar), Some(body), Some(cols), Some(rows)) = (
         ScalarKind::from_code(scalar),
         jelly_body_from_code(body),
@@ -188,7 +182,7 @@ pub(crate) unsafe extern "C" fn demo_links_len(d: *const Demo) -> usize {
 /// [`TEST_PANIC_MESSAGE`]: crate::abi::TEST_PANIC_MESSAGE
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_panic_for_test() {
-    crate::imports::install_panic_hook();
+    web_common::install_panic_hook();
     deliberate_panic();
 }
 

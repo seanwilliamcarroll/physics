@@ -204,9 +204,10 @@ Contact friction moved to M10.
    (`image-rendering: pixelated`). `site/js/pixels.ts`, shared later with
    A4's height map and the swarm track's trail maps.
 9. **Stepping: a fixed rate, the step budget included.** `FixedStep`
-   moves from `web` into `math` (as `math::fixed_step`) so both modules
-   share it, cap and all (#156); the sand page runs at 60 steps per
-   simulated second and slows down rather than freezing on a huge grid.
+   lives in `web-common` (moved there from `web` with the panic hook,
+   after the API audit: pacing isn't `math`), so `sand-web` shares it, cap
+   and all (#156); the sand page runs at 60 steps per simulated second and
+   slows down rather than freezing on a huge grid.
 10. **Painting:** a brush (radius, material, including "erase") applied by
     an export between steps; painting into a cell wakes its chunk.
 
@@ -241,7 +242,7 @@ Contact friction moved to M10.
 
 ## 5. Web layer (PR)
 
-- [ ] `math::fixed_step` (moved from `web`, the cap with it); `sand-web`:
+- [ ] `sand-web` on `web-common` (the panic hook, `FixedStep`): 
       create, step, paint, the RGBA buffer, counts per material; the
       `.d.ts` check and the call-sequence property test cover it.
 

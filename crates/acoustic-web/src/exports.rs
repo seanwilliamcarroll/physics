@@ -19,7 +19,7 @@ const fn status(ok: bool) -> u32 {
 /// [`synth_free`].
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn synth_new(sample_rate: f64, seed: u32) -> *mut Synth {
-    crate::imports::install_panic_hook();
+    web_common::install_panic_hook();
     Synth::new(sample_rate, u64::from(seed)).map_or(ptr::null_mut(), |s| Box::into_raw(Box::new(s)))
 }
 

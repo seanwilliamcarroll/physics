@@ -19,6 +19,7 @@ dependencies = [
  "math",
  "proptest",
  "test-support",
+ "web-common",
 ]
 
 [[package]]
@@ -630,7 +631,12 @@ dependencies = [
  "math",
  "proptest",
  "test-support",
+ "web-common",
 ]
+
+[[package]]
+name = "web-common"
+version = "0.1.0"
 
 [[package]]
 name = "winapi"
