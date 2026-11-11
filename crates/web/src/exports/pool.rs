@@ -11,7 +11,7 @@ use crate::demo::{Demo, ScalarKind};
 /// Null for an unknown scalar code. Free with `demo_free`.
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new_pool(scalar: u32) -> *mut Demo {
-    crate::imports::install_panic_hook();
+    web_shell::install_panic_hook();
     let Some(scalar) = ScalarKind::from_code(scalar) else {
         return ptr::null_mut();
     };

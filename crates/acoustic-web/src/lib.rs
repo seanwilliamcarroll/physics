@@ -6,13 +6,4 @@
 pub mod abi;
 #[expect(unsafe_code, reason = "the C ABI boundary: raw pointers in and out")]
 mod exports;
-// Only wasm builds contain unsafe here (the import call).
-#[cfg_attr(
-    target_arch = "wasm32",
-    expect(
-        unsafe_code,
-        reason = "calling a JS import with a pointer into wasm memory"
-    )
-)]
-mod imports;
 pub mod synth;
