@@ -1,5 +1,5 @@
 // The contract with engine.wasm: integer codes for demo_new and the layout
-// of the positions buffer. Mirrors `crates/web/src/abi.rs`; a Rust test
+// of the positions buffer. Mirrors `crates/engine-web/src/abi.rs`; a Rust test
 // (abi::tests) reads this file and fails if any value disagrees.
 
 /** demo_new `kind` codes. */

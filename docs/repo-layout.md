@@ -62,7 +62,7 @@ physics/
 │   ├── test-support/       # dev-dep: shared integration-test helpers
 │   │   └── src/            # tol, orbit, hash, worlds (proptest)
 │   │
-│   ├── web/                # cdylib → engine.wasm
+│   ├── engine-web/         # cdylib → engine.wasm (renamed from `web` after M7)
 │   │   └── src/
 │   │       ├── abi.rs      # wire codes and caps (mirrored in site/js/abi.ts)
 │   │       ├── demo.rs     # Demo, AnyWorld, scenes' glue (tested natively)
@@ -127,14 +127,16 @@ physics/
 there, `acoustic` must depend on the whole physics engine to get `Fixed`.
 Splitting now is free; splitting after M8 touches every import.
 
-Dependency direction: `math` ← `engine` ← `web`; `math` ← `acoustic`;
-`math` ← `sand` (if it needs anything). Nothing depends on `web`.
+Dependency direction: `math` ← `engine` ← `engine-web`; `math` ←
+`acoustic` ← `acoustic-web`; `math` ← `sand` ← `sand-web` (M9); every
+`*-web` crate ← `web-common`, which depends on nothing. Nothing depends
+on a `*-web` crate.
 
 ### `scenarios.rs` lives in `engine`
 
 The orbit you test is the orbit you demo. Same reasoning as `diagnostics`.
 
-### `web` splits exports from logic
+### `engine-web` splits exports from logic
 
 All `unsafe` lives in one-line wrappers in `lib.rs`. Everything with
 behavior is in `demo.rs` and runs under native `cargo test`.
@@ -148,7 +150,7 @@ Commands (`cargo xtask help` lists what exists):
 
 | Command | Status | Does |
 |---|---|---|
-| `cargo xtask site` | M0 | Build `web` for `wasm32-unknown-unknown` (release), copy to `site/pkg/engine.wasm` |
+| `cargo xtask site` | M0 | Build `engine-web` and `acoustic-web` for `wasm32-unknown-unknown` (release), copy to `site/pkg/engine.wasm` |
 | `cargo xtask install-hooks` | M0 | `git config core.hooksPath .githooks` |
 | `cargo xtask serve` | M2 | `site`, then serve `site/` with `tsc --watch` alongside (default port 8000) |
 | `cargo xtask smoke` | M0 | `site`, then load the demo in headless Chrome and check it draws (pre-push; `docs/04-testing.md`) |

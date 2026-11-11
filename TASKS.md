@@ -242,7 +242,7 @@ Contact friction moved to M10.
 
 ## 5. Web layer (PR)
 
-- [ ] `sand-web` on `web-common` (the panic hook, `FixedStep`): 
+- [ ] `sand-web` on `web-common` (the panic hook, `FixedStep`):
       create, step, paint, the RGBA buffer, counts per material; the
       `.d.ts` check and the call-sequence property test cover it.
 

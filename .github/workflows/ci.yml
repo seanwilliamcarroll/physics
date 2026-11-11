@@ -49,8 +49,8 @@ jobs:
         run: cargo fmt --all -- --check
       - name: cargo clippy (warnings are errors)
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: cargo clippy web, acoustic-web (wasm32)
-        run: cargo clippy -p web -p acoustic-web --target wasm32-unknown-unknown -- -D warnings
+      - name: cargo clippy engine-web, acoustic-web (wasm32)
+        run: cargo clippy -p engine-web -p acoustic-web --target wasm32-unknown-unknown -- -D warnings
 
       # --- pre-push ---
       - name: cargo test

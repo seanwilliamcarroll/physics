@@ -50,7 +50,7 @@ fn rejects_malformed_reports() {
 }
 
 const PANIC_CONSOLE: &str =
-    "engine.wasm panicked at crates/web/src/exports.rs:99:5:\\ndeliberate test panic";
+    "engine.wasm panicked at crates/engine-web/src/exports.rs:99:5:\\ndeliberate test panic";
 
 #[test]
 fn panic_case_needs_both_the_page_report_and_the_console_line() {

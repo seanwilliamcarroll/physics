@@ -234,7 +234,7 @@ twelve exports:
 | `synth_clipped(handle) → f64` | samples clamped to ±1 so far |
 
 `Synth` (safe Rust, tested natively) holds the voices, the settings and
-both buffers; `exports` is the only `unsafe`, as in `web`. Checked from
+both buffers; `exports` is the only `unsafe`, as in `engine-web`. Checked from
 Node against the real module: one second of A4 peaks at 0.23, with the
 108-sample loop the native tests predict.
 
