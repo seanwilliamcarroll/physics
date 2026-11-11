@@ -347,10 +347,11 @@ to draw.
 
 ## 6. The page (PR)
 
-- [ ] `s1-boids`: the flock on `pixels.ts`, sliders for the five factors
-      and two ranges, n, brute/grid, the predator; HUD with ns per
-      agent-step and polarization; the crossover table measured in the
-      page (as M2's per-N cost); smoke; a "Swarms" gallery heading.
+- [x] `s1-boids`: the 2560 × 1440 world at half scale on `pixels.ts`,
+      the predator on the pointer, a slider per rule constant (defaults
+      from Rust), the neighbour mode, a polarization plot, ns per
+      boid-step in the HUD, the cost table measured in the browser
+      (`swarm-cost.ts`); three smoke cases; a "Swarms" gallery heading.
 - [ ] Your check against **Done when**.
 
 ## 7. Cleanup (PR)

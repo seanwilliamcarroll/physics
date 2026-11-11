@@ -95,6 +95,8 @@ physics/
     │   ├── sand-scenes.ts  # M9: the starting scenes, drawn with the brush (pure)
     │   ├── swarm-abi.ts    # S1: neighbour and parameter codes, caps (mirrors swarm-web abi.rs)
     │   ├── swarm.d.ts      # S1: types for swarm.wasm's exports
+    │   ├── swarm-wasm.ts   # S1: load swarm.wasm, its step budget
+    │   ├── swarm-cost.ts   # S1: the world for n boids, the cost table (pure)
     │   ├── pixels.ts       # RGBA buffer → ImageData → canvas; CSS point → cell; strokes
     │   ├── loop.ts         # rAF loop → demo_advance
     │   ├── canvas.ts       # world↔screen, high-DPI, batched drawing (points, links, disks, grid)
@@ -127,6 +129,7 @@ physics/
     │   ├── m6-cradle/
     │   ├── m7-billiards/
     │   ├── m9-falling-sand/
+    │   ├── s1-boids/
     │   ├── a1-string/
     │   ├── a2-waveguide/
     │   └── a3-piano/

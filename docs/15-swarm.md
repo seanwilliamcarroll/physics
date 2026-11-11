@@ -302,6 +302,20 @@ Through the real exports in Node 22, the page's world (10k boids in
 2560 × 1440, drawn 1280 × 720): **a step 2.37 ms sorted, 4.54 grid;
 drawing 0.26 ms.** 100k: 23.6 ms a step, 2.0 ms to draw.
 
+### The page as built (S1.6, `site/demos/s1-boids`)
+
+The world, 2560 × 1440 at half scale (`pixels.ts`, M9's), the predator
+on the pointer, a slider per rule constant (defaults read from Rust; a
+refused value snaps back), the neighbour mode, a polarization plot and
+a HUD with ns per boid-step. **A cost table measured in the browser**,
+one case per task so the page stays live: every mode at 300 to 100k
+boids at the page's density (`swarm-cost.ts`, unit-tested), brute force
+to 10k. Smoke: 10k sorted, 2,000 brute force, 100k.
+
+Order at the page's default (through the module, Node): polarization
+0.22 after 10 s, 0.52 after 50, 0.84 after a minute. Each flock orders
+within seconds; the sky-wide number waits for them to merge.
+
 ### Out of scope for S1
 
 Periodic boundaries and noise (S2); fields (S3, S4); the GPU (S4

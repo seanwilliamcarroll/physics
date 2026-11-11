@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S1 · Boids: three rules, a flock, and what finding neighbours costs</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Boids: three rules, a flock, and what finding neighbours costs</h1>
+    <p class="muted">
+      Each boid sees only the boids within its <b>visual range</b>: it
+      steers away from any inside its <b>protected range</b>
+      (separation), toward the rest's average heading (alignment) and
+      their centre (cohesion), turns back near the edges, and keeps its
+      speed in a band (Reynolds 1987, in the ECE 4760 course's form and
+      tuning). Colour is heading, so a group flying together is one
+      colour. <b>Move the pointer over the flock</b>: it's a predator, and
+      they flee it. Turn <b>matching</b> to 0 and the flock never forms:
+      the polarization below stays near 0. Edge turning is soft, so the
+      flock overshoots the walls as a body (<code>docs/15-swarm.md</code>).
+    </p>
+    <p class="muted">
+      Finding neighbours is the cost. <b>Brute force</b> checks every
+      pair, n² a step; the <b>grid</b> checks the 3 × 3 cells around each
+      boid; <b>sorted</b> also moves boids into cell order every step so
+      those cells are contiguous memory, read by a branchless loop that
+      runs as SIMD instructions. All three find exactly the same
+      neighbours.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="stage swarm"><canvas id="view"></canvas></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Polarization</h2>
+    <p class="muted">
+      |Σ vᵢ/|vᵢ|| / n: 1 when every boid heads the same way, about 1/√n
+      for random headings (Couzin et al. 2002; Vicsek et al. 1995's
+      v<sub>a</sub>). Over the whole sky it climbs slowly (10k boids: about
+      0.5 after a minute) because many separate flocks head different
+      ways; each flock is ordered within seconds, as the colours show. It
+      never settles: flocks merge, split and turn.
+    </p>
+    <div class="plot"><canvas id="order"></canvas></div>
+    <h2>Cost</h2>
+    <p class="muted">
+      Each way of finding neighbours, timed in this browser at the page's
+      density (the world grows with √n). Flat ns per boid as n grows is
+      O(n); brute force's grows with n. Brute force stops at 10k here.
+    </p>
+    <p><button type="button" id="measure">measure</button> <span class="muted" id="measuring"></span></p>
+    <div id="cost"></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>

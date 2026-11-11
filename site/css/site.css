@@ -179,3 +179,9 @@ main.wide {
   image-rendering: pixelated;
   cursor: crosshair;
 }
+
+/* S1: the flock's canvas (pixels.ts sets its aspect ratio). */
+.stage.swarm canvas {
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
