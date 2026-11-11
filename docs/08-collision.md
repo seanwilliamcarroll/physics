@@ -80,7 +80,7 @@ substeps, and a graze whose start-of-substep normal *looked* closing was
 bounced a substep early (an 80° cut left at 60°). Now every separated
 contact is moved to where the pair first touches, moving in straight
 lines (a quadratic for two circles, conservative advancement for a
-segment, `collision::pair_impact` and `segment_impact`), and takes its
+segment; `pair_impact` and `segment_impact` in `collision/narrowphase.rs`), and takes its
 normal and gap there. A pair that doesn't touch this substep is dropped
 unless it's within the margin. The test is also swept (a contact if
 either test says so), so a graze can't slip between them. Cut shots now

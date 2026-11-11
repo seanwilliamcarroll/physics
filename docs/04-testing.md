@@ -573,7 +573,7 @@ health audit, then filled in):
   | Math primitives | `math`'s unit tests; `math/tests/properties.rs` (identities bit for bit, unit directions over 1e-30..1e30, and the edge inputs) |
   | Integrators | Free fall per integrator (`invariants.rs`); orbits' energy behavior (`invariants.rs`, `known_failures.rs`); convergence order per integrator, position and velocity (`convergence.rs`) |
   | Broadphase | Unit cases; brute-force superset over uniform, clustered and mixed scenes far from the origin, insertion order (`broadphase_properties.rs`) |
-  | Narrowphase | Unit cases; swap, translation, well-formed contacts (`narrowphase_properties.rs`) |
+  | Narrowphase | Unit cases; swap, translation, well-formed contacts (`collision/narrowphase/properties.rs`, a unit test so the narrowphase stays crate-private) |
   | Contact solver | Analytic head-on, momentum, energy, stacks, a bullet, fast circles, 1:1e6 (`contacts.rs`); the energy gain with simultaneous contacts is a known failure until Generalized Reflections |
   | Joints and constraints | Rod error bounds, chains, compliant and rigid pendulum periods, soft rods at several passes |
   | World and API | The ABI property tests (`exports/tests/sequences.rs`, both wasm crates); goldens of every demo scene, native and wasm |

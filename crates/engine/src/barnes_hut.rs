@@ -63,16 +63,6 @@ impl<S: Scalar> BarnesHut<S> {
         }
     }
 
-    #[must_use]
-    pub const fn g_const(&self) -> S {
-        self.g_const
-    }
-
-    #[must_use]
-    pub const fn softening_sq(&self) -> S {
-        self.softening_sq
-    }
-
     /// Softened pull toward a point mass `mass` at offset `r` (unsoftened
     /// `|r|² = dist_sq`): `G m r / (|r|² + ε²)^(3/2)`. Zero, not 0/0, for
     /// a coincident unsoftened pair (no direction).

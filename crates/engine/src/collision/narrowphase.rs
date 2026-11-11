@@ -16,11 +16,11 @@ use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2};
 /// cost nothing physically: XPBD corrects only overlap, and the impulse
 /// solver lets a speculative gap close. `Box2D` keeps a margin for the same
 /// reason.
-pub const CONTACT_MARGIN: f64 = 1e-3;
+pub(crate) const CONTACT_MARGIN: f64 = 1e-3;
 
 /// What a contact's first body touches.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Body {
+pub(crate) enum Body {
     Particle(ParticleId),
     /// Index into the world's walls.
     Wall(usize),
@@ -34,7 +34,7 @@ pub enum Body {
 /// `C = |x_b − x_a| − (r_a + r_b)` (negative when overlapping), and the
 /// normal velocity `n · (v_b − v_a)` is positive when separating.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Contact<S> {
+pub(crate) struct Contact<S> {
     pub a: ParticleId,
     pub b: Body,
     pub normal: UnitVec2<S>,
@@ -64,7 +64,7 @@ pub fn broadphase_cell<S: Scalar>(p: &Particles<S>, h: S) -> S {
 /// `h` at their current approach speed (the speculative margin), plus
 /// [`CONTACT_MARGIN`]: touching or overlapping always counts. Pairs that can't move (both static) and
 /// points (radius 0) make none.
-pub fn find_contacts<S: Scalar>(
+pub(crate) fn find_contacts<S: Scalar>(
     p: &Particles<S>,
     statics: Statics<'_, S>,
     h: S,
@@ -160,7 +160,12 @@ fn max<S: Scalar>(a: S, b: S) -> S {
 
 /// When `|d + v t| = reach` first, for `t` in `[0, h]`: the unit `d + v t`
 /// and the gap `(n · −v) t`. `None` if they don't touch this substep.
-pub fn pair_impact<S: Scalar>(d: Vec2<S>, v: Vec2<S>, reach: S, h: S) -> Option<(UnitVec2<S>, S)> {
+pub(crate) fn pair_impact<S: Scalar>(
+    d: Vec2<S>,
+    v: Vec2<S>,
+    reach: S,
+    h: S,
+) -> Option<(UnitVec2<S>, S)> {
     let two = S::ONE + S::ONE;
     let qa = v.dot(v);
     let qb = two * d.dot(v);
@@ -180,7 +185,7 @@ pub fn pair_impact<S: Scalar>(d: Vec2<S>, v: Vec2<S>, reach: S, h: S) -> Option<
 /// Conservative advancement of a circle at `x`, velocity `v`, toward a
 /// segment: step to where the gap along the current normal would close,
 /// re-measure, a few times. `None` if it doesn't touch within `h`.
-pub fn segment_impact<S: Scalar>(
+pub(crate) fn segment_impact<S: Scalar>(
     seg: Segment<S>,
     x: Vec2<S>,
     v: Vec2<S>,
@@ -208,5 +213,7 @@ pub fn segment_impact<S: Scalar>(
     normal.map(|n| (n, n.dot(v) * t))
 }
 
+#[cfg(test)]
+mod properties;
 #[cfg(test)]
 mod tests;
