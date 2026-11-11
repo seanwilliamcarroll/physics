@@ -293,9 +293,13 @@ energy includes spin. Every export in the call-sequence property test.
 
 ## 8. The page (PR)
 
-- [ ] `m7-billiards`: cue drag, tip height, substeps, speculation,
-      solver; the tunnel counter; the potted tray; smoke; gallery.
-- [ ] Your check against **Done when**.
+- [x] `m7-billiards`: drag back to shoot (aim and speed from the pull),
+      the tip slider, solver, substeps, speculation, rate; the tunnel
+      counter, the potted tray, the energy plot; a scratched cue ball
+      re-spotted when the table stops. Smoke: a hard break, and the
+      tunneling preset (the cue ball goes through the rack). Gallery.
+- [ ] Your check against **Done when**: play a break, see the balls
+      settle, try stun, follow and draw, and the speculation switch.
 
 ## 9. Cleanup (PR)
 
