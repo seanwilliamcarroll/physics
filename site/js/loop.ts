@@ -77,3 +77,60 @@ export class Smoothed {
     return this.#value ?? 0;
   }
 }
+
+/** Physics time a display frame may take, ms: leaves room in a 60 Hz frame
+ *  (16.7 ms) for drawing and the browser (`docs/workers.md`, "a step
+ *  budget"). */
+export const STEP_BUDGET_MS = 10;
+
+/** Weight of each new ms-per-step sample: quick to notice a slower scene
+ *  (a bigger N), steady across a frame's jitter. */
+const BUDGET_SMOOTHING = 0.2;
+
+/** The step budget: tracks each demo's smoothed milliseconds per physics
+ *  step, and caps every demo's steps per frame so all of them together fit
+ *  `budgetMs`. A page that keeps up never reaches its cap; one that can't
+ *  runs in slow motion instead of freezing (Rust drops the owed time). */
+export class StepBudget {
+  readonly budgetMs: number;
+  readonly maxCap: number;
+  #perStep = new Map<number, Smoothed>();
+  #limited = false;
+
+  constructor(budgetMs = STEP_BUDGET_MS, maxCap = Infinity) {
+    this.budgetMs = budgetMs;
+    this.maxCap = maxCap;
+  }
+
+  /** Records that `demo` ran `steps` steps in `ms`, and whether it was
+   *  held to its cap. */
+  record(demo: number, steps: number, ms: number, cap: number): void {
+    if (steps > 0) {
+      let s = this.#perStep.get(demo);
+      if (s === undefined) this.#perStep.set(demo, (s = new Smoothed(BUDGET_SMOOTHING)));
+      s.add(ms / steps);
+    }
+    this.#limited = cap > 0 && steps >= cap;
+  }
+
+  /** Forgets a freed demo. */
+  forget(demo: number): void {
+    this.#perStep.delete(demo);
+  }
+
+  /** Steps per frame for every demo: the most that fit the budget given
+   *  all of them, at least 1 (always progress), at most `maxCap`; 0 (no
+   *  cap) until anything has been measured. */
+  get cap(): number {
+    let total = 0;
+    for (const s of this.#perStep.values()) total += s.value;
+    if (!(total > 0)) return 0;
+    return Math.min(this.maxCap, Math.max(1, Math.floor(this.budgetMs / total)));
+  }
+
+  /** Whether the last advance was held to its cap: the page is running in
+   *  slow motion. */
+  get limited(): boolean {
+    return this.#limited;
+  }
+}

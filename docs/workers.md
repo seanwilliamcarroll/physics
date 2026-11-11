@@ -31,7 +31,18 @@ event until the frame's physics returns. When physics falls behind,
 frame (15 steps at 60 Hz). A slow page doesn't just run slowly: each frame
 gets longer, and the page freezes.
 
-## Option 1: a step budget (single thread)
+## Option 1: a step budget (single thread) — built
+
+**As built:** Rust's `FixedStep` takes a cap (`demo_set_step_cap`): at
+most `n` steps per `demo_advance`, the whole steps owed past it dropped,
+not carried. JavaScript decides `n` (`loop.ts` `StepBudget`):
+`loadEngine` wraps `demo_advance` to time each call (physics only, not
+drawing), keeps each demo's smoothed ms per step, and caps every demo at
+the steps that fit **10 ms** for all of them together (at least 1, at
+most `MAX_RATE_HZ`). Pages that keep up never reach the cap (every smoke
+case still takes its 30 steps); the HUD says "slow motion" when one does.
+
+
 
 Cap the physics at a wall-clock budget per frame, say 8 ms. Steps that
 don't fit are dropped rather than owed, so simulated time runs slower

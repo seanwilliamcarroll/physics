@@ -208,6 +208,12 @@ impl Demo {
         each_scalar!(&self.world, s => s.constraint_error(skip))
     }
 
+    /// At most `cap` physics steps per [`advance`](Self::advance) (`None`:
+    /// no cap): the page's step budget (`docs/workers.md`).
+    pub(crate) const fn set_step_cap(&mut self, cap: Option<NonZeroU32>) {
+        self.clock.set_cap(cap);
+    }
+
     /// Physics steps per simulated second (`dt = 1 / rate`). Drops owed
     /// time, so a rate change never fires a catch-up step.
     pub(crate) fn set_rate(&mut self, rate: NonZeroU32) {

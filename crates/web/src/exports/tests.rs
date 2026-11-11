@@ -17,8 +17,8 @@ use super::readouts::{
 };
 use super::settings::{
     demo_set_beta, demo_set_damping, demo_set_integrator, demo_set_iterations, demo_set_order,
-    demo_set_rate, demo_set_softening, demo_set_solver, demo_set_stabilization, demo_set_stiffness,
-    demo_set_substeps, demo_set_theta,
+    demo_set_rate, demo_set_softening, demo_set_solver, demo_set_stabilization, demo_set_step_cap,
+    demo_set_stiffness, demo_set_substeps, demo_set_theta,
 };
 use crate::abi;
 use core::ptr;
@@ -479,5 +479,21 @@ fn the_pool_table_parses_its_shots_at_the_boundary() {
             (0, 0)
         );
         assert!(demo_tunnels(null).is_nan());
+    }
+}
+
+#[test]
+fn a_step_cap_bounds_an_advance() {
+    let d = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 10, 1);
+    // SAFETY: `d` from `demo_new`, freed once; null is allowed.
+    unsafe {
+        assert_eq!(demo_set_step_cap(d, abi::MAX_RATE_HZ + 1), 0);
+        assert_eq!(demo_set_step_cap(d, 2), 1);
+        assert_eq!(demo_advance(d, 0.25), 2, "15 owed, 2 run");
+        assert_eq!(demo_advance(d, 1.0 / 60.0), 1, "nothing carried over");
+        assert_eq!(demo_set_step_cap(d, 0), 1, "0 lifts the cap");
+        assert_eq!(demo_advance(d, 0.25), 15);
+        demo_free(d);
+        assert_eq!(demo_set_step_cap(ptr::null_mut(), 1), 0);
     }
 }

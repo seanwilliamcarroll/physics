@@ -1,7 +1,7 @@
 // Unit tests for the pure parts of site/js/loop.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { RateMeter, Smoothed } from "../../site/js/loop.ts";
+import { RateMeter, Smoothed, StepBudget } from "../../site/js/loop.ts";
 
 test("RateMeter counts events in the last second only", () => {
   const m = new RateMeter();
@@ -19,4 +19,28 @@ test("Smoothed starts at its first sample and moves alpha of the way", () => {
   assert.equal(s.value, 10);
   s.add(20);
   assert.equal(s.value, 15);
+});
+
+test("StepBudget caps every demo so all of them fit the budget", () => {
+  const b = new StepBudget(10);
+  assert.equal(b.cap, 0, "no cap until something is measured");
+  b.record(1, 4, 2, 0); // 0.5 ms a step
+  assert.equal(b.cap, 20);
+  b.record(2, 1, 1.5, 0); // a second demo at 1.5 ms: 2 ms per step together
+  assert.equal(b.cap, 5);
+  b.forget(2);
+  assert.equal(b.cap, 20);
+});
+
+test("StepBudget always allows a step, and says when it held one back", () => {
+  const b = new StepBudget(10, 240);
+  b.record(1, 1, 55, 0); // M2 at N = 4096: 55 ms a step
+  assert.equal(b.cap, 1, "at least one step: always progress");
+  b.record(1, 1, 55, 1);
+  assert.equal(b.limited, true);
+  const fast = new StepBudget(10, 240);
+  fast.record(1, 1, 0.001, 0);
+  assert.equal(fast.cap, 240, "capped at the ABI's most");
+  fast.record(1, 1, 0.001, 240);
+  assert.equal(fast.limited, false);
 });

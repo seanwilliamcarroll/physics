@@ -24,6 +24,11 @@ pub(crate) struct FixedStep {
     /// Elapsed time not yet simulated. Invariant: `0 <= leftover < dt`
     /// between calls to [`advance`](Self::advance).
     leftover: f64,
+    /// At most this many steps per [`advance`](Self::advance), if set (a
+    /// step budget, `docs/workers.md`): steps owed beyond it are dropped,
+    /// so a page too slow for real time runs in slow motion instead of
+    /// owing ever more catch-up steps.
+    cap: Option<NonZeroU32>,
 }
 
 impl FixedStep {
@@ -38,6 +43,7 @@ impl FixedStep {
             rate,
             dt: 1.0 / f64::from(rate.get()),
             leftover: 0.0,
+            cap: None,
         }
     }
 
@@ -58,7 +64,16 @@ impl FixedStep {
     /// leftover was measured in the old step size, and carrying it over
     /// could fire a step immediately at the new one.
     pub(crate) fn set_rate(&mut self, rate: NonZeroU32) {
-        *self = Self::new(rate);
+        *self = Self {
+            cap: self.cap,
+            ..Self::new(rate)
+        };
+    }
+
+    /// Caps the steps per [`advance`](Self::advance) at `cap` (`None`: no
+    /// cap, the default). Owed time past the cap is dropped, not carried.
+    pub(crate) const fn set_cap(&mut self, cap: Option<NonZeroU32>) {
+        self.cap = cap;
     }
 
     /// Adds `elapsed` seconds of real time; returns how many steps of `dt`
@@ -73,6 +88,12 @@ impl FixedStep {
         self.leftover += elapsed;
         let mut steps = 0;
         while self.leftover >= self.dt {
+            if self.cap.is_some_and(|c| steps >= c.get()) {
+                // Over budget: drop the whole steps still owed, keep the
+                // fraction (slow motion, not a backlog).
+                self.leftover %= self.dt;
+                break;
+            }
             self.leftover -= self.dt;
             steps += 1;
         }

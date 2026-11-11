@@ -196,7 +196,10 @@ C8's waveguide is five cells. Options: shorter treble contact targets,
 a higher internal rate for the top octaves, or accept (real top-octave
 tones are nearly pure too).
 
-**M2 page at N = 4096 (found in review):** about 1 fps. One step of all
+**M2 page at N = 4096 (found in review):** about 1 fps. **A step budget
+is in** (`docs/workers.md`, option 1): the page should now run in slow
+motion with a responsive display, to check by hand (`?n=4096`). The
+rest of this note is the history. One step of all
 three panels costs ~27 ms (f32 and f64 direct, plus Barnes–Hut), so 60 Hz
 needs ~1.6 s of compute per second. Every frame then runs the 15 steps
 `FixedStep`'s 0.25 s clamp allows (~400 ms). 2048 keeps up (~7 ms per
