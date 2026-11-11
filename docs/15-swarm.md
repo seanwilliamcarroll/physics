@@ -1,7 +1,9 @@
 # 15 — Swarms
 
-Status: **Draft** (S1.1). Decisions: TASKS.md, S1. Depends on `math`
-(`Vec2`, `SplitMix64`) and `web-common`; nothing in the engine.
+Status: **Adopted** (S1.1; as built: the crate S1.2, the grid S1.3,
+sorted lanes and SIMD S1.4, `swarm.wasm` S1.5, the page S1.6; each has
+an "as built" section below). Depends on `math` and `web-common`;
+nothing in the engine.
 
 The swarm track simulates **agents that follow rules**, not bodies that
 feel forces. A boid steers by what it sees within a radius; nothing is
