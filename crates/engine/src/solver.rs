@@ -145,6 +145,9 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     /// The cloth and every particle's spin, if the world has a table (M7):
     /// applied after each kick.
     pub(crate) cloth: Option<(Table<S>, &'a mut [Vec2<S>])>,
+    /// Speculative contacts (on by default; M7 switches them off to show
+    /// tunneling).
+    pub(crate) speculative: bool,
 }
 
 #[cfg(test)]

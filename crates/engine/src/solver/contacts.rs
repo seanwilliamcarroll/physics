@@ -88,8 +88,13 @@ impl<S: Scalar> Contacts<S> {
         e: Restitution<S>,
         acc: &[Vec2<S>],
         h: S,
+        speculative: bool,
     ) {
-        find_contacts(p, statics, h, &mut self.pairs, &mut self.list);
+        // Without speculation, contacts are only what touches (within the
+        // margin) at the substep's start: the narrowphase with no time to
+        // close in (`docs/09-billiards.md`, "Tunneling").
+        let reach = if speculative { h } else { S::ZERO };
+        find_contacts(p, statics, reach, &mut self.pairs, &mut self.list);
         self.list.retain_mut(|c| at_impact(p, statics, c, h));
         self.restitution.clear();
         self.restitution.extend(self.list.iter().map(|c| {

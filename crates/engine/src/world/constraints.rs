@@ -121,19 +121,29 @@ impl<S: Scalar> Constraints<S> {
         self.contacts.clear();
     }
 
-    /// One substep of length `h` by the current solver. `collision` is
-    /// `Some((statics, restitution))` when the world can collide.
+    /// One substep of length `h` by the current solver; `collision` when
+    /// the world can collide.
     pub(super) fn substep(
         &mut self,
         forces: &[Box<dyn Force<S>>],
         particles: &mut Particles<S>,
         acc: &mut Vec<Vec2<S>>,
-        collision: Option<(Statics<'_, S>, Restitution<S>)>,
-        cloth: Option<(Table<S>, &mut [Vec2<S>])>,
+        collision: Option<Collision<'_, S>>,
         h: S,
     ) {
-        let (statics, restitution) = collision.unwrap_or((Statics::NONE, Restitution::INELASTIC));
-        if collision.is_none() {
+        let collides = collision.is_some();
+        let Collision {
+            statics,
+            restitution,
+            cloth,
+            speculative,
+        } = collision.unwrap_or(Collision {
+            statics: Statics::NONE,
+            restitution: Restitution::INELASTIC,
+            cloth: None,
+            speculative: true,
+        });
+        if !collides {
             self.contacts.clear();
         }
         let step = Step {
@@ -147,15 +157,25 @@ impl<S: Scalar> Constraints<S> {
             order: self.order,
             stabilization: self.stabilization,
             baumgarte: self.baumgarte,
-            collides: collision.is_some(),
+            collides,
             contacts: &mut self.contacts,
             statics,
             restitution,
             cloth,
+            speculative,
         };
         match self.solver {
             Solver::Xpbd => step.xpbd(h),
             Solver::Impulse => step.impulse(h),
         }
     }
+}
+
+/// What a substep needs to collide, borrowed from `World`.
+pub(super) struct Collision<'a, S> {
+    pub(super) statics: Statics<'a, S>,
+    pub(super) restitution: Restitution<S>,
+    /// The cloth and every particle's spin, if the world has a table.
+    pub(super) cloth: Option<(Table<S>, &'a mut [Vec2<S>])>,
+    pub(super) speculative: bool,
 }

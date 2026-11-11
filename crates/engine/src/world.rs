@@ -11,9 +11,9 @@ mod table;
 use core::num::NonZeroU32;
 
 pub use config_error::ConfigError;
-use constraints::Constraints;
+use constraints::{Collision, Constraints};
 
-use crate::collision::{Segment, Statics};
+use crate::collision::{Segment, Statics, count_tunnels};
 use crate::integrate::VerletScratch;
 use crate::table::Table;
 pub use drag::Grab;
@@ -63,6 +63,19 @@ pub struct World<S: Scalar> {
     /// Each particle's spin about the horizontal axes, `(ω_x, ω_y)`, rad/s,
     /// aligned with the particles; only a table moves it.
     spin: Vec<Vec2<S>>,
+    /// Speculative contacts: on by default (`docs/09-billiards.md`,
+    /// "Tunneling").
+    speculative: bool,
+    /// Tunnel counting (`collision::count_tunnels`), when on: the count
+    /// so far, each substep's starting positions, and broadphase scratch.
+    tunnels: Option<TunnelCount<S>>,
+}
+
+/// What counting tunnels keeps between substeps.
+struct TunnelCount<S> {
+    count: u64,
+    before: Vec<Vec2<S>>,
+    pairs: Vec<(usize, usize)>,
 }
 
 impl<S: Scalar> World<S> {
@@ -85,6 +98,8 @@ impl<S: Scalar> World<S> {
             restitution: Restitution::INELASTIC,
             table: None,
             spin: Vec::new(),
+            speculative: true,
+            tunnels: None,
         }
     }
 
@@ -290,14 +305,7 @@ impl<S: Scalar> World<S> {
     /// them alike, and after XPBD derives its velocities, so the next
     /// substep starts from a clamped position *and* velocity.
     fn substep(&mut self, h: S) {
-        let collision = self.collides().then_some((
-            Statics {
-                walls: &self.walls,
-                segments: &self.segments,
-            },
-            self.restitution,
-        ));
-        if self.constraints.is_empty() && collision.is_none() {
+        if self.constraints.is_empty() && !self.collides() {
             let scratch = VerletScratch {
                 acc: &mut self.acc,
                 acc_next: &mut self.acc_next,
@@ -306,16 +314,32 @@ impl<S: Scalar> World<S> {
             self.integrator
                 .substep(&self.forces, &mut self.particles, scratch, h);
         } else {
+            if let Some(t) = &mut self.tunnels {
+                t.before.clear();
+                t.before.extend_from_slice(self.particles.pos());
+            }
             self.spin.resize(self.particles.len(), Vec2::ZERO);
-            let cloth = self.table.map(|t| (t, self.spin.as_mut_slice()));
+            let statics = Statics {
+                walls: &self.walls,
+                segments: &self.segments,
+            };
+            let collision = self.collides().then(|| Collision {
+                statics,
+                restitution: self.restitution,
+                cloth: self.table.map(|t| (t, self.spin.as_mut_slice())),
+                speculative: self.speculative,
+            });
             self.constraints.substep(
                 &self.forces,
                 &mut self.particles,
                 &mut self.acc,
                 collision,
-                cloth,
                 h,
             );
+            if let Some(t) = &mut self.tunnels {
+                let n = count_tunnels(&t.before, &self.particles, statics, &mut t.pairs);
+                t.count += u64::from(n);
+            }
         }
         if let Some(y) = self.ground {
             ground::clamp(&mut self.particles, y);
