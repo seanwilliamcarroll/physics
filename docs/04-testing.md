@@ -367,6 +367,10 @@ cases through `engine.wasm` in Node 22, vs criterion's native means):
   read positions, free; null handles).
 - **ABI mirror:** `crates/engine-web/src/abi.rs` owns the `demo_new` codes and
   buffer layout; a test reads `site/js/abi.ts` and fails on any mismatch.
+- **Public API snapshots** (`cargo xtask api`, `docs/api/`): each library
+  crate's public API (`cargo public-api` on a pinned nightly), checked
+  in; `cargo xtask api --check` in pre-push fails while one is stale, so
+  a widened surface shows in the PR's diff (`docs/api-audit.md`).
 - **Declared types against the real exports** (`xtask/src/abi_check.rs`):
   `cargo xtask site` reads each built `.wasm`'s export table (a small
   parser for the type, import, function and export sections) and compares

@@ -75,22 +75,23 @@ Narrow already: each public module (`hammer`, `unison`, `fft`, `piano`,
 offline analysis (pitch, partials, T₆₀) used by the tests; it's public
 because integration tests are outside the crate, which is fine.
 
-## The wasm side: `shell`, and naming
+## The wasm side: `web-common`, and naming
 
 - **Duplicated glue.** The panic hook and its `env.console_error`
   import are copied in `web` and `acoustic-web` (`imports.rs`, 46 and 39
   lines), and `sand-web` (M9) would make a third copy; `FixedStep`
   (with the step cap) lives in `web` and `sand-web` needs it.
-  **Recommendation: a `shell` crate** (the layer `03-wasm-shell.md`
-  names) holding the panic hook, `FixedStep`, and the boundary helpers
-  (`capped`); every `*-web` crate depends on it, no simulation crate
-  does. It holds the unsafe `extern` block, so it opts out of
+  **Done (#160): a `web-common` crate** (named at review: `shell` read
+  as a Unix shell, and `-core` would read as the simulation the web
+  crates wrap, as in the swarm notes' `swarm-core`), holding the panic
+  hook, `FixedStep`, and the boundary helpers (`capped`); every `*-web`
+  crate depends on it, no simulation crate does. It holds the unsafe `extern` block, so it opts out of
   `unsafe_code = "deny"` locally, as `web`'s exports do.
 - **Do the web crates shrink?** Modestly: `web` (2,499 lines) loses
   ~160 (`fixed_step` and `imports`), `acoustic-web` (643) ~40. They stay
   what they are: adapters from a C ABI to their simulation. The gain is
   one copy of the glue, not size.
-- **Rename `web` → `engine-web`**, matching `acoustic-web` and `sand-web`
+- **Done (#161): rename `web` → `engine-web`**, matching `acoustic-web` and `sand-web`
   (each named for the simulation it wraps). The served file stays
   `engine.wasm`; the build artifact becomes `engine_web.wasm`
   (`xtask/src/main.rs`'s `WASM_ARTIFACT`), and docs and paths follow.
@@ -110,8 +111,9 @@ it isn't installed, the check skips with a message rather than failing.
 
 ## Order
 
-1. `shell` (unblocks M9's `sand-web`), with the rename in the same
-   stack.
-2. Narrowing `engine` (`collision`, `BarnesHut`, `rotational_energy`)
-   and `acoustic::body`.
-3. `cargo xtask api`, recording the narrowed surfaces as the baseline.
+1. `web-common` (#160) and the rename (#161).
+2. Narrowing (#162): `engine` 442 → 421 items, `acoustic` 173 → 166.
+   `BarnesHut`'s two accessors turned out unused anywhere and were
+   removed.
+3. `cargo xtask api` (#164), recording the narrowed surfaces as the
+   baseline.

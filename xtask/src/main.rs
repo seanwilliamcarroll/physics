@@ -15,6 +15,7 @@ use std::process::{self, ExitCode};
 use clap::{Parser, Subcommand};
 
 mod abi_check;
+mod api;
 mod bench_wasm;
 mod coverage;
 mod serve;
@@ -73,6 +74,13 @@ enum Command {
     Coverage,
     /// Point git at the tracked hooks in .githooks/
     InstallHooks,
+    /// Write each library crate's public API to docs/api/CRATE.txt (cargo
+    /// public-api on a pinned nightly); with --check, fail if any is stale
+    Api {
+        /// Compare instead of writing (pre-push)
+        #[arg(long)]
+        check: bool,
+    },
     /// The slow tier, not in any hook: every test with property tests at
     /// 10 000 cases, then the long `slow_*` runs (ignored by `cargo test`),
     /// built optimized with overflow checks kept
@@ -106,6 +114,7 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Coverage => coverage::coverage(&root),
         Command::InstallHooks => install_hooks(&root),
         Command::Slow { cases } => slow::slow(&root, cases),
+        Command::Api { check } => api::api(&root, check),
     }
 }
 

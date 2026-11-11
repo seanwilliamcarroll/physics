@@ -1,0 +1,91 @@
+pub mod math
+pub mod math::convert
+pub fn math::convert::clamped_index(f64, usize) -> usize
+pub const fn math::convert::f64_to_f32(f64) -> f32
+pub fn math::convert::f64_to_usize(f64) -> core::option::Option<usize>
+pub fn math::convert::samples(f64, f64) -> core::option::Option<usize>
+pub const fn math::convert::u64_to_f64(u64) -> f64
+pub const fn math::convert::usize_to_f64(usize) -> f64
+pub struct math::Fnv1a(_)
+impl math::Fnv1a
+pub const fn math::Fnv1a::finish(&self) -> u64
+pub const fn math::Fnv1a::new() -> Self
+pub fn math::Fnv1a::write(&mut self, &[u8])
+impl core::default::Default for math::Fnv1a
+pub fn math::Fnv1a::default() -> Self
+pub struct math::SplitMix64(_)
+impl math::SplitMix64
+pub const fn math::SplitMix64::new(u64) -> Self
+pub const fn math::SplitMix64::next_u64(&mut self) -> u64
+pub fn math::SplitMix64::next_unit_f64(&mut self) -> f64
+pub fn math::SplitMix64::range(&mut self, f64, f64) -> f64
+pub struct math::UnitVec2<S>(_)
+impl<S: math::Scalar> math::UnitVec2<S>
+pub const math::UnitVec2<S>::X: Self
+pub const math::UnitVec2<S>::Y: Self
+pub fn math::UnitVec2<S>::dot(self, math::Vec2<S>) -> S
+pub const fn math::UnitVec2<S>::get(self) -> math::Vec2<S>
+impl<S: math::Scalar> core::ops::arith::Mul<S> for math::UnitVec2<S>
+pub type math::UnitVec2<S>::Output = math::Vec2<S>
+pub fn math::UnitVec2<S>::mul(self, S) -> math::Vec2<S>
+impl<S: math::Scalar> core::ops::arith::Neg for math::UnitVec2<S>
+pub type math::UnitVec2<S>::Output = math::UnitVec2<S>
+pub fn math::UnitVec2<S>::neg(self) -> Self
+pub struct math::Vec2<S>
+pub math::Vec2::x: S
+pub math::Vec2::y: S
+impl<S: math::Scalar> math::Vec2<S>
+pub const math::Vec2<S>::ZERO: Self
+pub fn math::Vec2<S>::cross(self, Self) -> S
+pub fn math::Vec2<S>::dot(self, Self) -> S
+pub fn math::Vec2<S>::from_f64(f64, f64) -> Self
+pub fn math::Vec2<S>::length(self) -> S
+pub fn math::Vec2<S>::length_sq(self) -> S
+pub const fn math::Vec2<S>::new(S, S) -> Self
+pub fn math::Vec2<S>::perp(self) -> Self
+impl<S: math::Scalar> math::Vec2<S>
+pub fn math::Vec2<S>::length_and_direction(self) -> core::option::Option<(S, math::UnitVec2<S>)>
+pub fn math::Vec2<S>::normalized(self) -> core::option::Option<math::UnitVec2<S>>
+impl<S: math::Scalar> core::ops::arith::Add for math::Vec2<S>
+pub type math::Vec2<S>::Output = math::Vec2<S>
+pub fn math::Vec2<S>::add(self, Self) -> Self
+impl<S: math::Scalar> core::ops::arith::AddAssign for math::Vec2<S>
+pub fn math::Vec2<S>::add_assign(&mut self, Self)
+impl<S: math::Scalar> core::ops::arith::Div<S> for math::Vec2<S>
+pub type math::Vec2<S>::Output = math::Vec2<S>
+pub fn math::Vec2<S>::div(self, S) -> Self
+impl<S: math::Scalar> core::ops::arith::Mul<S> for math::Vec2<S>
+pub type math::Vec2<S>::Output = math::Vec2<S>
+pub fn math::Vec2<S>::mul(self, S) -> Self
+impl<S: math::Scalar> core::ops::arith::Neg for math::Vec2<S>
+pub type math::Vec2<S>::Output = math::Vec2<S>
+pub fn math::Vec2<S>::neg(self) -> Self
+impl<S: math::Scalar> core::ops::arith::Sub for math::Vec2<S>
+pub type math::Vec2<S>::Output = math::Vec2<S>
+pub fn math::Vec2<S>::sub(self, Self) -> Self
+impl<S: math::Scalar> core::ops::arith::SubAssign for math::Vec2<S>
+pub fn math::Vec2<S>::sub_assign(&mut self, Self)
+pub trait math::Scalar: 'static + core::marker::Copy + core::cmp::PartialOrd + core::fmt::Debug + core::ops::arith::Add<Output = Self> + core::ops::arith::Sub<Output = Self> + core::ops::arith::Mul<Output = Self> + core::ops::arith::Div<Output = Self> + core::ops::arith::Neg<Output = Self> + core::ops::arith::AddAssign + core::ops::arith::SubAssign
+pub const math::Scalar::ONE: Self
+pub const math::Scalar::ZERO: Self
+pub fn math::Scalar::abs(self) -> Self
+pub fn math::Scalar::from_f64(f64) -> Self
+pub fn math::Scalar::is_normal(self) -> bool
+pub fn math::Scalar::sqrt(self) -> Self
+pub fn math::Scalar::to_f64(self) -> f64
+impl math::Scalar for f32
+pub const f32::ONE: Self
+pub const f32::ZERO: Self
+pub fn f32::abs(self) -> Self
+pub fn f32::from_f64(f64) -> Self
+pub fn f32::is_normal(self) -> bool
+pub fn f32::sqrt(self) -> Self
+pub fn f32::to_f64(self) -> f64
+impl math::Scalar for f64
+pub const f64::ONE: Self
+pub const f64::ZERO: Self
+pub fn f64::abs(self) -> Self
+pub fn f64::from_f64(f64) -> Self
+pub fn f64::is_normal(self) -> bool
+pub fn f64::sqrt(self) -> Self
+pub fn f64::to_f64(self) -> f64
