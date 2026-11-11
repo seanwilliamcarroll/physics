@@ -11,8 +11,13 @@ description = "Agents that follow rules: boids (docs/15-swarm.md)."
 math = { path = "../math" }
 
 [dev-dependencies]
+criterion.workspace = true
 proptest.workspace = true
 test-support = { path = "../test-support" }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "step"
+harness = false  # criterion provides main

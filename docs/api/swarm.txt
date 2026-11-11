@@ -1,4 +1,7 @@
 pub mod swarm
+pub enum swarm::Neighbours
+pub swarm::Neighbours::Brute
+pub swarm::Neighbours::Grid
 pub struct swarm::Arena
 impl swarm::Arena
 pub const fn swarm::Arena::height(self) -> f32
@@ -16,9 +19,11 @@ pub fn swarm::Flock::boid(&self, usize) -> core::option::Option<swarm::Boid>
 pub fn swarm::Flock::boids(&self) -> impl core::iter::traits::iterator::Iterator<Item = swarm::Boid> + '_
 pub fn swarm::Flock::is_empty(&self) -> bool
 pub fn swarm::Flock::len(&self) -> usize
+pub const fn swarm::Flock::neighbours(&self) -> swarm::Neighbours
 pub fn swarm::Flock::new(usize, swarm::Arena, swarm::Params, u64) -> core::option::Option<Self>
 pub const fn swarm::Flock::params(&self) -> swarm::Params
 pub fn swarm::Flock::polarization(&self) -> f64
+pub const fn swarm::Flock::set_neighbours(&mut self, swarm::Neighbours)
 pub fn swarm::Flock::set_params(&mut self, swarm::Params) -> bool
 pub fn swarm::Flock::state_bytes(&self) -> impl core::iter::traits::iterator::Iterator<Item = u8> + '_
 pub fn swarm::Flock::step(&mut self)

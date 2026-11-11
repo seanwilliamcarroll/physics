@@ -312,12 +312,16 @@ step, rounding after; mean polarization 0.49–0.77 with alignment,
 0.03–0.08 without. A golden, same on wasm. `swarm` in `test-wasm`, `xtask
 api` and the dev profile at `opt-level = 3`.
 
-## 3. The grid (PR)
+## ✅ 3. The grid (PR)
 
-- [ ] Counting-sort grid; the neighbour sets equal brute force's
-      (proptest); grid and brute trajectories agree to rounding.
-- [ ] Benches: ns per agent-step, brute and grid, at 1k, 10k, 100k,
-      native: the crossover.
+A counting-sort cell list; `Neighbours::{Brute, Grid}`, the grid by
+default. **Found by the property test:** two boids exactly a range apart
+rounding into cells two apart; cells now 1/1024 wider than the range.
+Exact at 2,000 cases; trajectories within an f32 ulp of brute force per
+step; two goldens. Native, at the page's density: no crossover (the
+grid wins from 300 boids); 10k in 13.6 ms (brute 72.7), ~4.5 ns per
+candidate against brute force's 0.73 per pair: scattered reads, section
+4's target.
 
 ## 4. Cache and SIMD (PR)
 

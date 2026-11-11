@@ -4,11 +4,23 @@
 use math::SplitMix64;
 use math::convert::f64_to_f32;
 
+use crate::grid::Grid;
 use crate::rules::steer;
 use crate::{Arena, Params};
 
 /// The most boids a flock holds: 2¹⁸ (TASKS S1 decision 10).
 pub const MAX_BOIDS: usize = 1 << 18;
+
+/// How a step finds each boid's neighbours (`docs/15-swarm.md`, "Finding
+/// neighbours"). The same neighbours either way; the sums over them run
+/// in a different order, so trajectories agree only to rounding.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Neighbours {
+    /// Every other boid: n(n − 1) checks a step. The reference.
+    Brute,
+    /// A cell list by counting sort: the 3 × 3 cells around each boid.
+    Grid,
+}
 
 /// One boid's state: position (pixels, y down) and velocity (pixels per
 /// step).
@@ -73,6 +85,8 @@ pub struct Flock {
     params: Params,
     arena: Arena,
     steps: u64,
+    neighbours: Neighbours,
+    grid: Grid,
 }
 
 impl Flock {
@@ -142,21 +156,56 @@ impl Flock {
             params,
             arena,
             steps: 0,
+            neighbours: Neighbours::Grid,
+            grid: Grid::default(),
         })
     }
 
-    /// One step, every boid against every other (brute force: the
-    /// reference).
+    /// One step: every boid's update from the current state into the
+    /// next buffer, then the swap. Neighbours found as [`Self::neighbours`]
+    /// says (the grid by default).
     pub fn step(&mut self) {
         let n = self.cur.len();
-        for i in 0..n {
-            let Some(me) = self.cur.get(i) else { continue };
-            let others = (0..n).filter(|&j| j != i).filter_map(|j| self.cur.get(j));
-            self.next
-                .set(i, steer(&self.params, self.arena, me, others));
+        let (cur, p, arena) = (&self.cur, &self.params, self.arena);
+        match self.neighbours {
+            Neighbours::Brute => {
+                for i in 0..n {
+                    let Some(me) = cur.get(i) else { continue };
+                    let others = (0..n).filter(|&j| j != i).filter_map(|j| cur.get(j));
+                    self.next.set(i, steer(p, arena, me, others));
+                }
+            }
+            Neighbours::Grid => {
+                let grid = &mut self.grid;
+                grid.rebuild(
+                    arena.width(),
+                    arena.height(),
+                    p.visual_range,
+                    &cur.x,
+                    &cur.y,
+                );
+                for i in 0..n {
+                    let Some(me) = cur.get(i) else { continue };
+                    let others = grid
+                        .around(me.x, me.y)
+                        .filter(|&j| j != i)
+                        .filter_map(|j| cur.get(j));
+                    self.next.set(i, steer(p, arena, me, others));
+                }
+            }
         }
         core::mem::swap(&mut self.cur, &mut self.next);
         self.steps += 1;
+    }
+
+    /// How neighbours are found, from the next step.
+    pub const fn set_neighbours(&mut self, how: Neighbours) {
+        self.neighbours = how;
+    }
+
+    #[must_use]
+    pub const fn neighbours(&self) -> Neighbours {
+        self.neighbours
     }
 
     #[must_use]

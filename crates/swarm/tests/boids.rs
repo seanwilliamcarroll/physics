@@ -4,7 +4,7 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-use swarm::{Arena, Boid, Flock, Params};
+use swarm::{Arena, Boid, Flock, Neighbours, Params};
 
 const P: Params = Params::ECE4760;
 
@@ -108,5 +108,28 @@ fn alignment_makes_a_flock() {
         assert!(start <= 0.15, "seed {seed}: random start at {start}");
         assert!(with >= 0.3, "seed {seed}: aligned flock at {with}");
         assert!(without <= 0.2, "seed {seed}: no alignment, yet {without}");
+    }
+}
+
+/// The same neighbours, summed in another order. Measured, 1,000 boids
+/// at 1280 × 720: 3.1e-5 px apart after a step (an f32 ulp at a few
+/// hundred px), 6.1e-5 after 10, 0.99 after 50 (chaos). Bounds 1e-3 px
+/// at 1 and 10 steps.
+#[test]
+fn grid_and_brute_force_agree_to_rounding() {
+    let mut grid = Flock::new(1000, Arena::new(1280.0, 720.0).unwrap(), P, 9).unwrap();
+    let mut brute = grid.clone();
+    brute.set_neighbours(Neighbours::Brute);
+    for steps in [1_u64, 10] {
+        while grid.steps() < steps {
+            grid.step();
+            brute.step();
+        }
+        let worst = grid
+            .boids()
+            .zip(brute.boids())
+            .map(|(a, b)| (a.x - b.x).abs().max((a.y - b.y).abs()))
+            .fold(0.0_f32, f32::max);
+        assert!(worst < 1e-3, "after {steps} steps: {worst} px apart");
     }
 }
