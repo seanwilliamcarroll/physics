@@ -6,6 +6,7 @@ mod config_error;
 mod constraints;
 mod drag;
 mod ground;
+mod table;
 
 use core::num::NonZeroU32;
 
@@ -14,6 +15,7 @@ use constraints::Constraints;
 
 use crate::collision::{Segment, Statics};
 use crate::integrate::VerletScratch;
+use crate::table::Table;
 pub use drag::Grab;
 
 use crate::{Baumgarte, Mass, ParticleId, Radius, Restitution, StaticId, TimeStep, Wall};
@@ -53,8 +55,14 @@ pub struct World<S: Scalar> {
     /// Static segments circles collide with, each with its own
     /// restitution (M7: cushions).
     segments: Vec<Segment<S>>,
-    /// Restitution for every collision (M6: one per world).
+    /// Restitution for circle–circle and wall collisions (segments carry
+    /// their own).
     restitution: Restitution<S>,
+    /// The cloth, if this is a billiards table (M7); off by default.
+    table: Option<Table<S>>,
+    /// Each particle's spin about the horizontal axes, `(ω_x, ω_y)`, rad/s,
+    /// aligned with the particles; only a table moves it.
+    spin: Vec<Vec2<S>>,
 }
 
 impl<S: Scalar> World<S> {
@@ -75,6 +83,8 @@ impl<S: Scalar> World<S> {
             walls: Vec::new(),
             segments: Vec::new(),
             restitution: Restitution::INELASTIC,
+            table: None,
+            spin: Vec::new(),
         }
     }
 
@@ -296,11 +306,14 @@ impl<S: Scalar> World<S> {
             self.integrator
                 .substep(&self.forces, &mut self.particles, scratch, h);
         } else {
+            self.spin.resize(self.particles.len(), Vec2::ZERO);
+            let cloth = self.table.map(|t| (t, self.spin.as_mut_slice()));
             self.constraints.substep(
                 &self.forces,
                 &mut self.particles,
                 &mut self.acc,
                 collision,
+                cloth,
                 h,
             );
         }

@@ -3,6 +3,7 @@
 use super::Step;
 use super::contacts::{bodies, geometry, normal_velocity, push_apart};
 use super::impacts;
+use super::on_cloth;
 use crate::collision::Contact;
 use crate::collision::Statics;
 use crate::integrate::{drift, evaluate, kick};
@@ -31,14 +32,18 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
         let contacts = self.contacts;
+        let mut cloth = self.cloth;
         if self.collides {
             let half = h / (S::ONE + S::ONE);
             contacts.find(p, self.statics, self.restitution, self.acc, h);
             kick(p, self.acc, half);
+            on_cloth(&mut cloth, p, half);
             impacts::resolve(p, contacts, h);
             kick(p, self.acc, half);
+            on_cloth(&mut cloth, p, half);
         } else {
             kick(p, self.acc, h);
+            on_cloth(&mut cloth, p, h);
         }
         self.scratch.clear();
         self.scratch.extend_from_slice(&p.pos);

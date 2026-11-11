@@ -6,6 +6,7 @@ use core::num::NonZeroU32;
 use super::ConfigError;
 use crate::collision::Statics;
 use crate::solver::{Contacts, Step};
+use crate::table::Table;
 use crate::{
     Baumgarte, Constraint, DistanceConstraint, Force, Order, Particles, Restitution, Scalar,
     Solver, Stabilization, Vec2,
@@ -128,6 +129,7 @@ impl<S: Scalar> Constraints<S> {
         particles: &mut Particles<S>,
         acc: &mut Vec<Vec2<S>>,
         collision: Option<(Statics<'_, S>, Restitution<S>)>,
+        cloth: Option<(Table<S>, &mut [Vec2<S>])>,
         h: S,
     ) {
         let (statics, restitution) = collision.unwrap_or((Statics::NONE, Restitution::INELASTIC));
@@ -149,6 +151,7 @@ impl<S: Scalar> Constraints<S> {
             contacts: &mut self.contacts,
             statics,
             restitution,
+            cloth,
         };
         match self.solver {
             Solver::Xpbd => step.xpbd(h),

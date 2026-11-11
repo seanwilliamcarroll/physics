@@ -6,6 +6,7 @@ use contact_solve::ContactGains;
 
 use super::contacts::CONTACT_SLOP;
 use super::impacts;
+use super::on_cloth;
 use super::{Stabilization, Step};
 use crate::integrate::{drift, drift_split, evaluate, kick};
 use crate::{Constraint, Particles, Scalar, Vec2};
@@ -40,6 +41,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         let p = self.particles;
         evaluate(self.forces, p, self.acc);
         let contacts = self.contacts;
+        let mut cloth = self.cloth;
         // Impacts resolve between two half kicks. A bounce's true outcome
         // depends on when in the substep it lands (`v − g h (1 − 2τ)` for a
         // falling ball hitting at fraction τ): reflecting after the whole
@@ -51,10 +53,13 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         if self.collides {
             contacts.find(p, self.statics, self.restitution, self.acc, h);
             kick(p, self.acc, half);
+            on_cloth(&mut cloth, p, half);
             impacts::resolve(p, contacts, h);
             kick(p, self.acc, half);
+            on_cloth(&mut cloth, p, half);
         } else {
             kick(p, self.acc, h);
+            on_cloth(&mut cloth, p, h);
         }
         if self.collides {
             contacts.recall();
