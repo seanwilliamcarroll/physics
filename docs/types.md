@@ -63,6 +63,10 @@ made XPBD compute `∞ · 0 = NaN`.
 | [`BarnesHut<S>`](../crates/engine/src/barnes_hut.rs) | The same gravity in O(n log n) via a quadtree; trades accuracy (θ) and exact momentum for speed past ~200 bodies. |
 | [`Spring<S>`, `SpringForce<S>`](../crates/engine/src/force/spring.rs) | Force-based springs with dampers, the M5 baseline: stepped by the integrator, so they explode past `k_crit = 4m/h²`. |
 | [`Wall<S>`](../crates/engine/src/collision/wall.rs) | A static half-plane (`UnitVec2` normal into the free side, offset); `distance` is signed meters. Not a particle: no mass or position. |
+| [`Segment<S>`](../crates/engine/src/collision/segment.rs) | A static segment with its own restitution (a cushion, M7): closest point on it, ends as rounded corners (pocket jaws). |
+| [`Statics<'a, S>`](../crates/engine/src/collision/segment.rs) | Walls and segments borrowed together for a substep, so the narrowphase and both solvers take one argument for everything static. |
+| [`Pocket<S>`](../crates/engine/src/collision/pocket.rs) | A sensor circle: pots a ball whose centre enters it; pushes nothing. |
+| [`Table<S>`](../crates/engine/src/table.rs) | The cloth (μ_s, μ_r, g): makes a ball with spin slide, roll, and stop, landing exactly on each transition (M7). |
 | [`SpringNetwork`, `JellyBody`, `Jelly<S>`](../crates/engine/src/scenarios/jelly.rs) | One grid of pairs realized as force springs or compliant constraints, so the M5 panels differ only in how springs are enforced. |
 | [`Constraint<S>`](../crates/engine/src/constraint.rs) | Geometry only (C, ∇C, compliance), so both solvers read the same definition; solvers are generic over it (no `dyn` in the hot loop). |
 | [`DistanceConstraint<S>`](../crates/engine/src/constraint.rs) | A rod; to a static particle, a pin. Rest length from current positions, so no invalid length can be passed. |
@@ -81,7 +85,8 @@ made XPBD compute `∞ · 0 = NaN`.
 
 Scenes without state are functions, not types, one file each under
 [`scenarios/`](../crates/engine/src/scenarios/) (`cluster`, `disk`,
-`collapse`, `orbit`, `pendulum`, `chain`, `double_pendulum`),
+`collapse`, `orbit`, `pendulum`, `chain`, `double_pendulum`, `ball_box`,
+`break_shot`, `cradle`, `pool_table` / `pool_rack` / `pool_break`),
 re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 
 ## `web` — the wasm boundary

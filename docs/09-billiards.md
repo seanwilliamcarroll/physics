@@ -326,7 +326,12 @@ tip, solver, substeps, speculative contacts, rate; presets for a hard
 break, tunneling (no speculation at one substep, where the cue ball
 passes through the rack) and the same at three, follow and draw.
 
-## Tests (planned)
+## Tests (as built)
+
+`tests/cushions.rs`, `tests/cloth.rs`, `tests/tunneling.rs`,
+`tests/pockets.rs`, `tests/billiards.rs`, and goldens for the break in
+`tests/determinism.rs` (native and wasm32); each file's bounds are
+commented with what was measured. The plan they came from:
 
 - **Cushions:** the reflection angle (in = out at `e = 1`; the normal part
   scaled by `e` below); a corner hit off a jaw; a ball at rest against a

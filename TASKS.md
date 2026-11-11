@@ -143,165 +143,20 @@ strings in 78 µs a quantum on wasm), velocity, a stiffness toggle; the
 `a3-piano` page (velocity from where a key is pressed, stretched-partial
 ticks, the hammer's force); cleanup. Treble hammer gap below.
 
----
+## ✅ M7: Billiards (done, PRs #142–#153; manual check of the page pending)
 
-## Decisions to review before starting
-
-1. **Balls carry spin, without sidespin.** Top-down 2D can still model
-   topspin and backspin: they're rotations about *horizontal* axes,
-   `ω = (ω_x, ω_y)`, which set how the ball slips on the cloth. The slip
-   velocity at the contact point, `u = v + ω × (−R ẑ)`, decides
-   everything. A ball slides while `u ≠ 0` and rolls once `u = 0`. Sidespin
-   (`ω_z`, "english") only shows at cushions and in ball–ball throw, both
-   of which need contact friction (decision 3). **Deferred.** This answers
-   `00-scope.md`'s open question.
-2. **The cloth, in the kicks.** Sliding friction `μ_s m g`, opposing `u`,
-   changes both `v` and `ω` (`I = 2/5 m R²`). The slip then decays
-   linearly, `du/dt = −(7/2) μ_s g û`, and reaches 0 in finite time. Rolling
-   resistance `μ_r g` then slows the rolling ball to rest, again in finite
-   time. Applied with the forces in each half kick (the impact stage stays
-   between them), and clamped so a substep can't overshoot the transition
-   (it lands exactly on rolling). The tests are analytic. A centre hit
-   rolls at **5/7 v₀** after sliding **12 v₀² / (49 μ_s g)**, in time
-   **2 v₀ / (7 μ_s g)**. Kinetic energy gains the rotational `½ I ω²`.
-   **Where it lives:** a `Table` component on `World` (μ_s, μ_r, g, and a
-   spin per particle), off by default, so other worlds pay nothing.
-3. **Contact friction deferred to M10.** The roadmap lists Coulomb friction
-   in both solvers for M7. Without sidespin (1), ball–ball and ball–cushion
-   friction can only nudge tangential velocities: no throw, no cushion
-   spin. The real effects are small (ball–ball μ ≈ 0.06), and **sand (M10)
-   needs it for real**, with angles of repose and piles at rest. So M7's
-   contacts stay frictionless and the cloth is the only friction. The
-   alternative is building friction now, adding two solver changes to an
-   already large milestone.
-4. **Cushions are segments.** A static `Segment` (two endpoints, its own
-   restitution), and a circle–segment narrowphase (closest point; the
-   endpoints act as rounded corners, which is what pocket jaws are),
-   speculative like walls. A table is segments only, no half-planes.
-5. **Restitution per contact.** Ball–ball from the world (≈ 0.95),
-   ball–cushion from the segment (≈ 0.75–0.85). The impact stage applies
-   `(1 + e_i) λ̃_i` per contact instead of one `e`. Section 1 checks that
-   Generalized Reflections keeps its guarantee (energy never rises for
-   every `e_i ≤ 1`) with mixed `e`.
-6. **Tunneling: measured first, and it doesn't happen.** A probe (cue ball
-   at 3–15 m/s into a resting ball, 1–10 substeps, both solvers) **never
-   tunneled, even at one substep**. M6's speculative contacts catch a
-   contact that closes during the substep, and the impact stage resolves
-   it before positions move. The roadmap's showcase ("low substeps let
-   balls pass through; raise substeps and it stops") would show nothing.
-   **Proposed instead:** a `World` switch that turns speculation off
-   (contacts only when touching at the start of a substep), and a
-   tunneling counter (a swept test per candidate pair). The page then
-   shows *why* speculative contacts exist. Off, a hard break tunnels at
-   low substeps; on, nothing tunnels at any substeps. Tests: on, zero
-   tunnels at the fastest break at 1 substep; off, tunnels at 1 substep,
-   with the threshold measured.
-7. **Pockets are sensors.** Circles at the corners and sides. A ball whose
-   centre enters one is potted: taken out of play (`World::retire`: static,
-   radius 0, so it collides with nothing, and still) and reported as an
-   event for the page's tray. A scratched cue ball is re-spotted when the
-   table is at rest (a page rule, not the engine's).
-8. **Real units, real table** (each value checked against a source in
-   section 1): a 9-ft table (2.54 × 1.27 m playing surface), 57.15 mm
-   balls of ~0.17 kg, μ_s ≈ 0.2, μ_r ≈ 0.01, a break up to ~11 m/s, and
-   pocket mouths per the WPA specifications. In-plane gravity is zero (the
-   table is seen from above). `g` enters only through the cloth.
-9. **The cue: aim, power, and follow or draw.** Drag back from the cue
-   ball to aim and set the speed (slingshot-style, up to the break speed).
-   A tip-height control sets the strike offset `b`, which gives
-   `ω = 5 v b / (2 R²)`: positive follows, negative draws, 0 stuns.
-   `|b| ≤ ½ R` (past that, a miscue). These shots emerge from decisions 1–3
-   with no special cases. A frictionless ball–ball contact doesn't change
-   `ω`, so after a full hit a sliding stun ball stops dead, a
-   follow ball rolls on through, and a draw ball comes back.
-10. **One table, impulse by default.** A game wants one table, not
-    side-by-side panels. The solver is a setting (XPBD selectable), and so
-    are substeps and speculation (6). A 15-ball 8-ball rack, touching.
-
----
-
-## ✅ 1. `docs/09-billiards.md` (PR)
-
-Table, balls and pockets from the WPA specification (read directly);
-`μ_s` 0.2, `μ_r` 0.01, `e_b` 0.94 from Alciatore via secondary sources
-(**to confirm by hand**: his page refuses automated fetches);
-`e_c` = 0.8 our choice in a 0.7–0.98 spread. The slip derivation
-(`du/dt = −(7/2) μ_s g û`; 5/7 v₀; 12 v₀² / 49 μ_s g; 2 v₀ / 7 μ_s g),
-the cue's `ω = 5 b v / 2R²` (natural roll at 2R/5). **Found:**
-per-contact `e` breaks Generalized Reflections' per-round energy
-guarantee (`ΔT = ½ (Eλ̃)ᵀK(Eλ̃) − ½ λ̃ᵀKλ̃`); section 2 measures it.
-Roadmap (M7, and contact friction in M10), `00-scope.md`, references.
-
-## ✅ 2. Segments and per-contact restitution (PR)
-
-`Segment` (own restitution; ends as corners), `Statics` (walls and
-segments) through the narrowphase and both solvers. **Found and fixed:**
-mixed `e` in one round gained 2.5% (a ball squeezed into a cushion);
-now a coupled group bounces at its smallest `e`. **Found and fixed:**
-start-of-substep normals sent cut shots 1–8° off (an 80° graze left at
-60°); contacts now move to the moment of impact (exact for two circles,
-conservative advancement for segments) and the test is swept: cuts
-within 1.5e-11° at any substeps. M6 goldens for the box and the impulse
-cradle updated. Tests: reflection, a corner, resting, no pass-through,
-cut shots, mixed-`e` energy.
-
-## ✅ 3. The cloth: spin, sliding and rolling (PR)
-
-`Table` (μ_s, μ_r, g) on `World`, a spin per particle, the cloth after
-each half kick with both transitions landed exactly; `World::strike`
-(aim, speed, tip height); `table::rotational_energy`. Measured: the
-centre hit's velocity to 1.4e-12 (XPBD 6.4e-8), position first order
-(0.025 m / n), energy never rising, exactly at rest; natural roll;
-stun, follow and draw at `(5/7)(b/R) v₀`. Found: an exact rolling test
-never let a ball stop (an ulp of slip); a relative tolerance now.
-
-## ✅ 4. Speculation switch and tunneling counter (PR)
-
-`World::set_speculative` (off = no time to close in: `h = 0` in the
-narrowphase), `World::count_tunnels` / `tunnels` and
-`collision::count_tunnels` (deep passes between circles, crossings of
-segments, ending behind walls). Measured at 12 m/s, 20 starts: off, 13
-tunnel at one substep, 2 at two, none from three; on, none anywhere;
-through a cushion at one substep, off only. `Collision` bundles what a
-colliding substep borrows.
-
-## ✅ 5. Pockets (PR)
-
-`collision::Pocket` (a sensor circle), `World::add_pocket`, checked after
-every solver substep; `World::potted` (the last step's `(ball, pocket)`
-events), `World::retire` (static, radius 0, at rest, spin zeroed) and
-`World::reinstate` (the cue ball re-spotted). Tests: potted within a
-substep's travel of the pocket's edge; a near miss isn't; a retired ball
-collides with nothing; a reinstated one does.
-
-## ✅ 6. Scenes (PR)
-
-`pool_table` (18 segments from WPA's mouths and cut angles, 6 pocket
-sensors, the cloth), `pool_rack` (8-ball, `POOL_RACK` numbers),
-`pool_break(speed, tip)`; `ConfigError::{InvalidTable, InvalidShot}`.
-A break settles by 6.0–6.5 s (bound 8), energy never rising, no tunnels,
-nothing off the table; goldens (`PoolBreak`), same on wasm.
-
-## ✅ 7. Web layer (PR)
-
-`demo_new_pool`, `demo_strike` (aim, speed ≤ `MAX_POOL_SPEED`, tip ≤
-`MAX_TIP`, parsed at the boundary), `demo_set_speculative`,
-`demo_tunnels`, `demo_at_rest`, `demo_respot_cue`, `demo_ball_number`,
-`demo_spin_x/y`, the potted, segments and pockets buffers; the table's
-energy includes spin. Every export in the call-sequence property test.
-`engine.wasm` +47.1 KB for M7 (to break down at cleanup).
-
-## 8. The page (PR)
-
-- [x] `m7-billiards`: drag back to shoot (aim and speed from the pull),
-      the tip slider, solver, substeps, speculation, rate; the tunnel
-      counter, the potted tray, the energy plot; a scratched cue ball
-      re-spotted when the table stops. Smoke: a hard break, and the
-      tunneling preset (the cue ball goes through the rack). Gallery.
-- [ ] Your check against **Done when**: play a break, see the balls
-      settle, try stun, follow and draw, and the speculation switch.
-
-## 9. Cleanup (PR)
+`docs/09-billiards.md`. Segment cushions with their own restitution;
+contacts moved to the **moment of impact** (cut shots were 1–8° off,
+a graze bounced a substep early; now within 1.5e-11° at any substeps)
+and a swept contact test; restitution by **coupled group** (mixed `e`
+gained 2.5% in one round). The cloth on a `Table`: spin about horizontal
+axes, slide → roll → rest, exact transitions; the cue's tip height;
+stun, follow and draw emerge (`(5/7)(b/R) v₀`). Tunneling: none with
+speculative contacts at any substeps; a switch turns them off (13 of 20
+tunnel at one substep at 12 m/s) and a counter shows it. Pockets as
+sensors; `retire`/`reinstate`. The WPA table, rack and break (settles by
+6.5 s), goldens; the `m7-billiards` page. `engine.wasm` +47.1 KB.
+Contact friction moved to M10.
 
 ---
 

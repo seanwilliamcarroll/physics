@@ -130,7 +130,7 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M6.6 | `F32`, `F64` | 192,680 B | 60,661 B | + collision: broadphase, narrowphase, contacts in both solvers (no M6 page or exports yet; measured at A1.5). **+65 KB over M5.6** (below) |
 | M6.7 | `F32`, `F64` | 197,543 B | 62,605 B | + the impact stage (Generalized Reflections), both solvers |
 | M6.9 | `F32`, `F64` | 215,612 B | 66,591 B | + the box, break and cradle constructors, restitution, radius, momentum and broadphase-pairs exports (+18.1 KB: three scene builders ×2 scalars) |
-| M7.7 | `F32`, `F64` | 226,888 B | 73,452 B | + segments, moment-of-impact contacts, the cloth, tunnels, pockets, the pool table and its exports: **+47.1 KB** (broken down at M7.9) |
+| M7.7 | `F32`, `F64` | 226,888 B | 73,452 B | + segments, moment-of-impact contacts, the cloth, tunnels, pockets, the pool table and its exports: **+47.1 KB** (below) |
 | M6.11 | `F32`, `F64` | 179,755 B | 55,435 B | one sort key for every sort (below): **−35.9 KB**; sorting code 39.1 → 6.9 KB |
 
 **Where M6's +65 KB went** (A1.7; per-function sizes from the module's
@@ -162,6 +162,18 @@ substep at 1,024 circles. Not taken: dropping the broadphase's final sort
 of pairs altogether (its cell keys are already sorted, so the order is
 deterministic without it), which would be smaller *and* faster but
 reorders contacts, so every collision golden would change.
+
+**Where M7's +47.1 KB went** (M7.9; per function, M6.11 against M7.7;
+the code section grew 45.6 KB). No single lever this time, unlike M6's
+sorts: the stepping loop is no longer inlined into `Demo::advance`
+(30.2 KB there became 40.5 KB in `run_steps`, ×2 scalars: **+10.3 KB**
+for segments, the cloth, tunnel counting and pockets in the substep);
+the pool's scene builders and `Demo::new_pool` +10.2 KB; the new exports
++8.0 KB; `Contacts::find` (moment of impact) +6.1 KB; the energy readout
+with spin +5.2 KB; `impacts::resolve` (coupled restitution) +3.2 KB;
+drop glue +2.7 KB. Limiting the pool to `f64` would save ~5 KB of
+scene building, at the cost of the "every scene in both scalars" rule:
+not taken.
 
 The acoustic track ships its own module, `acoustic.wasm`
 (`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`.
