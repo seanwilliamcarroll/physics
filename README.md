@@ -20,8 +20,15 @@ Requirements:
   browser smoke test; set `CHROME` to its path if it isn't found).
 - `wasmtime`, to run the engine tests as wasm in pre-push:
   `cargo install wasmtime-cli` (or MacPorts: `sudo port install wasmtime`).
+- `cargo-nextest`, the test runner the pre-push hook and `xtask slow`
+  use (they fall back to `cargo test` without it):
+  `cargo install --locked cargo-nextest`.
 - Optional: `cargo-llvm-cov`, for `cargo xtask coverage`:
   `cargo install cargo-llvm-cov`.
+- Optional: `cargo-mutants` (`cargo xtask mutants`, the pre-push report
+  with `MUTANTS=1`), and `cargo-public-api` with
+  `rustup toolchain install nightly-2026-10-15 --profile minimal`
+  (`cargo xtask api`; pre-push skips the check without them).
 
 Once per clone:
 
