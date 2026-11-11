@@ -67,6 +67,35 @@ https://doi.org/10.1145/3072959.3073689), guarantees termination.
 - DOI: https://doi.org/10.1145/2185520.2185602
 - Project page: https://www.cs.columbia.edu/cg/rosi/
 
+## Billiards (`09-billiards.md`, M7)
+
+**World Pool-Billiard Association.** *Recommended Equipment
+Specifications* (effective November 2001). Table, ball, pocket and
+cushion dimensions (§5, §7, §9, §16).
+- PDF: https://wpapool.com/wp-content/uploads/2024/01/RECOMMENDED-EQUIPMENT-SPECIFICATIONS.pdf
+
+**Mathavan, S., Jackson, M. R. & Parkin, R. M. (2009).** Application of
+high-speed imaging to determine the dynamics of billiards. *American
+Journal of Physics* 77(9), 788–794. Measured sliding and rolling
+friction (values behind the paywall; not used).
+- DOI: https://doi.org/10.1119/1.3157159
+
+**Mathavan, S., Jackson, M. R. & Parkin, R. M. (2010).** A theoretical
+analysis of billiard ball dynamics under cushion impacts. *Proceedings of
+the IMechE, Part C* 224(9), 1863–1873. The cushion above the ball's
+centre (not modelled); `e = 0.98` and `μ = 0.14` under their model.
+- DOI: https://doi.org/10.1243/09544062JMES1964
+
+**Alciatore, D. G.** *Pool and Billiards Physics Resources*, Colorado State
+University: typical physical properties (`μ_s` 0.2, `μ_r` 0.01, ball–ball
+`e` 0.90–0.96) and technical proofs. The page refuses automated fetches;
+values taken via his proofs and pooltool's defaults, to confirm by hand.
+- https://billiards.colostate.edu/faq/physics/physical-properties/
+
+**Kiefl, E.** *pooltool* (billiards simulator). Its ball parameter
+defaults, citing Alciatore.
+- https://pooltool.readthedocs.io/
+
 ## Integrators and stability (`07-soft-bodies.md`, M1–M5)
 
 **Hairer, E., Lubich, C., Wanner, G. (2006).** *Geometric Numerical

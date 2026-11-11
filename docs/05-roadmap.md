@@ -236,27 +236,35 @@ contact constraint form.
 
 ### M7 — Billiards
 
-**Showcases:** a full game-feel simulation: friction, sliding → rolling,
-cushions, and **tunneling**. A break shot at low substeps lets balls pass
-through each other; raise substeps and it stops.
+**Showcases:** a full game-feel simulation: cushions, a cloth that makes
+balls slide and then roll, stun, follow and draw, pockets, and why
+speculative contacts stop **tunneling** (as planned, "low substeps let
+balls pass through" doesn't happen here: M6's speculative contacts catch
+every pass at any substeps, measured; the page switches them off to show
+it).
 
 **New:**
 - Static segment colliders (cushions); circle–segment narrowphase
-- Friction: Coulomb (impulse) / static + dynamic (XPBD velocity pass)
-- Ball model: sliding vs rolling state, rolling resistance
-  (top-down spin is an open question from `00-scope.md`)
-- Pockets as sensors (overlap events, no response)
-- Cue input: drag to aim and set power
-- Tunneling counter in diagnostics
+- Restitution per contact (ball–ball against ball–cushion)
+- Ball model: horizontal spin, sliding friction to rolling, rolling
+  resistance, on a `Table` component (sidespin deferred)
+- Pockets as sensors; `World::retire`
+- Cue input: drag to aim and set power, tip height for follow and draw
+- A speculation switch and a tunneling counter in diagnostics
+- Contact friction (Coulomb, both solvers) **moved to M10**, which needs
+  it for piles at rest; without sidespin it barely matters on a table
 
-**Tests:** cushion reflection angle; slide-to-roll transition distance
-matches the analytic model; tunneling count is 0 at the chosen substep
-count for maximum break speed.
+**Tests:** cushion reflection angle; slide-to-roll speed, distance and
+time match the analytic model (5/7 v₀, 12 v₀² / 49 μ g, 2 v₀ / 7 μ g);
+stun, follow and draw; zero tunnels at the fastest cue ball with
+speculation on, tunnels with it off.
 
-**Done when:** you can play a break shot, balls settle believably, and the
-substep slider demonstrates tunneling.
+**Done when:** you can play a break shot, balls settle believably, the
+shots behave as on a real table, and the speculation switch demonstrates
+tunneling.
 
-**Docs:** `09-billiards.md` (ball model, units, table dimensions).
+**Docs:** `09-billiards.md` (ball model, units, table dimensions; written
+at M7.1).
 
 ---
 
@@ -318,6 +326,8 @@ from rule choice in the CA panel and from friction in the DEM panel
 (thousands of circles from the M6/M7 engine).
 
 **New:**
+- Contact friction, Coulomb, in both solvers (moved from M7): static and
+  dynamic in XPBD, the clamped tangent impulse in the impulse solver
 - DEM scenario: pour thousands of small frictional circles
 - Angle-of-repose measurement in both panels
 - Performance tuning of the contact engine at scale (broadphase, layout)

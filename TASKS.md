@@ -220,12 +220,17 @@ ticks, the hammer's force); cleanup. Treble hammer gap below.
 
 ---
 
-## 1. `docs/09-billiards.md` (PR)
+## ✅ 1. `docs/09-billiards.md` (PR)
 
-- [ ] Sources for every number (8), Crossref for papers; the derivations
-      (slip decay, 5/7, the slide distance and time, the cue offset's ω);
-      the model's limits (1, 3); the tunneling finding (6); per-contact
-      `e` in Generalized Reflections (5). Roadmap's M7 entry updated.
+Table, balls and pockets from the WPA specification (read directly);
+`μ_s` 0.2, `μ_r` 0.01, `e_b` 0.94 from Alciatore via secondary sources
+(**to confirm by hand**: his page refuses automated fetches);
+`e_c` = 0.8 our choice in a 0.7–0.98 spread. The slip derivation
+(`du/dt = −(7/2) μ_s g û`; 5/7 v₀; 12 v₀² / 49 μ_s g; 2 v₀ / 7 μ_s g),
+the cue's `ω = 5 b v / 2R²` (natural roll at 2R/5). **Found:**
+per-contact `e` breaks Generalized Reflections' per-round energy
+guarantee (`ΔT = ½ (Eλ̃)ᵀK(Eλ̃) − ½ λ̃ᵀKλ̃`); section 2 measures it.
+Roadmap (M7, and contact friction in M10), `00-scope.md`, references.
 
 ## 2. Segments and per-contact restitution (PR)
 

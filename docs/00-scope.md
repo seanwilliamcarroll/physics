@@ -191,8 +191,9 @@ References (full entries and links in `references.md`):
 - **Restitution:** how is it handled in the chosen solver (velocity pass)?
 - **Simultaneous collisions:** do we care that a sequential solver gets
   Newton's cradle "wrong"? Is it a test case?
-- **Billiards spin:** top-down 2D cannot represent topspin/backspin directly.
-  Model a sliding→rolling transition only, or carry an extra spin state?
+- ~~**Billiards spin**~~ — decided (M7): carry the horizontal spin
+  (topspin, backspin) and model the slip on the cloth; sidespin deferred
+  with contact friction. See `09-billiards.md`.
 - ~~**Units**~~ — decided (M0): SI throughout (meters, kg, seconds);
   the renderer applies a pixels-per-meter scale.
 - ~~**Scalar type**~~ — decided: generic. See "Scalar policy" below.
