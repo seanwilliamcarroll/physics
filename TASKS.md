@@ -333,12 +333,17 @@ against the grid's 7.3**; `simd128` 350 → 206 ns/boid (wasmtime), 310 →
 242 (V8). Adopted: `Neighbours::Sorted` by default, `swarm.wasm` with
 `simd128`; goldens identical with and without it.
 
-## 5. Web layer (PR)
+## ✅ 5. Web layer (PR)
 
-- [ ] `swarm-web` → `swarm.wasm` on `web-common`: create, advance with
-      the step cap, parameters (each parsed at the boundary), brute/grid
-      switch, the predator, the RGBA buffer, polarization, timings.
-      `swarm-abi.ts`, `swarm.d.ts` (checked), the call-sequence proptest.
+`swarm-web` → `swarm.wasm` (48.5 KB, `simd128`, its own target dir):
+create, advance with the step cap, neighbours (brute refused past 16k),
+every rule constant by code, the predator (Reynolds' flee, in `swarm`),
+heading-coloured dots, polarization. `swarm-abi.ts` mirrored,
+`swarm.d.ts` checked, a call-sequence property test. **Found:**
+`simd128` made the scalar brute-force loop 20× slower; brute force now
+runs the lane loop (1.65 ns a pair in V8). `test-wasm` also runs `swarm`
+with `simd128`: goldens hold. 10k boids: 2.37 ms a step in V8, 0.26 ms
+to draw.
 
 ## 6. The page (PR)
 

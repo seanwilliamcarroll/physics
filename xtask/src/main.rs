@@ -31,6 +31,14 @@ const ACOUSTIC_ARTIFACT: &str = "wasm32-unknown-unknown/release/acoustic_web.was
 /// The falling-sand module (M9): `crates/sand-web`, served as
 /// `site/pkg/sand.wasm`.
 const SAND_ARTIFACT: &str = "wasm32-unknown-unknown/release/sand_web.wasm";
+/// The swarm module (S1): `crates/swarm-web`, built with `simd128` in its
+/// own target dir ([`SIMD_TARGET`]) and served as `site/pkg/swarm.wasm`.
+const SWARM_ARTIFACT: &str = "wasm32-unknown-unknown/release/swarm_web.wasm";
+/// Under the target dir: builds with `-C target-feature=+simd128`. Kept
+/// apart because cargo rebuilds everything when `RUSTFLAGS` changes, and
+/// the other modules build without it (`docs/15-swarm.md`, S1.4: the
+/// lane loop gains 1.3–1.7× from it; nothing else here is shaped for it).
+const SIMD_TARGET: &str = "simd";
 
 /// Build, test, and serve helpers for the physics engine and its demo site.
 #[derive(Parser, Debug)]
@@ -179,8 +187,9 @@ fn site_ts(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Builds the site: the TypeScript library, then both release wasm
-/// modules, copied to `site/pkg/engine.wasm` and `site/pkg/acoustic.wasm`.
+/// Builds the site: the TypeScript library, then the release wasm
+/// modules, copied to `site/pkg/` (`engine.wasm`, `acoustic.wasm`,
+/// `sand.wasm`; `swarm.wasm` with `simd128`).
 fn site(root: &Path) -> Result<(), String> {
     site_ts(root)?;
     // `cargo run` sets CARGO to the cargo binary running us; reuse it so the
@@ -205,6 +214,26 @@ fn site(root: &Path) -> Result<(), String> {
     if !status.success() {
         return Err(format!("wasm build failed ({status})"));
     }
+    let simd_dir = target_dir(root).join(SIMD_TARGET);
+    let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
+    let status = process::Command::new(cargo)
+        .current_dir(root)
+        .args([
+            "build",
+            "--release",
+            "--target",
+            "wasm32-unknown-unknown",
+            "-p",
+            "swarm-web",
+        ])
+        .arg("--target-dir")
+        .arg(&simd_dir)
+        .env("RUSTFLAGS", "-C target-feature=+simd128")
+        .status()
+        .map_err(|e| format!("failed to run cargo: {e}"))?;
+    if !status.success() {
+        return Err(format!("swarm.wasm build failed ({status})"));
+    }
 
     let dest_dir = root.join("site").join("pkg");
     fs::create_dir_all(&dest_dir).map_err(|e| format!("creating {}: {e}", dest_dir.display()))?;
@@ -218,6 +247,9 @@ fn site(root: &Path) -> Result<(), String> {
         let bytes = fs::copy(&src, &dest).map_err(|e| format!("copying {}: {e}", src.display()))?;
         println!("wrote {} ({bytes} bytes)", dest.display());
     }
+    let (src, dest) = (simd_dir.join(SWARM_ARTIFACT), dest_dir.join("swarm.wasm"));
+    let bytes = fs::copy(&src, &dest).map_err(|e| format!("copying {}: {e}", src.display()))?;
+    println!("wrote {} ({bytes} bytes, simd128)", dest.display());
     check_dts(root, &dest_dir)
 }
 
@@ -229,12 +261,15 @@ fn check_dts(root: &Path, pkg: &Path) -> Result<(), String> {
         ("engine.wasm", "engine.d.ts", "EngineExports"),
         ("acoustic.wasm", "acoustic.d.ts", "AcousticExports"),
         ("sand.wasm", "sand.d.ts", "SandExports"),
+        ("swarm.wasm", "swarm.d.ts", "SwarmExports"),
     ] {
         let bytes = fs::read(pkg.join(wasm)).map_err(|e| format!("reading {wasm}: {e}"))?;
         let text = fs::read_to_string(js.join(dts)).map_err(|e| format!("reading {dts}: {e}"))?;
         abi_check::check(&bytes, &text, interface, &format!("{wasm} vs {dts}"))?;
     }
-    println!("checked engine.d.ts, acoustic.d.ts and sand.d.ts against the .wasm exports");
+    println!(
+        "checked engine.d.ts, acoustic.d.ts, sand.d.ts and swarm.d.ts against the .wasm exports"
+    );
     Ok(())
 }
 
@@ -286,10 +321,33 @@ fn test_wasm(root: &Path) -> Result<(), String> {
         .env("CARGO_PROFILE_TEST_OPT_LEVEL", "1")
         .status()
         .map_err(|e| format!("failed to run cargo: {e}"))?;
+    if !status.success() {
+        return Err(format!("wasm tests failed ({status})"));
+    }
+    // swarm again, built as swarm.wasm ships: with simd128 (its own
+    // target dir, as in `site`). The same goldens must hold.
+    let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
+    let status = process::Command::new(cargo)
+        .current_dir(root)
+        .args([
+            "test",
+            "--quiet",
+            "-p",
+            "swarm",
+            "--target",
+            "wasm32-wasip1",
+        ])
+        .arg("--target-dir")
+        .arg(target_dir(root).join(SIMD_TARGET))
+        .args(["--", "--nocapture"])
+        .env("CARGO_PROFILE_TEST_OPT_LEVEL", "1")
+        .env("RUSTFLAGS", "-C target-feature=+simd128")
+        .status()
+        .map_err(|e| format!("failed to run cargo: {e}"))?;
     if status.success() {
         Ok(())
     } else {
-        Err(format!("wasm tests failed ({status})"))
+        Err(format!("wasm tests with simd128 failed ({status})"))
     }
 }
 

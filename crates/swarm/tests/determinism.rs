@@ -29,7 +29,7 @@ fn a_run_is_repeatable() {
 }
 
 /// The golden hash: a change in results fails here, intended or not.
-const GOLDEN: u64 = 0xace2_ba4f_edff_f414;
+const GOLDEN: u64 = 0x3936_c982_06e6_75ed;
 
 #[test]
 fn the_golden_hash_is_unchanged() {

@@ -1,0 +1,25 @@
+[package]
+name = "swarm-web"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Wasm shell for the swarm track: a flock behind raw C-ABI exports (docs/15-swarm.md)."
+
+[lib]
+# cdylib: a standalone .wasm module (swarm.wasm), beside the engine's,
+# the synth's and the sand's (TASKS S1 decision 1).
+crate-type = ["cdylib"]
+
+[dependencies]
+math = { path = "../math" }
+swarm = { path = "../swarm" }
+web-common = { path = "../web-common" }
+
+[dev-dependencies]
+proptest.workspace = true
+test-support = { path = "../test-support" }
+
+[lints]
+workspace = true

@@ -1,0 +1,45 @@
+use super::{
+    DEFAULT_RATE_HZ, MAX_BOIDS, MAX_BRUTE, MAX_RATE_HZ, MAX_SCALE, MAX_SIDE, NEIGHBOURS_BRUTE,
+    NEIGHBOURS_GRID, NEIGHBOURS_SORTED, PARAM_AVOID, PARAM_CENTERING, PARAM_COUNT, PARAM_MARGIN,
+    PARAM_MATCHING, PARAM_MAX_SPEED, PARAM_MIN_SPEED, PARAM_PROTECTED_RANGE, PARAM_TURN,
+    PARAM_VISUAL_RANGE,
+};
+
+const ABI_JS: &str = include_str!("../../../../site/js/swarm-abi.ts");
+
+#[test]
+fn js_mirror_matches() {
+    for (name, value) in [
+        ("NEIGHBOURS_BRUTE", NEIGHBOURS_BRUTE),
+        ("NEIGHBOURS_GRID", NEIGHBOURS_GRID),
+        ("NEIGHBOURS_SORTED", NEIGHBOURS_SORTED),
+        ("PARAM_VISUAL_RANGE", PARAM_VISUAL_RANGE),
+        ("PARAM_PROTECTED_RANGE", PARAM_PROTECTED_RANGE),
+        ("PARAM_CENTERING", PARAM_CENTERING),
+        ("PARAM_AVOID", PARAM_AVOID),
+        ("PARAM_MATCHING", PARAM_MATCHING),
+        ("PARAM_TURN", PARAM_TURN),
+        ("PARAM_MARGIN", PARAM_MARGIN),
+        ("PARAM_MIN_SPEED", PARAM_MIN_SPEED),
+        ("PARAM_MAX_SPEED", PARAM_MAX_SPEED),
+        ("PARAM_COUNT", PARAM_COUNT),
+        ("MAX_BOIDS", MAX_BOIDS),
+        ("MAX_BRUTE", MAX_BRUTE),
+        ("MAX_SIDE", MAX_SIDE),
+        ("MAX_SCALE", MAX_SCALE),
+        ("DEFAULT_RATE_HZ", DEFAULT_RATE_HZ),
+        ("MAX_RATE_HZ", MAX_RATE_HZ),
+    ] {
+        let line = format!("export const {name} = {value};");
+        assert!(
+            ABI_JS.contains(&line),
+            "site/js/swarm-abi.ts is missing `{line}`"
+        );
+    }
+}
+
+#[test]
+fn the_caps_are_the_crates() {
+    assert_eq!(usize::try_from(MAX_BOIDS).unwrap(), swarm::MAX_BOIDS);
+    const { assert!(MAX_BRUTE < MAX_BOIDS) };
+}

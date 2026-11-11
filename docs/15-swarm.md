@@ -266,6 +266,42 @@ same with and without it: each lane does the same IEEE operations, and
 lanes are added in a fixed order (checked under wasmtime). 10k boids in
 about 2.4 ms a step in V8 leaves most of a 60 Hz frame for drawing.
 
+### The wasm module as built (S1.5, `crates/swarm-web` → `swarm.wasm`)
+
+48.5 KB, built with `simd128` in its own target dir (`target/simd`:
+cargo rebuilds everything when `RUSTFLAGS` changes, and the other
+modules build without it). Exports: `swarm_new(n, width, height, scale,
+seed)` (a world in pixels, drawn at one pixel per `scale`: the page's
+2560 × 1440 at 2), `advance`, `set_rate`, `set_step_cap`,
+`set_neighbours` (brute force refused past `MAX_BRUTE` = 16,384),
+`set_param`/`param` (one code per rule constant, so the page reads its
+defaults from Rust rather than mirroring ECE 4760's numbers), the
+predator, `render` (2 × 2 dots coloured by heading: a 256-hue wheel
+indexed by the *diamond angle*, `|x| + |y|` arithmetic, monotone in the
+true angle, no trig), the view size, `len`, `polarization`. A
+call-sequence property test (hostile values; the count fixed, every
+constant finite, polarization in [0, 1] after every call).
+
+**The predator** is Reynolds' (1999) flee, in the crate so every mode
+has it: within 100 px, steer a tenth of the way toward "directly away at
+top speed" each step (both our choices).
+
+**Found building it: `simd128` made the scalar brute-force loop 20×
+slower** (2,000 boids: 3.8 → 81 ms a step in wasmtime, 4.8 → 79 in V8),
+while the grid's scalar loop didn't change and the lane loop gained.
+LLVM vectorized brute force's branchy loop in a way that lost badly.
+Brute force now runs the lane loop over the whole arrays (they're one
+run, and the boid itself adds nothing at distance 0): 1.65 ns a pair in
+V8, 0.53 natively (it was 1.17). The page's brute force and sorted then
+share an inner loop and differ only in their candidates, which is the
+comparison worth showing. Its golden moved (lane order); `cargo xtask
+test-wasm` now also runs `swarm`'s tests built with `simd128`, and every
+golden holds.
+
+Through the real exports in Node 22, the page's world (10k boids in
+2560 × 1440, drawn 1280 × 720): **a step 2.37 ms sorted, 4.54 grid;
+drawing 0.26 ms.** 100k: 23.6 ms a step, 2.0 ms to draw.
+
 ### Out of scope for S1
 
 Periodic boundaries and noise (S2); fields (S3, S4); the GPU (S4
