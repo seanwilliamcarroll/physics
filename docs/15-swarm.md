@@ -220,6 +220,52 @@ flock, the grid by default.
   10k boids at 13.6 ms natively doesn't leave room for 60 Hz in wasm.
   That is section 4's question: reordering by cell.
 
+### Sorted, lanes and SIMD as built (S1.4)
+
+**Reordering by cell alone did nothing.** `Neighbours::Sorted` copies
+the boids into cell order every step (a gather through the counting
+sort's order), so a 3 × 3 block's candidates are three contiguous runs.
+With the same branchy per-candidate code it was *slower* (10k: 15.4 ms
+against the grid's 13.7): 10k boids are 160 KB, in cache either way.
+The hypothesis was wrong about the cost. Brute force's 0.73 ns "per
+pair" is mostly cheap, well-predicted rejections (`|dx| ≥ range`); the
+grid's candidates are the hard ones, a third of them real neighbours,
+the protected/visual branches unpredictable.
+
+**The page's density was 10× the course's** (10k boids in 1280 × 720
+against ~300 on 640 × 480: 85–155 neighbours each). The page now flies
+the flock in a 2560 × 1440 world drawn at half scale; the benches use
+that density. It helps less than density predicts, since flocks pack
+themselves to about the protected spacing whatever the arena.
+
+**What did work: contiguous runs make a branchless lane loop possible.**
+`Seen::add_span` takes a run of the four arrays in chunks of 8, computes
+0/1 masks instead of branching (protected; visual and not protected
+and not distance 0), and accumulates every term times its mask into 8
+independent partial sums. Float addition isn't associative, so a
+compiler won't split one running sum into lanes by itself; written as
+lanes, LLVM vectorizes them. The rule at distance 0 (adds nothing) lets
+the boid itself sit in its own block unskipped. Results differ from the
+grid's by rounding: 3.1e-5 after a step, 1.2e-4 after 10.
+
+| ns per boid-step, 10k boids at 2560 × 1440 | Grid | Sorted + lanes |
+|---|---|---|
+| native (criterion, Apple silicon) | 727 | **142** (1.42 ms a step) |
+| native (`examples/timing.rs`) | 378 | 122 |
+| wasm, wasmtime | 426 | 350; **206 with `simd128`** |
+| wasm, Node 22 (V8) | 450 | 310; **242 with `simd128`** |
+
+(criterion's grid includes the flock it warmed up with the grid;
+`timing.rs` warms every case the same way. 100k boids: 12.4 ms native,
+24 ms in V8 with `simd128`.)
+
+**Adopted:** Sorted is the default (`Grid` and `Brute` stay, for the
+page's comparison and the tests); `swarm.wasm` builds with `simd128`
+(every browser has had it since Safari 16.4, 2023). The goldens are the
+same with and without it: each lane does the same IEEE operations, and
+lanes are added in a fixed order (checked under wasmtime). 10k boids in
+about 2.4 ms a step in V8 leaves most of a 60 Hz frame for drawing.
+
 ### Out of scope for S1
 
 Periodic boundaries and noise (S2); fields (S3, S4); the GPU (S4

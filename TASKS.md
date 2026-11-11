@@ -323,11 +323,15 @@ grid wins from 300 boids); 10k in 13.6 ms (brute 72.7), ~4.5 ns per
 candidate against brute force's 0.73 per pair: scattered reads, section
 4's target.
 
-## 4. Cache and SIMD (PR)
+## ✅ 4. Cache and SIMD (PR)
 
-- [ ] Reorder by cell each step against indexing through the order;
-      `simd128` for `swarm.wasm`; wasm timings in Node. Each measured and
-      recorded; adopted only if it wins.
+Reordering by cell alone: no gain (the data was in cache; the cost was
+branchy per-candidate work, not reads). The page's density was 10× the
+course's: the world is now 2560 × 1440 at half scale. **Contiguous runs
+made a branchless 8-lane loop possible: 10k boids 1.42 ms natively
+against the grid's 7.3**; `simd128` 350 → 206 ns/boid (wasmtime), 310 →
+242 (V8). Adopted: `Neighbours::Sorted` by default, `swarm.wasm` with
+`simd128`; goldens identical with and without it.
 
 ## 5. Web layer (PR)
 

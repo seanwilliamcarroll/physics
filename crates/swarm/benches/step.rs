@@ -1,6 +1,6 @@
 //! One step's cost (`docs/15-swarm.md`, "What's measured"): brute force
 //! against the grid as the flock grows, at the page's density (10k boids
-//! in 1280 × 720; the arena grows with n). Each flock is warmed up 300
+//! in 2560 × 1440; the arena grows with n). Each flock is warmed up 300
 //! steps first, so it's flocking, not uniform. `cargo bench -p swarm`.
 // Bench setup unwraps sizes that can't fail; benches aren't test code,
 // so the workspace's unwrap lint applies (docs/lint-policy.md).
@@ -13,7 +13,7 @@ use swarm::{Arena, Flock, Neighbours, Params};
 /// A warmed-up flock of `n` at the page's density.
 fn flock(n: usize) -> Flock {
     let scale = f64_to_f32((usize_to_f64(n) / 10_000.0).sqrt());
-    let arena = Arena::new(1280.0 * scale, 720.0 * scale).unwrap();
+    let arena = Arena::new(2560.0 * scale, 1440.0 * scale).unwrap();
     let mut f = Flock::new(n, arena, Params::ECE4760, 1).unwrap();
     for _ in 0..300 {
         f.step();
@@ -27,6 +27,10 @@ fn bench(c: &mut Criterion) {
     for (how, sizes) in [
         (Neighbours::Brute, &[300_usize, 1_000, 3_000, 10_000][..]),
         (Neighbours::Grid, &[300, 1_000, 3_000, 10_000, 100_000][..]),
+        (
+            Neighbours::Sorted,
+            &[300, 1_000, 3_000, 10_000, 100_000][..],
+        ),
     ] {
         for &n in sizes {
             let mut f = flock(n);
