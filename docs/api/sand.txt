@@ -1,11 +1,13 @@
 pub mod sand
 #[repr(u8)] pub enum sand::Material
 pub sand::Material::Empty = 0
+pub sand::Material::Lava = 4
 pub sand::Material::Sand = 1
+pub sand::Material::Steam = 5
 pub sand::Material::Stone = 3
 pub sand::Material::Water = 2
 impl sand::Material
-pub const sand::Material::ALL: [Self; 4]
+pub const sand::Material::ALL: [Self; 6]
 pub const fn sand::Material::code(self) -> u8
 pub const fn sand::Material::from_code(u8) -> core::option::Option<Self>
 pub struct sand::Grid
@@ -24,5 +26,7 @@ pub const fn sand::Grid::width(&self) -> usize
 impl sand::Grid
 pub fn sand::Grid::step(&mut self) -> usize
 pub const sand::CHUNK: usize
+pub const sand::CONDENSE_ONE_IN: u64
 pub const sand::DISPERSION: usize
+pub const sand::LAVA_FLOW_ONE_IN: u64
 pub const sand::MAX_CELLS: usize

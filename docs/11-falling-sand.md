@@ -185,6 +185,25 @@ with; only awake chunks need it, if the cost shows.
   the step budget slows it rather than freezing it. Wasm in the page
   (section 6).
 
+## Lava and steam as built (M9.4)
+
+| Material | Rule |
+|---|---|
+| lava | if water touches it (below, left, right, above, first found): the lava becomes **stone** and that water **steam**; else it flows like water but on one step in `LAVA_FLOW_ONE_IN` (2), a cell sideways at most |
+| steam | water upside down: **up** into empty or through water (swapping it down); else diagonally up; else sideways; blocked, it **condenses** to water, 1 in `CONDENSE_ONE_IN` (64) a step |
+
+Both chances are our choices: lava visibly slower (a 10 × 9 block
+spreads 44 cells in 60 steps, water 112), a cloud lingering about a
+second. **Chunks stay exact** with them: a cell that could still change
+by chance (lava waiting on its coin, blocked steam) keeps its own chunk
+awake though nothing moved (`Chunks::keep`); the equivalence property
+test now draws every material and still matches at 500 cases.
+
+**The accounting** replaces per-material conservation: sand; water +
+steam; lava + stone. All three hold at every step of random grids of
+every material (`tests/lava.rs`). A second golden pins a lava scene,
+the same on wasm32.
+
 ## Alternatives considered
 
 - **Margolus neighbourhoods** (Toffoli & Margolus 1987): the grid in 2 × 2

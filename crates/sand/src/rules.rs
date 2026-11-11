@@ -3,12 +3,18 @@
 //! moving material's rule tried in order, a move a swap of two cells.
 
 use crate::grid::{CHUNK, Grid};
-use crate::material::{Material, material};
+use crate::material::{Material, cell, material, shade};
 use crate::random::{Purpose, draw};
 
-/// How far water looks sideways in one step, cells (our choice: measured
-/// on the level test, `tests/automaton.rs`).
+/// How far water (and steam) looks sideways in one step, cells (our choice:
+/// measured on the level test, `tests/automaton.rs`).
 pub const DISPERSION: usize = 3;
+/// Lava flows on one step in this many (our choice: visibly slower than
+/// water), and a cell sideways at most.
+pub const LAVA_FLOW_ONE_IN: u64 = 2;
+/// Blocked steam condenses back to water with this chance a step, 1 in
+/// this many (our choice: a cloud lingers a second or so at 60 Hz).
+pub const CONDENSE_ONE_IN: u64 = 64;
 
 impl Grid {
     /// Advances one step; returns how many moves were made (0: nothing
@@ -50,11 +56,121 @@ impl Grid {
         let target = match self.material_at(x, y) {
             Material::Sand => self.sand_target(x, y),
             Material::Water => self.water_target(x, y),
+            Material::Lava => {
+                if self.react(x, y) {
+                    *moves += 1;
+                    return;
+                }
+                let target = self.lava_target(x, y);
+                if target.is_some() && !self.chance(x, y, Purpose::Flow, LAVA_FLOW_ONE_IN) {
+                    // It could flow but waits: not still, so its chunk
+                    // stays awake (`Chunks::keep`).
+                    self.chunks.keep(x, y);
+                    return;
+                }
+                target
+            }
+            Material::Steam => {
+                let target = self.steam_target(x, y);
+                if target.is_none() {
+                    if self.chance(x, y, Purpose::Condense, CONDENSE_ONE_IN) {
+                        self.transmute(x, y, Material::Water);
+                        *moves += 1;
+                    } else {
+                        self.chunks.keep(x, y);
+                    }
+                    return;
+                }
+                target
+            }
             Material::Empty | Material::Stone => None,
         };
         if let Some((tx, ty)) = target {
             self.swap((x, y), (tx, ty));
             *moves += 1;
+        }
+    }
+
+    /// Lava touching water: the lava becomes stone and the water steam, the
+    /// first water found below, left, right, above. `false` if none.
+    fn react(&mut self, x: usize, y: usize) -> bool {
+        let around = [
+            Some((x, y + 1)),
+            x.checked_sub(1).map(|l| (l, y)),
+            Some((x + 1, y)),
+            y.checked_sub(1).map(|u| (x, u)),
+        ];
+        let Some((wx, wy)) = around
+            .into_iter()
+            .flatten()
+            .find(|&(nx, ny)| self.at(nx, ny) == Some(Material::Water))
+        else {
+            return false;
+        };
+        self.transmute(x, y, Material::Stone);
+        self.transmute(wx, wy, Material::Steam);
+        true
+    }
+
+    /// Lava: down into empty; else diagonally down; else one cell sideways.
+    fn lava_target(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        let empty = |m: Material| m == Material::Empty;
+        let below = y + 1;
+        if self.at(x, below).is_some_and(empty) {
+            return Some((x, below));
+        }
+        let sides = self.sides(x, y);
+        sides
+            .into_iter()
+            .flatten()
+            .find_map(|sx| {
+                (self.at(sx, below).is_some_and(empty) && self.at(sx, y).is_some_and(empty))
+                    .then_some((sx, below))
+            })
+            .or_else(|| {
+                sides
+                    .into_iter()
+                    .flatten()
+                    .find(|&sx| self.at(sx, y).is_some_and(empty))
+                    .map(|sx| (sx, y))
+            })
+    }
+
+    /// Steam, upside down: up into empty or through water; else diagonally
+    /// up; else sideways as water does.
+    fn steam_target(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        let empty = |m: Material| m == Material::Empty;
+        let above = y.checked_sub(1)?;
+        if self
+            .at(x, above)
+            .is_some_and(|m| matches!(m, Material::Empty | Material::Water))
+        {
+            return Some((x, above));
+        }
+        self.sides(x, y)
+            .into_iter()
+            .flatten()
+            .find_map(|sx| {
+                (self.at(sx, above).is_some_and(empty) && self.at(sx, y).is_some_and(empty))
+                    .then_some((sx, above))
+            })
+            .or_else(|| self.sideways(x, y))
+    }
+
+    /// Whether this cell's draw for `purpose` comes up 1 in `one_in`.
+    fn chance(&self, x: usize, y: usize, purpose: Purpose, one_in: u64) -> bool {
+        draw(self.seed, self.step, x, y, purpose).is_multiple_of(one_in)
+    }
+
+    /// Changes the material at `(x, y)` in place, keeping its shade, as a
+    /// move: marked, its neighbourhood woken.
+    fn transmute(&mut self, x: usize, y: usize, to: Material) {
+        if let Some(i) = self.index(x, y)
+            && let Some(c) = self.cells.get_mut(i)
+        {
+            *c = cell(to, shade(*c));
+            self.mark_moved(i);
+            self.chunks.wake(x, y);
         }
     }
 
@@ -87,6 +203,12 @@ impl Grid {
         }) {
             return Some(t);
         }
+        self.sideways(x, y)
+    }
+
+    /// Up to [`DISPERSION`] cells sideways, as far as it's empty, sides in a
+    /// random order (water and steam).
+    fn sideways(&self, x: usize, y: usize) -> Option<(usize, usize)> {
         let first_right = self.coin(x, y);
         for right in [first_right, !first_right] {
             let mut furthest = None;

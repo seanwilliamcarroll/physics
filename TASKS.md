@@ -241,11 +241,14 @@ property test, 500 cases); skipped a chunk at a time. Native: busy 640 ×
 360 1.32 ms a step, settled 3.2 µs with chunks (569 µs without); 1920 ×
 1080 busy 12.5 ms. Wasm measured in the page.
 
-## 4. Lava and reactions (PR)
+## ✅ 4. Lava and reactions (PR)
 
-- [ ] Lava (flows slowly), lava + water → stone + steam, steam rises and
-      condenses back to water. Tests: the reactions' accounting (what's
-      made equals what's consumed), the rest still conserved.
+Lava (flows one step in two, a cell sideways), lava + water → stone +
+steam, steam rises through water and condenses (1 in 64 a step,
+blocked). Accounts kept at every step: sand; water + steam; lava +
+stone. Cells that can still change by chance keep their chunk awake, so
+chunks stay exact (500 cases with every material). A lava golden, same
+on wasm.
 
 ## 5. Web layer (PR)
 

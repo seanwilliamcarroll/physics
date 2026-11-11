@@ -19,6 +19,10 @@ pub(crate) enum Purpose {
     Side = 1,
     /// A painted cell's shade.
     Shade = 2,
+    /// Whether lava flows this step.
+    Flow = 3,
+    /// Whether blocked steam condenses this step.
+    Condense = 4,
 }
 
 /// 64 random bits for `(seed, step, x, y, purpose)`.
