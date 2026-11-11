@@ -96,6 +96,20 @@ values taken via his proofs and pooltool's defaults, to confirm by hand.
 defaults, citing Alciatore.
 - https://pooltool.readthedocs.io/
 
+## Falling sand (`11-falling-sand.md`, M9)
+
+**Purho, P. (2019).** *Exploring the Tech and Design of Noita.* GDC 2019,
+Independent Games Summit. Bottom-up updates, chunks with dirty
+rectangles, a four-pass checkerboard for threads (as summarized by
+80.lv, below; the talk is free on GDC's YouTube channel).
+- https://gdcvault.com/play/1025695/Exploring-the-Tech-and-Design
+- https://80.lv/articles/noita-a-game-based-on-falling-sand-simulation/
+
+**Toffoli, T. & Margolus, N. (1987).** *Cellular Automata Machines: A New
+Environment for Modeling.* MIT Press. The Margolus (block) neighbourhood:
+order-free and conserving by construction; weighed for M9, noted for M10.
+- DOI: https://doi.org/10.7551/mitpress/1763.001.0001
+
 ## Integrators and stability (`07-soft-bodies.md`, M1–M5)
 
 **Hairer, E., Lubich, C., Wanner, G. (2006).** *Geometric Numerical

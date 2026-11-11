@@ -179,15 +179,18 @@ Contact friction moved to M10.
    sections; lava (with water: stone and steam; steam rises and
    condenses) as its own section, since reactions break plain
    conservation and need their own accounting.
-4. **Update order: bottom-up, alternating direction, with an "updated"
-   flag.** Scanning bottom-up means a falling cell isn't met again in the
-   same step; alternating left-to-right and right-to-left each step
-   removes the systematic drift a fixed direction gives piles; a per-cell
-   flag (a parity bit in the byte, flipped each step, so it never needs
-   clearing) stops a cell moved sideways from being updated twice.
-5. **Randomness is seeded:** a falling grain choosing between its two
-   diagonals uses `math`'s `SplitMix64`, seeded per grid, so runs repeat
-   exactly. The bias test checks the choice is fair.
+4. **Update order: bottom-up, alternating direction, with a moved-here
+   mark.** Scanning bottom-up means a falling cell isn't met again in the
+   same step; alternating direction each row and each step removes the
+   drift a fixed direction gives piles. **Changed at the design doc:** the
+   mark is a separate bitset (set where something moves to, cleared each
+   step), not a parity bit in the byte, which goes stale in sleeping
+   chunks (`11-falling-sand.md`).
+5. **Randomness is seeded, by position:** the diagonal and dispersion
+   choices hash `(seed, step, x, y)` with `SplitMix64`'s mixer.
+   **Changed at the design doc:** not a stream, which would make chunked
+   and full updates diverge (a skipped chunk shifts every later draw).
+   The bias test checks the choice is fair.
 6. **Dirty chunks:** the grid in 32 × 32 chunks, each with an "awake"
    flag; a step updates only awake chunks, and any change wakes the
    chunk and its neighbours. A settled pile costs nothing. Tested to give
@@ -211,13 +214,15 @@ Contact friction moved to M10.
 10. **Painting:** a brush (radius, material, including "erase") applied by
     an export between steps; painting into a cell wakes its chunk.
 
-## 1. `docs/11-falling-sand.md` (PR)
+## ✅ 1. `docs/11-falling-sand.md` (PR)
 
-- [ ] The rules per material, the scan order and why (with the bias it
-      removes), the flag, the chunks, the RNG, conservation and its
-      exceptions, the renderer, costs to measure. Prior art read and
-      cited (Noita's GDC 2019 talk; *Falling Everything* write-ups), as
-      references, Crossref where they have DOIs.
+The byte (3-bit material, 4-bit shade), the rules (swaps only, so
+movement conserves), bottom-up scans alternating per row and step, a
+moved-here bitset (the parity bit goes stale in sleeping chunks), random
+choices keyed by `(seed, step, x, y)` (a stream would break chunked =
+full), 32 × 32 chunks that wake their neighbours and are exact, not an
+approximation; Margolus blocks weighed and set aside. Sources: Noita's
+GDC 2019 talk via 80.lv's write-up; Toffoli & Margolus 1987 (Crossref).
 
 ## 2. The automaton (PR)
 
@@ -257,20 +262,27 @@ Contact friction moved to M10.
 
 ---
 
-## Health audit (after A3)
+## Health (after M7)
 
-Software-engineering health, not physics (PRs #122 on). Open:
+Done: the API audit and its PRs (#159–#164: `web-common`, `engine-web`,
+narrower surfaces, `cargo xtask api`), `cargo xtask mutants` (#165), the
+pre-push hook at ~60 s with nextest (#166), the step budget (#156), M6's
+mutation run (#144). Open:
 
+- **Your check:** `m2-cluster?n=4096` in slow motion, not frozen.
+- **The compute node:** `cargo install --locked cargo-nextest`.
+- **CI stays off** (your call: it fights loading a stack and merging it
+  piece by piece).
 - **Mutation, still to do:** `test-support` and `xtask` under
-  `--test-workspace=true` (their misses are mostly artifacts). M6's
-  collision files: done (16 missed of 164; 8 real gaps fixed, the rest
-  equivalent, listed in the commit).
+  `--test-workspace=true` (their misses are mostly artifacts).
 - **TODO: why the piano model is slow in debug builds.** Selecting it
   designs 88 keys' dispersion filters: 1.8 s unoptimized at 48 kHz,
   0.2 s with `acoustic`, `libm` and `math` at `opt-level = 3` (now set
-  for dev builds). Is the time in `libm`'s transcendentals, the
-  refinement's iterations, or something that could be designed lazily
-  per key, or once and shared?
+  for dev builds).
+- **Undecided (M6.11):** dropping the broadphase's final pair sort:
+  smaller and faster, but every collision golden changes.
+
+---
 
 ## Out of scope for M9
 
