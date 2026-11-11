@@ -126,21 +126,5 @@ pub(crate) fn cloth<S: Scalar>(table: Table<S>, p: &mut Particles<S>, spin: &mut
     }
 }
 
-/// Rotational kinetic energy `Σ ½ I |ω|²`, `I = (2/5) m R²`, over the
-/// balls (moving circles) in `p` with spins `spin`.
-#[must_use]
-pub fn rotational_energy<S: Scalar>(p: &Particles<S>, spin: &[Vec2<S>]) -> S {
-    let five = S::from_f64(5.0);
-    p.inv_mass()
-        .iter()
-        .zip(p.radius())
-        .zip(spin)
-        .filter(|((w, r), _)| **w != S::ZERO && **r != S::ZERO)
-        // ½ (2/5) m R² |ω|² = m R² |ω|² / 5.
-        .fold(S::ZERO, |acc, ((w, r), om)| {
-            acc + *r * *r * om.length_sq() / (five * *w)
-        })
-}
-
 #[cfg(test)]
 mod tests;

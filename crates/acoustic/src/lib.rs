@@ -6,7 +6,7 @@
 //! and `f64` in tests. Independent of the physics engine; shares only
 //! `math`.
 
-pub mod body;
+pub(crate) mod body;
 mod bridge;
 mod delay_line;
 mod dispersion;

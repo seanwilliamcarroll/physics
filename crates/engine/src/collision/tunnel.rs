@@ -16,7 +16,7 @@ use crate::{Particles, Scalar, Vec2};
 /// - a circle and a wall, whose centre ended behind it.
 ///
 /// `pairs` is the broadphase's scratch.
-pub fn count_tunnels<S: Scalar>(
+pub(crate) fn count_tunnels<S: Scalar>(
     before: &[Vec2<S>],
     p: &Particles<S>,
     statics: Statics<'_, S>,

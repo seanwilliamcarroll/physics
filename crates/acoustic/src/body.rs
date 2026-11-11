@@ -17,11 +17,12 @@ const RESONANCES: [(f64, f64, f64); 5] = [
     (1000.0, 6.0, 0.4),
     (2200.0, 4.0, 0.3),
 ];
-pub const RESONANCE_COUNT: usize = RESONANCES.len();
+pub(crate) const RESONANCE_COUNT: usize = RESONANCES.len();
 
-/// The resonances' frequencies, Hz.
+/// Test-only: the resonances' frequencies, Hz.
+#[cfg(test)]
 #[must_use]
-pub fn resonances() -> [f64; RESONANCE_COUNT] {
+pub(crate) fn resonances() -> [f64; RESONANCE_COUNT] {
     RESONANCES.map(|(f, _, _)| f)
 }
 
@@ -39,14 +40,14 @@ struct Bandpass<S> {
 
 /// The body's filter.
 #[derive(Clone, Debug)]
-pub struct Body<S> {
+pub(crate) struct Body<S> {
     bands: [Bandpass<S>; RESONANCE_COUNT],
 }
 
 impl<S: Scalar> Body<S> {
     /// The body at `fs` Hz; `None` if a resonance isn't below Nyquist.
     #[must_use]
-    pub fn new(fs: f64) -> Option<Self> {
+    pub(crate) fn new(fs: f64) -> Option<Self> {
         let usable = fs > 0.0 && RESONANCES.iter().all(|&(f, _, _)| f < 0.5 * fs);
         if !usable {
             return None;
@@ -70,7 +71,7 @@ impl<S: Scalar> Body<S> {
     }
 
     /// The next output for input `x`: the direct sound and each band.
-    pub fn process(&mut self, x: S) -> S {
+    pub(crate) fn process(&mut self, x: S) -> S {
         let mut out = x;
         for b in &mut self.bands {
             let y = b.b0 * (x - b.x.1) - b.a1 * b.y.0 - b.a2 * b.y.1;

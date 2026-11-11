@@ -10,10 +10,12 @@ mod tunnel;
 mod wall;
 
 pub use broadphase::candidate_pairs;
-pub use narrowphase::{
-    Body, CONTACT_MARGIN, Contact, broadphase_cell, find_contacts, pair_impact, segment_impact,
+pub use narrowphase::broadphase_cell;
+pub(crate) use narrowphase::{
+    Body, CONTACT_MARGIN, Contact, find_contacts, pair_impact, segment_impact,
 };
 pub use pocket::Pocket;
-pub use segment::{Segment, Statics};
-pub use tunnel::count_tunnels;
+pub use segment::Segment;
+pub(crate) use segment::Statics;
+pub(crate) use tunnel::count_tunnels;
 pub use wall::Wall;

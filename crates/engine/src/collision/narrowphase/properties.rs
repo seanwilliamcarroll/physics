@@ -2,13 +2,17 @@
 //! circle–circle and circle–wall): a contact doesn't depend on which body
 //! is called `a`, or on where the pair sits, and every contact reported
 //! has a unit normal and a finite gap.
-// Whole file is test code (docs/lint-policy.md).
-#![cfg(test)]
+//!
+//! A unit test (not under `tests/`) so the narrowphase can stay private to
+//! the crate (`docs/api-audit.md`).
 
-use engine::collision::{Body, Contact, Statics, find_contacts};
-use engine::{Particles, Radius, Vec2, Wall};
 use proptest::prelude::*;
-use test_support::{kg, proptest_config};
+use test_support::proptest_config;
+
+use super::{Body, Contact, find_contacts};
+use crate::collision::Statics;
+use crate::params::kg;
+use crate::{Particles, Radius, Vec2, Wall};
 
 /// One substep, s (the speculative margin's horizon).
 const H: f64 = 0.01;
