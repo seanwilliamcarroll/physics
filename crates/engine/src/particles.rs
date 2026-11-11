@@ -119,6 +119,27 @@ impl<S: Scalar> Particles<S> {
         StaticId(self.push(pos, Vec2::ZERO, S::ZERO, S::ZERO))
     }
 
+    /// Makes particle `i` a body of `inv_mass` and `radius` at rest at
+    /// `pos` (M7: retiring a potted ball, reinstating a cue ball). Keeps
+    /// the largest radius for a larger one; a smaller one leaves it (only
+    /// the broadphase's cell, a little larger than needed). `false` past
+    /// the end.
+    pub(crate) fn set_body(&mut self, i: usize, pos: Vec2<S>, inv_mass: S, radius: S) -> bool {
+        let (Some(x), Some(v), Some(w), Some(r)) = (
+            self.pos.get_mut(i),
+            self.vel.get_mut(i),
+            self.inv_mass.get_mut(i),
+            self.radius.get_mut(i),
+        ) else {
+            return false;
+        };
+        (*x, *v, *w, *r) = (pos, Vec2::ZERO, inv_mass, radius);
+        if radius > self.max_radius {
+            self.max_radius = radius;
+        }
+        true
+    }
+
     /// Appends to every field; the new slot is the old length.
     fn push(&mut self, pos: Vec2<S>, vel: Vec2<S>, inv_mass: S, radius: S) -> ParticleId {
         let id = ParticleId(self.pos.len());

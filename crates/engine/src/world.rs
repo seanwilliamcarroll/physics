@@ -6,6 +6,7 @@ mod config_error;
 mod constraints;
 mod drag;
 mod ground;
+mod pockets;
 mod table;
 
 use core::num::NonZeroU32;
@@ -13,7 +14,7 @@ use core::num::NonZeroU32;
 pub use config_error::ConfigError;
 use constraints::{Collision, Constraints};
 
-use crate::collision::{Segment, Statics, count_tunnels};
+use crate::collision::{Pocket, Segment, Statics, count_tunnels};
 use crate::integrate::VerletScratch;
 use crate::table::Table;
 pub use drag::Grab;
@@ -69,6 +70,9 @@ pub struct World<S: Scalar> {
     /// Tunnel counting (`collision::count_tunnels`), when on: the count
     /// so far, each substep's starting positions, and broadphase scratch.
     tunnels: Option<TunnelCount<S>>,
+    /// Sensors that pot balls (M7), and what the last step potted.
+    pockets: Vec<Pocket<S>>,
+    potted: Vec<(ParticleId, usize)>,
 }
 
 /// What counting tunnels keeps between substeps.
@@ -100,6 +104,8 @@ impl<S: Scalar> World<S> {
             spin: Vec::new(),
             speculative: true,
             tunnels: None,
+            pockets: Vec::new(),
+            potted: Vec::new(),
         }
     }
 
@@ -293,6 +299,7 @@ impl<S: Scalar> World<S> {
     /// backward, stand still (XPBD's velocity is `Δx / h`), or turn NaN.
     pub fn step(&mut self, dt: TimeStep<S>) {
         let h = dt.get() / S::from_f64(f64::from(self.substeps.get()));
+        self.potted.clear();
         for _ in 0..self.substeps.get() {
             self.substep(h);
         }
@@ -339,6 +346,9 @@ impl<S: Scalar> World<S> {
             if let Some(t) = &mut self.tunnels {
                 let n = count_tunnels(&t.before, &self.particles, statics, &mut t.pairs);
                 t.count += u64::from(n);
+            }
+            if !self.pockets.is_empty() {
+                self.pot();
             }
         }
         if let Some(y) = self.ground {
