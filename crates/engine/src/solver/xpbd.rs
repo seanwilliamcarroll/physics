@@ -35,7 +35,14 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         let mut cloth = self.cloth;
         if self.collides {
             let half = h / (S::ONE + S::ONE);
-            contacts.find(p, self.statics, self.restitution, self.acc, h);
+            contacts.find(
+                p,
+                self.statics,
+                self.restitution,
+                self.acc,
+                h,
+                self.speculative,
+            );
             kick(p, self.acc, half);
             on_cloth(&mut cloth, p, half);
             impacts::resolve(p, contacts, h);

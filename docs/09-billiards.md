@@ -255,8 +255,16 @@ So the page shows *why* speculative contacts exist instead:
 
 Off, a hard break tunnels at low substeps, and raising them brings the
 count to zero at a threshold section 4 measures. On, nothing tunnels at
-any substeps. Section 4's tests: on, zero at 12 m/s and one substep; off,
-tunnels at one substep.
+any substeps.
+
+**As built (M7.4, `tests/tunneling.rs`).** Off is the narrowphase given
+no time to close in (`h = 0` for the speculative and swept tests), so a
+contact is only what's within the margin at a substep's start. A ball at
+12 m/s into a resting one, over 20 starting distances: **13 tunnel at
+one substep, 2 at two, none from three** (at one substep, 2 at 6 m/s,
+none at 3), both solvers. A 12 m/s ball at a cushion goes through at one
+substep. On, none of it, at any substeps. Counting (`World::count_tunnels`)
+is off by default: it costs a broadphase a substep.
 
 ## Pockets
 

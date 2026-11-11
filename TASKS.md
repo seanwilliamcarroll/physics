@@ -255,10 +255,15 @@ centre hit's velocity to 1.4e-12 (XPBD 6.4e-8), position first order
 stun, follow and draw at `(5/7)(b/R) v₀`. Found: an exact rolling test
 never let a ball stop (an ulp of slip); a relative tolerance now.
 
-## 4. Speculation switch and tunneling counter (PR)
+## ✅ 4. Speculation switch and tunneling counter (PR)
 
-- [ ] `World::set_speculative(bool)` (on by default), the swept test as a
-      diagnostic. Tests as decision 6, the threshold measured.
+`World::set_speculative` (off = no time to close in: `h = 0` in the
+narrowphase), `World::count_tunnels` / `tunnels` and
+`collision::count_tunnels` (deep passes between circles, crossings of
+segments, ending behind walls). Measured at 12 m/s, 20 starts: off, 13
+tunnel at one substep, 2 at two, none from three; on, none anywhere;
+through a cushion at one substep, off only. `Collision` bundles what a
+colliding substep borrows.
 
 ## 5. Pockets (PR)
 
