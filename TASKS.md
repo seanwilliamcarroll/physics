@@ -1,21 +1,48 @@
-# TASKS — M9: Falling sand
+# TASKS — S1: Boids
 
-Source: `docs/05-roadmap.md` (M9; M10 builds on it), `docs/workers.md`
-(the step budget), the swarm notes (`05-roadmap.md`, "Swarm track": the
-pixel-buffer renderer and the counting-sort grid are shared ideas).
+Source: `docs/05-roadmap.md` ("Swarm track", S1), the swarm notes
+(`docs/swarm-rust-implementation.md`, `docs/swarm-resources.md`).
 
-**Goal:** a cellular automaton, not a solver: millions of cells, piles
-that emerge from local rules, materials that interact. A memory and cache
-problem: what's measured is cells per second, and what's tested is
-conservation and the absence of scan-order bias.
+**Papers** (DOIs checked on Crossref, 2026-11-11), each for what it
+grounds:
+- Reynolds (1987), *Flocks, herds and schools: a distributed behavioral
+  model*, SIGGRAPH Computer Graphics 21(4). doi:10.1145/37402.37406 —
+  the model: separation, alignment, cohesion from local perception.
+- Couzin, Krause, James, Ruxton & Franks (2002), *Collective memory and
+  spatial sorting in animal groups*, J. Theor. Biol. 218.
+  doi:10.1006/jtbi.2002.3065 — zones (repulsion inside, orientation and
+  attraction beyond: the protected range's role) and **group
+  polarization**, the order measure the flocking test uses.
+- Vicsek, Czirók, Ben-Jacob, Cohen & Shochet (1995), *Novel type of
+  phase transition in a system of self-driven particles*, PRL 75.
+  doi:10.1103/PhysRevLett.75.1226 — the same measure as `v_a`; S2's
+  model, cited here so S1's number is S2's.
+- Allen & Tildesley (2017), *Computer Simulation of Liquids*, 2nd ed.,
+  OUP. doi:10.1093/oso/9780198803195.001.0001 — cell lists for
+  fixed-radius neighbours (cell ≥ cutoff, search the 3 × 3 block),
+  the grid's basis; and Hockney & Eastwood, *Computer Simulation Using
+  Particles* (1981; CRC reprint doi:10.1201/9780367806934), where the
+  chaining-mesh idea comes from.
 
-**Done when:** a full-screen grid runs at 60 Hz while you paint into it,
-sand piles symmetrically, water levels, and the tests show no material
-created or lost and no left/right bias.
+**Secondary, for values and practice, not claims:** the ECE 4760 boids
+algorithm (Hunter Adams; read directly, 2026-11-11:
+https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html):
+the parameter set and the per-step update order, a course page, so the
+defaults are labelled "ECE 4760's", not "measured". Reynolds (1999),
+*Steering behaviors for autonomous characters*, GDC (no DOI): flee. Le
+Grand (2007), GPU Gems 3 ch. 32: grids by sorting, on the GPU (S4).
+
+**Goal:** the swarm track's first milestone. Agents that follow *rules*
+(steer, align, cohere), not forces: no energy to conserve, so the tests
+are invariants, agreement with brute force, and an emergent order that's
+measured. Then the cost story: brute force is O(n²), a grid makes it
+O(n), and the crossover is the first result.
+
+**Done when:** a flock of 10k runs at 60 Hz, with the crossover plot.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m9/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`s1/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -180,6 +207,144 @@ good"). Wasm busy 640 × 360: 1.84 ms a step (125 M cells/s); render 8.6
 
 ---
 
+## Decisions to review before starting
+
+1. **Its own crates and module**, as the acoustic track and M9 did:
+   `swarm` (the core: agents, the grid, the rules; no web code; on
+   `math` for `Vec2`, `Scalar`, `SplitMix64`) and `swarm-web` (a cdylib,
+   `swarm.wasm`, on `web-common`: the panic hook, `FixedStep`, the step
+   cap). The hand-written C ABI and the loader (`instantiateWithPanicHook`)
+   as `sand.wasm`. The notes' `wasm-bindgen` + `web-sys` front end isn't
+   used: the repo has neither (`03-wasm-shell.md`).
+2. **The model: Reynolds' three rules (1987) in ECE 4760's concrete
+   form**, which is Couzin et al.'s zone structure (repulsion inside,
+   orientation and attraction beyond) with constant gains. Per neighbour
+   within the visual range: inside the protected range it counts toward
+   **separation** (push away by the summed offsets) and *not* toward the
+   others; outside it, toward **alignment** (match the mean velocity) and
+   **cohesion** (steer to the mean position). Then **edge turning** (a
+   constant push back inside a margin: a box with soft walls), then the
+   **speed clamp** to `[min, max]`. The published values, our defaults:
+   visual range 40, protected 8, centering 0.0005, avoid 0.05, matching
+   0.05, turn 0.2, speed 3–6, a margin of 100. The notes' summary had
+   them wrong (20, 2, 3, 2), which is why the source is read. Their
+   scout "bias" (a course variant) is left out. The defaults are a
+   course's tuning, not measured biology; the doc says so.
+3. **A discrete map, not an ODE: per step, Δt = 1.** The published
+   parameters are in pixels per frame, and the rules are a map from one
+   step to the next, like M9's (no forces, nothing to integrate
+   accurately). World units are the arena's pixels at 1:1. The rate
+   (default 60 steps/s, `FixedStep`) sets how fast the flock moves on
+   screen, not its behaviour. The alternative (velocities per second
+   and a `dt`) would make the rate a numerical choice and the published
+   numbers need converting: no gain for rules.
+4. **Double-buffered, structure of arrays.** `x, y, vx, vy` as separate
+   `Vec`s; each step reads `cur` and writes `next`, then swaps. The
+   result doesn't depend on agent order (in-place, boid 7 would see boid
+   3's new velocity and boid 9's old one) and the update is the shape a
+   GPU pass needs (S4). The contrast with M9's in-place scan, where order
+   is the problem to solve, goes in the doc. The lab's own C updates in
+   place; we don't follow it there.
+5. **f32 only, not generic.** The engine is generic over `Scalar`; here
+   that buys a second copy of the module for a comparison nobody needs
+   (agents aren't an accuracy story). M8's fixed point is the scalar
+   comparison worth having, and the notes' "boids in s15.16" can be its
+   panel then. Goldens still match native and wasm (no transcendentals:
+   `sqrt` is exact in IEEE; no FMA contraction in Rust).
+6. **The speed clamp at zero:** the source divides by the speed without
+   a guard. A boid exactly at rest (speed 0) keeps its previous
+   heading's direction at `min` speed; tested.
+7. **Neighbour search, twice, both kept:** brute force (every pair; the
+   reference) and a **uniform grid by counting sort** (cell = visual
+   range, so every neighbour is in the 3 × 3 block around a boid; a
+   histogram, a prefix sum and a scatter: O(n), no comparison sort, so
+   no sort instantiation in the `.wasm`). Bounded arena, so a dense
+   array of cells: not the engine's sorted cell list (built for an
+   unbounded world), as the roadmap decided. **Tested exact:** the grid
+   finds the same neighbour *set* as brute force (proptest). Trajectories
+   agree only to rounding (summation order differs), measured.
+8. **The cost experiments, each measured on its own** (native criterion
+   and wasm in Node, as `bench-wasm`): ns per agent-step, brute force
+   against grid, at 1k, 10k and 100k (the crossover); then **agents
+   reordered by cell** every step against indexing through the order
+   (the cache experiment); then **`simd128`** for `swarm.wasm` only
+   (autovectorization from the SoA layout, no intrinsics, no `unsafe`).
+   Each is adopted only if it wins, and the numbers go in the doc either
+   way.
+9. **Rendering: splatted into an RGBA buffer by Rust**, `pixels.ts`
+   from M9. Each boid a few pixels, **coloured by heading** (a hue
+   wheel), so aligned groups show as one colour. Canvas path calls stop
+   scaling at a few thousand agents (the notes; M0's measurement agrees).
+   The heading's hue from a pseudo-angle (no trig); rendering only, so
+   not in the goldens.
+10. **Sizes and caps.** Agents fixed at creation, up to `MAX_AGENTS` =
+    262,144 (2¹⁸). Brute force is refused above 16,384 on the page (at
+    100k it would be ~10¹⁰ pair checks, seconds a step: the step budget
+    can't help when one step blows the frame). The benches go further.
+    The arena: the canvas's size (default 1280 × 720).
+11. **The page's extra: the pointer as a predator.** Boids within a
+    radius of the pointer flee it (Reynolds' 1999 "flee"; one more
+    steering term, off when the pointer is away). It's the only way to
+    *poke* a flock. Small; drop it if you'd rather not.
+
+---
+
+## 1. `docs/15-swarm.md` (PR)
+
+- [ ] The track's doc, S1 first: the model at the source (ECE 4760's
+      pseudocode, Reynolds 1987), Δt = 1, double buffering against M9's
+      in-place scan, the counting-sort grid and why not the engine's,
+      what's tested when nothing is conserved, the measurement plan.
+- [ ] `references.md`: the papers above (Reynolds 1987, Couzin et al.
+      2002, Vicsek et al. 1995, Allen & Tildesley 2017, Hockney &
+      Eastwood) with their DOIs; the secondary sources marked as such.
+      Every claim in the doc cites a paper; the course page only for the
+      parameter values.
+
+## 2. Boids, brute force (PR)
+
+- [ ] `swarm`: SoA agents, double buffer, the rules over every pair,
+      edge turning, the clamp (and its zero case), seeded starts.
+- [ ] Tests: speeds within `[min, max]` after every step; boids stay
+      within a measured distance of the arena; permuting the agents
+      permutes the result (to rounding, measured); **it flocks**: the
+      polarization (|mean of unit velocities|: Couzin et al. 2002's
+      group polarization, Vicsek et al. 1995's `v_a`)
+      rises from a random start's ~1/√n to above a measured bound;
+      goldens, native and wasm.
+
+## 3. The grid (PR)
+
+- [ ] Counting-sort grid; the neighbour sets equal brute force's
+      (proptest); grid and brute trajectories agree to rounding.
+- [ ] Benches: ns per agent-step, brute and grid, at 1k, 10k, 100k,
+      native: the crossover.
+
+## 4. Cache and SIMD (PR)
+
+- [ ] Reorder by cell each step against indexing through the order;
+      `simd128` for `swarm.wasm`; wasm timings in Node. Each measured and
+      recorded; adopted only if it wins.
+
+## 5. Web layer (PR)
+
+- [ ] `swarm-web` → `swarm.wasm` on `web-common`: create, advance with
+      the step cap, parameters (each parsed at the boundary), brute/grid
+      switch, the predator, the RGBA buffer, polarization, timings.
+      `swarm-abi.ts`, `swarm.d.ts` (checked), the call-sequence proptest.
+
+## 6. The page (PR)
+
+- [ ] `s1-boids`: the flock on `pixels.ts`, sliders for the five factors
+      and two ranges, n, brute/grid, the predator; HUD with ns per
+      agent-step and polarization; the crossover table measured in the
+      page (as M2's per-N cost); smoke; a "Swarms" gallery heading.
+- [ ] Your check against **Done when**.
+
+## 7. Cleanup (PR)
+
+---
+
 ## Health (after M7)
 
 Done: the API audit and its PRs (#159–#164: `web-common`, `engine-web`,
@@ -205,10 +370,18 @@ mutation run (#144). Open:
   designs 88 keys' dispersion filters: 1.8 s unoptimized at 48 kHz,
   0.2 s with `acoustic`, `libm` and `math` at `opt-level = 3` (now set
   for dev builds).
+- **Mutation run on M9's crates, on the node:** `cargo xtask mutants -p
+  sand -p sand-web -o mutants.out/m9`; triage as #144.
 - **Undecided (M6.11):** dropping the broadphase's final pair sort:
   smaller and faster, but every collision golden changes.
 
 ---
+
+## Out of scope for S1
+
+- Vicsek's model and periodic boundaries (S2); fields and stigmergy (S3,
+  S4); the GPU (S4 decides); threads (`docs/workers.md`).
+- Fixed point (M8's panel); 3D; obstacles; the lab's scout bias.
 
 ## Out of scope for M9 (carried forward)
 
