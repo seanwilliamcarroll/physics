@@ -110,6 +110,7 @@ physics/
     │   ├── m5-jelly/
     │   ├── m6-collisions/
     │   ├── m6-cradle/
+    │   ├── m7-billiards/
     │   ├── a1-string/
     │   └── a2-waveguide/
     └── pkg/                # build output (gitignored): engine.wasm, acoustic.wasm

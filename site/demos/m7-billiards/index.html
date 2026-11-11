@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M7 · Billiards: slide, roll, and why speculative contacts</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Billiards: slide, roll, and why speculative contacts</h1>
+    <p class="muted">
+      A 9-ft table to the WPA's specification. <b>Drag back from anywhere and
+      let go</b> to strike the cue ball: the pull sets the aim and the
+      speed. The <b>tip</b> sets where the cue meets the ball: a centre hit
+      slides, then rolls at 5/7 of its speed; struck 2/5 of a radius up it
+      rolls at once; below centre it carries backspin. Hit an object ball
+      full and the cloth does the rest: a <b>stun</b> stops dead,
+      <b>follow</b> rolls on through, <b>draw</b> comes back. The physics is
+      a top-down view of a 3D ball: it carries spin about horizontal axes,
+      and the cloth acts where it touches (<code>docs/09-billiards.md</code>).
+      Turn <b>speculative contacts</b> off and break hard at 1–2 substeps:
+      balls pass through each other, and the tunnel counter says so. With
+      them on, nothing tunnels at any substeps.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="panels table" id="panels"></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Energy</h2>
+    <p class="muted">
+      Kinetic energy plus spin, in joules (log scale): the cloth only takes
+      it away, sliding fast and rolling slowly, until the table is still.
+    </p>
+    <div class="plot"><canvas id="energy"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>

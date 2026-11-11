@@ -314,6 +314,18 @@ corners). `pool_break(speed, tip)` strikes the cue ball at the apex.
 rises; nothing tunnels; no ball leaves the table except into a pocket
 (0–6 potted). Goldens for the break, native and wasm.
 
+## The page (M7.8, `m7-billiards`)
+
+One table, drawn from the engine's own segments and pockets. Drag back
+from anywhere and let go: the cue ball is struck along the line from the
+pointer through it, at a speed in proportion to the pull (full at 0.6 m,
+12 m/s), with the tip slider's height. The cue only works when the table
+is still; a scratched cue ball is re-spotted then. Readouts: the potted
+tray, the tunnel count, energy (kinetic and spin, a log plot). Settings:
+tip, solver, substeps, speculative contacts, rate; presets for a hard
+break, tunneling (no speculation at one substep, where the cue ball
+passes through the rack) and the same at three, follow and draw.
+
 ## Tests (planned)
 
 - **Cushions:** the reflection angle (in = out at `e = 1`; the normal part

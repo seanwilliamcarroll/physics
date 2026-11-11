@@ -29,6 +29,7 @@ const M4_CHAIN: &str = "demos/m4-chain/";
 const M5: &str = "demos/m5-jelly/";
 const M6: &str = "demos/m6-collisions/";
 const M6_CRADLE: &str = "demos/m6-cradle/";
+const M7: &str = "demos/m7-billiards/";
 const M4_DP: &str = "demos/m4-double-pendulum/";
 const A1: &str = "demos/a1-string/";
 const A2: &str = "demos/a2-waveguide/";
@@ -43,8 +44,9 @@ const A3: &str = "demos/a3-piano/";
 /// case (100 substeps). M4: the chain (both solver panels) and the double
 /// pendulum in both comparison modes. M6: the box (full, with the
 /// broadphase overlay), the break with gaps, the cradle and its
-/// one-substep case.
-pub(super) const CASES: [Case; 24] = [
+/// one-substep case. M7: a hard break, and the tunneling preset (no
+/// speculation, one substep).
+pub(super) const CASES: [Case; 26] = [
     Case {
         name: "default",
         page: M0,
@@ -171,6 +173,18 @@ pub(super) const CASES: [Case; 24] = [
         name: "m6cradle1",
         page: M6_CRADLE,
         query: "?smoke&substeps=1&balls=8&pulled=3",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m7break",
+        page: M7,
+        query: "?smoke&break=12",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m7tunnel",
+        page: M7,
+        query: "?smoke&break=12&speculative=off&substeps=1",
         check: Check::Draws,
     },
     // A1: one second rendered offline (OfflineAudioContext): the worklet
