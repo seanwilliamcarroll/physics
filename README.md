@@ -10,31 +10,18 @@ more than feature breadth.
 
 ## Setup
 
-Requirements:
+**A fresh machine: [`docs/setup.md`](docs/setup.md)**, step by step
+(system packages, `rustup`, Node through `nvm` and `.nvmrc`, wasmtime,
+cargo-nextest, the optional tools, and a check that it all works).
 
-- `rustup`. The toolchain version, components, and wasm targets are pinned
-  in `rust-toolchain.toml` and installed automatically on first use.
-- Node.js and npm: pre-commit syntax- and type-checks the site's JS.
-  Install the pinned TypeScript once per clone with `npm ci`.
-- Python 3 (local dev server) and Google Chrome or Chromium (the pre-push
-  browser smoke test; set `CHROME` to its path if it isn't found).
-- `wasmtime`, to run the engine tests as wasm in pre-push:
-  `cargo install wasmtime-cli` (or MacPorts: `sudo port install wasmtime`).
-- `cargo-nextest`, the test runner the pre-push hook and `xtask slow`
-  use (they fall back to `cargo test` without it):
-  `cargo install --locked cargo-nextest`.
-- Optional: `cargo-llvm-cov`, for `cargo xtask coverage`:
-  `cargo install cargo-llvm-cov`.
-- Optional: `cargo-mutants` (`cargo xtask mutants`, the pre-push report
-  with `MUTANTS=1`), and `cargo-public-api` with
-  `rustup toolchain install nightly-2026-10-15 --profile minimal`
-  (`cargo xtask api`; pre-push skips the check without them).
-
-Once per clone:
+In short: `rustup` (the toolchain and wasm targets are pinned in
+`rust-toolchain.toml`), Node 22.18+ via `nvm install` (`.nvmrc`), Python
+3, Chrome or Chromium, `wasmtime-cli` and `cargo-nextest`. Then, once
+per clone:
 
 ```sh
 cargo xtask install-hooks     # = git config core.hooksPath .githooks
-npm ci                        # pinned TypeScript, for the type check
+nvm use && npm ci             # Node from .nvmrc; the pinned TypeScript
 ```
 
 | Hook | Runs |

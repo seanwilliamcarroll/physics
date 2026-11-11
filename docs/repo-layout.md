@@ -10,6 +10,7 @@ physics/
 ├── Cargo.toml              # [workspace]: crates/*, xtask
 ├── Cargo.lock
 ├── rust-toolchain.toml     # pin toolchain + targets (wasm32-unknown-unknown, wasm32-wasip1)
+├── .nvmrc                  # Node 22 (nvm install / nvm use; docs/setup.md)
 ├── .cargo/config.toml      # [target.wasm32-wasip1] runner = "wasmtime"
 ├── .gitignore              # target/, site/pkg/, dist/
 ├── .githooks/              # pre-commit (lint), pre-push (tests, smoke)
@@ -17,6 +18,7 @@ physics/
 │
 ├── docs/
 │   ├── 00-scope.md … 09-billiards.md, 11-falling-sand.md
+│   ├── setup.md            # a fresh machine, step by step (nvm for Node)
 │   ├── repo-layout.md      # this file
 │   ├── types.md            # key types, one line each, with links
 │   ├── hosting.md          # future work

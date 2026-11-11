@@ -1,0 +1,3 @@
+# Node 22, latest 22.x (22.18+: `node --test` loads our .ts files by
+# stripping their types, on by default from 22.18). docs/setup.md.
+22
