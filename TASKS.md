@@ -265,11 +265,14 @@ tunnel at one substep, 2 at two, none from three; on, none anywhere;
 through a cushion at one substep, off only. `Collision` bundles what a
 colliding substep borrows.
 
-## 5. Pockets (PR)
+## ✅ 5. Pockets (PR)
 
-- [ ] Sensors, `World::retire`, potting events. Tests: a ball aimed in
-      is potted; one rolling past the jaw isn't; a retired ball collides
-      with nothing.
+`collision::Pocket` (a sensor circle), `World::add_pocket`, checked after
+every solver substep; `World::potted` (the last step's `(ball, pocket)`
+events), `World::retire` (static, radius 0, at rest, spin zeroed) and
+`World::reinstate` (the cue ball re-spotted). Tests: potted within a
+substep's travel of the pocket's edge; a near miss isn't; a retired ball
+collides with nothing; a reinstated one does.
 
 ## 6. Scenes (PR)
 
