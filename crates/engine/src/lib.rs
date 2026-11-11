@@ -15,6 +15,7 @@ mod rng;
 pub mod scenarios;
 mod solver;
 mod sort_key;
+pub mod table;
 #[cfg(test)]
 mod test_util;
 mod world;
@@ -31,4 +32,5 @@ pub use params::{
 };
 pub use particles::{ParticleId, Particles, StaticId};
 pub use solver::{Order, Solver, Stabilization};
+pub use table::Table;
 pub use world::{ConfigError, Grab, World};

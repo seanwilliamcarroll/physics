@@ -13,6 +13,7 @@ use core::num::NonZeroU32;
 pub(crate) use contacts::Contacts;
 
 use crate::collision::Statics;
+use crate::table::Table;
 use crate::{Baumgarte, Force, Particles, Restitution, Scalar, Vec2};
 
 /// How a world with constraints is stepped.
@@ -105,6 +106,17 @@ impl Order {
     }
 }
 
+/// `dt` of cloth after a kick, if the world has a table.
+fn on_cloth<S: Scalar>(
+    cloth: &mut Option<(Table<S>, &mut [Vec2<S>])>,
+    p: &mut Particles<S>,
+    dt: S,
+) {
+    if let Some((table, spin)) = cloth {
+        crate::table::cloth(*table, p, spin, dt);
+    }
+}
+
 /// Everything a solver substep reads and writes, borrowed from `World`.
 pub(crate) struct Step<'a, S: Scalar, C> {
     pub(crate) forces: &'a [Box<dyn Force<S>>],
@@ -130,6 +142,9 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     /// Restitution for circle–circle and wall contacts; segments carry
     /// their own.
     pub(crate) restitution: Restitution<S>,
+    /// The cloth and every particle's spin, if the world has a table (M7):
+    /// applied after each kick.
+    pub(crate) cloth: Option<(Table<S>, &'a mut [Vec2<S>])>,
 }
 
 #[cfg(test)]

@@ -268,6 +268,18 @@ tray. Retiring keeps every other ball's index. A scratched cue ball is
 re-spotted on the head spot once the table is at rest: a page rule, not
 the engine's.
 
+**As built (M7.3, `tests/cloth.rs`):** a centre hit at 3 m/s matches the
+model in both solvers, sampled every step for 25 s through sliding,
+rolling and rest: velocity to 1.4e-12 (impulse) and 6.4e-8 (XPBD, which
+derives velocity from positions), position first order, 0.025 m / n at
+n substeps, energy never rising, and exactly at rest at the end. Natural
+roll (`b = 2R/5`) doesn't slide. After a full hit, the cue ball rolls at
+`(5/7)(b/R) v₀` (stun 0, draw back) within `(5/7) μ_s g h/2`: the half
+substep of cloth before the impact stage. Rolling is decided with a
+relative tolerance (1e-6 of the ball's speeds), not exact zero: after
+snapping to rolling, `v_x − R (v_x / R)` can be an ulp off, and an exact
+test never saw the ball roll, so it never stopped.
+
 ## Tests (planned)
 
 - **Cushions:** the reflection angle (in = out at `e = 1`; the normal part

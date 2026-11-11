@@ -245,14 +245,15 @@ within 1.5e-11° at any substeps. M6 goldens for the box and the impulse
 cradle updated. Tests: reflection, a corner, resting, no pass-through,
 cut shots, mixed-`e` energy.
 
-## 3. The cloth: spin, sliding and rolling (PR)
+## ✅ 3. The cloth: spin, sliding and rolling (PR)
 
-- [ ] `Table` on `World`: spin per ball, sliding friction and rolling
-      resistance in the kicks, the exact transition; rotational energy in
-      the diagnostics.
-- [ ] Tests: 5/7 v₀, the slide distance and time (measured tolerances),
-      a rolling ball's stopping distance `v² / (2 μ_r g)`, stun, follow
-      and draw after a full hit, energy only falling.
+`Table` (μ_s, μ_r, g) on `World`, a spin per particle, the cloth after
+each half kick with both transitions landed exactly; `World::strike`
+(aim, speed, tip height); `table::rotational_energy`. Measured: the
+centre hit's velocity to 1.4e-12 (XPBD 6.4e-8), position first order
+(0.025 m / n), energy never rising, exactly at rest; natural roll;
+stun, follow and draw at `(5/7)(b/R) v₀`. Found: an exact rolling test
+never let a ball stop (an ulp of slip); a relative tolerance now.
 
 ## 4. Speculation switch and tunneling counter (PR)
 
