@@ -19,7 +19,7 @@ dependencies = [
  "math",
  "proptest",
  "test-support",
- "web-shell",
+ "web-common",
 ]
 
 [[package]]
@@ -631,11 +631,11 @@ dependencies = [
  "math",
  "proptest",
  "test-support",
- "web-shell",
+ "web-common",
 ]
 
 [[package]]
-name = "web-shell"
+name = "web-common"
 version = "0.1.0"
 
 [[package]]

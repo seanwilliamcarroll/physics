@@ -34,7 +34,7 @@ pub(crate) use codes::{
     solver_from_code, stabilization_from_code, start_from_code,
 };
 use sim::{Sim, gravity_scene};
-use web_shell::FixedStep;
+use web_common::FixedStep;
 
 /// Physics steps per simulated second a demo starts with ([`abi::DEFAULT_RATE_HZ`]).
 /// Displays at any refresh rate advance the simulation at this rate via

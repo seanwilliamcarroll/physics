@@ -1,6 +1,7 @@
-//! The wasm shell's shared parts (`docs/03-wasm-shell.md`): what every
-//! `*-web` crate (`engine-web`, `acoustic-web`, M9's `sand-web`) needs
-//! around its simulation, and nothing about any simulation.
+//! What every `*-web` crate (`engine-web`, `acoustic-web`, M9's `sand-web`)
+//! shares around its simulation, and nothing about any simulation: the
+//! common part of the wasm shell (`docs/03-wasm-shell.md`). Scope is kept
+//! to that; anything simulation-specific belongs in its own `*-web` crate.
 //!
 //! - [`install_panic_hook`]: a Rust panic's message to the browser console
 //!   (the `env.console_error` import).

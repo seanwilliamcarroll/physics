@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 [dependencies]
 math = { path = "../math" }
 engine = { path = "../engine" }
-web-shell = { path = "../web-shell" }
+web-common = { path = "../web-common" }
 
 [dev-dependencies]
 proptest.workspace = true
