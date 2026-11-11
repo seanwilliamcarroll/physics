@@ -1,15 +1,10 @@
-# TASKS — M7: Billiards
+# TASKS — between milestones
 
-Source: `docs/05-roadmap.md` (M7), `docs/00-scope.md` (the open question
-on spin), `docs/08-collision.md` (contacts, the impact stage, speculative
-contacts).
-
-**Goal:** a full game-feel simulation on M6's contacts: cushions, a cloth
-that makes balls slide and then roll, pockets, and a cue.
-
-**Done when:** you can play a break shot, the balls settle believably,
-stun, follow and draw shots behave as on a real table, and the page shows
-why speculative contacts stop tunneling.
+M7 is done. Next, by `docs/05-roadmap.md`: M8 (fixed point), M9 (falling
+sand, a cellular automaton), M10 (sand: CA against DEM, with contact
+friction moved from M7), A4 (the finite-difference drum), C1 (PID), or
+S1 (boids, `05-roadmap.md`, "Swarm track"); or a health item below (a
+step budget for slow pages, `docs/workers.md`; CI back on). Your call.
 
 ## Workflow
 
@@ -143,7 +138,7 @@ strings in 78 µs a quantum on wasm), velocity, a stiffness toggle; the
 `a3-piano` page (velocity from where a key is pressed, stretched-partial
 ticks, the hammer's force); cleanup. Treble hammer gap below.
 
-## ✅ M7: Billiards (done, PRs #142–#153; manual check of the page pending)
+## ✅ M7: Billiards (done, PRs #142–#153)
 
 `docs/09-billiards.md`. Segment cushions with their own restitution;
 contacts moved to the **moment of impact** (cut shots were 1–8° off,
@@ -155,7 +150,8 @@ stun, follow and draw emerge (`(5/7)(b/R) v₀`). Tunneling: none with
 speculative contacts at any substeps; a switch turns them off (13 of 20
 tunnel at one substep at 12 m/s) and a counter shows it. Pockets as
 sensors; `retire`/`reinstate`. The WPA table, rack and break (settles by
-6.5 s), goldens; the `m7-billiards` page. `engine.wasm` +47.1 KB.
+6.5 s), goldens; the `m7-billiards` page (your check: "plays well").
+`engine.wasm` +47.1 KB.
 Contact friction moved to M10.
 
 ---
@@ -175,7 +171,7 @@ Software-engineering health, not physics (PRs #122 on). Open:
   refinement's iterations, or something that could be designed lazily
   per key, or once and shared?
 
-## Out of scope for M7
+## Out of scope for M7 (carried forward)
 
 - Sidespin (english), throw, cushion-induced spin (decisions 1, 3).
 - Contact friction in the solvers (M10, decision 3).
