@@ -250,11 +250,13 @@ stone. Cells that can still change by chance keep their chunk awake, so
 chunks stay exact (500 cases with every material). A lava golden, same
 on wasm.
 
-## 5. Web layer (PR)
+## ✅ 5. Web layer (PR)
 
-- [ ] `sand-web` on `web-common` (the panic hook, `FixedStep`):
-      create, step, paint, the RGBA buffer, counts per material; the
-      `.d.ts` check and the call-sequence property test cover it.
+`sand-web` → `sand.wasm` (37.6 KB) on `web-common`: create (sides ≤
+2048), advance with the step cap, rate, chunks on/off, a disc brush,
+the RGBA buffer, counts, last moves, awake chunks. `sand-abi.ts`
+mirrored and tested, `sand.d.ts` checked, a call-sequence property test.
+xtask builds it; pre-commit lints it as wasm32.
 
 ## 6. The page (PR)
 
