@@ -260,9 +260,12 @@ xtask builds it; pre-commit lints it as wasm32.
 
 ## 6. The page (PR)
 
-- [ ] `m9-falling-sand`: `pixels.ts`, the brush (material, radius,
-      erase), presets (an hourglass, a dam, lava into water), cells per
-      second in the HUD; smoke; gallery.
+- [x] `m9-falling-sand`: `pixels.ts`, the brush (material, radius,
+      erase, held pours, gap-free strokes), scenes drawn with the brush
+      (hourglass, dam, lava into water, empty), steps, cells per second,
+      awake chunks and counts in the HUD; three smoke cases (accounts
+      checked); gallery. Wasm measured: busy 640 × 360 1.84 ms (125 M
+      cells/s), 1920 × 1080 17.1 ms; render 8.6 → 0.47 ms with a palette.
 - [ ] Your check against **Done when**.
 
 ## 7. Cleanup (PR)

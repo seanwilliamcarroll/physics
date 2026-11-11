@@ -10,7 +10,7 @@ import type { DemoHandle, EngineExports, EngineImports } from "./engine";
  *  demo at any depth finds it and the site works under a sub-path. */
 const ENGINE_URL = new URL("../pkg/engine.wasm", import.meta.url);
 
-/** Text of the most recent Rust panic, or null. Pages load one engine, so
+/** Text of the most recent Rust panic, or null. Pages load one module, so
  *  module-level state is enough; the smoke test reads it. */
 let lastPanic: string | null = null;
 
@@ -18,8 +18,11 @@ export function lastPanicMessage(): string | null {
   return lastPanic;
 }
 
-/** Fetches, compiles, and instantiates engine.wasm; returns its exports. */
-export async function loadEngine(url: URL | string = ENGINE_URL): Promise<EngineExports> {
+/** Fetches, compiles, and instantiates a module built on `web-common`,
+ *  supplying its one import (the panic hook's `console_error`); returns
+ *  the raw exports. `name` labels its console messages. Shared by
+ *  `loadEngine` and the sand page's `loadSand` (sand-wasm.ts). */
+export async function instantiateWithPanicHook(url: URL | string, name: string): Promise<WebAssembly.Exports> {
   /** Set right after instantiation, before any call into Rust. */
   let memory: WebAssembly.Memory | null = null;
   const imports: EngineImports = {
@@ -29,21 +32,28 @@ export async function loadEngine(url: URL | string = ENGINE_URL): Promise<Engine
       console_error(ptr, len) {
         if (memory === null) {
           // A panic during instantiation itself: no memory to read yet.
-          console.error("engine.wasm panicked before instantiation finished");
+          console.error(`${name} panicked before instantiation finished`);
           return;
         }
         lastPanic = new TextDecoder().decode(new Uint8Array(memory.buffer, ptr, len));
-        console.error(`engine.wasm ${lastPanic}`);
+        console.error(`${name} ${lastPanic}`);
       },
     },
   };
   // instantiateStreaming compiles while downloading. It requires the server
   // to send `Content-Type: application/wasm` (python's http.server does).
   const { instance } = await WebAssembly.instantiateStreaming(fetch(url), imports);
+  const memoryExport = instance.exports.memory;
+  if (!(memoryExport instanceof WebAssembly.Memory)) throw new Error(`${name} exports no memory`);
+  memory = memoryExport;
+  return instance.exports;
+}
+
+/** Fetches, compiles, and instantiates engine.wasm; returns its exports. */
+export async function loadEngine(url: URL | string = ENGINE_URL): Promise<EngineExports> {
   // The one unchecked step: wasm exports arrive untyped, and engine.d.ts
   // asserts their shape. The smoke test is what verifies it at runtime.
-  const exports = instance.exports as unknown as EngineExports;
-  memory = exports.memory;
+  const exports = (await instantiateWithPanicHook(url, "engine.wasm")) as unknown as EngineExports;
   return withStepBudget(exports);
 }
 

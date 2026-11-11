@@ -84,7 +84,12 @@ physics/
     ├── index.html          # demo gallery
     ├── css/site.css
     ├── js/                 # TypeScript library; tsc emits .js beside it (gitignored)
-    │   ├── wasm.ts         # load + instantiate engine.wasm
+    │   ├── wasm.ts         # load + instantiate engine.wasm (the panic hook, shared)
+    │   ├── sand-wasm.ts    # M9: load sand.wasm, its step budget
+    │   ├── sand-abi.ts     # M9: material codes, caps (mirrors sand-web abi.rs)
+    │   ├── sand.d.ts       # M9: types for sand.wasm's exports
+    │   ├── sand-scenes.ts  # M9: the starting scenes, drawn with the brush (pure)
+    │   ├── pixels.ts       # RGBA buffer → ImageData → canvas; CSS point → cell; strokes
     │   ├── loop.ts         # rAF loop → demo_advance
     │   ├── canvas.ts       # world↔screen, high-DPI, batched drawing (points, links, disks, grid)
     │   ├── pointer.ts      # pointer drags → world coordinates (grab/drag/release)
@@ -115,9 +120,11 @@ physics/
     │   ├── m6-collisions/
     │   ├── m6-cradle/
     │   ├── m7-billiards/
+    │   ├── m9-falling-sand/
     │   ├── a1-string/
-    │   └── a2-waveguide/
-    └── pkg/                # build output (gitignored): engine.wasm, acoustic.wasm
+    │   ├── a2-waveguide/
+    │   └── a3-piano/
+    └── pkg/                # build output (gitignored): engine.wasm, acoustic.wasm, sand.wasm
 ```
 
 ## Decisions
