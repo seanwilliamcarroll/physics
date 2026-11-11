@@ -22,6 +22,8 @@ fn parses_known_commands() {
     assert_eq!(parse(&["smoke"]), Ok(Command::Smoke));
     assert_eq!(parse(&["test-wasm"]), Ok(Command::TestWasm));
     assert_eq!(parse(&["install-hooks"]), Ok(Command::InstallHooks));
+    assert_eq!(parse(&["api"]), Ok(Command::Api { check: false }));
+    assert_eq!(parse(&["api", "--check"]), Ok(Command::Api { check: true }));
     assert_eq!(
         parse(&["bench-wasm"]),
         Ok(Command::BenchWasm { budget_ms: 500 })

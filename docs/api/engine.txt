@@ -1,0 +1,421 @@
+pub mod engine
+pub use engine::Scalar
+pub use engine::UnitVec2
+pub use engine::Vec2
+pub mod engine::collision
+pub struct engine::collision::Pocket<S>
+impl<S: math::scalar::Scalar> engine::collision::Pocket<S>
+pub const fn engine::collision::Pocket<S>::center(self) -> math::vec2::Vec2<S>
+pub fn engine::collision::Pocket<S>::holds(self, math::vec2::Vec2<S>) -> bool
+pub fn engine::collision::Pocket<S>::new(math::vec2::Vec2<S>, S) -> core::option::Option<Self>
+pub const fn engine::collision::Pocket<S>::radius(self) -> S
+pub struct engine::collision::Segment<S>
+impl<S: math::scalar::Scalar> engine::collision::Segment<S>
+pub fn engine::collision::Segment<S>::closest(self, math::vec2::Vec2<S>) -> math::vec2::Vec2<S>
+pub const fn engine::collision::Segment<S>::ends(self) -> [math::vec2::Vec2<S>; 2]
+pub const fn engine::collision::Segment<S>::new(math::vec2::Vec2<S>, math::vec2::Vec2<S>, engine::Restitution<S>) -> Self
+pub const fn engine::collision::Segment<S>::restitution(self) -> engine::Restitution<S>
+pub fn engine::collision::Segment<S>::toward(self, math::vec2::Vec2<S>) -> (S, math::unit_vec2::UnitVec2<S>)
+pub struct engine::collision::Wall<S>
+impl<S: math::scalar::Scalar> engine::Wall<S>
+pub fn engine::Wall<S>::distance(self, math::vec2::Vec2<S>) -> S
+pub const fn engine::Wall<S>::normal(self) -> math::unit_vec2::UnitVec2<S>
+pub fn engine::Wall<S>::through(math::vec2::Vec2<S>, math::unit_vec2::UnitVec2<S>) -> Self
+pub fn engine::collision::broadphase_cell<S: math::scalar::Scalar>(&engine::Particles<S>, S) -> S
+pub fn engine::collision::candidate_pairs<S: math::scalar::Scalar>(&[math::vec2::Vec2<S>], &[S], S, &mut alloc::vec::Vec<(usize, usize)>)
+pub mod engine::diagnostics
+pub fn engine::diagnostics::center_of_mass<S: math::scalar::Scalar>(&engine::Particles<S>) -> core::option::Option<math::vec2::Vec2<S>>
+pub fn engine::diagnostics::constraint_error<S: math::scalar::Scalar, C: engine::Constraint<S>>(&engine::Particles<S>, &[C]) -> core::option::Option<(S, S)>
+pub fn engine::diagnostics::constraint_potential<S: math::scalar::Scalar, C: engine::Constraint<S>>(&engine::Particles<S>, &[C]) -> S
+pub fn engine::diagnostics::gravity_potential<S: math::scalar::Scalar>(&engine::Particles<S>, &engine::PairwiseGravity<S>) -> S
+pub fn engine::diagnostics::kinetic_energy<S: math::scalar::Scalar>(&engine::Particles<S>) -> S
+pub fn engine::diagnostics::momentum<S: math::scalar::Scalar>(&engine::Particles<S>) -> math::vec2::Vec2<S>
+pub fn engine::diagnostics::rotational_energy<S: math::scalar::Scalar>(&engine::Particles<S>, &[math::vec2::Vec2<S>]) -> S
+pub fn engine::diagnostics::total_energy<S: math::scalar::Scalar>(&engine::Particles<S>, &engine::PairwiseGravity<S>) -> S
+pub fn engine::diagnostics::uniform_gravity_potential<S: math::scalar::Scalar>(&engine::Particles<S>, &engine::UniformGravity<S>) -> S
+pub mod engine::scenarios
+pub enum engine::scenarios::DoublePendulumStart
+pub engine::scenarios::DoublePendulumStart::Horizontal
+pub engine::scenarios::DoublePendulumStart::Raised
+pub enum engine::scenarios::JellyBody
+pub engine::scenarios::JellyBody::Constraints(engine::Solver)
+pub engine::scenarios::JellyBody::Springs
+pub enum engine::scenarios::SpringKind
+pub engine::scenarios::SpringKind::Bend
+pub engine::scenarios::SpringKind::Shear
+pub engine::scenarios::SpringKind::Structural
+pub struct engine::scenarios::Fountain
+impl engine::scenarios::Fountain
+pub const fn engine::scenarios::Fountain::new(u64) -> Self
+pub fn engine::scenarios::Fountain::respawn_fallen<S: math::scalar::Scalar>(&mut self, &mut engine::World<S>) -> usize
+pub fn engine::scenarios::Fountain::world<S: math::scalar::Scalar>(&mut self, usize) -> engine::World<S>
+pub struct engine::scenarios::Jelly<S: math::scalar::Scalar>
+pub engine::scenarios::Jelly::springs: core::option::Option<engine::SpringForce<S>>
+pub engine::scenarios::Jelly::world: engine::World<S>
+pub struct engine::scenarios::SpringNetwork
+pub engine::scenarios::SpringNetwork::pairs: alloc::vec::Vec<(usize, usize, engine::scenarios::SpringKind)>
+pub engine::scenarios::SpringNetwork::positions: alloc::vec::Vec<(f64, f64)>
+impl engine::scenarios::SpringNetwork
+pub fn engine::scenarios::SpringNetwork::grid(usize, usize, f64) -> Self
+pub const engine::scenarios::BOX_BALLS: usize
+pub const engine::scenarios::BOX_BALL_MASS: f64
+pub const engine::scenarios::BOX_BALL_RADIUS: f64
+pub const engine::scenarios::BOX_HALF_WIDTH: f64
+pub const engine::scenarios::BOX_HEIGHT: f64
+pub const engine::scenarios::BOX_MAX_BALLS: usize
+pub const engine::scenarios::BOX_SPEED: f64
+pub const engine::scenarios::BREAK_BALL_MASS: f64
+pub const engine::scenarios::BREAK_BALL_RADIUS: f64
+pub const engine::scenarios::BREAK_CUE_DISTANCE: f64
+pub const engine::scenarios::BREAK_ROWS: usize
+pub const engine::scenarios::BREAK_SPEED: f64
+pub const engine::scenarios::CHAIN_LENGTH: f64
+pub const engine::scenarios::CHAIN_LINKS: usize
+pub const engine::scenarios::CHAIN_LINK_MASS: f64
+pub const engine::scenarios::CLUSTER_RADIUS: f64
+pub const engine::scenarios::CLUSTER_SOFTENING: f64
+pub const engine::scenarios::CLUSTER_SPEED: f64
+pub const engine::scenarios::CLUSTER_SUBSTEPS: core::num::nonzero::NonZeroU32
+pub const engine::scenarios::CLUSTER_TOTAL_MASS: f64
+pub const engine::scenarios::CLUSTER_WEIGHT: (f64, f64)
+pub const engine::scenarios::COLLAPSE_TOTAL_MASS: f64
+pub const engine::scenarios::CRADLE_BALLS: usize
+pub const engine::scenarios::CRADLE_LENGTH: f64
+pub const engine::scenarios::CRADLE_MASS: f64
+pub const engine::scenarios::CRADLE_RADIUS: f64
+pub const engine::scenarios::DISK_CENTRAL_MASS: f64
+pub const engine::scenarios::DISK_INNER_RADIUS: f64
+pub const engine::scenarios::DISK_ORBITERS_TOTAL_MASS: f64
+pub const engine::scenarios::DISK_RADIUS: f64
+pub const engine::scenarios::DOUBLE_PENDULUM_LENGTH: f64
+pub const engine::scenarios::DOUBLE_PENDULUM_MASS: f64
+pub const engine::scenarios::FOUNTAIN_SUBSTEPS: core::num::nonzero::NonZeroU32
+pub const engine::scenarios::FOUNTAIN_VX: (f64, f64)
+pub const engine::scenarios::FOUNTAIN_VY: (f64, f64)
+pub const engine::scenarios::GRAVITATIONAL_CONSTANT: f64
+pub const engine::scenarios::JELLY_COLS: usize
+pub const engine::scenarios::JELLY_DROP: f64
+pub const engine::scenarios::JELLY_GROUND: f64
+pub const engine::scenarios::JELLY_MASS: f64
+pub const engine::scenarios::JELLY_ROWS: usize
+pub const engine::scenarios::JELLY_SPACING: f64
+pub const engine::scenarios::ORBIT_CIRCULAR: f64
+pub const engine::scenarios::ORBIT_MASS_RATIO: f64
+pub const engine::scenarios::ORBIT_NOMINAL_PERIOD: f64
+pub const engine::scenarios::ORBIT_SEPARATION: f64
+pub const engine::scenarios::ORBIT_SOFTENING: f64
+pub const engine::scenarios::ORBIT_SUBSTEPS: core::num::nonzero::NonZeroU32
+pub const engine::scenarios::ORBIT_TOTAL_MASS: f64
+pub const engine::scenarios::PENDULUM_LENGTH: f64
+pub const engine::scenarios::PENDULUM_MASS: f64
+pub const engine::scenarios::POOL_BALL_MASS: f64
+pub const engine::scenarios::POOL_BALL_RADIUS: f64
+pub const engine::scenarios::POOL_CORNER_MOUTH: f64
+pub const engine::scenarios::POOL_CUE: engine::ParticleId
+pub const engine::scenarios::POOL_E_BALL: f64
+pub const engine::scenarios::POOL_E_CUSHION: f64
+pub const engine::scenarios::POOL_G: f64
+pub const engine::scenarios::POOL_LENGTH: f64
+pub const engine::scenarios::POOL_MAX_SPEED: f64
+pub const engine::scenarios::POOL_MU_ROLL: f64
+pub const engine::scenarios::POOL_MU_SLIDE: f64
+pub const engine::scenarios::POOL_RACK: [u8; 15]
+pub const engine::scenarios::POOL_SIDE_MOUTH: f64
+pub const engine::scenarios::POOL_WIDTH: f64
+pub const engine::scenarios::STANDARD_GRAVITY: f64
+pub fn engine::scenarios::ball_box<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32, usize, u64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::break_shot<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32, f64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::chain<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32, usize, f64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::cluster<S: math::scalar::Scalar>(usize, u64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::cluster_gravity<S: math::scalar::Scalar>() -> core::result::Result<engine::PairwiseGravity<S>, engine::ConfigError>
+pub fn engine::scenarios::collapse<S: math::scalar::Scalar>(usize, u64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::compliance_for<S: math::scalar::Scalar>(f64) -> core::result::Result<engine::Compliance<S>, engine::ConfigError>
+pub fn engine::scenarios::cradle<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32, usize, usize) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::disk<S: math::scalar::Scalar>(usize, u64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::double_pendulum<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32, engine::scenarios::DoublePendulumStart, f64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::jelly<S: math::scalar::Scalar>(engine::scenarios::JellyBody, core::num::nonzero::NonZeroU32, usize, usize, f64, f64) -> core::result::Result<engine::scenarios::Jelly<S>, engine::ConfigError>
+pub fn engine::scenarios::newtonian<S: math::scalar::Scalar>(engine::Softening<S>) -> engine::PairwiseGravity<S>
+pub fn engine::scenarios::orbit<S: math::scalar::Scalar>(engine::Integrator, f64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::orbit_gravity<S: math::scalar::Scalar>() -> core::result::Result<engine::PairwiseGravity<S>, engine::ConfigError>
+pub fn engine::scenarios::orbit_period() -> f64
+pub fn engine::scenarios::orbit_relative_speed() -> f64
+pub fn engine::scenarios::pendulum<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::pendulum_gravity<S: math::scalar::Scalar>() -> engine::UniformGravity<S>
+pub fn engine::scenarios::pool_break<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32, f64, f64) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::pool_rack<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub fn engine::scenarios::pool_table<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32) -> core::result::Result<engine::World<S>, engine::ConfigError>
+pub mod engine::table
+pub struct engine::table::Table<S>
+impl<S: math::scalar::Scalar> engine::table::Table<S>
+pub const fn engine::table::Table<S>::g(self) -> S
+pub const fn engine::table::Table<S>::mu_roll(self) -> S
+pub const fn engine::table::Table<S>::mu_slide(self) -> S
+pub fn engine::table::Table<S>::new(S, S, S) -> core::option::Option<Self>
+pub fn engine::table::rolling_spin<S: math::scalar::Scalar>(math::vec2::Vec2<S>, S) -> math::vec2::Vec2<S>
+pub fn engine::table::slip<S: math::scalar::Scalar>(math::vec2::Vec2<S>, math::vec2::Vec2<S>, S) -> math::vec2::Vec2<S>
+pub enum engine::ConfigError
+pub engine::ConfigError::ChangedBodies
+pub engine::ConfigError::InvalidDamping
+pub engine::ConfigError::InvalidMass
+pub engine::ConfigError::InvalidRadius
+pub engine::ConfigError::InvalidShot
+pub engine::ConfigError::InvalidSoftening
+pub engine::ConfigError::InvalidStiffness
+pub engine::ConfigError::InvalidTable
+pub engine::ConfigError::UnknownParticle
+impl core::error::Error for engine::ConfigError
+impl core::fmt::Display for engine::ConfigError
+pub fn engine::ConfigError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum engine::Integrator
+pub engine::Integrator::ExplicitEuler
+pub engine::Integrator::SymplecticEuler
+pub engine::Integrator::VelocityVerlet
+impl engine::Integrator
+pub const engine::Integrator::ALL: [Self; 3]
+pub enum engine::Order
+pub engine::Order::Alternating
+pub engine::Order::Forward
+pub engine::Order::Reverse
+impl engine::Order
+pub const engine::Order::ALL: [Self; 3]
+pub const fn engine::Order::reversed(self, u32) -> bool
+pub enum engine::Solver
+pub engine::Solver::Impulse
+pub engine::Solver::Xpbd
+impl engine::Solver
+pub const engine::Solver::ALL: [Self; 2]
+pub enum engine::Stabilization
+pub engine::Stabilization::Baumgarte
+pub engine::Stabilization::Split
+pub struct engine::BarnesHut<S>
+impl<S: math::scalar::Scalar> engine::BarnesHut<S>
+pub fn engine::BarnesHut<S>::approximating(&engine::PairwiseGravity<S>, engine::OpeningAngle<S>) -> Self
+pub fn engine::BarnesHut<S>::new(S, engine::Softening<S>, engine::OpeningAngle<S>) -> Self
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::BarnesHut<S>
+pub fn engine::BarnesHut<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+pub struct engine::Baumgarte<S>(_)
+impl<S: math::scalar::Scalar> engine::Baumgarte<S>
+pub fn engine::Baumgarte<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::Baumgarte<T>>
+pub const fn engine::Baumgarte<S>::get(self) -> S
+pub fn engine::Baumgarte<S>::new(S) -> core::option::Option<Self>
+impl<S: math::scalar::Scalar> core::default::Default for engine::Baumgarte<S>
+pub fn engine::Baumgarte<S>::default() -> Self
+pub struct engine::Compliance<S>(_)
+impl<S: math::scalar::Scalar> engine::Compliance<S>
+pub const engine::Compliance<S>::RIGID: Self
+impl<S: math::scalar::Scalar> engine::Compliance<S>
+pub fn engine::Compliance<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::Compliance<T>>
+pub const fn engine::Compliance<S>::get(self) -> S
+pub fn engine::Compliance<S>::new(S) -> core::option::Option<Self>
+pub struct engine::Damping<S>(_)
+impl<S: math::scalar::Scalar> engine::Damping<S>
+pub const engine::Damping<S>::NONE: Self
+impl<S: math::scalar::Scalar> engine::Damping<S>
+pub fn engine::Damping<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::Damping<T>>
+pub const fn engine::Damping<S>::get(self) -> S
+pub fn engine::Damping<S>::new(S) -> core::option::Option<Self>
+pub struct engine::DistanceConstraint<S>
+impl<S: math::scalar::Scalar> engine::DistanceConstraint<S>
+pub fn engine::DistanceConstraint<S>::between(&engine::Particles<S>, impl core::convert::Into<engine::ParticleId>, impl core::convert::Into<engine::ParticleId>) -> core::option::Option<Self>
+pub const fn engine::DistanceConstraint<S>::length(&self) -> S
+pub const fn engine::DistanceConstraint<S>::with_compliance(self, engine::Compliance<S>) -> Self
+pub const fn engine::DistanceConstraint<S>::with_damping(self, engine::Damping<S>) -> Self
+pub fn engine::DistanceConstraint<S>::with_length(&engine::Particles<S>, impl core::convert::Into<engine::ParticleId>, impl core::convert::Into<engine::ParticleId>, S, engine::Compliance<S>) -> core::option::Option<Self>
+impl<S: math::scalar::Scalar> engine::Constraint<S> for engine::DistanceConstraint<S>
+pub fn engine::DistanceConstraint<S>::bodies(&self) -> [engine::ParticleId; 2]
+pub fn engine::DistanceConstraint<S>::compliance(&self) -> S
+pub fn engine::DistanceConstraint<S>::damping(&self) -> S
+pub fn engine::DistanceConstraint<S>::evaluate(&self, math::vec2::Vec2<S>, math::vec2::Vec2<S>) -> (S, core::option::Option<math::unit_vec2::UnitVec2<S>>)
+pub struct engine::Grab
+impl engine::Grab
+pub const fn engine::Grab::particle(&self) -> engine::ParticleId
+pub struct engine::Mass<S>
+impl<S: math::scalar::Scalar> engine::Mass<S>
+pub const engine::Mass<S>::ONE: Self
+pub const fn engine::Mass<S>::get(self) -> S
+pub const fn engine::Mass<S>::inv(self) -> S
+pub fn engine::Mass<S>::new(S) -> core::option::Option<Self>
+pub struct engine::OpeningAngle<S>(_)
+impl<S: math::scalar::Scalar> engine::OpeningAngle<S>
+pub fn engine::OpeningAngle<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::OpeningAngle<T>>
+pub const fn engine::OpeningAngle<S>::get(self) -> S
+pub fn engine::OpeningAngle<S>::new(S) -> core::option::Option<Self>
+pub struct engine::PairwiseGravity<S>
+impl<S: math::scalar::Scalar> engine::PairwiseGravity<S>
+pub const fn engine::PairwiseGravity<S>::g_const(&self) -> S
+pub fn engine::PairwiseGravity<S>::new(S, engine::Softening<S>) -> Self
+pub const fn engine::PairwiseGravity<S>::softening_sq(&self) -> S
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::PairwiseGravity<S>
+pub fn engine::PairwiseGravity<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+pub struct engine::ParticleId(_)
+impl engine::ParticleId
+pub const fn engine::ParticleId::index(self) -> usize
+impl core::convert::From<engine::StaticId> for engine::ParticleId
+pub fn engine::ParticleId::from(engine::StaticId) -> Self
+pub struct engine::Particles<S>
+impl<S: math::scalar::Scalar> engine::Particles<S>
+pub fn engine::Particles<S>::add(&mut self, math::vec2::Vec2<S>, math::vec2::Vec2<S>, engine::Mass<S>) -> engine::ParticleId
+pub fn engine::Particles<S>::add_circle(&mut self, math::vec2::Vec2<S>, math::vec2::Vec2<S>, engine::Mass<S>, engine::Radius<S>) -> engine::ParticleId
+pub fn engine::Particles<S>::add_static(&mut self, math::vec2::Vec2<S>) -> engine::StaticId
+pub fn engine::Particles<S>::inv_mass(&self) -> &[S]
+pub fn engine::Particles<S>::is_empty(&self) -> bool
+pub fn engine::Particles<S>::len(&self) -> usize
+pub const fn engine::Particles<S>::max_radius(&self) -> S
+pub fn engine::Particles<S>::nearest_dynamic(&self, math::vec2::Vec2<S>, S) -> core::option::Option<engine::ParticleId>
+pub const fn engine::Particles<S>::new() -> Self
+pub fn engine::Particles<S>::pos(&self) -> &[math::vec2::Vec2<S>]
+pub fn engine::Particles<S>::radius(&self) -> &[S]
+pub fn engine::Particles<S>::set_static_position(&mut self, engine::StaticId, math::vec2::Vec2<S>) -> bool
+pub fn engine::Particles<S>::vel(&self) -> &[math::vec2::Vec2<S>]
+pub fn engine::Particles<S>::vel_mut(&mut self) -> &mut [math::vec2::Vec2<S>]
+impl<S: math::scalar::Scalar> core::default::Default for engine::Particles<S>
+pub fn engine::Particles<S>::default() -> Self
+pub struct engine::Radius<S>(_)
+impl<S: math::scalar::Scalar> engine::Radius<S>
+pub fn engine::Radius<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::Radius<T>>
+pub const fn engine::Radius<S>::get(self) -> S
+pub fn engine::Radius<S>::new(S) -> core::option::Option<Self>
+pub struct engine::Restitution<S>(_)
+impl<S: math::scalar::Scalar> engine::Restitution<S>
+pub const engine::Restitution<S>::ELASTIC: Self
+pub const engine::Restitution<S>::INELASTIC: Self
+impl<S: math::scalar::Scalar> engine::Restitution<S>
+pub fn engine::Restitution<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::Restitution<T>>
+pub const fn engine::Restitution<S>::get(self) -> S
+pub fn engine::Restitution<S>::new(S) -> core::option::Option<Self>
+pub struct engine::Softening<S>(_)
+impl<S: math::scalar::Scalar> engine::Softening<S>
+pub const engine::Softening<S>::ZERO: Self
+pub fn engine::Softening<S>::squared(self) -> S
+impl<S: math::scalar::Scalar> engine::Softening<S>
+pub fn engine::Softening<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::Softening<T>>
+pub const fn engine::Softening<S>::get(self) -> S
+pub fn engine::Softening<S>::new(S) -> core::option::Option<Self>
+pub struct engine::Spring<S>
+impl<S: math::scalar::Scalar> engine::Spring<S>
+pub fn engine::Spring<S>::between(&engine::Particles<S>, impl core::convert::Into<engine::ParticleId>, impl core::convert::Into<engine::ParticleId>, engine::Stiffness<S>, engine::Damping<S>) -> core::option::Option<Self>
+pub const fn engine::Spring<S>::ends(&self) -> [engine::ParticleId; 2]
+pub fn engine::Spring<S>::with_rest(&engine::Particles<S>, impl core::convert::Into<engine::ParticleId>, impl core::convert::Into<engine::ParticleId>, S, engine::Stiffness<S>, engine::Damping<S>) -> core::option::Option<Self>
+pub const fn engine::Spring<S>::with_stiffness(self, engine::Stiffness<S>) -> Self
+pub struct engine::SpringForce<S>
+impl<S: math::scalar::Scalar> engine::SpringForce<S>
+pub const fn engine::SpringForce<S>::new(alloc::vec::Vec<engine::Spring<S>>) -> Self
+pub fn engine::SpringForce<S>::potential(&self, &engine::Particles<S>) -> S
+pub fn engine::SpringForce<S>::springs(&self) -> &[engine::Spring<S>]
+pub fn engine::SpringForce<S>::with_damping(&self, engine::Damping<S>) -> Self
+pub fn engine::SpringForce<S>::with_stiffness(&self, engine::Stiffness<S>) -> Self
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::SpringForce<S>
+pub fn engine::SpringForce<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+pub struct engine::StaticId(_)
+impl engine::StaticId
+pub const fn engine::StaticId::id(self) -> engine::ParticleId
+pub const fn engine::StaticId::index(self) -> usize
+impl core::convert::From<engine::StaticId> for engine::ParticleId
+pub fn engine::ParticleId::from(engine::StaticId) -> Self
+pub struct engine::Stiffness<S>(_)
+impl<S: math::scalar::Scalar> engine::Stiffness<S>
+pub fn engine::Stiffness<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::Stiffness<T>>
+pub const fn engine::Stiffness<S>::get(self) -> S
+pub fn engine::Stiffness<S>::new(S) -> core::option::Option<Self>
+pub struct engine::Table<S>
+impl<S: math::scalar::Scalar> engine::table::Table<S>
+pub const fn engine::table::Table<S>::g(self) -> S
+pub const fn engine::table::Table<S>::mu_roll(self) -> S
+pub const fn engine::table::Table<S>::mu_slide(self) -> S
+pub fn engine::table::Table<S>::new(S, S, S) -> core::option::Option<Self>
+pub struct engine::TimeStep<S>(_)
+impl<S: math::scalar::Scalar> engine::TimeStep<S>
+pub fn engine::TimeStep<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::TimeStep<T>>
+pub const fn engine::TimeStep<S>::get(self) -> S
+pub fn engine::TimeStep<S>::new(S) -> core::option::Option<Self>
+impl<S: math::scalar::Scalar> engine::TimeStep<S>
+pub fn engine::TimeStep<S>::per_second(f64) -> core::option::Option<Self>
+pub struct engine::UniformGravity<S>
+impl<S: math::scalar::Scalar> engine::UniformGravity<S>
+pub const fn engine::UniformGravity<S>::g(&self) -> math::vec2::Vec2<S>
+pub const fn engine::UniformGravity<S>::new(math::vec2::Vec2<S>) -> Self
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::UniformGravity<S>
+pub fn engine::UniformGravity<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+pub struct engine::Wall<S>
+impl<S: math::scalar::Scalar> engine::Wall<S>
+pub fn engine::Wall<S>::distance(self, math::vec2::Vec2<S>) -> S
+pub const fn engine::Wall<S>::normal(self) -> math::unit_vec2::UnitVec2<S>
+pub fn engine::Wall<S>::through(math::vec2::Vec2<S>, math::unit_vec2::UnitVec2<S>) -> Self
+pub struct engine::World<S: math::scalar::Scalar>
+impl<S: math::scalar::Scalar> engine::World<S>
+pub fn engine::World<S>::add_circle(&mut self, math::vec2::Vec2<S>, math::vec2::Vec2<S>, engine::Mass<S>, engine::Radius<S>) -> engine::ParticleId
+pub fn engine::World<S>::add_constraint(&mut self, engine::DistanceConstraint<S>) -> core::result::Result<(), engine::ConfigError>
+pub fn engine::World<S>::add_force(&mut self, impl engine::Force<S> + 'static)
+pub fn engine::World<S>::add_particle(&mut self, math::vec2::Vec2<S>, math::vec2::Vec2<S>, engine::Mass<S>) -> engine::ParticleId
+pub fn engine::World<S>::add_segment(&mut self, engine::collision::Segment<S>)
+pub fn engine::World<S>::add_static(&mut self, math::vec2::Vec2<S>) -> engine::StaticId
+pub fn engine::World<S>::add_wall(&mut self, engine::Wall<S>)
+pub const fn engine::World<S>::baumgarte(&self) -> engine::Baumgarte<S>
+pub fn engine::World<S>::clear_forces(&mut self)
+pub fn engine::World<S>::collides(&self) -> bool
+pub fn engine::World<S>::constraints(&self) -> &[engine::DistanceConstraint<S>]
+pub const fn engine::World<S>::integrator(&self) -> engine::Integrator
+pub const fn engine::World<S>::iterations(&self) -> core::num::nonzero::NonZeroU32
+pub fn engine::World<S>::new(engine::Integrator, core::num::nonzero::NonZeroU32) -> Self
+pub const fn engine::World<S>::order(&self) -> engine::Order
+pub const fn engine::World<S>::particles(&self) -> &engine::Particles<S>
+pub fn engine::World<S>::segments(&self) -> &[engine::collision::Segment<S>]
+pub const fn engine::World<S>::set_baumgarte(&mut self, engine::Baumgarte<S>)
+pub const fn engine::World<S>::set_integrator(&mut self, engine::Integrator)
+pub const fn engine::World<S>::set_iterations(&mut self, core::num::nonzero::NonZeroU32)
+pub const fn engine::World<S>::set_order(&mut self, engine::Order)
+pub const fn engine::World<S>::set_restitution(&mut self, engine::Restitution<S>)
+pub fn engine::World<S>::set_solver(&mut self, engine::Solver)
+pub const fn engine::World<S>::set_stabilization(&mut self, engine::Stabilization)
+pub fn engine::World<S>::set_static_position(&mut self, engine::StaticId, math::vec2::Vec2<S>) -> bool
+pub const fn engine::World<S>::set_substeps(&mut self, core::num::nonzero::NonZeroU32)
+pub const fn engine::World<S>::solver(&self) -> engine::Solver
+pub const fn engine::World<S>::stabilization(&self) -> engine::Stabilization
+pub fn engine::World<S>::step(&mut self, engine::TimeStep<S>)
+pub const fn engine::World<S>::substeps(&self) -> core::num::nonzero::NonZeroU32
+pub fn engine::World<S>::vel_mut(&mut self) -> &mut [math::vec2::Vec2<S>]
+impl<S: math::scalar::Scalar> engine::World<S>
+pub fn engine::World<S>::add_pocket(&mut self, engine::collision::Pocket<S>)
+pub fn engine::World<S>::pockets(&self) -> &[engine::collision::Pocket<S>]
+pub fn engine::World<S>::potted(&self) -> &[(engine::ParticleId, usize)]
+pub fn engine::World<S>::reinstate(&mut self, engine::ParticleId, math::vec2::Vec2<S>, engine::Mass<S>, engine::Radius<S>) -> bool
+pub fn engine::World<S>::retire(&mut self, engine::ParticleId) -> bool
+impl<S: math::scalar::Scalar> engine::World<S>
+pub fn engine::World<S>::count_tunnels(&mut self, bool)
+pub const fn engine::World<S>::set_speculative(&mut self, bool)
+pub const fn engine::World<S>::speculative(&self) -> bool
+pub fn engine::World<S>::tunnels(&self) -> core::option::Option<u64>
+impl<S: math::scalar::Scalar> engine::World<S>
+pub fn engine::World<S>::drag(&mut self, &engine::Grab, math::vec2::Vec2<S>)
+pub fn engine::World<S>::grab(&mut self, math::vec2::Vec2<S>, S, engine::Compliance<S>) -> core::option::Option<engine::Grab>
+pub fn engine::World<S>::grabbable(&self) -> bool
+pub fn engine::World<S>::release(&mut self, engine::Grab) -> core::result::Result<(), engine::Grab>
+pub fn engine::World<S>::update_constraints(&mut self, core::option::Option<&engine::Grab>, impl core::ops::function::Fn(engine::DistanceConstraint<S>) -> engine::DistanceConstraint<S>) -> core::result::Result<(), engine::ConfigError>
+impl<S: math::scalar::Scalar> engine::World<S>
+pub const fn engine::World<S>::set_ground(&mut self, core::option::Option<S>)
+impl<S: math::scalar::Scalar> engine::World<S>
+pub const fn engine::World<S>::set_table(&mut self, core::option::Option<engine::table::Table<S>>)
+pub fn engine::World<S>::spin(&self) -> &[math::vec2::Vec2<S>]
+pub fn engine::World<S>::strike(&mut self, engine::ParticleId, math::unit_vec2::UnitVec2<S>, S, S) -> bool
+pub const fn engine::World<S>::table(&self) -> core::option::Option<engine::table::Table<S>>
+pub const engine::DEFAULT_BAUMGARTE: f64
+pub trait engine::Constraint<S: math::scalar::Scalar>
+pub fn engine::Constraint::bodies(&self) -> [engine::ParticleId; 2]
+pub fn engine::Constraint::compliance(&self) -> S
+pub fn engine::Constraint::damping(&self) -> S
+pub fn engine::Constraint::evaluate(&self, math::vec2::Vec2<S>, math::vec2::Vec2<S>) -> (S, core::option::Option<math::unit_vec2::UnitVec2<S>>)
+impl<S: math::scalar::Scalar> engine::Constraint<S> for engine::DistanceConstraint<S>
+pub fn engine::DistanceConstraint<S>::bodies(&self) -> [engine::ParticleId; 2]
+pub fn engine::DistanceConstraint<S>::compliance(&self) -> S
+pub fn engine::DistanceConstraint<S>::damping(&self) -> S
+pub fn engine::DistanceConstraint<S>::evaluate(&self, math::vec2::Vec2<S>, math::vec2::Vec2<S>) -> (S, core::option::Option<math::unit_vec2::UnitVec2<S>>)
+pub trait engine::Force<S: math::scalar::Scalar>
+pub fn engine::Force::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::BarnesHut<S>
+pub fn engine::BarnesHut<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::PairwiseGravity<S>
+pub fn engine::PairwiseGravity<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::SpringForce<S>
+pub fn engine::SpringForce<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
+impl<S: math::scalar::Scalar> engine::Force<S> for engine::UniformGravity<S>
+pub fn engine::UniformGravity<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])

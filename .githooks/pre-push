@@ -14,6 +14,13 @@ cargo test --workspace --quiet
 # Doc comments' intra-doc links ([`Item`]) must resolve: moving items
 # between modules breaks them silently otherwise (found splitting
 # scenarios.rs; three were already broken on main).
+# Each library's public API against its snapshot in docs/api/ (xtask
+# api.rs): a widened or changed surface must be recorded, so it shows in
+# the PR's diff. Skips with a message without cargo-public-api or its
+# pinned nightly. ~1 s.
+echo "pre-push: cargo xtask api --check"
+cargo xtask api --check
+
 echo "pre-push: cargo doc (links checked)"
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
 
