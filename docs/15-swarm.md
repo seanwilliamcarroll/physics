@@ -374,6 +374,25 @@ Read in full (arXiv cond-mat/0611743):
   zero sum of floating-point unit vectors needs exact cancellation, so
   we expect almost none outside constructed cases. The runs say.
 
+### The model as built (S2.2, `swarm::vicsek`)
+
+`VicsekParams` (r, v, η; checked: η in `[0, 2π]`), `Vicsek` (SoA
+positions and unit headings, double-buffered; the noise one draw per
+particle per step from a `SplitMix64` stream; brute force over the
+minimum image). Measured (`tests/vicsek.rs`, N = 400, L = 10, ρ = 4):
+
+- Every particle moves exactly v a step (to an f32 ulp).
+- η = 0 from aligned: `v_a` exactly 1 for 2,000 steps.
+- **η = 2π: `v_a` is not 1/√N.** For N random unit vectors the sum's
+  expected length is √(πN)/2, so `v_a` → √π/(2√N) = 0.0443 at N = 400
+  (1/√N would be 0.05). Measured 0.0442–0.0449, three seeds.
+- **0/0: none.** In about 5 million neighbourhood averages (η from 0.5
+  to 2π) no heading sum was exactly zero: with float headings, Chen &
+  Zhang's "direction annihilation" needs constructed cases (two
+  particles exactly opposite, a unit test). Kept and counted anyway.
+- A golden (`libm`'s sin and cos), the same on wasm32, with and without
+  `simd128`.
+
 ### The periodic grid
 
 S1's counting-sort cell list, with wrap-around: an integer number `k`

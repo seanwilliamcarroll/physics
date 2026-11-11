@@ -45,6 +45,35 @@ pub swarm::Params::visual_range: f32
 impl swarm::Params
 pub const swarm::Params::ECE4760: Self
 pub fn swarm::Params::checked(self) -> core::option::Option<Self>
+pub struct swarm::Particle
+pub swarm::Particle::cos: f32
+pub swarm::Particle::sin: f32
+pub swarm::Particle::x: f32
+pub swarm::Particle::y: f32
+pub struct swarm::Vicsek
+impl swarm::Vicsek
+pub const fn swarm::Vicsek::annihilations(&self) -> u64
+pub fn swarm::Vicsek::is_empty(&self) -> bool
+pub fn swarm::Vicsek::len(&self) -> usize
+pub fn swarm::Vicsek::new(usize, f32, swarm::VicsekParams, u64) -> core::option::Option<Self>
+pub fn swarm::Vicsek::order(&self) -> f64
+pub const fn swarm::Vicsek::params(&self) -> swarm::VicsekParams
+pub fn swarm::Vicsek::particle(&self, usize) -> core::option::Option<swarm::Particle>
+pub fn swarm::Vicsek::particles(&self) -> impl core::iter::traits::iterator::Iterator<Item = swarm::Particle> + '_
+pub fn swarm::Vicsek::set_params(&mut self, swarm::VicsekParams) -> bool
+pub const fn swarm::Vicsek::side(&self) -> f32
+pub fn swarm::Vicsek::state_bytes(&self) -> impl core::iter::traits::iterator::Iterator<Item = u8> + '_
+pub fn swarm::Vicsek::step(&mut self)
+pub const fn swarm::Vicsek::steps(&self) -> u64
+pub fn swarm::Vicsek::with_particles(f32, swarm::VicsekParams, impl core::iter::traits::collect::IntoIterator<Item = swarm::Particle>, u64) -> core::option::Option<Self>
+pub struct swarm::VicsekParams
+pub swarm::VicsekParams::noise: f32
+pub swarm::VicsekParams::radius: f32
+pub swarm::VicsekParams::speed: f32
+impl swarm::VicsekParams
+pub fn swarm::VicsekParams::checked(self) -> core::option::Option<Self>
+pub const fn swarm::VicsekParams::paper(f32) -> Self
 pub const swarm::FLEE: f32
 pub const swarm::MAX_BOIDS: usize
+pub const swarm::MAX_PARTICLES: usize
 pub const swarm::PREDATOR_RANGE: f32

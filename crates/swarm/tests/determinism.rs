@@ -58,3 +58,27 @@ fn the_sorted_golden_hash_is_unchanged() {
         "if intended, set GOLDEN_SORTED = {h:#018x}"
     );
 }
+
+/// The Vicsek model: 400 particles at ρ = 4, η = 2, 300 steps
+/// (`libm`'s sin and cos: the same bits on wasm).
+fn run_vicsek() -> u64 {
+    let mut v = swarm::Vicsek::new(400, 10.0, swarm::VicsekParams::paper(2.0), 42).unwrap();
+    for _ in 0..300 {
+        v.step();
+    }
+    let mut h = Fnv1a::new();
+    h.write(&v.state_bytes().collect::<Vec<u8>>());
+    h.finish()
+}
+
+const GOLDEN_VICSEK: u64 = 0x95da_8d6f_33a2_1b2d;
+
+#[test]
+fn the_vicsek_golden_hash_is_unchanged() {
+    let h = run_vicsek();
+    assert_eq!(h, run_vicsek(), "repeatable");
+    assert_eq!(
+        h, GOLDEN_VICSEK,
+        "if intended, set GOLDEN_VICSEK = {h:#018x}"
+    );
+}
