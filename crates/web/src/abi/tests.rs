@@ -3,9 +3,10 @@ use super::{
     DEMO_ORBIT, DEMO_PENDULUM, INTEGRATOR_EXPLICIT_EULER, INTEGRATOR_SYMPLECTIC_EULER,
     INTEGRATOR_VELOCITY_VERLET, JELLY_IMPULSE, JELLY_SPRINGS, JELLY_XPBD, MAX_BOX_BALLS,
     MAX_BREAK_GAP, MAX_CHAIN_LINKS, MAX_CRADLE_BALLS, MAX_GRAVITY_BODIES, MAX_ITERATIONS,
-    MAX_JELLY_SIDE, MAX_PARTICLES, MAX_RATE_HZ, MAX_SUBSTEPS, ORDER_ALTERNATING, ORDER_FORWARD,
-    ORDER_REVERSE, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE, SOLVER_XPBD, STABILIZATION_BAUMGARTE,
-    STABILIZATION_SPLIT, START_HORIZONTAL, START_RAISED, TEST_PANIC_MESSAGE,
+    MAX_JELLY_SIDE, MAX_PARTICLES, MAX_POOL_SPEED, MAX_RATE_HZ, MAX_SUBSTEPS, MAX_TIP,
+    ORDER_ALTERNATING, ORDER_FORWARD, ORDER_REVERSE, SCALAR_F32, SCALAR_F64, SOLVER_IMPULSE,
+    SOLVER_XPBD, STABILIZATION_BAUMGARTE, STABILIZATION_SPLIT, START_HORIZONTAL, START_RAISED,
+    TEST_PANIC_MESSAGE,
 };
 
 const ABI_JS: &str = include_str!("../../../../site/js/abi.ts");
@@ -65,8 +66,14 @@ fn js_mirror_matches() {
         assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
     }
     // Floats: Rust's Debug prints the shortest round-trip form, as JS does.
-    let line = format!("export const MAX_BREAK_GAP = {MAX_BREAK_GAP:?};");
-    assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
+    for (name, value) in [
+        ("MAX_BREAK_GAP", MAX_BREAK_GAP),
+        ("MAX_POOL_SPEED", MAX_POOL_SPEED),
+        ("MAX_TIP", MAX_TIP),
+    ] {
+        let line = format!("export const {name} = {value:?};");
+        assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
+    }
     // Strings: Rust's Debug quoting matches a plain JS double-quoted literal.
     let line = format!("export const TEST_PANIC_MESSAGE = {TEST_PANIC_MESSAGE:?};");
     assert!(ABI_JS.contains(&line), "site/js/abi.ts is missing `{line}`");
@@ -78,4 +85,9 @@ fn box_cap_is_the_scenes_slots() {
         usize::try_from(MAX_BOX_BALLS).ok(),
         Some(engine::scenarios::BOX_MAX_BALLS)
     );
+}
+
+#[test]
+fn pool_speed_is_the_scenes() {
+    assert_eq!(MAX_POOL_SPEED, engine::scenarios::POOL_MAX_SPEED);
 }

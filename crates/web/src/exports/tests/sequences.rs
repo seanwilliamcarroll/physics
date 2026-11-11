@@ -27,6 +27,11 @@ use super::super::lifecycle::{
     demo_advance, demo_free, demo_links_len, demo_links_ptr, demo_new, demo_new_chain,
     demo_new_double_pendulum, demo_new_jelly, demo_positions_len, demo_positions_ptr,
 };
+use super::super::pool::{
+    demo_at_rest, demo_ball_number, demo_new_pool, demo_pockets_len, demo_pockets_ptr,
+    demo_potted_len, demo_potted_ptr, demo_respot_cue, demo_segments_len, demo_segments_ptr,
+    demo_set_speculative, demo_spin_x, demo_spin_y, demo_strike, demo_tunnels,
+};
 use super::super::readouts::{
     demo_constraint_error, demo_energy, demo_kinetic_energy, demo_particle_x, demo_particle_y,
 };
@@ -126,6 +131,9 @@ enum Create {
         balls: u32,
         pulled: u32,
     },
+    Pool {
+        scalar: u32,
+    },
 }
 
 /// A constructor call: mostly valid ones (so the calls after it reach a
@@ -195,6 +203,7 @@ fn valid_create() -> impl Strategy<Value = Create> {
                 balls,
                 pulled
             }),
+        scalar().prop_map(|scalar| Create::Pool { scalar }),
     ]
 }
 
@@ -261,6 +270,7 @@ fn hostile_create() -> impl Strategy<Value = Create> {
                 balls,
                 pulled
             }),
+        code().prop_map(|scalar| Create::Pool { scalar }),
     ]
 }
 
@@ -290,6 +300,9 @@ enum Call {
     Particle(u32),
     /// Recompute the broadphase's pairs.
     Pairs,
+    Strike(f64, f64, f64, f64),
+    Speculative(u32),
+    Respot,
 }
 
 fn call() -> impl Strategy<Value = Call> {
@@ -316,6 +329,11 @@ fn call() -> impl Strategy<Value = Call> {
         1 => Just(Call::Release),
         1 => f().prop_map(Call::Restitution),
         1 => Just(Call::Pairs),
+        // Strikes mostly in range (so the table moves), sometimes hostile.
+        2 => (prop_oneof![-1.0..1.0, f()], prop_oneof![-1.0..1.0, f()], prop_oneof![0.0..12.0, f()], prop_oneof![-0.5..0.5, f()])
+            .prop_map(|(x, y, v, t)| Call::Strike(x, y, v, t)),
+        1 => code().prop_map(Call::Speculative),
+        1 => Just(Call::Respot),
         1 => any::<u32>().prop_map(|i| Call::Particle(i % (2 * SMALL_BODIES + 4))),
     ]
 }
@@ -353,6 +371,7 @@ fn make(c: &Create) -> *mut Demo {
             balls,
             pulled,
         } => demo_new_cradle(scalar, balls, pulled),
+        Create::Pool { scalar } => demo_new_pool(scalar),
     }
 }
 
@@ -362,7 +381,9 @@ fn make(c: &Create) -> *mut Demo {
 struct Observed {
     positions: Vec<u32>,
     links: Vec<u32>,
-    readouts: [u64; 5],
+    readouts: [u64; 6],
+    potted: Vec<u32>,
+    at_rest: u32,
     grabbable: u32,
 }
 
@@ -402,6 +423,36 @@ unsafe fn observe(d: *mut Demo) -> Result<Observed, TestCaseError> {
                 "link to particle {i} of {particles}"
             );
         }
+        // The table's buffers: segments by fours, pockets by threes, and
+        // the potted list's pairs naming balls and pockets that exist.
+        prop_assert_eq!(demo_segments_len(d) % 4, 0);
+        let pockets = demo_pockets_len(d);
+        prop_assert_eq!(pockets % 3, 0);
+        for (len, p) in [
+            (demo_segments_len(d), demo_segments_ptr(d)),
+            (pockets, demo_pockets_ptr(d)),
+        ] {
+            if len > 0 {
+                prop_assert!(
+                    core::slice::from_raw_parts(p, len)
+                        .iter()
+                        .all(|v| v.is_finite())
+                );
+            }
+        }
+        let potted = if demo_potted_len(d) == 0 {
+            Vec::new()
+        } else {
+            core::slice::from_raw_parts(demo_potted_ptr(d), demo_potted_len(d)).to_vec()
+        };
+        for p in potted.chunks(2) {
+            prop_assert!(
+                (p[0] as usize) < pos_len / 2 && (p[1] as usize) < pockets / 3,
+                "potted {p:?}"
+            );
+        }
+        let at_rest = demo_at_rest(d);
+        prop_assert!(at_rest <= 1);
         let grabbable = demo_grabbable(d);
         prop_assert!(grabbable <= 1);
         if d.is_null() {
@@ -416,8 +467,11 @@ unsafe fn observe(d: *mut Demo) -> Result<Observed, TestCaseError> {
                 demo_constraint_error(d),
                 demo_momentum_x(d),
                 demo_momentum_y(d),
+                demo_tunnels(d),
             ]
             .map(f64::to_bits),
+            potted,
+            at_rest,
             grabbable,
         })
     }
@@ -443,13 +497,17 @@ unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
                 let (x, y) = (demo_particle_x(d, i), demo_particle_y(d, i));
                 let count = demo_positions_len(d) / 2;
                 let r = demo_particle_radius(d, i);
+                let (wx, wy) = (demo_spin_x(d, i), demo_spin_y(d, i));
+                let number = demo_ball_number(d, i);
                 if (i as usize) >= count {
                     prop_assert!(
                         x.is_nan() && y.is_nan() && r.is_nan(),
                         "past the end reads NaN"
                     );
+                    prop_assert!(wx.is_nan() && wy.is_nan() && number == -1);
                 } else {
                     prop_assert!(r >= 0.0, "radius {r}");
+                    prop_assert!((-1..=15).contains(&number), "number {number}");
                 }
                 return Ok(false);
             }
@@ -480,6 +538,9 @@ unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
                 return Ok(false);
             }
             Call::Restitution(e) => demo_set_restitution(d, e),
+            Call::Strike(x, y, v, t) => demo_strike(d, x, y, v, t),
+            Call::Speculative(c) => demo_set_speculative(d, c),
+            Call::Respot => demo_respot_cue(d),
             Call::Integrator(c) => demo_set_integrator(d, c),
             Call::Rate(hz) => demo_set_rate(d, hz),
             Call::Softening(e) => demo_set_softening(d, e),
@@ -556,6 +617,9 @@ fn every_call_on_null_is_refused() {
         Call::Drag(0.0, 0.0),
         Call::Release,
         Call::Restitution(0.5),
+        Call::Strike(1.0, 0.0, 1.0, 0.0),
+        Call::Speculative(1),
+        Call::Respot,
     ] {
         // SAFETY: null is allowed by every export's contract.
         let refused = unsafe { apply(null, &call) }.unwrap();

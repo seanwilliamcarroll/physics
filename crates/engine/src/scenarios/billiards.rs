@@ -32,6 +32,8 @@ pub const POOL_CORNER_MOUTH: f64 = 0.1159;
 pub const POOL_SIDE_MOUTH: f64 = 0.1286;
 /// The fastest cue ball, m/s (our choice: above a hard break).
 pub const POOL_MAX_SPEED: f64 = 12.0;
+/// The cue ball: [`pool_rack`]'s first particle.
+pub const POOL_CUE: ParticleId = ParticleId(0);
 /// Ball numbers by rack position (apex first, row by row): the 1 at the
 /// apex, the 8 in the middle of the third row, a solid and a stripe in
 /// the back corners (8-ball). Particle `k + 1` is `POOL_RACK[k]`.
@@ -175,7 +177,7 @@ pub fn pool_break<S: Scalar>(
     }
     let mut w = pool_rack(solver, substeps)?;
     let tip = S::from_f64(tip * POOL_BALL_RADIUS);
-    w.strike(ParticleId(0), UnitVec2::X, S::from_f64(speed), tip);
+    w.strike(POOL_CUE, UnitVec2::X, S::from_f64(speed), tip);
     Ok(w)
 }
 

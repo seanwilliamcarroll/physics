@@ -130,6 +130,7 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M6.6 | `F32`, `F64` | 192,680 B | 60,661 B | + collision: broadphase, narrowphase, contacts in both solvers (no M6 page or exports yet; measured at A1.5). **+65 KB over M5.6** (below) |
 | M6.7 | `F32`, `F64` | 197,543 B | 62,605 B | + the impact stage (Generalized Reflections), both solvers |
 | M6.9 | `F32`, `F64` | 215,612 B | 66,591 B | + the box, break and cradle constructors, restitution, radius, momentum and broadphase-pairs exports (+18.1 KB: three scene builders ×2 scalars) |
+| M7.7 | `F32`, `F64` | 226,888 B | 73,452 B | + segments, moment-of-impact contacts, the cloth, tunnels, pockets, the pool table and its exports: **+47.1 KB** (broken down at M7.9) |
 | M6.11 | `F32`, `F64` | 179,755 B | 55,435 B | one sort key for every sort (below): **−35.9 KB**; sorting code 39.1 → 6.9 KB |
 
 **Where M6's +65 KB went** (A1.7; per-function sizes from the module's

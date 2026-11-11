@@ -11,12 +11,13 @@
 //! Rust code can reach.
 //!
 //! One file per group (`exports/{lifecycle, settings, readouts, drag,
-//! collisions}.rs`);
+//! collisions, pool}.rs`);
 //! the `unsafe_code` expectation on `mod exports` in `lib.rs` covers them.
 
 mod collisions;
 mod drag;
 mod lifecycle;
+mod pool;
 mod readouts;
 mod settings;
 

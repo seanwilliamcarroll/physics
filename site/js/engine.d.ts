@@ -110,6 +110,32 @@ export interface EngineExports {
   demo_pairs_ptr(demo: DemoHandle): Ptr;
   /** Number of u32s at demo_pairs_ptr (two per pair). */
   demo_pairs_len(demo: DemoHandle): number;
+  /** The M7 pool table: cue ball (particle 0) on the head spot, 15 racked; null if invalid. */
+  demo_new_pool(scalar: number): DemoHandle;
+  /** Strikes the cue ball along (aimX, aimY) at speed (≤ abi.ts MAX_POOL_SPEED), tip in radii (|tip| ≤ MAX_TIP). */
+  demo_strike(demo: DemoHandle, aimX: number, aimY: number, speed: number, tip: number): Status;
+  /** Speculative contacts on (1) or off (0). */
+  demo_set_speculative(demo: DemoHandle, on: number): Status;
+  /** Tunnels counted since the rack; NaN if not counted. */
+  demo_tunnels(demo: DemoHandle): number;
+  /** 1 if every ball has stopped, spin included. */
+  demo_at_rest(demo: DemoHandle): number;
+  /** Re-spots a potted cue ball once the table is at rest. */
+  demo_respot_cue(demo: DemoHandle): Status;
+  /** Ball i's number (0 the cue ball, 1–15); -1 past the rack. */
+  demo_ball_number(demo: DemoHandle, i: number): number;
+  /** Particle i's spin about x / y, rad/s; NaN past the end. */
+  demo_spin_x(demo: DemoHandle, i: number): number;
+  demo_spin_y(demo: DemoHandle, i: number): number;
+  /** [ball, pocket, ...] u32: everything potted since the rack. */
+  demo_potted_ptr(demo: DemoHandle): Ptr;
+  demo_potted_len(demo: DemoHandle): number;
+  /** [x0, y0, x1, y1, ...] f32: the cushions. */
+  demo_segments_ptr(demo: DemoHandle): Ptr;
+  demo_segments_len(demo: DemoHandle): number;
+  /** [x, y, r, ...] f32: the pockets. */
+  demo_pockets_ptr(demo: DemoHandle): Ptr;
+  demo_pockets_len(demo: DemoHandle): number;
   /** Test hook: panics on purpose (smoke test only). */
   demo_panic_for_test(): void;
 }
