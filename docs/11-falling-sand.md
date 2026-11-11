@@ -160,6 +160,31 @@ with; only awake chunks need it, if the cost shows.
   same on wasm32 (`cargo xtask test-wasm` now runs `sand`'s tests).
 - The randomness is fair: the side bit over a 200 × 200 patch is 0.5013.
 
+## Chunks as built (M9.3)
+
+- **Exact:** a property test runs random grids (20–110 × 20–90, so edge
+  chunks are partial) with random paint between steps, chunked against
+  every-cell, and compares every cell after every step: identical, at
+  500 cases. One subtlety found writing it: a move must wake its
+  neighbours for **the rest of this step** as well as the next. A gap
+  opened under a grain in a sleeping chunk above is filled in the same
+  step by the full update, since the scan is bottom-up and reaches that
+  grain later; waking only for the next step would be a step late.
+- **Skipping** goes a chunk at a time (32 cells) along a row, checking
+  awake on reaching each chunk, so the order is the same as cell by cell.
+- **Measured** (`cargo bench -p sand`, native, Apple silicon):
+
+  | Grid | Busy (first step of a 30% fill) | Settled, chunks | Settled, every cell |
+  |---|---|---|---|
+  | 640 × 360 | 1.32 ms (175 M cells/s) | 3.2 µs | 569 µs |
+  | 1920 × 1080 | 12.5 ms (165 M cells/s) | 27 µs | 5.15 ms |
+
+  Busy grids are all awake, so chunks cost nothing and save nothing;
+  settled, they cut a step about 175×. The default 640 × 360 fits a 60 Hz
+  frame busy with room to spare; 1920 × 1080 busy is near the budget, and
+  the step budget slows it rather than freezing it. Wasm in the page
+  (section 6).
+
 ## Alternatives considered
 
 - **Margolus neighbourhoods** (Toffoli & Margolus 1987): the grid in 2 × 2

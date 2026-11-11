@@ -514,6 +514,7 @@ dependencies = [
 name = "sand"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "math",
  "proptest",
  "test-support",

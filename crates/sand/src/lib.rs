@@ -8,6 +8,6 @@ mod material;
 mod random;
 mod rules;
 
-pub use grid::{Grid, MAX_CELLS};
+pub use grid::{CHUNK, Grid, MAX_CELLS};
 pub use material::Material;
 pub use rules::DISPERSION;
