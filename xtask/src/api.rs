@@ -18,7 +18,7 @@ pub(crate) const NIGHTLY: &str = "nightly-2026-10-15";
 
 /// Every library crate whose API is snapshotted (`api/tests.rs` checks
 /// none is missing).
-pub(crate) const CRATES: [&str; 5] = ["math", "engine", "acoustic", "sand", "web-common"];
+pub(crate) const CRATES: [&str; 6] = ["math", "engine", "acoustic", "sand", "swarm", "web-common"];
 
 /// Writes every snapshot, or with `check`, compares them and fails on any
 /// that's stale. Without the tool or the pinned nightly, writing fails

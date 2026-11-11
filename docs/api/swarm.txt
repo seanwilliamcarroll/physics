@@ -1,0 +1,40 @@
+pub mod swarm
+pub struct swarm::Arena
+impl swarm::Arena
+pub const fn swarm::Arena::height(self) -> f32
+pub fn swarm::Arena::new(f32, f32) -> core::option::Option<Self>
+pub const fn swarm::Arena::width(self) -> f32
+pub struct swarm::Boid
+pub swarm::Boid::vx: f32
+pub swarm::Boid::vy: f32
+pub swarm::Boid::x: f32
+pub swarm::Boid::y: f32
+pub struct swarm::Flock
+impl swarm::Flock
+pub const fn swarm::Flock::arena(&self) -> swarm::Arena
+pub fn swarm::Flock::boid(&self, usize) -> core::option::Option<swarm::Boid>
+pub fn swarm::Flock::boids(&self) -> impl core::iter::traits::iterator::Iterator<Item = swarm::Boid> + '_
+pub fn swarm::Flock::is_empty(&self) -> bool
+pub fn swarm::Flock::len(&self) -> usize
+pub fn swarm::Flock::new(usize, swarm::Arena, swarm::Params, u64) -> core::option::Option<Self>
+pub const fn swarm::Flock::params(&self) -> swarm::Params
+pub fn swarm::Flock::polarization(&self) -> f64
+pub fn swarm::Flock::set_params(&mut self, swarm::Params) -> bool
+pub fn swarm::Flock::state_bytes(&self) -> impl core::iter::traits::iterator::Iterator<Item = u8> + '_
+pub fn swarm::Flock::step(&mut self)
+pub const fn swarm::Flock::steps(&self) -> u64
+pub fn swarm::Flock::with_boids(swarm::Arena, swarm::Params, impl core::iter::traits::collect::IntoIterator<Item = swarm::Boid>) -> core::option::Option<Self>
+pub struct swarm::Params
+pub swarm::Params::avoid: f32
+pub swarm::Params::centering: f32
+pub swarm::Params::margin: f32
+pub swarm::Params::matching: f32
+pub swarm::Params::max_speed: f32
+pub swarm::Params::min_speed: f32
+pub swarm::Params::protected_range: f32
+pub swarm::Params::turn: f32
+pub swarm::Params::visual_range: f32
+impl swarm::Params
+pub const swarm::Params::ECE4760: Self
+pub fn swarm::Params::checked(self) -> core::option::Option<Self>
+pub const swarm::MAX_BOIDS: usize
