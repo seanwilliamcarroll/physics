@@ -266,9 +266,13 @@ xtask builds it; pre-commit lints it as wasm32.
       awake chunks and counts in the HUD; three smoke cases (accounts
       checked); gallery. Wasm measured: busy 640 × 360 1.84 ms (125 M
       cells/s), 1920 × 1080 17.1 ms; render 8.6 → 0.47 ms with a palette.
-- [ ] Your check against **Done when**.
+- [x] Your check against **Done when** ("looks good"; the brush radius
+      slider now starts at 1).
 
 ## 7. Cleanup (PR)
+
+- [x] `types.md`: the `sand` and `sand-web` types and the page's.
+- [ ] M9 collapsed here once the stack's PR numbers are known.
 
 ---
 
