@@ -1,11 +1,11 @@
 [package]
-name = "web-shell"
+name = "web-common"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "What every *-web crate shares: the panic hook, FixedStep, boundary helpers"
+description = "What every *-web crate shares: the panic hook, FixedStep, boundary parsing"
 
 [dependencies]
 

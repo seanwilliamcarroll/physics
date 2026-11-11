@@ -7,7 +7,7 @@ use engine::Restitution;
 
 use crate::abi;
 use crate::demo::{Demo, ScalarKind};
-use web_shell::boundary::capped;
+use web_common::boundary::capped;
 
 /// Creates the M6 box (`scenarios::ball_box`): `n` balls (at most
 /// [`MAX_BOX_BALLS`](abi::MAX_BOX_BALLS)) with velocities from `seed`,
@@ -15,7 +15,7 @@ use web_shell::boundary::capped;
 /// unknown scalar code or too many balls. Free with `demo_free`.
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new_ball_box(scalar: u32, n: u32, seed: u32) -> *mut Demo {
-    web_shell::install_panic_hook();
+    web_common::install_panic_hook();
     let (Some(scalar), Some(n)) = (ScalarKind::from_code(scalar), capped(n, abi::MAX_BOX_BALLS))
     else {
         return ptr::null_mut();
@@ -30,7 +30,7 @@ pub(crate) extern "C" fn demo_new_ball_box(scalar: u32, n: u32, seed: u32) -> *m
 /// MAX_BREAK_GAP]` (NaN included: parsed here). Free with `demo_free`.
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new_break_shot(scalar: u32, gap: f64) -> *mut Demo {
-    web_shell::install_panic_hook();
+    web_common::install_panic_hook();
     let Some(scalar) = ScalarKind::from_code(scalar) else {
         return ptr::null_mut();
     };
@@ -47,7 +47,7 @@ pub(crate) extern "C" fn demo_new_break_shot(scalar: u32, gap: f64) -> *mut Demo
 /// balls. Free with `demo_free`.
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn demo_new_cradle(scalar: u32, balls: u32, pulled: u32) -> *mut Demo {
-    web_shell::install_panic_hook();
+    web_common::install_panic_hook();
     let (Some(scalar), Some(balls)) = (
         ScalarKind::from_code(scalar),
         capped(balls, abi::MAX_CRADLE_BALLS),
