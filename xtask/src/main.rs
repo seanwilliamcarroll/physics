@@ -28,6 +28,9 @@ const WASM_ARTIFACT: &str = "wasm32-unknown-unknown/release/engine_web.wasm";
 /// The acoustic track's module (A1.5): `crates/acoustic-web`, served as
 /// `site/pkg/acoustic.wasm`.
 const ACOUSTIC_ARTIFACT: &str = "wasm32-unknown-unknown/release/acoustic_web.wasm";
+/// The falling-sand module (M9): `crates/sand-web`, served as
+/// `site/pkg/sand.wasm`.
+const SAND_ARTIFACT: &str = "wasm32-unknown-unknown/release/sand_web.wasm";
 
 /// Build, test, and serve helpers for the physics engine and its demo site.
 #[derive(Parser, Debug)]
@@ -194,6 +197,8 @@ fn site(root: &Path) -> Result<(), String> {
             "engine-web",
             "-p",
             "acoustic-web",
+            "-p",
+            "sand-web",
         ])
         .status()
         .map_err(|e| format!("failed to run cargo: {e}"))?;
@@ -206,6 +211,7 @@ fn site(root: &Path) -> Result<(), String> {
     for (artifact, name) in [
         (WASM_ARTIFACT, "engine.wasm"),
         (ACOUSTIC_ARTIFACT, "acoustic.wasm"),
+        (SAND_ARTIFACT, "sand.wasm"),
     ] {
         let src = target_dir(root).join(artifact);
         let dest = dest_dir.join(name);
@@ -222,12 +228,13 @@ fn check_dts(root: &Path, pkg: &Path) -> Result<(), String> {
     for (wasm, dts, interface) in [
         ("engine.wasm", "engine.d.ts", "EngineExports"),
         ("acoustic.wasm", "acoustic.d.ts", "AcousticExports"),
+        ("sand.wasm", "sand.d.ts", "SandExports"),
     ] {
         let bytes = fs::read(pkg.join(wasm)).map_err(|e| format!("reading {wasm}: {e}"))?;
         let text = fs::read_to_string(js.join(dts)).map_err(|e| format!("reading {dts}: {e}"))?;
         abi_check::check(&bytes, &text, interface, &format!("{wasm} vs {dts}"))?;
     }
-    println!("checked engine.d.ts and acoustic.d.ts against the .wasm exports");
+    println!("checked engine.d.ts, acoustic.d.ts and sand.d.ts against the .wasm exports");
     Ok(())
 }
 

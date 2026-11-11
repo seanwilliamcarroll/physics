@@ -251,9 +251,11 @@ count behind an env var for CI or overnight runs. Commit
   shrinking, and saved regressions aren't replayed (WASI can't see the
   source tree). The native run is the one that reports and replays.
 
-**At the wasm boundary (health audit, after A3):** both wasm crates have
-a stateful property test over random sequences of their C exports
-(`engine-web`'s and `acoustic-web`'s `exports/tests/sequences.rs`), with
+**At the wasm boundary (health audit, after A3):** every wasm crate has
+a stateful property test over random sequences of its C exports
+(`engine-web`'s, `acoustic-web`'s and, since M9, `sand-web`'s
+`exports/tests/sequences.rs`; the sand one checks every material's count
+sums to the grid after every call), with
 hostile values (NaN, ±∞, ±0, `f64::MAX`, unknown codes, `u32::MAX`, sizes
 past the ABI's caps). After every call: no panic, statuses 0 or 1, the
 buffers JS reads consistent, and a refused call changes nothing (the
@@ -580,7 +582,7 @@ health audit, then filled in):
   | Narrowphase | Unit cases; swap, translation, well-formed contacts (`collision/narrowphase/properties.rs`, a unit test so the narrowphase stays crate-private) |
   | Contact solver | Analytic head-on, momentum, energy, stacks, a bullet, fast circles, 1:1e6 (`contacts.rs`); the energy gain with simultaneous contacts is a known failure until Generalized Reflections |
   | Joints and constraints | Rod error bounds, chains, compliant and rigid pendulum periods, soft rods at several passes |
-  | World and API | The ABI property tests (`exports/tests/sequences.rs`, both wasm crates); goldens of every demo scene, native and wasm |
+  | World and API | The ABI property tests (`exports/tests/sequences.rs`, every wasm crate); goldens of every demo scene, native and wasm |
 
 - **Not applicable:** mass properties and inertia (point particles and
   circles), polygon narrowphase, friction, sleeping, angular momentum.

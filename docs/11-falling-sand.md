@@ -204,6 +204,20 @@ steam; lava + stone. All three hold at every step of random grids of
 every material (`tests/lava.rs`). A second golden pins a lava scene,
 the same on wasm32.
 
+## The wasm module as built (M9.5, `crates/sand-web` → `sand.wasm`)
+
+37.6 KB, its own module beside `engine.wasm` and `acoustic.wasm`, on
+`web-common` (the panic hook, `FixedStep` with the step cap). Exports:
+`sand_new` (sides up to `MAX_SIDE` = 2048: a 2048² grid is 16 MB of
+pixels), `sand_advance`, `sand_set_rate`, `sand_set_step_cap`,
+`sand_set_chunked`, `sand_paint` (a disc, radius up to `MAX_BRUSH` = 64,
+clipped; empty erases), `sand_render` (the RGBA buffer, `ImageData`
+order), `sand_width`/`height`, `sand_count`, `sand_last_moves`,
+`sand_awake_chunks`/`sand_chunks`. Material codes mirrored in
+`site/js/sand-abi.ts` (tested), types in `site/js/sand.d.ts` (checked
+against the export table by `cargo xtask site`), and a call-sequence
+property test (hostile values; every count always sums to the grid).
+
 ## Alternatives considered
 
 - **Margolus neighbourhoods** (Toffoli & Margolus 1987): the grid in 2 × 2

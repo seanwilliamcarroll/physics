@@ -71,6 +71,7 @@ physics/
 │   ├── web-common/         # what every *-web crate shares: panic hook, FixedStep, boundary parsing
 │   │
 │   ├── sand/               # M9: the falling-sand automaton (grid, rules; integers only)
+│   ├── sand-web/           # cdylib → sand.wasm (the sand page's C ABI, on web-common)
 │   └── acoustic/           # A1+
 │
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)
