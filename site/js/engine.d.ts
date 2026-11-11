@@ -1,5 +1,5 @@
 // Types for engine.wasm's exports and imports: the contract implemented in
-// crates/web/src/exports.rs and imports.rs. Integer codes live in abi.js
+// crates/engine-web/src/exports.rs and imports.rs. Integer codes live in abi.js
 // (mirrored from abi.rs and checked by a Rust test). `cargo xtask site`
 // checks EngineExports against the .wasm's export table (names, parameter
 // and result counts, bigint for i64): one signature per line.

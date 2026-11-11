@@ -253,7 +253,7 @@ count behind an env var for CI or overnight runs. Commit
 
 **At the wasm boundary (health audit, after A3):** both wasm crates have
 a stateful property test over random sequences of their C exports
-(`web`'s and `acoustic-web`'s `exports/tests/sequences.rs`), with
+(`engine-web`'s and `acoustic-web`'s `exports/tests/sequences.rs`), with
 hostile values (NaN, ±∞, ±0, `f64::MAX`, unknown codes, `u32::MAX`, sizes
 past the ABI's caps). After every call: no panic, statuses 0 or 1, the
 buffers JS reads consistent, and a refused call changes nothing (the
@@ -365,7 +365,7 @@ cases through `engine.wasm` in Node 22, vs criterion's native means):
   plus clamping and bad (negative/NaN) frame times.
 - The `extern "C"` exports have a native round-trip test (create, advance,
   read positions, free; null handles).
-- **ABI mirror:** `crates/web/src/abi.rs` owns the `demo_new` codes and
+- **ABI mirror:** `crates/engine-web/src/abi.rs` owns the `demo_new` codes and
   buffer layout; a test reads `site/js/abi.ts` and fails on any mismatch.
 - **Declared types against the real exports** (`xtask/src/abi_check.rs`):
   `cargo xtask site` reads each built `.wasm`'s export table (a small
