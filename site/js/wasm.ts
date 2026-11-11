@@ -85,3 +85,19 @@ export function radiiOf(engine: EngineExports, demo: DemoHandle): Float64Array {
   const n = engine.demo_positions_len(demo) / COORDS_PER_PARTICLE;
   return Float64Array.from({ length: n }, (_, i) => engine.demo_particle_radius(demo, i));
 }
+
+/** Float32 views of the pool table's cushions `[x0, y0, x1, y1, ...]` and
+ *  pockets `[x, y, r, ...]`. They never change, but views are fresh per
+ *  frame anyway (memory growth detaches old ones). */
+export function segmentsView(engine: EngineExports, demo: DemoHandle): Float32Array {
+  return new Float32Array(engine.memory.buffer, engine.demo_segments_ptr(demo), engine.demo_segments_len(demo));
+}
+
+export function pocketsView(engine: EngineExports, demo: DemoHandle): Float32Array {
+  return new Float32Array(engine.memory.buffer, engine.demo_pockets_ptr(demo), engine.demo_pockets_len(demo));
+}
+
+/** The potted list, `[ball, pocket, ...]`, everything since the rack. */
+export function pottedView(engine: EngineExports, demo: DemoHandle): Uint32Array {
+  return new Uint32Array(engine.memory.buffer, engine.demo_potted_ptr(demo), engine.demo_potted_len(demo));
+}

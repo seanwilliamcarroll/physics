@@ -75,6 +75,11 @@ pub(crate) const MAX_CRADLE_BALLS: u32 = 8;
 /// The M6 break's rack gap, m: past a ball's diameter (0.1 m) the rack
 /// stops looking like one.
 pub(crate) const MAX_BREAK_GAP: f64 = 0.1;
+/// The M7 cue: the fastest strike, m/s (`scenarios::POOL_MAX_SPEED`,
+/// checked equal in `abi/tests.rs`), and the tip's furthest offset, in
+/// radii (past it, a miscue).
+pub(crate) const MAX_POOL_SPEED: f64 = 12.0;
+pub(crate) const MAX_TIP: f64 = 0.5;
 /// Substeps per physics step.
 pub(crate) const MAX_SUBSTEPS: u32 = 100;
 /// Constraint iterations per substep.

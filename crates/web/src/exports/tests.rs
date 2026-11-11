@@ -7,6 +7,11 @@ use super::lifecycle::{
     demo_advance, demo_free, demo_links_len, demo_links_ptr, demo_new, demo_new_chain,
     demo_new_double_pendulum, demo_new_jelly, demo_positions_len, demo_positions_ptr,
 };
+use super::pool::{
+    demo_at_rest, demo_ball_number, demo_new_pool, demo_pockets_len, demo_potted_len,
+    demo_respot_cue, demo_segments_len, demo_set_speculative, demo_spin_x, demo_strike,
+    demo_tunnels,
+};
 use super::readouts::{
     demo_constraint_error, demo_energy, demo_kinetic_energy, demo_particle_x, demo_particle_y,
 };
@@ -418,5 +423,61 @@ fn collision_scenes_check_their_input_and_read_out() {
             (0, ptr::null())
         );
         assert_eq!(demo_set_restitution(null, 0.5), 0);
+    }
+}
+
+#[test]
+fn the_pool_table_parses_its_shots_at_the_boundary() {
+    assert!(demo_new_pool(99).is_null());
+    let d = demo_new_pool(abi::SCALAR_F64);
+    assert!(!d.is_null());
+    // SAFETY: `d` from `demo_new_pool`, freed once; null is allowed.
+    unsafe {
+        assert_eq!((demo_segments_len(d), demo_pockets_len(d)), (72, 18));
+        assert_eq!((demo_at_rest(d), demo_tunnels(d)), (1, 0.0));
+        assert_eq!(
+            (
+                demo_ball_number(d, 0),
+                demo_ball_number(d, 5),
+                demo_ball_number(d, 16)
+            ),
+            (0, 8, -1)
+        );
+        for (ax, ay, speed, tip) in [
+            (1.0, 0.0, abi::MAX_POOL_SPEED * 1.01, 0.0),
+            (1.0, 0.0, -0.1, 0.0),
+            (1.0, 0.0, f64::NAN, 0.0),
+            (1.0, 0.0, 3.0, abi::MAX_TIP + 0.01),
+            (f64::NAN, 0.0, 3.0, 0.0),
+            (0.0, 0.0, 3.0, 0.0),
+        ] {
+            assert_eq!(
+                demo_strike(d, ax, ay, speed, tip),
+                0,
+                "({ax}, {ay}) {speed} {tip}"
+            );
+        }
+        assert_eq!(demo_set_speculative(d, 2), 0);
+        assert_eq!(demo_set_speculative(d, 0), 1);
+        assert_eq!(demo_respot_cue(d), 0, "the cue ball is in play");
+        assert_eq!(
+            demo_strike(d, 1.0, 0.0, abi::MAX_POOL_SPEED, abi::MAX_TIP),
+            1
+        );
+        assert!(demo_spin_x(d, 0) == 0.0 && demo_spin_x(d, 99).is_nan());
+        assert_eq!(demo_at_rest(d), 0);
+        assert_eq!(demo_potted_len(d), 0);
+        demo_free(d);
+
+        let fountain = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 10, 1);
+        assert!(demo_tunnels(fountain).is_nan());
+        assert_eq!(demo_ball_number(fountain, 0), -1);
+        demo_free(fountain);
+        let null = ptr::null_mut();
+        assert_eq!(
+            (demo_strike(null, 1.0, 0.0, 1.0, 0.0), demo_at_rest(null)),
+            (0, 0)
+        );
+        assert!(demo_tunnels(null).is_nan());
     }
 }

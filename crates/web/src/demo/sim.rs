@@ -29,6 +29,9 @@ pub(super) enum SceneForce<S> {
     },
     /// No force at all (the break, in free space): energy is kinetic.
     Free,
+    /// A billiards table (M7): no force in the plane; energy is kinetic
+    /// plus the balls' spin.
+    Table,
     /// Uniform gravity (the pendulum).
     Uniform(UniformGravity<S>),
     /// A jelly: uniform gravity, and for the force-based realization a
@@ -58,6 +61,13 @@ impl<S: Scalar> Sim<S> {
         Self {
             world,
             force: SceneForce::Free,
+        }
+    }
+
+    pub(super) const fn on_table(world: World<S>) -> Self {
+        Self {
+            world,
+            force: SceneForce::Table,
         }
     }
 
@@ -182,6 +192,10 @@ impl<S: Scalar> Sim<S> {
         match &self.force {
             SceneForce::Unmeasured => None,
             SceneForce::Free => Some(kinetic_energy(p).to_f64()),
+            SceneForce::Table => {
+                let spin = engine::table::rotational_energy(p, self.world.spin());
+                Some((kinetic_energy(p) + spin).to_f64())
+            }
             SceneForce::Jelly { gravity, springs } => {
                 let elastic = springs.as_ref().map_or_else(
                     || constraint_potential(p, self.world.constraints()),
@@ -203,6 +217,7 @@ impl<S: Scalar> Sim<S> {
             SceneForce::Pairwise { theta, .. } => theta,
             SceneForce::Unmeasured
             | SceneForce::Free
+            | SceneForce::Table
             | SceneForce::Uniform(_)
             | SceneForce::Jelly { .. } => None,
         }

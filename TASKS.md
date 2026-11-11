@@ -282,10 +282,14 @@ sensors, the cloth), `pool_rack` (8-ball, `POOL_RACK` numbers),
 A break settles by 6.0–6.5 s (bound 8), energy never rising, no tunnels,
 nothing off the table; goldens (`PoolBreak`), same on wasm.
 
-## 7. Web layer (PR)
+## ✅ 7. Web layer (PR)
 
-- [ ] Constructors, the cue (aim, speed, offset), the speculation switch,
-      tunnel count, potting events, spin readout.
+`demo_new_pool`, `demo_strike` (aim, speed ≤ `MAX_POOL_SPEED`, tip ≤
+`MAX_TIP`, parsed at the boundary), `demo_set_speculative`,
+`demo_tunnels`, `demo_at_rest`, `demo_respot_cue`, `demo_ball_number`,
+`demo_spin_x/y`, the potted, segments and pockets buffers; the table's
+energy includes spin. Every export in the call-sequence property test.
+`engine.wasm` +47.1 KB for M7 (to break down at cleanup).
 
 ## 8. The page (PR)
 

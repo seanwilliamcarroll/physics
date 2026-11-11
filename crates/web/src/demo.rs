@@ -12,6 +12,7 @@ mod collisions;
 mod constraint_scenes;
 mod drag;
 mod jelly;
+mod pool;
 mod sim;
 
 use core::num::NonZeroU32;
@@ -49,6 +50,9 @@ enum BetweenSteps {
     Respawn(Fountain),
     /// Nothing: every other scene just steps.
     Nothing,
+    /// Collect what each step potted, `[ball, pocket, …]` (the pool
+    /// table: `World::potted` is per step, and a frame runs several).
+    Pocket(Vec<u32>),
 }
 
 pub(crate) struct Demo {
@@ -66,6 +70,10 @@ pub(crate) struct Demo {
     /// `[a0, b0, a1, b1, ...]`: the broadphase's candidate pairs, filled
     /// on request (`demo/collisions.rs`).
     pairs: Vec<u32>,
+    /// The pool table's segments `[x0, y0, x1, y1, …]` and pockets `[x,
+    /// y, r, …]`, `f32`, filled once (`demo/pool.rs`); empty otherwise.
+    segments_buf: Vec<f32>,
+    pockets_buf: Vec<f32>,
 }
 
 impl Demo {
@@ -121,6 +129,8 @@ impl Demo {
             grab: None,
             links: Vec::new(),
             pairs: Vec::new(),
+            segments_buf: Vec::new(),
+            pockets_buf: Vec::new(),
         };
         demo.fill_render_buf();
         demo.refresh_links();
@@ -253,8 +263,18 @@ fn run_steps<S: Scalar>(
     };
     for _ in 0..steps {
         w.step(dt);
-        if let BetweenSteps::Respawn(fountain) = between {
-            fountain.respawn_fallen(w);
+        match between {
+            BetweenSteps::Respawn(fountain) => {
+                fountain.respawn_fallen(w);
+            }
+            BetweenSteps::Pocket(potted) => {
+                for &(id, k) in w.potted() {
+                    if let (Ok(id), Ok(k)) = (u32::try_from(id.index()), u32::try_from(k)) {
+                        potted.extend([id, k]);
+                    }
+                }
+            }
+            BetweenSteps::Nothing => {}
         }
     }
 }
