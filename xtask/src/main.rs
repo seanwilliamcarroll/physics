@@ -18,6 +18,7 @@ mod abi_check;
 mod api;
 mod bench_wasm;
 mod coverage;
+mod mutants;
 mod serve;
 mod slow;
 mod smoke;
@@ -42,7 +43,7 @@ struct Cli {
     command: Command,
 }
 
-#[derive(Subcommand, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Subcommand, Clone, Debug, PartialEq, Eq)]
 enum Command {
     /// Compile the site TypeScript and build crates/engine-web and crates/acoustic-web for wasm32 into site/pkg/{engine,acoustic}.wasm
     Site,
@@ -81,6 +82,15 @@ enum Command {
         #[arg(long)]
         check: bool,
     },
+    /// cargo mutants with TMPDIR outside the repo ($MUTANTS_TMPDIR, or
+    /// $HOME/.cache/mutants-tmp), leftover build dirs cleaned, and -j 8
+    /// --no-shuffle unless given; every other argument passed through, and
+    /// its exit code returned
+    Mutants {
+        /// Arguments for cargo mutants
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
     /// The slow tier, not in any hook: every test with property tests at
     /// 10 000 cases, then the long `slow_*` runs (ignored by `cargo test`),
     /// built optimized with overflow checks kept
@@ -115,6 +125,7 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::InstallHooks => install_hooks(&root),
         Command::Slow { cases } => slow::slow(&root, cases),
         Command::Api { check } => api::api(&root, check),
+        Command::Mutants { args } => mutants::mutants(&root, &args),
     }
 }
 

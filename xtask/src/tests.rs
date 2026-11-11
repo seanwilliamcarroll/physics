@@ -25,6 +25,12 @@ fn parses_known_commands() {
     assert_eq!(parse(&["api"]), Ok(Command::Api { check: false }));
     assert_eq!(parse(&["api", "--check"]), Ok(Command::Api { check: true }));
     assert_eq!(
+        parse(&["mutants", "-f", "x.rs", "--list"]),
+        Ok(Command::Mutants {
+            args: vec!["-f".to_owned(), "x.rs".to_owned(), "--list".to_owned()]
+        })
+    );
+    assert_eq!(
         parse(&["bench-wasm"]),
         Ok(Command::BenchWasm { budget_ms: 500 })
     );
