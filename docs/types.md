@@ -132,6 +132,19 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`SandExports`, `SandHandle`](../site/js/sand.d.ts) | Types for `sand.wasm`'s exports; the handle is branded, like `DemoHandle`. |
 | [`Paint`, `SCENES`](../site/js/sand-scenes.ts) | The page's scenes as functions of the grid's size that only call the brush: no scene code in Rust, and unit-testable against an array. |
 
+## `swarm` — boids (S1)
+
+| Type | Why it exists |
+|---|---|
+| [`Params`](../crates/swarm/src/params.rs) | The rules' constants (ECE 4760's by default), checked once: `0 ≤ protected < visual`, gains ≥ 0, `0 < min ≤ max`. |
+| [`Arena`](../crates/swarm/src/params.rs) | The box, two positive finite sides; soft walls, so boids may leave it. |
+| [`Flock`](../crates/swarm/src/flock.rs) | The boids as structure of arrays, double-buffered so a step reads one instant whatever the storage order; the step, polarization, the predator. |
+| [`Neighbours`](../crates/swarm/src/flock.rs) | Brute force, the grid, or the grid with boids sorted into cell order: the same neighbours, three costs. |
+| [`Grid`](../crates/swarm/src/grid.rs) (crate-private) | A cell list by counting sort, cells a hair wider than the range (the property test found why). |
+| [`Seen`, `Ranges`](../crates/swarm/src/rules.rs) (crate-private) | What a boid saw, summed one candidate at a time or 8 lanes at once over contiguous runs (the branchless loop SIMD runs). |
+| [`SwarmDemo`](../crates/swarm-web/src/demo.rs) | A flock, its clock and its heading-coloured RGBA buffer behind the `swarm_*` C ABI. |
+| [`SwarmExports`, `SwarmHandle`](../site/js/swarm.d.ts) | Types for `swarm.wasm`'s exports; a branded handle. |
+
 ## `acoustic` — the plucked string (A1)
 
 | Type | Why it exists |
