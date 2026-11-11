@@ -37,6 +37,10 @@ impl Grid {
                     continue;
                 }
                 let (lo, hi) = (cx * CHUNK, ((cx + 1) * CHUNK).min(w));
+                #[cfg(test)]
+                {
+                    self.visited += hi - lo;
+                }
                 for i in 0..hi - lo {
                     let x = if left_to_right { lo + i } else { hi - 1 - i };
                     self.update_cell(x, y, &mut moves);

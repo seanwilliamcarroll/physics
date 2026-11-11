@@ -22,6 +22,10 @@ pub struct Grid {
     pub(crate) step: u64,
     /// The chunks (`docs/11-falling-sand.md`, "Chunks").
     pub(crate) chunks: Chunks,
+    /// Test-only: cells the scan reached (awake chunks' spans), all steps
+    /// so far. Chunks are exact, so skipping is otherwise invisible.
+    #[cfg(test)]
+    pub(crate) visited: usize,
 }
 
 /// Chunk side, cells: 32 × 32 (TASKS decision 6).
@@ -110,6 +114,8 @@ impl Grid {
             seed,
             step: 0,
             chunks: Chunks::new(width, height),
+            #[cfg(test)]
+            visited: 0,
         })
     }
 
@@ -178,14 +184,6 @@ impl Grid {
             self.chunks.now.len()
         };
         (awake, self.chunks.now.len())
-    }
-
-    /// The shade of `(x, y)`, `0..16` (rendering: a per-grain variation that
-    /// moves with the grain), or `None` outside the grid.
-    #[must_use]
-    pub fn shade_at(&self, x: usize, y: usize) -> Option<u8> {
-        let i = self.index(x, y)?;
-        self.cells.get(i).map(|&c| material::shade(c))
     }
 
     /// How many cells hold `material`.

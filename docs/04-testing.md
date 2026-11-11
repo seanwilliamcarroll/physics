@@ -682,6 +682,25 @@ still passed.
   that reason. The real gaps it found (soft constraints at several
   passes, the elastic potential, live k and c, three synth controls that
   could do nothing, `pitch` of silence returning 504 Hz) have tests.
+- **The second full run (after M9, at 16cea2a):** 442 of 4237 missed
+  (31 timeouts, which count as caught). Real gaps, now tested: a strike
+  only ever aimed along +x (a lost sign in the spin axis survived); the
+  squeezed-ball restitution test passing by insertion order (the object
+  ball first in both its contacts, so `union` deleted changed nothing);
+  the tunnel counter's segment and wall branches and its search cell;
+  the pool table's geometry (55: now checked against WPA §9 directly);
+  the spring and spin energies; a blocked respot; the raised double
+  pendulum's offset; M9's `keep` (a waiting lava or steam cell alone in
+  a still grid, which random grids never produce), chunk skipping (a
+  test-only count of visited cells), the move count, the right edge,
+  exact colours and the demo's setters. Dead code deleted:
+  `Grid::shade_at`, `SandDemo::pixels`. **Equivalent**, new classes:
+  bounds a later clamp repeats (a waveguide's `m − 1` before
+  `clamped_index`); constants that make two operations agree (`2 · l`
+  and `2 / l` at l = 1, `d · d` and `d + d` at d = 2); a larger search
+  cell (more candidates, never fewer); a disc's `x + dx` for `x − dx`;
+  capacity hints (`Vec::with_capacity`); a skip that's exact by design
+  (chunks), now observable only through the visited count.
 
 ## Phase 1 test-first order
 

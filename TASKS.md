@@ -350,7 +350,9 @@ course page and GDC talk marked secondary.
 Done: the API audit and its PRs (#159–#164: `web-common`, `engine-web`,
 narrower surfaces, `cargo xtask api`), `cargo xtask mutants` (#165), the
 pre-push hook at ~60 s with nextest (#166), the step budget (#156), M6's
-mutation run (#144). Open:
+mutation run (#144); the second full run (16cea2a, M9's crates
+included) triaged, its real gaps tested (`04-testing.md`, "Mutation
+testing"); `docs/setup.md`, Node through nvm. Open:
 
 - **Your check:** `m2-cluster?n=4096` in slow motion, not frozen.
 - **The compute node:** `cargo install --locked cargo-nextest`.
@@ -370,8 +372,6 @@ mutation run (#144). Open:
   designs 88 keys' dispersion filters: 1.8 s unoptimized at 48 kHz,
   0.2 s with `acoustic`, `libm` and `math` at `opt-level = 3` (now set
   for dev builds).
-- **Mutation run on M9's crates, on the node:** `cargo xtask mutants -p
-  sand -p sand-web -o mutants.out/m9`; triage as #144.
 - **Undecided (M6.11):** dropping the broadphase's final pair sort:
   smaller and faster, but every collision golden changes.
 
