@@ -5,8 +5,9 @@
 //! boids are stored in. `f32` throughout.
 
 mod flock;
+mod grid;
 mod params;
 mod rules;
 
-pub use flock::{Boid, Flock, MAX_BOIDS};
+pub use flock::{Boid, Flock, MAX_BOIDS, Neighbours};
 pub use params::{Arena, Params};

@@ -185,6 +185,41 @@ moving together shows as one colour. The hue comes from a pseudo-angle
   merge, split and turn at the walls.
 - **Golden** (200 boids, 300 steps), the same on wasm32.
 
+### The grid as built (S1.3)
+
+`Grid` in `crates/swarm/src/grid.rs`; `Neighbours::{Brute, Grid}` on the
+flock, the grid by default.
+
+- **Exact, after one fix.** The property test (random flocks, ranges,
+  arenas, boids far outside; and clumps on cell edges) found two boids
+  exactly a range apart (8r, 9r) that round to just inside it while
+  binning `y × (1/r)` puts them in cells 7 and 9. Cells are now 1/1024
+  wider than the range: binning is off by at most ~1e-4 of a cell with
+  1024 cells a side, so that covers it. Passes at 2,000 cases.
+- **Trajectories:** 3.1e-5 px from brute force after a step, 6.1e-5
+  after 10, 0.99 after 50 (summation order, then chaos). Two goldens.
+- **Cost** (`cargo bench -p swarm`, native, Apple silicon, at the page's
+  density: 10k boids in 1280 × 720, the arena scaled with n, warmed up
+  300 steps):
+
+  | n | Brute force | Grid |
+  |---|---|---|
+  | 300 | 312 µs (1.04 µs/boid) | 253 µs (0.84) |
+  | 1,000 | 2.24 ms (2.2) | 1.35 ms (1.35) |
+  | 3,000 | 10.1 ms (3.4) | 5.1 ms (1.7) |
+  | 10,000 | 72.7 ms (7.3) | 13.6 ms (1.36) |
+  | 100,000 | — | 157 ms (1.57) |
+
+  **No crossover at this density:** the grid wins from 300, where the
+  whole arena is barely 3 × 3 cells; at constant density the grid's cost
+  per boid is flat and brute force's grows with n. But the grid is slow
+  per candidate: each boid checks 250–400 candidates (85–155 are
+  neighbours, more as flocks clump), **~4.5 ns each, against brute
+  force's 0.73 ns per pair**, which streams through the arrays in order.
+  The grid's candidates are scattered, fetched through an index list.
+  10k boids at 13.6 ms natively doesn't leave room for 60 Hz in wasm.
+  That is section 4's question: reordering by cell.
+
 ### Out of scope for S1
 
 Periodic boundaries and noise (S2); fields (S3, S4); the GPU (S4
