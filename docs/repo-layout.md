@@ -21,6 +21,7 @@ physics/
 │   ├── types.md            # key types, one line each, with links
 │   ├── hosting.md          # future work
 │   ├── workers.md          # design note: step budget, Web Workers, wasm threads
+│   ├── api-audit.md        # each crate's public surface, and what to narrow
 │   ├── swarm-resources.md  # swarm track: reading list (05-roadmap, "Swarm track")
 │   ├── swarm-rust-implementation.md  # swarm track: implementation notes
 │   └── references.md
