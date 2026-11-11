@@ -1,7 +1,9 @@
 # 11 — Falling sand
 
-Status: **Draft** (M9.1). Decisions: TASKS.md, M9. Depends on nothing in
-the engine: a cellular automaton, not a solver.
+Status: **Adopted** (M9.1; as built: the automaton M9.2, chunks M9.3,
+lava and steam M9.4, `sand.wasm` M9.5, the page M9.6; each has an "as
+built" section below). Depends on nothing in the engine: a cellular
+automaton, not a solver.
 
 M9 is a different kind of simulation. No forces, no velocities, no
 floats: every cell holds a material, and each step every cell looks at
