@@ -163,3 +163,12 @@ main.wide {
   padding: 0.6rem 1.2rem;
   margin: 0.5rem 0;
 }
+
+/* M7: one wide pool table (2:1 with its rails). */
+.panels.table {
+  grid-template-columns: 1fr;
+}
+
+.panels.table canvas {
+  aspect-ratio: 2;
+}
