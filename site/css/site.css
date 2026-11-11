@@ -172,3 +172,10 @@ main.wide {
 .panels.table canvas {
   aspect-ratio: 2;
 }
+
+/* M9: the sand grid's canvas, one pixel a cell, scaled up crisply
+   (pixels.ts sets the aspect ratio to the grid's). */
+.stage.sand canvas {
+  image-rendering: pixelated;
+  cursor: crosshair;
+}

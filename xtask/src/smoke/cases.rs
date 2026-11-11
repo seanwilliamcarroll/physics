@@ -31,6 +31,7 @@ const M6: &str = "demos/m6-collisions/";
 const M6_CRADLE: &str = "demos/m6-cradle/";
 const M7: &str = "demos/m7-billiards/";
 const M4_DP: &str = "demos/m4-double-pendulum/";
+const M9: &str = "demos/m9-falling-sand/";
 const A1: &str = "demos/a1-string/";
 const A2: &str = "demos/a2-waveguide/";
 const A3: &str = "demos/a3-piano/";
@@ -45,8 +46,10 @@ const A3: &str = "demos/a3-piano/";
 /// pendulum in both comparison modes. M6: the box (full, with the
 /// broadphase overlay), the break with gaps, the cradle and its
 /// one-substep case. M7: a hard break, and the tunneling preset (no
-/// speculation, one substep).
-pub(super) const CASES: [Case; 26] = [
+/// speculation, one substep). M9: the hourglass, lava into water with
+/// chunks off, and the 1920 × 1080 stress grid (each also checks the
+/// material accounts held: `site/demos/m9-falling-sand/main.ts`).
+pub(super) const CASES: [Case; 29] = [
     Case {
         name: "default",
         page: M0,
@@ -185,6 +188,24 @@ pub(super) const CASES: [Case; 26] = [
         name: "m7tunnel",
         page: M7,
         query: "?smoke&break=12&speculative=off&substeps=1",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m9sand",
+        page: M9,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m9lava",
+        page: M9,
+        query: "?smoke&scene=lava&chunks=off",
+        check: Check::Draws,
+    },
+    Case {
+        name: "m9stress",
+        page: M9,
+        query: "?smoke&w=1920&h=1080",
         check: Check::Draws,
     },
     // A1: one second rendered offline (OfflineAudioContext): the worklet

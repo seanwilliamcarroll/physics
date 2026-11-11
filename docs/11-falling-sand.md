@@ -218,6 +218,36 @@ order), `sand_width`/`height`, `sand_count`, `sand_last_moves`,
 against the export table by `cargo xtask site`), and a call-sequence
 property test (hostile values; every count always sums to the grid).
 
+## The page as built (M9.6, `site/demos/m9-falling-sand`)
+
+The canvas is the grid's size, one pixel a cell, scaled by CSS
+(`pixels.ts`: `putImageData` over a view of wasm memory, no copy). The
+brush paints a disc (radius 1–64, any material or erase) along the drag,
+dabs at most half a radius apart so a fast stroke has no gaps, and keeps
+painting while held. Scenes (`sand-scenes.ts`, drawn with the brush, so
+they scale to any grid): an hourglass, a dam with a slot, lava down a
+ramp into water, an empty box. The HUD: steps per second (and slow
+motion when the step budget holds it), a step's time and cells per
+second, draw time, moves, awake chunks, counts per material. Smoke cases:
+the hourglass, lava with chunks off, the 1920 × 1080 grid, each checking
+the three accounts held and the canvas drew.
+
+**Measured in wasm** (Node 22, the same cases as the native bench):
+
+| Grid | Busy step | Settled, chunks | Settled, every cell | Render |
+|---|---|---|---|---|
+| 640 × 360 | 1.84 ms (125 M cells/s) | 3.5 µs | 820 µs | 0.06 ms |
+| 1920 × 1080 | 17.1 ms (121 M cells/s) | 28 µs | 7.6 ms | 0.47 ms |
+
+Wasm is about 1.4× native busy. The default grid fits a 60 Hz frame
+with a lot of room to spare; 1920 × 1080 busy just misses it, and the
+step budget slows it (the HUD says so) until it settles, when its chunks
+go to sleep. **Render** was 8.6 ms at 1920 × 1080 first, decoding each
+cell through `Grid::get` and `shade_at`; a 256-entry palette (every cell
+byte's colour, via `sand::unpack`) made it a lookup per cell, 18× faster.
+So the whole buffer is still refreshed each frame: rendering only awake
+chunks isn't needed.
+
 ## Alternatives considered
 
 - **Margolus neighbourhoods** (Toffoli & Margolus 1987): the grid in 2 × 2

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M9 · Falling sand: a cellular automaton</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Falling sand: a cellular automaton</h1>
+    <p class="muted">
+      No forces and no floats: every cell holds a material, and each step
+      every cell looks at its neighbours and maybe swaps with one. Piles,
+      flows and levels come out of those local rules. <b>Press and drag</b>
+      to paint; held still, the brush keeps pouring. Sand piles and sinks
+      through water; water levels; lava flows slowly and, where it meets
+      water, turns to stone and the water to steam, which rises and
+      condenses. The grid is scanned bottom-up, alternating direction each
+      row and step, so nothing leans one way; random choices are keyed by
+      position, so a run is the same every time (<code>docs/11-falling-sand.md</code>).
+      Only <b>awake chunks</b> (32 × 32) are updated: a settled pile costs
+      nothing. Turn chunks off and the result is identical, only slower.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="stage sand"><canvas id="view"></canvas></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
