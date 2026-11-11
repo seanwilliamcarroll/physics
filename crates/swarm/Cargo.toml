@@ -1,0 +1,18 @@
+[package]
+name = "swarm"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Agents that follow rules: boids (docs/15-swarm.md)."
+
+[dependencies]
+math = { path = "../math" }
+
+[dev-dependencies]
+proptest.workspace = true
+test-support = { path = "../test-support" }
+
+[lints]
+workspace = true

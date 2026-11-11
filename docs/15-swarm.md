@@ -128,8 +128,11 @@ isn't associative. How far they drift apart is measured, not assumed.
 ### What's tested, with nothing conserved
 
 - **Speed** within `[min, max]` after every step (the clamp's promise).
-- **Confinement:** edge turning is soft, so boids can overshoot the
-  margin; how far is bounded by `max` and `turn`, and measured.
+- **Confinement, such as it is:** edge turning is soft. Alone, a boid
+  at `max` reverses within `max² / 2 turn` = 90 px, inside the margin;
+  in a flock, alignment holds its velocity within `turn / matching`
+  (4 px/step) of its neighbours', so the flock turns as a body and its
+  leaders overshoot, past the arena's edge (measured below).
 - **Order independence:** permuting the boids permutes the result, to
   rounding (double buffering's promise).
 - **It flocks.** The **polarization**, `|Σ vᵢ / |vᵢ|| / n` (Couzin et
@@ -158,6 +161,29 @@ Splatted by Rust into an RGBA buffer (`site/js/pixels.ts`, M9's), each
 boid a few pixels **coloured by heading** on a hue wheel, so a group
 moving together shows as one colour. The hue comes from a pseudo-angle
 (no trig): it's drawing, not physics, and not in the goldens.
+
+### As built (S1.2, `crates/swarm`)
+
+`Params` (checked once: `0 ≤ protected < visual`, gains `≥ 0`, `0 < min
+≤ max`), `Arena`, `Flock` (SoA, double-buffered, up to `MAX_BOIDS` =
+2¹⁸, random starts inside the margins or exact ones), brute-force
+`step`, `polarization`. Measured (`tests/boids.rs`, 300 boids in 640 ×
+480, four seeds, 2,000 steps):
+
+- **Speeds** stay in `[3, 6]` to f32 rounding, every boid, every step.
+- **Boids leave the arena**, 2–3.4% of boid-steps, up to 330 px out
+  (395 px for 2,000 boids at 1280 × 720), and come back: alignment, not
+  separation (with `avoid` = 0 they still do). The page draws the arena
+  as the canvas, so a few boids are briefly off screen; that's the
+  model as published.
+- **Order independence:** reversed storage gives identical results
+  after a step, 6.1e-5 px apart after 10, 0.046 after 50: rounding,
+  amplified by chaos.
+- **Alignment makes the flock.** Mean polarization over steps
+  500–2,000: 0.49–0.77 (peaks 0.87–0.99) from a random start's
+  0.03–0.09; with `matching` = 0, 0.03–0.08. No steady value: flocks
+  merge, split and turn at the walls.
+- **Golden** (200 boids, 300 steps), the same on wasm32.
 
 ### Out of scope for S1
 

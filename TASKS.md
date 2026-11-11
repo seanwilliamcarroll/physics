@@ -301,17 +301,16 @@ et al., Vicsek et al.), the measurements. `references.md`: a Swarms
 section, the papers with Crossref-checked DOIs, volumes and pages; the
 course page and GDC talk marked secondary.
 
-## 2. Boids, brute force (PR)
+## ✅ 2. Boids, brute force (PR)
 
-- [ ] `swarm`: SoA agents, double buffer, the rules over every pair,
-      edge turning, the clamp (and its zero case), seeded starts.
-- [ ] Tests: speeds within `[min, max]` after every step; boids stay
-      within a measured distance of the arena; permuting the agents
-      permutes the result (to rounding, measured); **it flocks**: the
-      polarization (|mean of unit velocities|: Couzin et al. 2002's
-      group polarization, Vicsek et al. 1995's `v_a`)
-      rises from a random start's ~1/√n to above a measured bound;
-      goldens, native and wasm.
+`swarm`: checked `Params` (ECE 4760's), `Arena`, a double-buffered SoA
+`Flock`, the rules in the source's order, the clamp at zero, brute-force
+`step`, `polarization`. Measured: speeds in the band; boids **leave the
+arena** (2–3.4% of boid-steps, up to ~400 px) because alignment makes a
+flock turn as a body, not a bug; reversed storage identical after a
+step, rounding after; mean polarization 0.49–0.77 with alignment,
+0.03–0.08 without. A golden, same on wasm. `swarm` in `test-wasm`, `xtask
+api` and the dev profile at `opt-level = 3`.
 
 ## 3. The grid (PR)
 

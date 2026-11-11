@@ -30,7 +30,7 @@ physics/
 │   └── references.md
 │
 ├── crates/
-│   ├── math/               # shared by engine, acoustic, sand
+│   ├── math/               # shared by engine, acoustic, sand, swarm
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── scalar.rs   # Scalar trait, f32/f64 impls
@@ -74,6 +74,7 @@ physics/
 │   │
 │   ├── sand/               # M9: the falling-sand automaton (grid, rules; integers only)
 │   ├── sand-web/           # cdylib → sand.wasm (the sand page's C ABI, on web-common)
+│   ├── swarm/              # S1: boids (double-buffered SoA, f32; the counting-sort grid)
 │   └── acoustic/           # A1+
 │
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)

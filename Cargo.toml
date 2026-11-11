@@ -39,6 +39,10 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.math]
 opt-level = 3
+# The swarm tests run brute-force flocks (n² pairs a step) for hundreds of
+# steps: optimized, they take seconds, not minutes.
+[profile.dev.package.swarm]
+opt-level = 3
 
 # `cargo xtask slow`: optimized, but keeping debug assertions and overflow
 # checks, so 10 000-case property tests and the long `slow_*` runs finish
