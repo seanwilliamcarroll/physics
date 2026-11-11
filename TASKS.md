@@ -232,13 +232,18 @@ per-contact `e` breaks Generalized Reflections' per-round energy
 guarantee (`ΔT = ½ (Eλ̃)ᵀK(Eλ̃) − ½ λ̃ᵀKλ̃`); section 2 measures it.
 Roadmap (M7, and contact friction in M10), `00-scope.md`, references.
 
-## 2. Segments and per-contact restitution (PR)
+## ✅ 2. Segments and per-contact restitution (PR)
 
-- [ ] `Segment`, the circle–segment narrowphase (endpoints as corners), in
-      both solvers; per-contact `e` in the impact stage.
-- [ ] Tests: the reflection angle (in = out at e = 1, the normal part
-      scaled by e below), a corner hit, a ball resting against a cushion,
-      no pass-through at break speed; mixed `e` never adds energy.
+`Segment` (own restitution; ends as corners), `Statics` (walls and
+segments) through the narrowphase and both solvers. **Found and fixed:**
+mixed `e` in one round gained 2.5% (a ball squeezed into a cushion);
+now a coupled group bounces at its smallest `e`. **Found and fixed:**
+start-of-substep normals sent cut shots 1–8° off (an 80° graze left at
+60°); contacts now move to the moment of impact (exact for two circles,
+conservative advancement for segments) and the test is swept: cuts
+within 1.5e-11° at any substeps. M6 goldens for the box and the impulse
+cradle updated. Tests: reflection, a corner, resting, no pass-through,
+cut shots, mixed-`e` energy.
 
 ## 3. The cloth: spin, sliding and rolling (PR)
 

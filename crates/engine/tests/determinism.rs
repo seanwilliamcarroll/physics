@@ -211,12 +211,12 @@ const GOLDEN: [(u64, u64); 22] = [
     (0xa62e_3f2f_299a_3174, 0x5ec9_8ade_fa46_b8ce), // Jelly(Springs)
     (0x2079_e496_6081_d007, 0xa96f_bdb3_87ea_cd29), // Jelly(Constraints(Xpbd))
     (0x417b_f5ac_8bf7_f82b, 0x3182_4044_ab02_85a0), // Jelly(Constraints(Impulse))
-    (0x0470_b2bb_2242_95a6, 0x6338_72b7_c15a_2319), // BallBox(Xpbd)
-    (0x9560_1536_882f_8ed8, 0xd9e6_90ab_899f_8188), // BallBox(Impulse)
-    (0xb7c4_e8f7_919a_f2a0, 0xfdcb_233a_f79e_93fa), // BreakShot(Xpbd)
-    (0xb0a9_deb3_aba9_437b, 0x7f33_0771_bca2_7725), // BreakShot(Impulse)
-    (0xf667_9d6c_0444_e5ff, 0x68ca_577f_554d_e9e2), // Cradle(Xpbd)
-    (0xe519_90c9_da81_2a12, 0x4715_7907_1f90_632d), // Cradle(Impulse)
+    (0xee53_e386_26ee_ad85, 0x6cda_f64a_97a3_03b5), // BallBox(Xpbd)
+    (0xd4ff_ef78_d3e0_c821, 0x9211_3380_0dec_15b2), // BallBox(Impulse)
+    (0xb7c4_e8f7_919a_f2a0, 0x4f5c_6b16_15ea_98b2), // BreakShot(Xpbd)
+    (0xb0a9_deb3_aba9_437b, 0xea50_db0f_3a7b_e67b), // BreakShot(Impulse)
+    (0x4023_045c_a431_d110, 0x0e32_9ef6_1a2e_e434), // Cradle(Xpbd)
+    (0x8600_3eb7_30b4_ea5c, 0x7c86_e9d1_ce89_5d5b), // Cradle(Impulse)
 ];
 
 #[test]

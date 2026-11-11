@@ -12,7 +12,8 @@ use core::num::NonZeroU32;
 
 pub(crate) use contacts::Contacts;
 
-use crate::{Baumgarte, Force, Particles, Restitution, Scalar, Vec2, Wall};
+use crate::collision::Statics;
+use crate::{Baumgarte, Force, Particles, Restitution, Scalar, Vec2};
 
 /// How a world with constraints is stepped.
 ///
@@ -125,7 +126,9 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     /// bit-identical to M5's.
     pub(crate) collides: bool,
     pub(crate) contacts: &'a mut Contacts<S>,
-    pub(crate) walls: &'a [Wall<S>],
+    pub(crate) statics: Statics<'a, S>,
+    /// Restitution for circle–circle and wall contacts; segments carry
+    /// their own.
     pub(crate) restitution: Restitution<S>,
 }
 

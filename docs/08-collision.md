@@ -73,6 +73,21 @@ Every substep, at the start (positions where the substep begins):
 Contact { a, b: Body (Particle(id) | Wall(index)), n: UnitVec2, gap C }
 ```
 
+**At the moment of impact (M7.2).** The normal found at the start of a
+substep is up to a substep's travel early, and on a glancing hit it's
+still turning as the gap closes. Cut shots went 1–8° off at 10
+substeps, and a graze whose start-of-substep normal *looked* closing was
+bounced a substep early (an 80° cut left at 60°). Now every separated
+contact is moved to where the pair first touches, moving in straight
+lines (a quadratic for two circles, conservative advancement for a
+segment, `collision::pair_impact` and `segment_impact`), and takes its
+normal and gap there. A pair that doesn't touch this substep is dropped
+unless it's within the margin. The test is also swept (a contact if
+either test says so), so a graze can't slip between them. Cut shots now
+leave within 1.5e-11° at 1–40 substeps (`tests/cushions.rs`). Head-on
+hits and touching contacts are unchanged; M6's box and impulse cradle
+goldens changed, and its other measurements by less than 0.0013.
+
 Contacts live for one substep. Detecting every substep is the simple,
 correct choice; detecting once per step with a margin (Macklin et al.
 2019) is an optimization to measure if the box gets large.
@@ -397,7 +412,7 @@ swing, as a fraction of the pull; ideal `[0, 0, 0, 0, 1]`):
 
 | Substeps | XPBD, worst ball | Impulse, worst ball |
 |---|---|---|
-| 1 | 0.119 | 0.028 |
+| 1 | 0.120 | 0.029 |
 | 2 | 0.062 | 0.008 |
 | 5 | 0.026 | 0.009 |
 | 10 | 0.013 | 0.002 |

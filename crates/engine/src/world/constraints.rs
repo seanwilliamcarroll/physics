@@ -4,10 +4,11 @@
 use core::num::NonZeroU32;
 
 use super::ConfigError;
+use crate::collision::Statics;
 use crate::solver::{Contacts, Step};
 use crate::{
     Baumgarte, Constraint, DistanceConstraint, Force, Order, Particles, Restitution, Scalar,
-    Solver, Stabilization, Vec2, Wall,
+    Solver, Stabilization, Vec2,
 };
 
 /// The constraints, one λ per constraint (same order), and the solver
@@ -120,16 +121,16 @@ impl<S: Scalar> Constraints<S> {
     }
 
     /// One substep of length `h` by the current solver. `collision` is
-    /// `Some((walls, restitution))` when the world can collide.
+    /// `Some((statics, restitution))` when the world can collide.
     pub(super) fn substep(
         &mut self,
         forces: &[Box<dyn Force<S>>],
         particles: &mut Particles<S>,
         acc: &mut Vec<Vec2<S>>,
-        collision: Option<(&[Wall<S>], Restitution<S>)>,
+        collision: Option<(Statics<'_, S>, Restitution<S>)>,
         h: S,
     ) {
-        let (walls, restitution) = collision.unwrap_or((&[], Restitution::INELASTIC));
+        let (statics, restitution) = collision.unwrap_or((Statics::NONE, Restitution::INELASTIC));
         if collision.is_none() {
             self.contacts.clear();
         }
@@ -146,7 +147,7 @@ impl<S: Scalar> Constraints<S> {
             baumgarte: self.baumgarte,
             collides: collision.is_some(),
             contacts: &mut self.contacts,
-            walls,
+            statics,
             restitution,
         };
         match self.solver {

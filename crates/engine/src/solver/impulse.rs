@@ -49,9 +49,9 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         // τ = ½: unbiased, off by `g h (τ − ½)` either way.
         let half = h / (S::ONE + S::ONE);
         if self.collides {
-            contacts.find(p, self.walls, self.acc, h);
+            contacts.find(p, self.statics, self.restitution, self.acc, h);
             kick(p, self.acc, half);
-            impacts::resolve(p, contacts, h, self.restitution.get());
+            impacts::resolve(p, contacts, h);
             kick(p, self.acc, half);
         } else {
             kick(p, self.acc, h);

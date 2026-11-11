@@ -213,11 +213,23 @@ problem `w = K λ̃ + J v⁻ ≥ 0`, `λ̃ ≥ 0`, `wᵢ λ̃ᵢ = 0`. Applying 
   Later rounds may take it back (what still approaches joins the next
   round), but nothing guarantees it.
 
-Section 2 measures it on the cases that can trigger it: a ball frozen to
-a cushion struck square and at angles, and a rack against a cushion. If
-energy rises over the whole stage, the candidates are: solve a round's
-coupled contacts at their smallest `e` (conservative, loses a little
-energy), or split such rounds by material. Decided by the measurement.
+**Measured (M7.2):** a ball frozen to a cushion and struck, square and at
+angles, never gained: its cushion contact isn't approaching when the cue
+ball arrives, so it joins a later round alone. But a ball **moving into a
+cushion and struck in the same substep** puts both contacts in one round,
+and at `e = (1, 0.5)` (balls, cushion) it **gained 2.5%** (0.94% at 20°),
+in both solvers. The table's own values (0.94, 0.8) didn't gain in any
+case tried, but nothing guaranteed it.
+
+**The fix:** each round, contacts coupled through a shared ball (a
+union-find over the round's balls) bounce with their group's **smallest
+`e`**. `K` is block-diagonal across groups, so the energy change is a sum
+of `−½ (1 − e_g²) λ̃ᵀ K_g λ̃ ≤ 0`, one per group: never a gain. Uncoupled
+contacts keep their own `e`, and a world with one `e` skips the grouping
+(bit-identical to M6). The price is a slightly deader bounce in a round
+where a ball meets a ball and a cushion at once. `tests/cushions.rs`
+sweeps the squeeze and the frozen ball over five pairs of `e`, three
+angles and three speeds: never more than rounding above the start.
 
 ## Tunneling: why speculative contacts
 

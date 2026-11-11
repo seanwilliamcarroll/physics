@@ -12,6 +12,7 @@ use core::num::NonZeroU32;
 pub use config_error::ConfigError;
 use constraints::Constraints;
 
+use crate::collision::{Segment, Statics};
 use crate::integrate::VerletScratch;
 pub use drag::Grab;
 
@@ -49,6 +50,9 @@ pub struct World<S: Scalar> {
     ground: Option<S>,
     /// Static half-planes circles collide with (M6).
     walls: Vec<Wall<S>>,
+    /// Static segments circles collide with, each with its own
+    /// restitution (M7: cushions).
+    segments: Vec<Segment<S>>,
     /// Restitution for every collision (M6: one per world).
     restitution: Restitution<S>,
 }
@@ -69,6 +73,7 @@ impl<S: Scalar> World<S> {
             constraints: Constraints::new(Baumgarte::default()),
             ground: None,
             walls: Vec::new(),
+            segments: Vec::new(),
             restitution: Restitution::INELASTIC,
         }
     }
@@ -76,6 +81,17 @@ impl<S: Scalar> World<S> {
     /// Adds a static wall; circles collide with it (`docs/08-collision.md`).
     pub fn add_wall(&mut self, wall: Wall<S>) {
         self.walls.push(wall);
+    }
+
+    /// Adds a static segment (a cushion, `docs/09-billiards.md`).
+    pub fn add_segment(&mut self, segment: Segment<S>) {
+        self.segments.push(segment);
+    }
+
+    /// The segments, in the order added (the page draws them).
+    #[must_use]
+    pub fn segments(&self) -> &[Segment<S>] {
+        &self.segments
     }
 
     /// Test-only: the walls, in the order added.
@@ -98,12 +114,12 @@ impl<S: Scalar> World<S> {
         self.restitution = e;
     }
 
-    /// Whether anything can collide: any wall, or any circle (a particle
-    /// with a radius). Such a world is stepped by the solver
+    /// Whether anything can collide: any wall or segment, or any circle (a
+    /// particle with a radius). Such a world is stepped by the solver
     /// (`docs/08-collision.md`, "Who steps").
     #[must_use]
     pub fn collides(&self) -> bool {
-        !self.walls.is_empty() || self.particles.max_radius() > S::ZERO
+        !self.walls.is_empty() || !self.segments.is_empty() || self.particles.max_radius() > S::ZERO
     }
 
     /// The particles, read-only (see the field).
@@ -264,9 +280,13 @@ impl<S: Scalar> World<S> {
     /// them alike, and after XPBD derives its velocities, so the next
     /// substep starts from a clamped position *and* velocity.
     fn substep(&mut self, h: S) {
-        let collision = self
-            .collides()
-            .then_some((self.walls.as_slice(), self.restitution));
+        let collision = self.collides().then_some((
+            Statics {
+                walls: &self.walls,
+                segments: &self.segments,
+            },
+            self.restitution,
+        ));
         if self.constraints.is_empty() && collision.is_none() {
             let scratch = VerletScratch {
                 acc: &mut self.acc,

@@ -1,7 +1,7 @@
 //! The narrowphase: contacts from candidate pairs and walls
 //! (`docs/08-collision.md`, "Contact generation").
 
-use super::{Wall, candidate_pairs};
+use super::{Segment, Statics, candidate_pairs};
 use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2};
 
 /// Pairs this close (m) are contacts even when they aren't approaching.
@@ -24,6 +24,8 @@ pub enum Body {
     Particle(ParticleId),
     /// Index into the world's walls.
     Wall(usize),
+    /// Index into the world's segments (M7).
+    Segment(usize),
 }
 
 /// A contact for one substep: body `a` (a circle) touching, or about to
@@ -55,8 +57,8 @@ pub fn broadphase_cell<S: Scalar>(p: &Particles<S>, h: S) -> S {
 }
 
 /// Every contact this substep, into `out` (cleared first), in a fixed
-/// order: circle pairs sorted by `(a, b)`, then wall contacts by particle
-/// and wall. `pairs` is the broadphase's scratch.
+/// order: circle pairs sorted by `(a, b)`, then wall and segment contacts
+/// by particle, walls before segments. `pairs` is the broadphase's scratch.
 ///
 /// A contact is kept when its gap is at most what the pair can close in
 /// `h` at their current approach speed (the speculative margin), plus
@@ -64,7 +66,7 @@ pub fn broadphase_cell<S: Scalar>(p: &Particles<S>, h: S) -> S {
 /// points (radius 0) make none.
 pub fn find_contacts<S: Scalar>(
     p: &Particles<S>,
-    walls: &[Wall<S>],
+    statics: Statics<'_, S>,
     h: S,
     pairs: &mut Vec<(usize, usize)>,
     out: &mut Vec<Contact<S>>,
@@ -83,7 +85,7 @@ pub fn find_contacts<S: Scalar>(
             continue;
         }
         let v = p.vel().get(a).copied().unwrap_or(Vec2::ZERO);
-        for (i, wall) in walls.iter().enumerate() {
+        for (i, wall) in statics.walls.iter().enumerate() {
             let normal = -wall.normal();
             let gap = wall.distance(x) - r;
             // The wall doesn't move: v_n = n · (0 − v_a).
@@ -91,6 +93,22 @@ pub fn find_contacts<S: Scalar>(
                 out.push(Contact {
                     a: ParticleId(a),
                     b: Body::Wall(i),
+                    normal,
+                    gap,
+                });
+            }
+        }
+        for (i, seg) in statics.segments.iter().enumerate() {
+            let (dist, normal) = seg.toward(x);
+            let gap = dist - r;
+            // Static, as a wall: v_n = n · (0 − v_a). Swept too: a glancing
+            // approach closes faster than the start's normal shows.
+            if speculative(gap, -normal.dot(v), h, margin)
+                || segment_impact(*seg, x, v, r, h).is_some()
+            {
+                out.push(Contact {
+                    a: ParticleId(a),
+                    b: Body::Segment(i),
                     normal,
                     gap,
                 });
@@ -120,7 +138,9 @@ fn pair_contact<S: Scalar>(
         .length_and_direction()
         .unwrap_or((S::ZERO, UnitVec2::X));
     let gap = dist - reach;
-    speculative(gap, normal.dot(vb - va), h, margin).then_some(Contact {
+    let closes = speculative(gap, normal.dot(vb - va), h, margin)
+        || pair_impact(xb - xa, vb - va, reach, h).is_some();
+    closes.then_some(Contact {
         a: ParticleId(a),
         b: Body::Particle(ParticleId(b)),
         normal,
@@ -136,6 +156,56 @@ fn speculative<S: Scalar>(gap: S, v_n: S, h: S, margin: S) -> bool {
 
 fn max<S: Scalar>(a: S, b: S) -> S {
     if b > a { b } else { a }
+}
+
+/// When `|d + v t| = reach` first, for `t` in `[0, h]`: the unit `d + v t`
+/// and the gap `(n · −v) t`. `None` if they don't touch this substep.
+pub fn pair_impact<S: Scalar>(d: Vec2<S>, v: Vec2<S>, reach: S, h: S) -> Option<(UnitVec2<S>, S)> {
+    let two = S::ONE + S::ONE;
+    let qa = v.dot(v);
+    let qb = two * d.dot(v);
+    let qc = d.dot(d) - reach * reach;
+    let disc = qb * qb - two * two * qa * qc;
+    if qa == S::ZERO || disc < S::ZERO {
+        return None;
+    }
+    let t = (-qb - disc.sqrt()) / (two * qa);
+    if t < S::ZERO || t > h {
+        return None;
+    }
+    let (_, n) = (d + v * t).length_and_direction()?;
+    Some((n, -n.dot(v) * t))
+}
+
+/// Conservative advancement of a circle at `x`, velocity `v`, toward a
+/// segment: step to where the gap along the current normal would close,
+/// re-measure, a few times. `None` if it doesn't touch within `h`.
+pub fn segment_impact<S: Scalar>(
+    seg: Segment<S>,
+    x: Vec2<S>,
+    v: Vec2<S>,
+    r: S,
+    h: S,
+) -> Option<(UnitVec2<S>, S)> {
+    /// Steps of the advancement: each one lands within the curvature of
+    /// an end's corner of the true contact, and three are exact on a side
+    /// (one step) and well under a micrometre at a corner.
+    const ADVANCE_STEPS: usize = 3;
+    let mut t = S::ZERO;
+    let mut normal = None;
+    for _ in 0..ADVANCE_STEPS {
+        let (dist, n) = seg.toward(x + v * t);
+        let closing = n.dot(v);
+        if closing <= S::ZERO {
+            return None;
+        }
+        normal = Some(n);
+        t += (dist - r) / closing;
+        if t > h {
+            return None;
+        }
+    }
+    normal.map(|n| (n, n.dot(v) * t))
 }
 
 #[cfg(test)]
