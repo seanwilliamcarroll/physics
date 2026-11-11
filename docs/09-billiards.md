@@ -1,7 +1,10 @@
 # 09 — Billiards
 
-Status: **Draft** (M7.1). Depends on `08-collision.md` (contacts,
-speculative contacts, the impact stage). Decisions: TASKS.md, M7.
+Status: **Adopted** (M7.1; as built: segments and per-contact
+restitution M7.2, the cloth M7.3, the speculation switch and tunnel
+counter M7.4, pockets M7.5, the table and its scenes M7.6, the web layer
+M7.7, the page M7.8). Depends on `08-collision.md` (contacts,
+speculative contacts, the impact stage).
 
 M7 puts M6's contacts on a pool table: cushions, a cloth that makes a
 ball slide and then roll, pockets, and a cue. The physics that's new is
