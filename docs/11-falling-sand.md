@@ -142,6 +142,24 @@ with; only awake chunks need it, if the cost shows.
   1280-px page); a stress case up to 1920 × 1080 (2M). Measured before
   choosing.
 
+## As built (M9.2, `crates/sand`, `tests/automaton.rs`)
+
+- **Conservation:** every material's count constant at every step over
+  2,000 steps of random 80 × 60 grids (30% sand, 30% water, 10% stone).
+- **Bottom-up:** a column of 10 grains in the air falls exactly one row
+  a step, keeping its shape; water moves at most `DISPERSION` (3) a step.
+- **No bias:** 3,000 grains poured at the centre, a grain a step, settle
+  (a step with no moves) about 80 steps after the pour; the left-right
+  imbalance is at most 0.60% of the mass and the centre of mass within
+  0.075 cells of the pour, over four grids (bounds ~5×).
+- **Levels:** 400 water cells poured at one wall of a 60-wide box end
+  6–7 deep in every column (the mean 6.67).
+- **Density:** sand sinks to the bottom of a water column; water on sand
+  stays on top. Stone never moves.
+- **Golden** for a scripted scene (two spouts, a shelf, 600 steps), the
+  same on wasm32 (`cargo xtask test-wasm` now runs `sand`'s tests).
+- The randomness is fair: the side bit over a 200 × 200 patch is 0.5013.
+
 ## Alternatives considered
 
 - **Margolus neighbourhoods** (Toffoli & Margolus 1987): the grid in 2 × 2

@@ -1,0 +1,18 @@
+[package]
+name = "sand"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "A falling-sand cellular automaton (docs/11-falling-sand.md)."
+
+[dependencies]
+math = { path = "../math" }
+
+[dev-dependencies]
+proptest.workspace = true
+test-support = { path = "../test-support" }
+
+[lints]
+workspace = true

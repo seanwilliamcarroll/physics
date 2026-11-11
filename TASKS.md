@@ -224,14 +224,14 @@ full), 32 × 32 chunks that wake their neighbours and are exact, not an
 approximation; Margolus blocks weighed and set aside. Sources: Noita's
 GDC 2019 talk via 80.lv's write-up; Toffoli & Margolus 1987 (Crossref).
 
-## 2. The automaton (PR)
+## ✅ 2. The automaton (PR)
 
-- [ ] `sand` crate: the grid, materials (empty, sand, water, stone), the
-      rules, bottom-up alternating scans, the parity flag, the seeded RNG.
-- [ ] Tests: every material's count conserved over a long random run; no
-      cell updated twice in a step (instrumented); sand poured at the
-      centre piles symmetrically (left/right mass within a measured
-      band); water levels flat in a U-tube; goldens, native and wasm.
+`sand`: the grid (a byte a cell), empty / sand / water / stone, swaps
+only, bottom-up scans alternating per row and step, the moved-here
+bitset, draws keyed by position. Measured: conservation over 2,000
+random steps; a falling column one row a step; a centred pour within
+0.6% of symmetric; water level within a cell; a golden, same on wasm.
+`sand` in `test-wasm` and `xtask api`.
 
 ## 3. Dirty chunks and cost (PR)
 

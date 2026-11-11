@@ -1,0 +1,25 @@
+pub mod sand
+#[repr(u8)] pub enum sand::Material
+pub sand::Material::Empty = 0
+pub sand::Material::Sand = 1
+pub sand::Material::Stone = 3
+pub sand::Material::Water = 2
+impl sand::Material
+pub const sand::Material::ALL: [Self; 4]
+pub const fn sand::Material::code(self) -> u8
+pub const fn sand::Material::from_code(u8) -> core::option::Option<Self>
+pub struct sand::Grid
+impl sand::Grid
+pub fn sand::Grid::cells(&self) -> &[u8]
+pub fn sand::Grid::count(&self, sand::Material) -> usize
+pub fn sand::Grid::get(&self, usize, usize) -> core::option::Option<sand::Material>
+pub const fn sand::Grid::height(&self) -> usize
+pub fn sand::Grid::new(usize, usize, u64) -> core::option::Option<Self>
+pub fn sand::Grid::set(&mut self, usize, usize, sand::Material) -> bool
+pub fn sand::Grid::shade_at(&self, usize, usize) -> core::option::Option<u8>
+pub const fn sand::Grid::steps(&self) -> u64
+pub const fn sand::Grid::width(&self) -> usize
+impl sand::Grid
+pub fn sand::Grid::step(&mut self) -> usize
+pub const sand::DISPERSION: usize
+pub const sand::MAX_CELLS: usize
