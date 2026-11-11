@@ -1,14 +1,21 @@
-# TASKS — between milestones
+# TASKS — M9: Falling sand
 
-M7 is done. Next, by `docs/05-roadmap.md`: M8 (fixed point), M9 (falling
-sand, a cellular automaton), M10 (sand: CA against DEM, with contact
-friction moved from M7), A4 (the finite-difference drum), C1 (PID), or
-S1 (boids, `05-roadmap.md`, "Swarm track"); or a health item below (a
-step budget for slow pages, `docs/workers.md`; CI back on). Your call.
+Source: `docs/05-roadmap.md` (M9; M10 builds on it), `docs/workers.md`
+(the step budget), the swarm notes (`05-roadmap.md`, "Swarm track": the
+pixel-buffer renderer and the counting-sort grid are shared ideas).
+
+**Goal:** a cellular automaton, not a solver: millions of cells, piles
+that emerge from local rules, materials that interact. A memory and cache
+problem: what's measured is cells per second, and what's tested is
+conservation and the absence of scan-order bias.
+
+**Done when:** a full-screen grid runs at 60 Hz while you paint into it,
+sand piles symmetrically, water levels, and the tests show no material
+created or lost and no left/right bias.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`m7/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`m9/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -156,6 +163,99 @@ Contact friction moved to M10.
 
 ---
 
+## Decisions to review before starting
+
+1. **Its own crates and module**, as the acoustic track did: `sand` (the
+   automaton: grid, materials, rules; no web code) and `sand-web` (a
+   `cdylib`, `sand.wasm`, behind a hand-written C ABI, checked by the
+   `.d.ts` check like the others). Nothing from the engine's solvers is
+   needed, and keeping it out keeps `engine.wasm` unchanged.
+2. **Integers only.** Cells are a material per byte (`u8` enum),
+   row-major, one `Vec<u8>`; no `Scalar`, no floats in the rules. So
+   results are bit-identical everywhere by construction, and goldens are
+   cheap. Velocity-free classic rules (Noita-style automata): sand falls,
+   else slides diagonally; water falls, else diagonally, else sideways.
+3. **Materials:** empty, sand, water, stone (static), in the core
+   sections; lava (with water: stone and steam; steam rises and
+   condenses) as its own section, since reactions break plain
+   conservation and need their own accounting.
+4. **Update order: bottom-up, alternating direction, with an "updated"
+   flag.** Scanning bottom-up means a falling cell isn't met again in the
+   same step; alternating left-to-right and right-to-left each step
+   removes the systematic drift a fixed direction gives piles; a per-cell
+   flag (a parity bit in the byte, flipped each step, so it never needs
+   clearing) stops a cell moved sideways from being updated twice.
+5. **Randomness is seeded:** a falling grain choosing between its two
+   diagonals uses `math`'s `SplitMix64`, seeded per grid, so runs repeat
+   exactly. The bias test checks the choice is fair.
+6. **Dirty chunks:** the grid in 32 × 32 chunks, each with an "awake"
+   flag; a step updates only awake chunks, and any change wakes the
+   chunk and its neighbours. A settled pile costs nothing. Tested to give
+   **bit-identical** results to updating everything (it's an
+   optimization, not a model change), and measured: cells per second
+   with and without, native and wasm.
+7. **Grid size:** fixed at creation; the page's default is full width at
+   2 px per cell (on a 1280 px wide page about 640 × 360, 230k cells),
+   up to 1920 × 1080 cells (2M, the roadmap's "millions") as a stress
+   case. Measured cost decides the default.
+8. **Rendering: an RGBA buffer in wasm memory**, one `u32` per cell from a
+   colour per material (with a little per-cell shade so sand reads as
+   grains), blitted with `putImageData` onto a canvas scaled by CSS
+   (`image-rendering: pixelated`). `site/js/pixels.ts`, shared later with
+   A4's height map and the swarm track's trail maps.
+9. **Stepping: a fixed rate, the step budget included.** `FixedStep`
+   moves from `web` into `math` (as `math::fixed_step`) so both modules
+   share it, cap and all (#156); the sand page runs at 60 steps per
+   simulated second and slows down rather than freezing on a huge grid.
+10. **Painting:** a brush (radius, material, including "erase") applied by
+    an export between steps; painting into a cell wakes its chunk.
+
+## 1. `docs/11-falling-sand.md` (PR)
+
+- [ ] The rules per material, the scan order and why (with the bias it
+      removes), the flag, the chunks, the RNG, conservation and its
+      exceptions, the renderer, costs to measure. Prior art read and
+      cited (Noita's GDC 2019 talk; *Falling Everything* write-ups), as
+      references, Crossref where they have DOIs.
+
+## 2. The automaton (PR)
+
+- [ ] `sand` crate: the grid, materials (empty, sand, water, stone), the
+      rules, bottom-up alternating scans, the parity flag, the seeded RNG.
+- [ ] Tests: every material's count conserved over a long random run; no
+      cell updated twice in a step (instrumented); sand poured at the
+      centre piles symmetrically (left/right mass within a measured
+      band); water levels flat in a U-tube; goldens, native and wasm.
+
+## 3. Dirty chunks and cost (PR)
+
+- [ ] Chunks with awake flags; bit-identical to the full update (a
+      property test over random grids and paint); cells per second,
+      native and wasm, settled and busy, with and without chunks.
+
+## 4. Lava and reactions (PR)
+
+- [ ] Lava (flows slowly), lava + water → stone + steam, steam rises and
+      condenses back to water. Tests: the reactions' accounting (what's
+      made equals what's consumed), the rest still conserved.
+
+## 5. Web layer (PR)
+
+- [ ] `math::fixed_step` (moved from `web`, the cap with it); `sand-web`:
+      create, step, paint, the RGBA buffer, counts per material; the
+      `.d.ts` check and the call-sequence property test cover it.
+
+## 6. The page (PR)
+
+- [ ] `m9-falling-sand`: `pixels.ts`, the brush (material, radius,
+      erase), presets (an hourglass, a dam, lava into water), cells per
+      second in the HUD; smoke; gallery.
+- [ ] Your check against **Done when**.
+
+## 7. Cleanup (PR)
+
+---
+
 ## Health audit (after A3)
 
 Software-engineering health, not physics (PRs #122 on). Open:
@@ -170,6 +270,14 @@ Software-engineering health, not physics (PRs #122 on). Open:
   for dev builds). Is the time in `libm`'s transcendentals, the
   refinement's iterations, or something that could be designed lazily
   per key, or once and shared?
+
+## Out of scope for M9
+
+- Per-cell velocity and momentum (cells move by rules, not forces);
+  frictional, particle-based sand is M10's DEM panel.
+- Temperature and pressure fields, fire, gases beyond steam.
+- Threads or the GPU (`docs/workers.md`; the swarm track's S4 decides
+  WebGPU).
 
 ## Out of scope for M7 (carried forward)
 
