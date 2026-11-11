@@ -11,3 +11,4 @@ mod rules;
 
 pub use flock::{Boid, Flock, MAX_BOIDS, Neighbours};
 pub use params::{Arena, Params};
+pub use rules::{FLEE, PREDATOR_RANGE};

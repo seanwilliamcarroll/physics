@@ -1,4 +1,4 @@
-use super::{clamp_speed, steer};
+use super::{FLEE, PREDATOR_RANGE, clamp_speed, steer};
 use crate::{Arena, Boid, Params};
 
 const P: Params = Params::ECE4760;
@@ -22,13 +22,13 @@ const ME: Boid = Boid {
 #[test]
 fn alone_a_boid_flies_straight() {
     assert_eq!(
-        steer(&P, arena(), ME, core::iter::empty()),
+        steer(&P, arena(), None, ME, core::iter::empty()),
         boid(504.0, 500.0, 4.0, 0.0)
     );
     // Out of range (each axis, then the distance) is the same as alone.
     let far = [boid(540.0, 500.0, 0.0, 6.0), boid(530.0, 530.0, 0.0, 6.0)];
     assert_eq!(
-        steer(&P, arena(), ME, far.into_iter()),
+        steer(&P, arena(), None, ME, far.into_iter()),
         boid(504.0, 500.0, 4.0, 0.0)
     );
 }
@@ -37,7 +37,7 @@ fn alone_a_boid_flies_straight() {
 fn a_neighbour_in_range_pulls_and_aligns() {
     // At (520, 500), moving (0, 4): 20 away, outside protected (8).
     let other = boid(520.0, 500.0, 0.0, 4.0);
-    let b = steer(&P, arena(), ME, core::iter::once(other));
+    let b = steer(&P, arena(), None, ME, core::iter::once(other));
     // v += (520 − 500)·0.0005 + (0 − 4)·0.05 in x; (4 − 0)·0.05 in y.
     let (vx, vy) = (4.0 + 20.0 * 0.0005 - 4.0 * 0.05, 4.0 * 0.05);
     assert!(
@@ -56,7 +56,7 @@ fn a_crowding_neighbour_only_repels() {
     // 5 away (inside protected 8), moving fast across: no alignment, no
     // cohesion, just the push away: (500 − 505)·0.05 = −0.25 in x.
     let other = boid(505.0, 500.0, 0.0, 6.0);
-    let b = steer(&P, arena(), ME, core::iter::once(other));
+    let b = steer(&P, arena(), None, ME, core::iter::once(other));
     assert!((b.vx - 3.75).abs() < 1e-6 && b.vy == 0.0, "{b:?}");
 }
 
@@ -67,6 +67,7 @@ fn past_the_margin_a_boid_turns_back() {
     let b = steer(
         &P,
         arena(),
+        None,
         boid(50.0, 950.0, -4.0, 0.0),
         core::iter::empty(),
     );
@@ -77,6 +78,7 @@ fn past_the_margin_a_boid_turns_back() {
     let b = steer(
         &P,
         arena(),
+        None,
         boid(950.0, 50.0, 4.0, 0.0),
         core::iter::empty(),
     );
@@ -102,4 +104,21 @@ fn at_zero_speed_the_old_heading_is_kept() {
     assert_eq!(clamp_speed(&P, (0.0, 0.0), (0.0, -5.0)), (0.0, -3.0));
     // Never the case after a step (speeds start in the band), but defined.
     assert_eq!(clamp_speed(&P, (0.0, 0.0), (0.0, 0.0)), (3.0, 0.0));
+}
+
+#[test]
+fn a_boid_flees_a_predator_in_range_only() {
+    // Predator 50 behind (−x): steer toward +x at top speed, by FLEE.
+    let b = steer(&P, arena(), Some((450.0, 500.0)), ME, core::iter::empty());
+    let vx = 4.0 + (6.0 - 4.0) * FLEE;
+    assert!((b.vx - vx).abs() < 1e-6 && b.vy == 0.0, "{b:?}");
+    // Beside it (+y): pushed −y.
+    let b = steer(&P, arena(), Some((500.0, 550.0)), ME, core::iter::empty());
+    assert!(b.vy < 0.0, "{b:?}");
+    // Out of range: unaffected.
+    let far = Some((500.0 - PREDATOR_RANGE - 1.0, 500.0));
+    assert_eq!(
+        steer(&P, arena(), far, ME, core::iter::empty()),
+        boid(504.0, 500.0, 4.0, 0.0)
+    );
 }

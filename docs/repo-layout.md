@@ -75,6 +75,7 @@ physics/
 │   ├── sand/               # M9: the falling-sand automaton (grid, rules; integers only)
 │   ├── sand-web/           # cdylib → sand.wasm (the sand page's C ABI, on web-common)
 │   ├── swarm/              # S1: boids (double-buffered SoA, f32; the counting-sort grid)
+│   ├── swarm-web/          # cdylib → swarm.wasm (simd128; the boids page's C ABI)
 │   └── acoustic/           # A1+
 │
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)
@@ -92,6 +93,8 @@ physics/
     │   ├── sand-abi.ts     # M9: material codes, caps (mirrors sand-web abi.rs)
     │   ├── sand.d.ts       # M9: types for sand.wasm's exports
     │   ├── sand-scenes.ts  # M9: the starting scenes, drawn with the brush (pure)
+    │   ├── swarm-abi.ts    # S1: neighbour and parameter codes, caps (mirrors swarm-web abi.rs)
+    │   ├── swarm.d.ts      # S1: types for swarm.wasm's exports
     │   ├── pixels.ts       # RGBA buffer → ImageData → canvas; CSS point → cell; strokes
     │   ├── loop.ts         # rAF loop → demo_advance
     │   ├── canvas.ts       # world↔screen, high-DPI, batched drawing (points, links, disks, grid)
@@ -127,7 +130,7 @@ physics/
     │   ├── a1-string/
     │   ├── a2-waveguide/
     │   └── a3-piano/
-    └── pkg/                # build output (gitignored): engine.wasm, acoustic.wasm, sand.wasm
+    └── pkg/                # build output (gitignored): engine.wasm, acoustic.wasm, sand.wasm, swarm.wasm
 ```
 
 ## Decisions

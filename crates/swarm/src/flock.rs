@@ -16,7 +16,8 @@ pub const MAX_BOIDS: usize = 1 << 18;
 /// in a different order, so trajectories agree only to rounding.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Neighbours {
-    /// Every other boid: n(n − 1) checks a step. The reference.
+    /// Every boid: n² checks a step, through the lane loop. The
+    /// reference for which boids are neighbours.
     Brute,
     /// A cell list by counting sort: the 3 × 3 cells around each boid.
     Grid,
@@ -109,6 +110,8 @@ pub struct Flock {
     steps: u64,
     neighbours: Neighbours,
     grid: Grid,
+    /// Where the predator is, if anywhere (the page's pointer).
+    predator: Option<(f32, f32)>,
 }
 
 impl Flock {
@@ -180,6 +183,7 @@ impl Flock {
             steps: 0,
             neighbours: Neighbours::Sorted,
             grid: Grid::default(),
+            predator: None,
         })
     }
 
@@ -188,13 +192,19 @@ impl Flock {
     /// says ([`Neighbours::Sorted`] by default: the fastest, measured).
     pub fn step(&mut self) {
         let n = self.cur.len();
-        let (cur, p, arena) = (&self.cur, &self.params, self.arena);
+        let (cur, p, arena, predator) = (&self.cur, &self.params, self.arena, self.predator);
         match self.neighbours {
             Neighbours::Brute => {
+                // Every boid is a candidate: the whole arrays are one run,
+                // read by the lane loop (the boid itself, at distance 0,
+                // adds nothing). The scalar loop this replaced ran 20×
+                // slower in wasm with simd128 (docs/15-swarm.md, S1.5).
+                let ranges = Ranges::of(p);
                 for i in 0..n {
                     let Some(me) = cur.get(i) else { continue };
-                    let others = (0..n).filter(|&j| j != i).filter_map(|j| cur.get(j));
-                    self.next.set(i, steer(p, arena, me, others));
+                    let mut seen = Seen::default();
+                    seen.add_span(ranges, me, &cur.x, &cur.y, &cur.vx, &cur.vy);
+                    self.next.set(i, finish(p, arena, predator, me, &seen));
                 }
             }
             Neighbours::Grid => {
@@ -212,7 +222,7 @@ impl Flock {
                         .around(me.x, me.y)
                         .filter(|&j| j != i)
                         .filter_map(|j| cur.get(j));
-                    self.next.set(i, steer(p, arena, me, others));
+                    self.next.set(i, steer(p, arena, predator, me, others));
                 }
             }
             Neighbours::Sorted => {
@@ -243,12 +253,28 @@ impl Flock {
                         );
                         seen.add_span(ranges, me, x, y, vx, vy);
                     }
-                    self.next.set(i, finish(p, arena, me, &seen));
+                    self.next.set(i, finish(p, arena, predator, me, &seen));
                 }
             }
         }
         core::mem::swap(&mut self.cur, &mut self.next);
         self.steps += 1;
+    }
+
+    /// Puts the predator at `(x, y)` (pixels), or removes it (`None`);
+    /// boids within [`PREDATOR_RANGE`](crate::PREDATOR_RANGE) flee it.
+    /// `false` (nothing changed) for a non-finite point.
+    pub fn set_predator(&mut self, at: Option<(f32, f32)>) -> bool {
+        if at.is_some_and(|(x, y)| !x.is_finite() || !y.is_finite()) {
+            return false;
+        }
+        self.predator = at;
+        true
+    }
+
+    #[must_use]
+    pub const fn predator(&self) -> Option<(f32, f32)> {
+        self.predator
     }
 
     /// How neighbours are found, from the next step.

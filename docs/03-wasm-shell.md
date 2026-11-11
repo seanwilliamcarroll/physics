@@ -178,7 +178,8 @@ not taken.
 The acoustic track ships its own module, `acoustic.wasm`
 (`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`. M9's
 falling sand ships `sand.wasm` (`crates/sand-web`, 37.6 KB): sizes in
-`11-falling-sand.md`.
+`11-falling-sand.md`. The swarm track's `swarm.wasm` (`crates/swarm-web`,
+48.5 KB) is the one module built with `simd128` (`15-swarm.md`, S1.4–5).
 
 ### The render buffer
 

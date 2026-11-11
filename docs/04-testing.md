@@ -253,7 +253,7 @@ count behind an env var for CI or overnight runs. Commit
 
 **At the wasm boundary (health audit, after A3):** every wasm crate has
 a stateful property test over random sequences of its C exports
-(`engine-web`'s, `acoustic-web`'s and, since M9, `sand-web`'s
+(`engine-web`'s, `acoustic-web`'s, `sand-web`'s and `swarm-web`'s
 `exports/tests/sequences.rs`; the sand one checks every material's count
 sums to the grid after every call), with
 hostile values (NaN, ±∞, ±0, `f64::MAX`, unknown codes, `u32::MAX`, sizes

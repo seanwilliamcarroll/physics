@@ -10,6 +10,7 @@ use crate::{Arena, Boid, Params};
 pub(crate) fn steer(
     p: &Params,
     arena: Arena,
+    predator: Option<(f32, f32)>,
     me: Boid,
     others: impl Iterator<Item = Boid>,
 ) -> Boid {
@@ -18,7 +19,7 @@ pub(crate) fn steer(
     for o in others {
         seen.add(ranges, me, o);
     }
-    finish(p, arena, me, &seen)
+    finish(p, arena, predator, me, &seen)
 }
 
 /// The squared ranges every candidate is checked against.
@@ -173,9 +174,22 @@ impl Lanes {
     }
 }
 
+/// How close the predator must be to be fled, pixels (our choice: a
+/// little over twice the visual range, so a flock parts ahead of it).
+pub const PREDATOR_RANGE: f32 = 100.0;
+/// How hard a boid flees: the fraction of the way to "away at top speed"
+/// it steers each step (Reynolds 1999's flee, as a gain; our choice).
+pub const FLEE: f32 = 0.1;
+
 /// The rest of the update, from what `me` saw: cohesion and alignment,
-/// separation, edge turning, the clamp, the move.
-pub(crate) fn finish(p: &Params, arena: Arena, me: Boid, seen: &Seen) -> Boid {
+/// separation, fleeing the predator, edge turning, the clamp, the move.
+pub(crate) fn finish(
+    p: &Params,
+    arena: Arena,
+    predator: Option<(f32, f32)>,
+    me: Boid,
+    seen: &Seen,
+) -> Boid {
     let (mut vx, mut vy) = (me.vx, me.vy);
     if seen.count > 0.0 {
         let n = seen.count;
@@ -184,6 +198,15 @@ pub(crate) fn finish(p: &Params, arena: Arena, me: Boid, seen: &Seen) -> Boid {
     }
     vx += seen.close_dx * p.avoid;
     vy += seen.close_dy * p.avoid;
+    // Flee (Reynolds 1999): steer toward "directly away at top speed".
+    if let Some((px, py)) = predator {
+        let (dx, dy) = (me.x - px, me.y - py);
+        let d = (dx * dx + dy * dy).sqrt();
+        if d < PREDATOR_RANGE && d > 0.0 {
+            vx += (dx / d * p.max_speed - vx) * FLEE;
+            vy += (dy / d * p.max_speed - vy) * FLEE;
+        }
+    }
     // Edge turning: past the margin from a side, pushed back inside.
     if me.x < p.margin {
         vx += p.turn;

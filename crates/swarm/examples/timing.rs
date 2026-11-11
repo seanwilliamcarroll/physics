@@ -13,7 +13,8 @@ use swarm::{Arena, Flock, Neighbours, Params};
 
 fn main() {
     for (how, sizes) in [
-        (Neighbours::Grid, &[1_000_usize, 10_000][..]),
+        (Neighbours::Brute, &[2_000_usize][..]),
+        (Neighbours::Grid, &[1_000, 10_000][..]),
         (Neighbours::Sorted, &[1_000, 10_000, 100_000][..]),
     ] {
         for &n in sizes {
