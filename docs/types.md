@@ -120,6 +120,18 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`SliderSpec`, `SelectSpec`, …](../site/js/controls.ts) | Control builders that know nothing of the engine; pages wire them to `demo_set_*`. |
 | [`SmokePanel`](../site/js/smoke.ts) | What `?smoke` mode checks per panel (steps taken, pixels drawn, finite energy). |
 
+## `sand` — the falling-sand automaton (M9)
+
+| Type | Why it exists |
+|---|---|
+| [`Grid`](../crates/sand/src/grid.rs) | The automaton: a byte a cell, row-major, row 0 at the top; `step` updates in place and returns the moves (0: settled). Sizes checked once (`MAX_CELLS`); outside is solid. |
+| [`Material`](../crates/sand/src/material.rs) | The six materials as a `repr(u8)` enum whose codes are the cell's low 3 bits and the wire codes; `from_code` refuses the rest. `unpack` splits a byte into material and shade, for renderers. |
+| [`Chunks`](../crates/sand/src/grid.rs) (crate-private) | Awake flags per 32 × 32 chunk, `now` and `next`, so a settled region costs nothing; exact (a property test: bit-identical to updating every cell). |
+| [`Purpose`](../crates/sand/src/random.rs) (crate-private) | What a random draw is for, mixed into the `(seed, step, x, y)` key, so two draws at one cell in one step are independent. |
+| [`SandDemo`](../crates/sand-web/src/demo.rs) | A grid, its `FixedStep` clock, the RGBA buffer (rendered through a 256-entry palette) and the brush, behind the `sand_*` C ABI; safe and natively tested. |
+| [`SandExports`, `SandHandle`](../site/js/sand.d.ts) | Types for `sand.wasm`'s exports; the handle is branded, like `DemoHandle`. |
+| [`Paint`, `SCENES`](../site/js/sand-scenes.ts) | The page's scenes as functions of the grid's size that only call the brush: no scene code in Rust, and unit-testable against an array. |
+
 ## `acoustic` — the plucked string (A1)
 
 | Type | Why it exists |

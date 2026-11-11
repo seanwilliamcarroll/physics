@@ -161,114 +161,22 @@ sensors; `retire`/`reinstate`. The WPA table, rack and break (settles by
 `engine.wasm` +47.1 KB.
 Contact friction moved to M10.
 
----
+## ✅ M9: Falling sand (done, PRs #167–#173)
 
-## Decisions to review before starting
-
-1. **Its own crates and module**, as the acoustic track did: `sand` (the
-   automaton: grid, materials, rules; no web code) and `sand-web` (a
-   `cdylib`, `sand.wasm`, behind a hand-written C ABI, checked by the
-   `.d.ts` check like the others). Nothing from the engine's solvers is
-   needed, and keeping it out keeps `engine.wasm` unchanged.
-2. **Integers only.** Cells are a material per byte (`u8` enum),
-   row-major, one `Vec<u8>`; no `Scalar`, no floats in the rules. So
-   results are bit-identical everywhere by construction, and goldens are
-   cheap. Velocity-free classic rules (Noita-style automata): sand falls,
-   else slides diagonally; water falls, else diagonally, else sideways.
-3. **Materials:** empty, sand, water, stone (static), in the core
-   sections; lava (with water: stone and steam; steam rises and
-   condenses) as its own section, since reactions break plain
-   conservation and need their own accounting.
-4. **Update order: bottom-up, alternating direction, with a moved-here
-   mark.** Scanning bottom-up means a falling cell isn't met again in the
-   same step; alternating direction each row and each step removes the
-   drift a fixed direction gives piles. **Changed at the design doc:** the
-   mark is a separate bitset (set where something moves to, cleared each
-   step), not a parity bit in the byte, which goes stale in sleeping
-   chunks (`11-falling-sand.md`).
-5. **Randomness is seeded, by position:** the diagonal and dispersion
-   choices hash `(seed, step, x, y)` with `SplitMix64`'s mixer.
-   **Changed at the design doc:** not a stream, which would make chunked
-   and full updates diverge (a skipped chunk shifts every later draw).
-   The bias test checks the choice is fair.
-6. **Dirty chunks:** the grid in 32 × 32 chunks, each with an "awake"
-   flag; a step updates only awake chunks, and any change wakes the
-   chunk and its neighbours. A settled pile costs nothing. Tested to give
-   **bit-identical** results to updating everything (it's an
-   optimization, not a model change), and measured: cells per second
-   with and without, native and wasm.
-7. **Grid size:** fixed at creation; the page's default is full width at
-   2 px per cell (on a 1280 px wide page about 640 × 360, 230k cells),
-   up to 1920 × 1080 cells (2M, the roadmap's "millions") as a stress
-   case. Measured cost decides the default.
-8. **Rendering: an RGBA buffer in wasm memory**, one `u32` per cell from a
-   colour per material (with a little per-cell shade so sand reads as
-   grains), blitted with `putImageData` onto a canvas scaled by CSS
-   (`image-rendering: pixelated`). `site/js/pixels.ts`, shared later with
-   A4's height map and the swarm track's trail maps.
-9. **Stepping: a fixed rate, the step budget included.** `FixedStep`
-   lives in `web-common` (moved there from `web` with the panic hook,
-   after the API audit: pacing isn't `math`), so `sand-web` shares it, cap
-   and all (#156); the sand page runs at 60 steps per simulated second and
-   slows down rather than freezing on a huge grid.
-10. **Painting:** a brush (radius, material, including "erase") applied by
-    an export between steps; painting into a cell wakes its chunk.
-
-## ✅ 1. `docs/11-falling-sand.md` (PR)
-
-The byte (3-bit material, 4-bit shade), the rules (swaps only, so
-movement conserves), bottom-up scans alternating per row and step, a
-moved-here bitset (the parity bit goes stale in sleeping chunks), random
-choices keyed by `(seed, step, x, y)` (a stream would break chunked =
-full), 32 × 32 chunks that wake their neighbours and are exact, not an
-approximation; Margolus blocks weighed and set aside. Sources: Noita's
-GDC 2019 talk via 80.lv's write-up; Toffoli & Margolus 1987 (Crossref).
-
-## ✅ 2. The automaton (PR)
-
-`sand`: the grid (a byte a cell), empty / sand / water / stone, swaps
-only, bottom-up scans alternating per row and step, the moved-here
-bitset, draws keyed by position. Measured: conservation over 2,000
-random steps; a falling column one row a step; a centred pour within
-0.6% of symmetric; water level within a cell; a golden, same on wasm.
-`sand` in `test-wasm` and `xtask api`.
-
-## ✅ 3. Dirty chunks and cost (PR)
-
-32 × 32 chunks; a move wakes its neighbours for this step and the next
-(this step too: found writing it). Bit-identical to the full update (a
-property test, 500 cases); skipped a chunk at a time. Native: busy 640 ×
-360 1.32 ms a step, settled 3.2 µs with chunks (569 µs without); 1920 ×
-1080 busy 12.5 ms. Wasm measured in the page.
-
-## ✅ 4. Lava and reactions (PR)
-
-Lava (flows one step in two, a cell sideways), lava + water → stone +
-steam, steam rises through water and condenses (1 in 64 a step,
-blocked). Accounts kept at every step: sand; water + steam; lava +
-stone. Cells that can still change by chance keep their chunk awake, so
-chunks stay exact (500 cases with every material). A lava golden, same
-on wasm.
-
-## ✅ 5. Web layer (PR)
-
-`sand-web` → `sand.wasm` (37.6 KB) on `web-common`: create (sides ≤
-2048), advance with the step cap, rate, chunks on/off, a disc brush,
-the RGBA buffer, counts, last moves, awake chunks. `sand-abi.ts`
-mirrored and tested, `sand.d.ts` checked, a call-sequence property test.
-xtask builds it; pre-commit lints it as wasm32.
-
-## 6. The page (PR)
-
-- [x] `m9-falling-sand`: `pixels.ts`, the brush (material, radius,
-      erase, held pours, gap-free strokes), scenes drawn with the brush
-      (hourglass, dam, lava into water, empty), steps, cells per second,
-      awake chunks and counts in the HUD; three smoke cases (accounts
-      checked); gallery. Wasm measured: busy 640 × 360 1.84 ms (125 M
-      cells/s), 1920 × 1080 17.1 ms; render 8.6 → 0.47 ms with a palette.
-- [ ] Your check against **Done when**.
-
-## 7. Cleanup (PR)
+`docs/11-falling-sand.md`. A new `sand` crate: a byte a cell (3-bit
+material, 4-bit shade), rules that only swap, bottom-up scans
+alternating per row and step, a **moved-here bitset** (the planned parity
+bit goes stale in sleeping chunks), random choices **keyed by `(seed,
+step, x, y)`** (a stream would break chunked = full). Conservation every
+step; a centred pour within 0.6% of symmetric; water level within a
+cell; goldens, same on wasm. **32 × 32 chunks**, bit-identical to the
+full update (a property test; a move must wake neighbours for this step
+too, found writing it); settled grids cost ~175× less. Lava and steam
+with their own accounting (sand; water + steam; lava + stone).
+`sand.wasm` (37.6 KB, on `web-common`), and the `m9-falling-sand` page:
+a brush, scenes drawn with it, cells/s in the HUD (your check: "looks
+good"). Wasm busy 640 × 360: 1.84 ms a step (125 M cells/s); render 8.6
+→ 0.47 ms at 1920 × 1080 with a palette.
 
 ---
 
@@ -302,7 +210,7 @@ mutation run (#144). Open:
 
 ---
 
-## Out of scope for M9
+## Out of scope for M9 (carried forward)
 
 - Per-cell velocity and momentum (cells move by rules, not forces);
   frictional, particle-based sand is M10's DEM panel.
