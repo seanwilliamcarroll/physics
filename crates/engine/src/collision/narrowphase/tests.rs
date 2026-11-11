@@ -1,4 +1,4 @@
-use super::{Body, Contact, find_contacts};
+use super::{Body, CONTACT_MARGIN, Contact, broadphase_cell, find_contacts};
 use crate::params::kg;
 use crate::{ParticleId, Particles, Radius, UnitVec2, Vec2, Wall};
 
@@ -126,4 +126,43 @@ fn resting_neighbors_within_the_margin_are_contacts() {
     // Two millimeters: not.
     let far = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.202, 0.0), (0.0, 0.0))]);
     assert_eq!(contacts(&far, &[]).len(), 0);
+}
+
+#[test]
+fn the_cell_is_both_diameters_plus_the_fastest_travel_plus_the_margin() {
+    // Found by mutation testing (M6, on the node): a larger cell only
+    // costs time, so the superset tests let any bigger formula through.
+    // `broadphase_cell` is public (the M6 page draws it), so pin it.
+    let mut p = Particles::<f64>::new();
+    p.add_circle(
+        Vec2::ZERO,
+        Vec2::new(3.0, 0.0),
+        kg(1.0),
+        Radius::new(0.1).unwrap(),
+    );
+    p.add_circle(
+        Vec2::ZERO,
+        Vec2::new(0.0, 4.0),
+        kg(1.0),
+        Radius::new(0.05).unwrap(),
+    );
+    // A point's speed doesn't count: points never pair.
+    p.add(Vec2::ZERO, Vec2::new(100.0, 0.0), kg(1.0));
+    let want = 2.0 * 0.1 + 2.0 * 4.0 * H + CONTACT_MARGIN;
+    assert!(
+        (broadphase_cell(&p, H) - want).abs() < 1e-15,
+        "{}",
+        broadphase_cell(&p, H)
+    );
+}
+
+#[test]
+fn points_and_pins_make_no_wall_contacts() {
+    // Found by mutation testing: only circles that can move touch walls.
+    let floor = Wall::through(Vec2::ZERO, UnitVec2::Y);
+    let mut p = Particles::<f64>::new();
+    // A moving point and a pin, both on the floor and heading into it.
+    p.add(Vec2::new(0.0, 0.0), Vec2::new(0.0, -1.0), kg(1.0));
+    p.add_static(Vec2::new(1.0, 0.0));
+    assert_eq!(contacts(&p, &[floor]).len(), 0);
 }
