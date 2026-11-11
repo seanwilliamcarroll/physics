@@ -281,10 +281,9 @@ ticks, the hammer's force); cleanup. Treble hammer gap below.
 Software-engineering health, not physics (PRs #122 on). Open:
 
 - **Mutation, still to do:** `test-support` and `xtask` under
-  `--test-workspace=true` (their misses are mostly artifacts); M6's
-  `collision/narrowphase.rs`, `contact_solve.rs` and `impacts.rs`, now
-  that M6 is done (on the compute node, before M7's section 2 changes
-  them).
+  `--test-workspace=true` (their misses are mostly artifacts). M6's
+  collision files: done (16 missed of 164; 8 real gaps fixed, the rest
+  equivalent, listed in the commit).
 - **TODO: why the piano model is slow in debug builds.** Selecting it
   designs 88 keys' dispersion filters: 1.8 s unoptimized at 48 kHz,
   0.2 s with `acoustic`, `libm` and `math` at `opt-level = 3` (now set
