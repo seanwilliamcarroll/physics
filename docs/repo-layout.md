@@ -64,9 +64,10 @@ physics/
 │   │
 │   ├── web/                # cdylib → engine.wasm
 │   │   └── src/
-│   │       ├── lib.rs      # extern "C" exports only, one line each
-│   │       ├── demo.rs     # Demo, AnyWorld, accumulator (tested natively)
-│   │       └── render.rs   # render buffer fill
+│   │       ├── abi.rs      # wire codes and caps (mirrored in site/js/abi.ts)
+│   │       ├── demo.rs     # Demo, AnyWorld, scenes' glue (tested natively)
+│   │       └── exports.rs  # extern "C" exports, one file per group
+│   ├── web-common/         # what every *-web crate shares: panic hook, FixedStep, boundary parsing
 │   │
 │   ├── sand/               # M9
 │   └── acoustic/           # A1+

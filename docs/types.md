@@ -99,7 +99,7 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`SceneForce<S>`](../crates/web/src/demo/sim.rs) | That memory as one enum (none, pairwise with optional θ, uniform), so a θ can't exist without the gravity it approximates. |
 | [`BetweenSteps`](../crates/web/src/demo.rs) | What runs between steps: the fountain's respawn, or nothing. |
 | [`DemoKind`](../crates/web/src/demo/codes.rs), [`GravityScene`](../crates/web/src/demo/codes.rs), [`ScalarKind`](../crates/web/src/demo/codes.rs) | Wire codes decoded once at the boundary; unknown codes become `None`, never a wrong scene. |
-| [`FixedStep`](../crates/web/src/fixed_step.rs) | Turns real frame time into fixed physics steps, so simulation speed doesn't depend on the display's refresh rate; rate is `NonZeroU32`, so it can't hang. |
+| [`FixedStep`](../crates/web-common/src/fixed_step.rs) (`web-common`) | Turns real frame time into fixed physics steps, so simulation speed doesn't depend on the display's refresh rate; rate is `NonZeroU32`, so it can't hang. |
 
 ## `site` — TypeScript
 
