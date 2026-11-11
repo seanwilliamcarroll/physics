@@ -222,7 +222,7 @@ property test (hostile values; every count always sums to the grid).
 
 The canvas is the grid's size, one pixel a cell, scaled by CSS
 (`pixels.ts`: `putImageData` over a view of wasm memory, no copy). The
-brush paints a disc (radius 0–64, any material or erase) along the drag,
+brush paints a disc (radius 1–64, any material or erase) along the drag,
 dabs at most half a radius apart so a fast stroke has no gaps, and keeps
 painting while held. Scenes (`sand-scenes.ts`, drawn with the brush, so
 they scale to any grid): an hourglass, a dam with a slot, lava down a

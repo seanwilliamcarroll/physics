@@ -167,7 +167,7 @@ try {
       onChange: (v) => { brush.code = Number(v); },
     });
     slider(controls, {
-      label: "radius", min: 0, max: MAX_BRUSH, value: brush.radius,
+      label: "radius", min: 1, max: MAX_BRUSH, value: brush.radius,
       format: (r) => `${r} cells`, onInput: (r) => { brush.radius = r; },
     });
     let next = scene;
