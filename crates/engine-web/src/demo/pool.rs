@@ -184,3 +184,6 @@ fn respot_in<S: Scalar>(w: &mut World<S>) -> bool {
     };
     w.reinstate(POOL_CUE, Vec2::new(S::from_f64(x), S::ZERO), mass, radius)
 }
+
+#[cfg(test)]
+mod tests;

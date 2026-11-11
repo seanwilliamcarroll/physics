@@ -99,24 +99,39 @@ fn a_ball_squeezed_against_a_cushion_never_gains_energy() {
     // substep, puts both contacts in one round of the impact stage. With
     // each contact at its own e, (1, 0.5) gained 2.5% at 0° and 0.94% at
     // 20°; with a coupled group's smallest e, nothing.
+    //
+    // Both insertion orders (the full mutation run): a contact's group is
+    // looked up from its first body, and with the object ball added first
+    // it's first in both its contacts, so they shared a group even with
+    // the union-find's `union` deleted. Cue first, only `union` joins them.
     for solver in Solver::ALL {
         for angle in [0.0_f64, 20.0, 40.0] {
             for (eb, ec) in MIXED {
-                for uo in [0.5, 1.0, 3.0] {
+                for (uo, cue_first) in [0.5, 1.0, 3.0]
+                    .into_iter()
+                    .flat_map(|u| [(u, false), (u, true)])
+                {
                     let mut w = world(solver, SUBSTEPS, eb);
                     cushion(&mut w, (-1.0, 0.0), (1.0, 0.0), ec);
                     // 0.2 mm off the cushion, moving in; the cue ball
                     // touching it at `angle`, moving in too.
                     let yo = R + 2e-4;
-                    ball(&mut w, (0.0, yo), (0.0, -uo));
                     let a = angle.to_radians();
                     let dir = (a.sin(), -a.cos());
                     let c = (-dir.0 * 2.0 * R, yo - dir.1 * 2.0 * R);
-                    ball(&mut w, c, (3.0 * dir.0, 3.0 * dir.1 - uo));
+                    let object = ((0.0, yo), (0.0, -uo));
+                    let cue = (c, (3.0 * dir.0, 3.0 * dir.1 - uo));
+                    for (x, v) in if cue_first {
+                        [cue, object]
+                    } else {
+                        [object, cue]
+                    } {
+                        ball(&mut w, x, v);
+                    }
                     let gain = worst_gain(&mut w);
                     assert!(
                         gain < GAIN_TOL,
-                        "{solver:?} {angle}° e ({eb}, {ec}) {uo} m/s: +{gain:e}"
+                        "{solver:?} {angle}° e ({eb}, {ec}) {uo} m/s, cue first {cue_first}: +{gain:e}"
                     );
                 }
             }

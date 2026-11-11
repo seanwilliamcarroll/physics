@@ -89,17 +89,37 @@ fn a_centre_hit_slides_then_rolls_then_stops_as_the_model_says() {
     }
 }
 
+/// Aimed any way, not just along x: the spin's axis turns with the aim
+/// (the full mutation run: a sign lost in the axis survived while every
+/// strike in the tests was along +x, where the swapped component is 0).
 #[test]
 fn a_ball_struck_at_two_fifths_of_its_radius_rolls_from_the_start() {
     for solver in Solver::ALL {
-        let mut w = world(solver, 10);
-        let id = ball(&mut w, 0.0, 0.0);
-        w.strike(id, UnitVec2::X, 2.0, 0.4 * R);
-        assert!(slip(w.particles().vel()[0], w.spin()[0], R).length() < 1e-12);
-        w.step(time_step(DT));
-        // Only rolling resistance: no sliding friction's μ_s g.
-        let v = w.particles().vel()[0].x;
-        assert!((v - (2.0 - MU_R * G * DT)).abs() < 1e-9, "{solver:?}: {v}");
+        for (dx, dy) in [
+            (1.0, 0.0),
+            (0.0, 1.0),
+            (-0.6, 0.8),
+            (0.6, -0.8),
+            (-1.0, 0.0),
+        ] {
+            let aim = Vec2::new(dx, dy).normalized().unwrap();
+            let mut w = world(solver, 10);
+            let id = ball(&mut w, 0.0, 0.0);
+            w.strike(id, aim, 2.0, 0.4 * R);
+            let u = slip(w.particles().vel()[0], w.spin()[0], R).length();
+            assert!(u < 1e-12, "{solver:?} ({dx}, {dy}): slip {u}");
+            w.step(time_step(DT));
+            // Only rolling resistance, along the aim: no sliding friction's
+            // μ_s g, nothing sideways.
+            let v = w.particles().vel()[0];
+            let along = aim.dot(v);
+            let side = (v - aim.get() * along).length();
+            assert!(
+                (along - (2.0 - MU_R * G * DT)).abs() < 1e-9,
+                "{solver:?}: {along}"
+            );
+            assert!(side < 1e-12, "{solver:?} ({dx}, {dy}): sideways {side}");
+        }
     }
 }
 

@@ -83,3 +83,18 @@ fn a_strike_needs_a_direction_and_a_table() {
     assert_eq!(fountain.potted(), &[] as &[u32]);
     assert!(d.set_speculative(false));
 }
+
+/// The table's energy is kinetic plus spin (the full mutation run: their
+/// difference survived): ½ m v² + m R² ω² / 5 right after a follow shot.
+#[test]
+fn the_tables_energy_counts_spin() {
+    use engine::scenarios::{POOL_BALL_MASS, POOL_BALL_RADIUS};
+    let mut d = Demo::new_pool(ScalarKind::F64).unwrap();
+    assert_eq!(d.energy(), Some(0.0));
+    assert!(d.strike(0.6, 0.8, 2.0, 0.5));
+    let (wx, wy) = d.spin(0).unwrap();
+    let (m, r) = (POOL_BALL_MASS, POOL_BALL_RADIUS);
+    let expected = 0.5 * m * 4.0 + m * r * r * (wx * wx + wy * wy) / 5.0;
+    let e = d.energy().unwrap();
+    assert!((e - expected).abs() < 1e-12 * expected, "{e} vs {expected}");
+}

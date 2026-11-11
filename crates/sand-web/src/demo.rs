@@ -109,12 +109,6 @@ impl SandDemo {
         }
         &self.pixels
     }
-
-    /// The RGBA buffer as last rendered.
-    #[must_use]
-    pub fn pixels(&self) -> &[u32] {
-        &self.pixels
-    }
 }
 
 /// A material's base colour, RGB.
