@@ -32,6 +32,7 @@ const M6_CRADLE: &str = "demos/m6-cradle/";
 const M7: &str = "demos/m7-billiards/";
 const M4_DP: &str = "demos/m4-double-pendulum/";
 const M9: &str = "demos/m9-falling-sand/";
+const S1: &str = "demos/s1-boids/";
 const A1: &str = "demos/a1-string/";
 const A2: &str = "demos/a2-waveguide/";
 const A3: &str = "demos/a3-piano/";
@@ -48,8 +49,9 @@ const A3: &str = "demos/a3-piano/";
 /// one-substep case. M7: a hard break, and the tunneling preset (no
 /// speculation, one substep). M9: the hourglass, lava into water with
 /// chunks off, and the 1920 × 1080 stress grid (each also checks the
-/// material accounts held: `site/demos/m9-falling-sand/main.ts`).
-pub(super) const CASES: [Case; 29] = [
+/// material accounts held: `site/demos/m9-falling-sand/main.ts`). S1: the
+/// default flock (10k, sorted), brute force at 2,000, and 100k boids.
+pub(super) const CASES: [Case; 32] = [
     Case {
         name: "default",
         page: M0,
@@ -206,6 +208,24 @@ pub(super) const CASES: [Case; 29] = [
         name: "m9stress",
         page: M9,
         query: "?smoke&w=1920&h=1080",
+        check: Check::Draws,
+    },
+    Case {
+        name: "s1boids",
+        page: S1,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "s1brute",
+        page: S1,
+        query: "?smoke&n=2000&neighbours=brute",
+        check: Check::Draws,
+    },
+    Case {
+        name: "s1many",
+        page: S1,
+        query: "?smoke&n=100000",
         check: Check::Draws,
     },
     // A1: one second rendered offline (OfflineAudioContext): the worklet
