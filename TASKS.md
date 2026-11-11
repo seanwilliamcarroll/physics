@@ -356,6 +356,9 @@ to draw.
 
 ## 7. Cleanup (PR)
 
+- [x] `types.md`: the `swarm` and `swarm-web` types.
+- [ ] S1 collapsed here after your check.
+
 ---
 
 ## Health (after M7)
