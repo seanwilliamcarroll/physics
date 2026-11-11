@@ -176,7 +176,9 @@ scene building, at the cost of the "every scene in both scalars" rule:
 not taken.
 
 The acoustic track ships its own module, `acoustic.wasm`
-(`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`.
+(`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`. M9's
+falling sand ships `sand.wasm` (`crates/sand-web`, 37.6 KB): sizes in
+`11-falling-sand.md`.
 
 ### The render buffer
 
