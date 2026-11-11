@@ -20,6 +20,70 @@ pub struct Grid {
     pub(crate) seed: u64,
     /// Steps taken: part of every random draw's key.
     pub(crate) step: u64,
+    /// The chunks (`docs/11-falling-sand.md`, "Chunks").
+    pub(crate) chunks: Chunks,
+}
+
+/// Chunk side, cells: 32 × 32 (TASKS decision 6).
+pub const CHUNK: usize = 32;
+
+/// Which chunks a step updates: `now` (this step; a move wakes its
+/// neighbours here too, since the bottom-up scan still has rows of them to
+/// do) and `next` (the next step: whatever moved, and its neighbours).
+#[derive(Clone, Debug)]
+pub(crate) struct Chunks {
+    /// Chunks across and down.
+    pub(crate) across: usize,
+    pub(crate) down: usize,
+    pub(crate) now: Vec<bool>,
+    pub(crate) next: Vec<bool>,
+    /// Off: every cell every step (the reference the chunked update is
+    /// tested against).
+    pub(crate) enabled: bool,
+}
+
+impl Chunks {
+    fn new(width: usize, height: usize) -> Self {
+        let (across, down) = (width.div_ceil(CHUNK), height.div_ceil(CHUNK));
+        Self {
+            across,
+            down,
+            // Everything starts awake: nothing is known to be still.
+            now: vec![true; across * down],
+            next: vec![false; across * down],
+            enabled: true,
+        }
+    }
+
+    /// Whether the chunk holding `(x, y)` is updated this step.
+    pub(crate) fn awake(&self, x: usize, y: usize) -> bool {
+        !self.enabled
+            || self
+                .now
+                .get((y / CHUNK) * self.across + x / CHUNK)
+                .copied()
+                .unwrap_or(false)
+    }
+
+    /// Wakes the chunk holding `(x, y)` and its eight neighbours, this step
+    /// and the next.
+    pub(crate) fn wake(&mut self, x: usize, y: usize) {
+        let (cx, cy) = (x / CHUNK, y / CHUNK);
+        for ny in cy.saturating_sub(1)..=(cy + 1).min(self.down - 1) {
+            for nx in cx.saturating_sub(1)..=(cx + 1).min(self.across - 1) {
+                let i = ny * self.across + nx;
+                if let (Some(a), Some(b)) = (self.now.get_mut(i), self.next.get_mut(i)) {
+                    (*a, *b) = (true, true);
+                }
+            }
+        }
+    }
+
+    /// Ends a step: what woke for the next becomes now.
+    pub(crate) fn advance(&mut self) {
+        core::mem::swap(&mut self.now, &mut self.next);
+        self.next.fill(false);
+    }
 }
 
 impl Grid {
@@ -36,6 +100,7 @@ impl Grid {
             moved: vec![0; n.div_ceil(64)],
             seed,
             step: 0,
+            chunks: Chunks::new(width, height),
         })
     }
 
@@ -82,7 +147,28 @@ impl Grid {
             return false;
         };
         *c = cell(material, shade);
+        self.chunks.wake(x, y);
         true
+    }
+
+    /// Chunked updates on (the default) or off: off, every cell every step.
+    /// Results are identical either way (tested); off is the reference.
+    pub fn set_chunked(&mut self, on: bool) {
+        self.chunks.enabled = on;
+        // Turning on with nothing known: start with everything awake.
+        self.chunks.now.fill(true);
+    }
+
+    /// How many chunks the next step will update, of how many: a still grid
+    /// sleeps; the page shows this.
+    #[must_use]
+    pub fn awake_chunks(&self) -> (usize, usize) {
+        let awake = if self.chunks.enabled {
+            self.chunks.now.iter().filter(|&&a| a).count()
+        } else {
+            self.chunks.now.len()
+        };
+        (awake, self.chunks.now.len())
     }
 
     /// The shade of `(x, y)`, `0..16` (rendering: a per-grain variation that

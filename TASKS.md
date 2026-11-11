@@ -233,11 +233,13 @@ random steps; a falling column one row a step; a centred pour within
 0.6% of symmetric; water level within a cell; a golden, same on wasm.
 `sand` in `test-wasm` and `xtask api`.
 
-## 3. Dirty chunks and cost (PR)
+## ✅ 3. Dirty chunks and cost (PR)
 
-- [ ] Chunks with awake flags; bit-identical to the full update (a
-      property test over random grids and paint); cells per second,
-      native and wasm, settled and busy, with and without chunks.
+32 × 32 chunks; a move wakes its neighbours for this step and the next
+(this step too: found writing it). Bit-identical to the full update (a
+property test, 500 cases); skipped a chunk at a time. Native: busy 640 ×
+360 1.32 ms a step, settled 3.2 µs with chunks (569 µs without); 1920 ×
+1080 busy 12.5 ms. Wasm measured in the page.
 
 ## 4. Lava and reactions (PR)
 

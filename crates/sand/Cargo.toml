@@ -11,8 +11,13 @@ description = "A falling-sand cellular automaton (docs/11-falling-sand.md)."
 math = { path = "../math" }
 
 [dev-dependencies]
+criterion.workspace = true
 proptest.workspace = true
 test-support = { path = "../test-support" }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "step"
+harness = false  # criterion provides main
