@@ -271,6 +271,14 @@ mutation run (#144). Open:
 
 - **Your check:** `m2-cluster?n=4096` in slow motion, not frozen.
 - **The compute node:** `cargo install --locked cargo-nextest`.
+- **To measure, on the node: nextest under `cargo xtask mutants`.**
+  cargo-mutants can run each mutant's tests with nextest (`--test-tool
+  nextest`), which runs that mutant's tests in parallel; `-j 8` already
+  runs 8 mutants at once, so the two may oversubscribe the cores rather
+  than add up. Compare wall time (and that the caught/missed lists are
+  identical) for the same file set: `-j 8` with cargo test (today's
+  default), `-j 8 --test-tool nextest`, and fewer jobs with nextest (`-j
+  4`, `-j 2`). Make the winner `xtask mutants`' default.
 - **CI stays off** (your call: it fights loading a stack and merging it
   piece by piece).
 - **Mutation, still to do:** `test-support` and `xtask` under
