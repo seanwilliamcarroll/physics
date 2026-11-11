@@ -628,6 +628,15 @@ cargo-mutants`) changes the code one small edit at a time (`<` to `<=`,
 package's tests, and reports each **missed** mutant: one every test
 still passed.
 
+- **`cargo xtask mutants [args]`** wraps `cargo mutants` for full runs
+  (the compute node): `TMPDIR` set to `$MUTANTS_TMPDIR` or
+  `$HOME/.cache/mutants-tmp`, outside the repo (cargo-mutants copies the
+  whole tree there per build, has no setting for where, and a quota'd
+  `/tmp` failed with "Disk quota exceeded"; a dir inside the workspace is
+  refused, since the copy would copy itself); leftover
+  `cargo-mutants-*.tmp` build dirs from killed runs removed before and
+  after, nothing else touched; `-j 8 --no-shuffle` unless given; every
+  other argument passed through, and its exit code returned.
 - **Pre-push (informational, never a gate):** the hook mutates only the
   lines the push changes and lists what no test caught. Up to
   `MUTANTS_MAX` mutants (default 60) run, `-j 4`, test builds at
