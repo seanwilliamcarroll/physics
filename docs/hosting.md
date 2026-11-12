@@ -1,6 +1,6 @@
 # Hosting (future work)
 
-Status: **Not planned** (2026-11-13). The lab site under `site/` is
+Status: **Not planned** (2026-11-12). The lab site under `site/` is
 never to be published; public demos are written in the personal site
 against a package from this repo (`16-site-demos.md`). Kept only for
 its notes on what wasm needs from a server (Part 2), which apply to the

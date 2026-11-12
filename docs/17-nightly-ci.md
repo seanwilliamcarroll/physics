@@ -1,6 +1,6 @@
 # Nightly CI
 
-Status: **Proposed** (2026-11-13). Nothing here is built.
+Status: **Proposed** (2026-11-12). Nothing here is built.
 
 ## The idea
 

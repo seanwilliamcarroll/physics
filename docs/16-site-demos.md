@@ -1,6 +1,6 @@
 # Demos on the personal site
 
-Status: **Proposed** (2026-11-13). Nothing here is built. This replaces
+Status: **Proposed** (2026-11-12). Nothing here is built. This replaces
 `hosting.md`, which was about publishing this repo's pages: that isn't
 going to happen.
 
@@ -41,7 +41,7 @@ What makes the page helpers page-shaped:
   never needs to.
 
 **personal_site** (`github.com/seanwilliamcarroll/personal_site`, checked
-2026-11-13):
+2026-11-12):
 
 - Astro 7, the AstroPaper theme, Tailwind 4; built and hosted by AWS
   Amplify on every push to `main` (`amplify.yml`: `npm ci`, `npm run
@@ -58,9 +58,12 @@ What makes the page helpers page-shaped:
   production build). No tests, no CI.
 - `main` is now protected the same way as here (a `protect-main`
   ruleset: pull requests only, squash merges, no deletion or force
-  push), as of 2026-11-13.
+  push), as of 2026-11-12.
 
 ## Prerequisites: four things to check first
+
+**All four answered (2026-11-12):** V1 yes, V2 yes, V3 Node 22, V4
+off. Nothing blocks P1 or S1.
 
 V1 and V2 are throwaway experiments; V3 and V4 are lookups in the
 Amplify console (or `aws amplify get-app` / `get-branch`). None merges
@@ -81,6 +84,25 @@ at.
   loader should have that fallback regardless (P1): then this check
   decides speed, not whether it works.
 
+**Result (2026-11-12): yes.** A throwaway branch of the site holding
+an 8-byte `.wasm` under `public/`, deployed as a temporary Amplify
+branch (its own URL; production untouched; branch and deploy deleted
+after):
+
+- `content-type: application/wasm`, the bytes intact. No header rule
+  is needed, and `amplify.yml` stays as it is.
+- A missing `.wasm` is a real `404` (`text/html`), not the site's
+  index with a 200: the loader will see a failed fetch, not HTML.
+- **Everything is served `cache-control: public, max-age=0`** with an
+  ETag, the hashed `/_astro/` files too: browsers revalidate each file
+  on each visit (a cheap `304`), and Amplify's CDN holds it for a year.
+  So a visitor can't be stuck on an old file, hashed or not. A rule
+  making `/_astro/*` immutable would save those round trips; optional,
+  not planned.
+- Not learned: whether Amplify compresses a full-size `.wasm` in
+  transit (8 bytes are below any threshold). S8's live check reads
+  `content-encoding` on the real file.
+
 ### V2. Does Vite bundle a wasm file from a tarball dependency under Astro 7?
 
 The plan depends on `import wasmUrl from "physics-engine/engine.wasm?url"`
@@ -99,6 +121,30 @@ installing a package from a release tarball URL pinned in
   `public/` in a build step, with the version in its path. Less tidy,
   still workable.
 
+**Result (2026-11-12): yes.** In a scratch copy of the site (Astro
+7, nothing committed), with a hand-made package of today's
+`engine.wasm`, `engine.d.ts` and a stand-in loader, packed with `npm
+pack` and served from a local HTTP server:
+
+- `npm install http://…/physics-engine-0.0.1-v2check.tgz` wrote the URL
+  into `package.json` and the URL plus a `sha512` integrity into
+  `package-lock.json`; a clean `npm ci` then installed it from the
+  lock file.
+- A page whose `<script>` does `import wasmUrl from
+  "physics-engine/engine.wasm?url"` built to
+  `dist/_astro/engine.CpN_iahK.wasm`: content-hashed, and byte for byte
+  the file that went in.
+- `astro check` passed with the package's types (0 errors), and the
+  `?url` import needed no declaration of ours.
+- Under `astro preview`, headless Chrome ran the fountain 60 steps
+  through the package (600 floats, apex 7.0 m), and the preview served
+  the file as `application/wasm`.
+
+So the package needs an `exports` entry for the wasm
+(`"./engine.wasm": "./engine.wasm"`), and nothing else special. Not
+tried: that `npm ci` refuses a tarball whose bytes changed (npm's
+documented behavior, not exercised here).
+
 ### V3. Which Node version does Amplify build with?
 
 The site has no `.nvmrc`; Amplify uses whatever its build image
@@ -112,6 +158,22 @@ doesn't mean "builds on Amplify".
 - **Decides:** the number S1 writes into `.nvmrc`, and whether
   `amplify.yml` should say `nvm use` so the three agree by
   construction instead of by coincidence.
+
+**Result (2026-11-12): Node 22** (v22.23.4, npm 10.9.9), from
+`node -v` added to the same throwaway branch's build. The build log
+doesn't print it otherwise.
+
+- No image or package override is set on the app: this is the default
+  image's default (`nvm`'s `default -> 22`), with 20 and 24 also
+  installed.
+- Astro 7 needs `>=22.12.0`, so 22 is also the lowest that works.
+- **For S1:** `.nvmrc` says `22` (as this repo's does), CI reads it,
+  and `amplify.yml` gains `nvm use` so Amplify follows the file
+  instead of its image's default, which can change under us.
+- Also seen: the app's stored build settings are a leftover **Hugo**
+  build spec. The repo's `amplify.yml` overrides it, so it does
+  nothing, but it would run if that file were ever removed. Worth
+  clearing in the console; not part of this plan.
 
 ### V4. Are Amplify pull-request previews on?
 
@@ -128,6 +190,18 @@ merges.
   revert, and S7 is first seen live in production.
 - **Decides:** how V1 is done, and what "done when" can mean for the
   site's steps.
+
+**Result (2026-11-12): off.** The app has one branch, `main`
+(production, auto-build on), with pull-request previews disabled and
+no automatic branch creation.
+
+- V1 didn't need them: a **temporary Amplify branch** did the same job
+  (`aws amplify create-branch`, `start-job`, look, `delete-branch`).
+  One build of about two minutes; nothing left behind.
+- **For the site's steps:** previews stay off unless you decide
+  otherwise. S4, S6 and S7 are reviewed from CI's results and a local
+  `npm run preview`; a step that must be seen on Amplify before
+  merging can use the same temporary-branch trick.
 
 ## The work, as pull requests
 
@@ -226,7 +300,7 @@ Refactor only: every lab page behaves as before.
 
 ### personal_site
 
-`main` is protected (done 2026-11-13, by a ruleset: pull requests
+`main` is protected (done 2026-11-12, by a ruleset: pull requests
 only, squash merges, no deletion or force push). The site's hooks
 today: pre-commit runs Prettier (rewriting staged files), ESLint and
 `astro check`; pre-push runs the production build.
@@ -236,9 +310,9 @@ today: pre-commit runs Prettier (rewriting staged files), ESLint and
 The site gets checks **per PR** (decided): they take a couple of
 minutes, and what lands on `main` is deployed by Amplify at once.
 
-- **Touches:** new `.github/workflows/ci.yml`; `.nvmrc` (the site has
-  none; the version V3 found); `amplify.yml` if V3 says to pin it
-  there too; `README.md`, `CLAUDE.md`
+- **Touches:** new `.github/workflows/ci.yml`; `.nvmrc` (`22`: V3);
+  `amplify.yml` (`nvm use` before `npm ci`: V3); `README.md`,
+  `CLAUDE.md`
   (the workflow is now: branch, PR, green check, squash).
 - **Triggers:** `pull_request`, and `workflow_dispatch` for a manual
   run. Not `push` to `main`: Amplify's own build covers that.
@@ -346,7 +420,7 @@ The lifecycle every demo needs, proven with a plain canvas animation.
   - the `.wasm` arrives as `application/wasm` from the preview;
   - **physics is happening:** the particles' pixels differ between two
     frames a second apart. A frozen canvas fails.
-- `amplify.yml` doesn't change unless V1 said it needs a header.
+- `amplify.yml` doesn't change (V1: no header needed).
 - **Done when:** CI is green including the new checks, and the built
   `dist/` holds exactly one content-hashed `.wasm` (its name in the
   PR).
