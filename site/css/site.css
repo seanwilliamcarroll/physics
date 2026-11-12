@@ -193,3 +193,9 @@ main.wide {
   max-width: 720px;
   margin: 0 auto;
 }
+
+/* S3: the ants' world (pixels.ts sets its aspect ratio). */
+.stage.ants canvas {
+  image-rendering: pixelated;
+  cursor: crosshair;
+}

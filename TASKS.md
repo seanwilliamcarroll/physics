@@ -345,7 +345,12 @@ from 1e300): fixed and tested. V8: 1.53 ms a step, 1.16 ms to draw.
 
 ## 6. The page (PR)
 
-- [ ] `s3-ants`: painting, presets, sliders, HUD; smoke; gallery.
+- [x] `s3-ants`: 200 × 120 cells at 5 px; scenes drawn with the tools
+      (open field, the double bridge, barriers; `ant-scenes.ts` tested);
+      painting food, walls, erase, the nest; a slider per constant;
+      sensing on or off; deliveries a minute in the HUD; two smoke cases;
+      gallery. Found: ants left at the default nest when a scene moved it
+      (now they move with it before the first step).
 - [ ] Your check against **Done when**.
 
 ## 7. Cleanup (PR)

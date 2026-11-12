@@ -654,6 +654,16 @@ disc stepped an `f64` by 1.0 from a coordinate like 1e300, where the
 step never advances; it now clips to the world first. In V8, 400 × 225
 cells and 2,000 ants: 1.53 ms a step, 1.16 ms to draw (1200 × 675).
 
+### The page as built (S3.6, `site/demos/s3-ants`)
+
+A 200 × 120 world at 5 px a cell; scenes drawn with the paint tools
+(`ant-scenes.ts`, unit-tested: a nest, food within 130 cells): the open
+field, S3.4's double bridge, barriers. Painting food, walls, erasing,
+moving the nest; a slider per constant (angles in degrees); sensing on
+or off; the HUD with deliveries a minute. Found on it: the colony placed
+its ants at a default nest and the scene moved the nest after, leaving
+them walled in; before the first step the ants now move with the nest.
+
 ### What's tested
 
 The accountings; diffusion alone conserving mass and spreading

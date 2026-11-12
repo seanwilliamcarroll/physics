@@ -98,6 +98,7 @@ physics/
     │   ├── swarm-wasm.ts   # S1: load swarm.wasm, its step budget
     │   ├── swarm-cost.ts   # S1: the world for n boids, the cost table (pure)
     │   ├── vicsek-sweep.ts # S2: Fig. 2a's sizes, the η grid, the sweep's cases (pure)
+    │   ├── ant-scenes.ts   # S3: the ants page's scenes, drawn with the paint tools (pure)
     │   ├── pixels.ts       # RGBA buffer → ImageData → canvas; CSS point → cell; strokes
     │   ├── loop.ts         # rAF loop → demo_advance
     │   ├── canvas.ts       # world↔screen, high-DPI, batched drawing (points, links, disks, grid)
@@ -132,6 +133,7 @@ physics/
     │   ├── m9-falling-sand/
     │   ├── s1-boids/
     │   ├── s2-vicsek/
+    │   ├── s3-ants/
     │   ├── a1-string/
     │   ├── a2-waveguide/
     │   └── a3-piano/

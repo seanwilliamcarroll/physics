@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S3 · Ant foraging: trails in a shared field</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Ant foraging: trails in a shared field</h1>
+    <p class="muted">
+      The ants don't watch each other: they read and write two fields on
+      the ground. Searching ants lay a <b style="color:#6c9cff">home</b>
+      trail and follow the <b style="color:#5bd36a">food</b> trail;
+      ants carrying food (orange) lay food and follow home. Each senses
+      three points ahead and turns toward the strongest. Deposits weaken
+      with distance from where an ant left the nest or the food, so a
+      trail is strongest at its source: following it leads there. The
+      fields spread and evaporate every step. <b>Paint</b> food, walls,
+      or erase; move the nest. <code>docs/15-swarm.md</code>, S3.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="stage ants"><canvas id="view"></canvas></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <p class="muted">
+      Turn <b>sensing</b> off and the same ants random-walk: in the tests
+      they bring home about a hundredth as much. Set <b>fall-off</b> to 0
+      and trails lose their direction: no better than the random walk.
+      The <b>bridge</b> scene is S3.4's experiment: the shorter arm
+      carries about three quarters of the traffic.
+    </p>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
