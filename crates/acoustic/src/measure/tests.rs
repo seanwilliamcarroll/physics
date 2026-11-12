@@ -115,3 +115,12 @@ fn t60_skips_silent_windows_and_needs_two() {
     assert!(t60(&decay, FS, 220.0, 16.0, 0.0, 0.12).is_some());
     assert_eq!(t60(&decay, FS, 220.0, 16.0, 0.0, 0.05), None);
 }
+
+#[test]
+fn t60_needs_a_window_of_two_samples() {
+    // A frequency so high its window rounds to 0 or 1 sample: None, not a
+    // zero-length chunking (found by the third mutation run, 4b299dd).
+    let signal = tone(220.0, 30.0, 0.5);
+    assert_eq!(t60(&signal, FS, 40.0 * FS, 16.0, 0.0, 0.4), None);
+    assert_eq!(t60(&signal, FS, 16.0 * FS, 16.0, 0.0, 0.4), None);
+}

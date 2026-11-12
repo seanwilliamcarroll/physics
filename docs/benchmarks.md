@@ -41,18 +41,18 @@ transition sweep (`vicsek_sweep.rs`), the ants' evolution
 
 | Module | Case | Per call |
 |---|---|---|
-| sand | busy step, 640 × 360 | 0.97 ms |
+| sand | busy step, 640 × 360 | 0.56 ms (0.97 ms in an earlier run: the grid settles while it's timed, so this one varies) |
 | sand | settled step, chunks on | 3.4 µs |
 | sand | render | 53 µs |
-| boids | sorted step, 10k (page's density) | 2.30 ms |
-| boids | grid step, 10k | 4.11 ms |
-| boids | brute-force step, 2k | 6.49 ms |
+| boids | sorted step, 10k (page's density) | 2.27 ms |
+| boids | grid step, 10k | 4.81 ms |
+| boids | brute-force step, 2k | 6.50 ms |
 | boids | render, 10k | 0.24 ms |
-| vicsek | step, N = 400 | 0.12 ms |
-| vicsek | step, N = 4000 | 1.27 ms |
-| ants | step, 200 × 120, 500 ants | **0.68 ms** (see `profiling.md`: the fields' diffusion) |
+| vicsek | step, N = 400 | 0.067 ms (0.12 before the health pass) |
+| vicsek | step, N = 4000 | 0.76 ms (1.27 before) |
+| ants | step, 200 × 120, 500 ants | 0.21 ms (0.68 before: the fields' diffusion, `profiling.md`) |
 | ants | render, 600 × 360 | 0.33 ms |
-| physarum | step, 512², 100k agents | 5.89 ms |
+| physarum | step, 512², 100k agents | 3.20 ms (5.89 before: the wraps) |
 | physarum | render, 512² | 0.94 ms |
 
 The engine's table (native against wasm, per case) is in
