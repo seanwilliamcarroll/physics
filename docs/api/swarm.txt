@@ -78,10 +78,12 @@ pub fn swarm::Field::clear(&mut self)
 pub fn swarm::Field::decay(&mut self, f32)
 pub fn swarm::Field::deposit(&mut self, usize, usize, f32) -> bool
 pub fn swarm::Field::diffuse(&mut self, &[bool], f32)
+pub fn swarm::Field::diffuse_counted(&mut self, &[bool], &[u8], f32)
 pub fn swarm::Field::diffuse_periodic(&mut self, f32)
 pub fn swarm::Field::get(&self, usize, usize) -> core::option::Option<f32>
 pub const fn swarm::Field::height(&self) -> usize
 pub fn swarm::Field::new(usize, usize) -> core::option::Option<Self>
+pub fn swarm::Field::open_neighbours(&self, &[bool]) -> alloc::vec::Vec<u8>
 pub fn swarm::Field::top_share(&self, f64) -> f64
 pub fn swarm::Field::total(&self) -> f64
 pub fn swarm::Field::values(&self) -> &[f32]

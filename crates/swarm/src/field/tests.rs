@@ -121,3 +121,35 @@ fn top_share_of_uniform_and_concentrated_fields() {
     g.deposit(3, 3, 5.0);
     assert!((g.top_share(0.1) - 1.0).abs() < 1e-12, "all in one cell");
 }
+
+#[test]
+fn open_neighbours_counts_the_eight_less_edges_and_walls() {
+    let f = Field::new(4, 3).unwrap();
+    let mut o = open(4, 3);
+    // A wall at (1, 1).
+    o[5] = false;
+    #[rustfmt::skip]
+    let expected = [
+        2, 4, 4, 3,
+        4, 8, 7, 5,
+        2, 4, 4, 3,
+    ];
+    assert_eq!(f.open_neighbours(&o), expected);
+}
+
+#[test]
+fn diffusing_with_given_counts_is_diffusing() {
+    let mut o = open(7, 5);
+    o[9] = false;
+    o[17] = false;
+    let (mut a, mut b) = (Field::new(7, 5).unwrap(), Field::new(7, 5).unwrap());
+    for (x, y, v) in [(0, 0, 1.0), (3, 2, 2.5), (6, 4, 0.3), (2, 2, 7.0)] {
+        assert!(a.deposit(x, y, v) && b.deposit(x, y, v));
+    }
+    let counts = a.open_neighbours(&o);
+    for _ in 0..5 {
+        a.diffuse(&o, 0.3);
+        b.diffuse_counted(&o, &counts, 0.3);
+    }
+    assert_eq!(a.values(), b.values(), "bit for bit");
+}

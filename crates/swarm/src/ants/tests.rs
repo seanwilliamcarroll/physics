@@ -149,3 +149,41 @@ fn before_the_first_step_the_ants_move_with_the_nest() {
     let after: Vec<(f32, f32)> = c.ants().map(|a| (a.x, a.y)).collect();
     assert_eq!(before, after, "after the first step they stay");
 }
+
+/// The fields diffuse with cached open-neighbour counts: stale counts
+/// after a wall goes up would divide by too many (mass lost into the
+/// wall), and after one comes down by too few (mass made).
+#[test]
+fn diffusion_conserves_mass_after_walls_are_painted_and_erased() {
+    let p = AntParams {
+        wiggle: 0.0,
+        diffusion: 0.5,
+        decay: 0.0,
+        ..AntParams::DEFAULT
+    };
+    let mut c = Colony::new(60, 40, 1, (55.0, 35.0, 2.0), p, 1).unwrap();
+    if let Some(a) = c.ants.first_mut() {
+        (a.x, a.y, a.cos, a.sin) = (20.0, 20.0, 1.0, 0.0);
+    }
+    let total = |c: &Colony| c.field(Pheromone::Home).total();
+    // Each step adds exactly its deposits: measured, the worst step is
+    // off by 1.5e-7 (f32 rounding); 2e-6 allowed. Stale counts lose 0.12
+    // in the first walled step.
+    let check = |c: &mut Colony, what: &str| {
+        for _ in 0..10 {
+            let before = total(c);
+            c.step();
+            let added = c.last_deposits(Pheromone::Home);
+            assert!(
+                (total(c) - before - added).abs() < 2e-6,
+                "{what}: {before} + {added} became {}",
+                total(c)
+            );
+        }
+    };
+    check(&mut c, "open");
+    assert!(c.paint_wall(22.0, 18.0, 1.5) > 0);
+    check(&mut c, "walled");
+    assert!(c.erase(22.0, 18.0, 1.5) > 0);
+    check(&mut c, "erased");
+}

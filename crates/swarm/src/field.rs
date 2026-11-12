@@ -75,37 +75,67 @@ impl Field {
         self.value.iter().map(|&v| f64::from(v)).sum()
     }
 
-    /// Diffusion that conserves mass: every open cell keeps `1 − d` of its
-    /// value and gives `d`, split equally among its open neighbours (of
-    /// eight; `open[i]` false is a wall, and walls give and take
-    /// nothing). A cell with no open neighbour keeps everything. `open`
-    /// must be one flag per cell; `d` is clamped to `[0, 1]`.
-    pub fn diffuse(&mut self, open: &[bool], d: f32) {
-        let d = if d.is_finite() {
-            d.clamp(0.0, 1.0)
-        } else {
-            0.0
-        };
+    /// Each cell's count of open neighbours (of eight), for
+    /// [`Self::diffuse_counted`]: it changes only when walls do, so a caller
+    /// that diffuses every step computes it once (S3's ants: the count was
+    /// 95% of a step, found by profiling; `docs/profiling.md`).
+    #[must_use]
+    pub fn open_neighbours(&self, open: &[bool]) -> Vec<u8> {
         let (w, h) = (self.width, self.height);
         let is_open = |x: usize, y: usize| open.get(y * w + x).copied().unwrap_or(false);
-        self.scratch.fill(0.0);
+        let mut out = Vec::with_capacity(w * h);
         for y in 0..h {
             for x in 0..w {
-                let i = y * w + x;
-                let v = self.value.get(i).copied().unwrap_or(0.0);
-                if v == 0.0 || !is_open(x, y) {
-                    continue;
-                }
                 let (x0, x1, y0, y1) = (
                     x.saturating_sub(1),
                     (x + 1).min(w - 1),
                     y.saturating_sub(1),
                     (y + 1).min(h - 1),
                 );
-                let k = (y0..=y1)
-                    .flat_map(|ny| (x0..=x1).map(move |nx| (nx, ny)))
-                    .filter(|&(nx, ny)| (nx, ny) != (x, y) && is_open(nx, ny))
-                    .count();
+                let mut k = 0_u8;
+                for ny in y0..=y1 {
+                    for nx in x0..=x1 {
+                        k += u8::from((nx, ny) != (x, y) && is_open(nx, ny));
+                    }
+                }
+                out.push(k);
+            }
+        }
+        out
+    }
+
+    /// Diffusion that conserves mass: every open cell keeps `1 − d` of its
+    /// value and gives `d`, split equally among its open neighbours (of
+    /// eight; `open[i]` false is a wall, and walls give and take
+    /// nothing). A cell with no open neighbour keeps everything. `open`
+    /// must be one flag per cell; `d` is clamped to `[0, 1]`. Counts the
+    /// neighbours each call: a caller diffusing every step should use
+    /// [`Self::diffuse_counted`].
+    pub fn diffuse(&mut self, open: &[bool], d: f32) {
+        let counts = self.open_neighbours(open);
+        self.diffuse_counted(open, &counts, d);
+    }
+
+    /// [`Self::diffuse`] with the open-neighbour counts given (from
+    /// [`Self::open_neighbours`] for the same `open`). The same arithmetic in
+    /// the same order: bit-identical results.
+    pub fn diffuse_counted(&mut self, open: &[bool], counts: &[u8], d: f32) {
+        let d = if d.is_finite() {
+            d.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let (w, h) = (self.width, self.height);
+        self.scratch.fill(0.0);
+        for y in 0..h {
+            let (y0, y1) = (y.saturating_sub(1), (y + 1).min(h - 1));
+            for x in 0..w {
+                let i = y * w + x;
+                let v = self.value.get(i).copied().unwrap_or(0.0);
+                if v == 0.0 || !open.get(i).copied().unwrap_or(false) {
+                    continue;
+                }
+                let k = counts.get(i).copied().unwrap_or(0);
                 if k == 0 {
                     if let Some(s) = self.scratch.get_mut(i) {
                         *s += v;
@@ -113,16 +143,37 @@ impl Field {
                     continue;
                 }
                 let give = v * d;
-                #[expect(clippy::cast_precision_loss, reason = "k is 1 to 8")]
-                let share = give / k as f32;
+                let share = give / f32::from(k);
                 if let Some(s) = self.scratch.get_mut(i) {
                     *s += v - give;
                 }
+                if k == 8 && x > 0 && x + 1 < w && y > 0 && y + 1 < h {
+                    // All eight open, which only an interior cell can be
+                    // (checked all the same: the counts are the caller's):
+                    // the three rows of three, nothing to test per
+                    // neighbour. Each target gets one add from this cell
+                    // either way, so the sums are the same bits.
+                    let rows = [i - w - 1, i - 1, i + w - 1].map(|at| at..at + 3);
+                    let [above, beside, below] = rows;
+                    if let Some([a, b, c]) = self.scratch.get_mut(above) {
+                        (*a, *b, *c) = (*a + share, *b + share, *c + share);
+                    }
+                    if let Some([a, _, c]) = self.scratch.get_mut(beside) {
+                        (*a, *c) = (*a + share, *c + share);
+                    }
+                    if let Some([a, b, c]) = self.scratch.get_mut(below) {
+                        (*a, *b, *c) = (*a + share, *b + share, *c + share);
+                    }
+                    continue;
+                }
+                let (x0, x1) = (x.saturating_sub(1), (x + 1).min(w - 1));
                 for ny in y0..=y1 {
+                    let row = ny * w;
                     for nx in x0..=x1 {
-                        if (nx, ny) != (x, y)
-                            && is_open(nx, ny)
-                            && let Some(s) = self.scratch.get_mut(ny * w + nx)
+                        let n = row + nx;
+                        if n != i
+                            && open.get(n).copied().unwrap_or(false)
+                            && let Some(s) = self.scratch.get_mut(n)
                         {
                             *s += share;
                         }

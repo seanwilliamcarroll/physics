@@ -113,5 +113,19 @@ is 3% of a colony step (the fields are the cost, so more ants are nearly
 free), and the broadphase's pair sort is 2% of it (dropping the sort, an
 open M6 question, would buy nothing).
 
-The fixes, each its own change with its numbers: see the "Fixed" notes
-below as they land.
+## Fixed
+
+Each with the same results bit for bit (the goldens didn't move), and
+measured with `cargo xtask bench` against a baseline from before.
+
+**The ants' diffusion: 538 → 188 µs a step (−65%).** Two changes to
+`Field::diffuse`, now `diffuse_counted` underneath. The colony keeps
+each cell's open-neighbour count and recounts only when walls are
+painted or erased (538 → 350 µs). And a cell whose count is eight is an
+interior cell with nothing to test: its nine targets are three slices of
+three, with no per-neighbour wall or bounds check (350 → 188 µs). What's
+left is a scatter: each cell writes to its neighbours. A gather (each
+cell reads its neighbours, as `diffuse_periodic` does, at a quarter of
+the cost per cell) would be faster again but adds in a different order,
+so every ant result would shift in its last bits and the evolved
+constants would need re-scoring; not done.
