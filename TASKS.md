@@ -317,11 +317,15 @@ cases (boxes under 3 cells refused; lattice points on edges and through
 the wrap). Native at ρ = 4: 135–170 ns a particle, flat to 100,000
 (N = 4000: 0.57 ms a step; brute force 28.5).
 
-## 4. The transition (PR)
+## ✅ 4. The transition (PR)
 
-- [ ] Sweeps for N = 40–4000 at ρ = 4 (several seeds); the limit and
-      monotonicity tests; finite-size sharpening; the comparison with
-      `η_c ≈ 2.9`; the 0/0 count over every run. 10,000 on the node.
+`Vicsek::mean_order`; `examples/vicsek_sweep.rs` at Fig. 2a's sizes (5
+seeds, 3,000 + 3,000 steps). Fig. 2a's finite-size picture: alike at low
+noise, larger systems less ordered past the drop; `v_a` crosses 0.5 at η
+≈ 3.69, 3.53, 3.28, 2.67 (N = 40–4000), a marker that falls through the
+paper's `η_c` = 2.9 as N grows; fluctuations peak at the transition;
+large boxes order slowly at low noise. Tests pin N ≤ 400. **To run on
+the node:** `cargo run --release -p swarm --example vicsek_sweep 10000`.
 
 ## ✅ 5. Web layer (PR)
 
