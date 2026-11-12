@@ -125,3 +125,119 @@ fn normal_deviates_have_mean_zero_and_variance_one() {
         "{mean} {var}"
     );
 }
+
+// The tests below close gaps a mutation run found (4b299dd).
+
+use std::sync::Mutex;
+
+/// Every genome scored, in order (one thread), `population` a generation.
+fn scored(genes: &[Gene], cfg: &Evolve) -> Vec<Vec<Vec<f64>>> {
+    let seen = Mutex::new(Vec::new());
+    let history = evolve(genes, cfg, None, |g, _| {
+        seen.lock().unwrap().push(g.to_vec());
+        g.iter().sum()
+    });
+    assert_eq!(history.len(), cfg.generations as usize);
+    let seen = seen.into_inner().unwrap();
+    assert_eq!(
+        seen.len(),
+        cfg.population * cfg.generations as usize,
+        "each generation is exactly the population"
+    );
+    seen.chunks(cfg.population).map(<[_]>::to_vec).collect()
+}
+
+/// Whether gene `k` of `child` is some member of `parents`' gene `k`.
+fn inherited(child: &[f64], parents: &[Vec<f64>], k: usize) -> bool {
+    parents.iter().any(|p| p[k].to_bits() == child[k].to_bits())
+}
+
+#[test]
+fn the_mean_is_the_mean() {
+    let cfg = Evolve {
+        population: 4,
+        generations: 2,
+        ..cfg(1)
+    };
+    let history = evolve(&genes(), &cfg, None, |_, _| 2.5);
+    assert_eq!(history.len(), 2);
+    for g in history {
+        assert_eq!((g.best, g.mean), (2.5, 2.5));
+    }
+    assert_eq!(mean_over(&[1, 2, 3], math::convert::u64_to_f64), 2.0);
+}
+
+/// σ runs linearly from `sigma.0` at the first breeding to `sigma.1` at a
+/// breeding after the last generation (never reached). From −x to x over
+/// three generations it passes through exactly 0 at the second breeding:
+/// the third generation's genes are unmutated copies of the second's,
+/// where the second's own were mutated.
+#[test]
+fn sigma_runs_linearly_between_its_ends() {
+    let cfg = Evolve {
+        population: 12,
+        generations: 3,
+        elites: 0,
+        sigma: (-0.1, 0.1),
+        ..cfg(1)
+    };
+    let gens = scored(&genes(), &cfg);
+    let (first, second, third) = (&gens[0], &gens[1], &gens[2]);
+    let copies = |children: &[Vec<f64>], parents: &[Vec<f64>]| {
+        children
+            .iter()
+            .flat_map(|c| (0..4).map(move |k| (c, k)))
+            .filter(|&(c, k)| inherited(c, parents, k))
+            .count()
+    };
+    assert_eq!(copies(third, second), 12 * 4, "σ = 0: every gene a copy");
+    assert_eq!(copies(second, first), 0, "σ = −0.1: every gene mutated");
+}
+
+/// Crossover takes each gene from either parent: with no mutation, every
+/// child gene is a first-generation gene, and some child mixes two
+/// genomes (it equals no single one).
+#[test]
+fn crossover_mixes_two_parents_gene_by_gene() {
+    let genes = vec![Gene { lo: -3.0, hi: 3.0 }; 16];
+    let cfg = Evolve {
+        population: 12,
+        generations: 2,
+        elites: 0,
+        sigma: (0.0, 0.0),
+        ..cfg(1)
+    };
+    let gens = scored(&genes, &cfg);
+    let (first, second) = (&gens[0], &gens[1]);
+    for c in second {
+        assert!((0..16).all(|k| inherited(c, first, k)), "{c:?}");
+    }
+    let whole = |c: &Vec<f64>| first.iter().any(|p| p == c);
+    let mixed = second.iter().filter(|c| !whole(c)).count();
+    // Measured: 10 of 12 (the others drew one parent twice).
+    assert!(mixed >= 6, "{mixed} of 12 mixed");
+}
+
+/// The run itself, pinned: selection, crossover and mutation draw from one
+/// stream in a fixed order, and `libm` makes the deviates the same bits
+/// everywhere (this runs as wasm too).
+const GOLDEN_EVOLVE: u64 = 0x113b_67ac_6bd5_a405;
+
+#[test]
+fn the_golden_hash_is_unchanged() {
+    let cfg = Evolve {
+        generations: 6,
+        ..cfg(1)
+    };
+    let mut h = math::Fnv1a::new();
+    for g in evolve(&genes(), &cfg, None, toy) {
+        for v in [g.best, g.mean].into_iter().chain(g.best_genome) {
+            h.write(&v.to_bits().to_le_bytes());
+        }
+    }
+    let h = h.finish();
+    assert_eq!(
+        h, GOLDEN_EVOLVE,
+        "if intended, set GOLDEN_EVOLVE = {h:#018x}"
+    );
+}

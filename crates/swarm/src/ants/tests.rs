@@ -187,3 +187,163 @@ fn diffusion_conserves_mass_after_walls_are_painted_and_erased() {
     assert!(c.erase(22.0, 18.0, 1.5) > 0);
     check(&mut c, "erased");
 }
+
+// The tests below close gaps a mutation run found (4b299dd; the note in
+// `docs/04-testing.md`, "Mutation testing").
+
+#[test]
+fn a_cell_index_stops_at_the_far_edges() {
+    let c = one(20.0, 20.0);
+    assert_eq!(c.index(59.9, 39.9), Some(39 * 60 + 59));
+    // x = width is outside, not the next row's first cell.
+    assert_eq!(c.index(60.0, 5.0), None);
+    assert_eq!(c.index(5.0, 40.0), None);
+    assert_eq!(c.index(-0.5, 5.0), None);
+}
+
+#[test]
+fn a_disc_is_clipped_to_the_world_edge_by_edge() {
+    let c = one(20.0, 20.0);
+    let cells = |x: f32, y: f32, r: f32| {
+        let mut v = c.disc(x, y, r);
+        v.sort_unstable();
+        v
+    };
+    // One cell, in the middle.
+    assert_eq!(cells(10.5, 7.5, 0.0), [7 * 60 + 10]);
+    // Entirely outside, on each side: nothing.
+    for (x, y) in [(-3.0, 5.0), (63.0, 5.0), (5.0, -3.0), (5.0, 43.0)] {
+        assert_eq!(cells(x, y, 1.0), [], "({x}, {y})");
+    }
+    // A small disc just outside whose box ends exactly at column or row
+    // 0 (a cell is in if its centre is within √(r² + ½)): included.
+    assert_eq!(cells(-0.2, 5.5, 0.2), [5 * 60]);
+    assert_eq!(cells(5.5, -0.2, 0.2), [5]);
+    // The last column and row themselves.
+    assert_eq!(cells(59.5, 5.5, 0.0), [5 * 60 + 59]);
+    assert_eq!(cells(5.5, 39.5, 0.0), [39 * 60 + 5]);
+    // Not finite: nothing.
+    assert_eq!(cells(f32::NAN, 5.0, 1.0), []);
+    assert_eq!(cells(5.0, f32::INFINITY, 1.0), []);
+}
+
+#[test]
+fn painted_food_is_counted_once_and_erasing_takes_it_back() {
+    let mut c = one(20.0, 20.0);
+    assert_eq!(c.paint_food(10.5, 10.5, 0.0, 7), 7);
+    // On top of what's there: only the added amount counts.
+    assert_eq!(c.paint_food(10.5, 10.5, 0.0, 5), 5);
+    assert_eq!((c.painted(), c.food_in_world()), (12, 12));
+    assert_eq!(c.food().get(10 * 60 + 10), Some(&12));
+    assert_eq!(c.food().len(), 60 * 40);
+    // Erasing an empty cell changes nothing; a cell with food, one cell.
+    assert_eq!(c.erase(30.5, 30.5, 0.0), 0);
+    assert_eq!(c.erase(10.5, 10.5, 0.0), 1);
+    assert_eq!((c.painted(), c.food_in_world()), (0, 0));
+    // A wall erased counts too.
+    assert_eq!(c.paint_wall(30.5, 30.5, 0.0), 1);
+    assert_eq!(c.erase(30.5, 30.5, 0.0), 1);
+}
+
+#[test]
+fn a_new_wall_removes_the_pheromone_under_it_and_only_there() {
+    let mut c = one(20.0, 20.0);
+    for _ in 0..5 {
+        c.step();
+    }
+    // The ant walked +x from (20, 20): a trail in row 20.
+    let at = |c: &Colony, x: usize| c.field(Pheromone::Home).get(x, 20).unwrap();
+    assert!(at(&c, 22) > 0.0 && at(&c, 24) > 0.0);
+    c.paint_wall(22.5, 20.5, 0.0);
+    assert_eq!(at(&c, 22), 0.0, "under the wall");
+    assert!(at(&c, 24) > 0.0, "beside it");
+}
+
+#[test]
+fn walls_and_the_outside_read_worse_than_any_trail() {
+    let mut c = one(20.0, 20.0);
+    c.paint_wall(30.5, 30.5, 0.0);
+    assert_eq!(c.sense(Pheromone::Home, 30.5, 30.5), -1.0);
+    assert_eq!(c.sense(Pheromone::Food, -1.0, 5.0), -1.0);
+    assert_eq!(c.sense(Pheromone::Home, 5.5, 5.5), 0.0);
+}
+
+#[test]
+fn the_nest_moves_only_to_a_usable_place() {
+    let mut c = one(20.0, 20.0);
+    let was = c.nest();
+    assert_eq!(was, (55.0, 35.0, 2.0));
+    for (x, y, r) in [
+        (f32::NAN, 5.0, 1.0),
+        (5.0, f32::NAN, 1.0),
+        (5.0, 5.0, f32::NAN),
+        (5.0, 5.0, 0.0),
+        (-0.1, 5.0, 1.0),
+        (5.0, -0.1, 1.0),
+        (60.0, 5.0, 1.0),
+        (5.0, 40.0, 1.0),
+    ] {
+        assert!(!c.set_nest(x, y, r), "({x}, {y}, {r})");
+        assert_eq!(c.nest(), was, "refused: unchanged");
+    }
+    // The corners of the usable range.
+    assert!(c.set_nest(0.0, 0.0, 0.5));
+    assert!(c.set_nest(59.9, 39.9, 0.5));
+    assert_eq!(c.nest(), (59.9, 39.9, 0.5));
+}
+
+#[test]
+fn params_are_replaced_only_by_usable_ones() {
+    let mut c = one(20.0, 20.0);
+    let was = c.params();
+    assert!(!c.set_params(AntParams { speed: 0.0, ..was }));
+    assert_eq!(c.params(), was);
+    let new = AntParams { speed: 0.5, ..was };
+    assert!(c.set_params(new));
+    assert_eq!(c.params(), new);
+}
+
+#[test]
+fn the_counts_count() {
+    let mut c = Colony::new(60, 40, 3, (30.0, 20.0, 2.0), AntParams::DEFAULT, 1).unwrap();
+    assert_eq!((c.len(), c.is_empty(), c.steps()), (3, false, 0));
+    c.step();
+    c.step();
+    assert_eq!(c.steps(), 2);
+}
+
+/// With sensing off an ant turns by a uniform angle in `[−turn, turn]`
+/// each step: the random-walk baseline. 2,000 turns of one slow ant
+/// (it never reaches a wall). Measured: extremes −0.998 and +0.9996 of
+/// turn, mean 0.002 of turn; bounds 0.95 and 0.05, and any change to the
+/// formula's arithmetic leaves the range entirely.
+#[test]
+fn without_sensing_the_turn_is_uniform_within_the_turn_angle() {
+    let p = AntParams {
+        wiggle: 0.0,
+        speed: 1e-3,
+        ..AntParams::DEFAULT
+    };
+    let mut c = Colony::new(60, 40, 1, (30.0, 20.0, 2.0), p, 3).unwrap();
+    c.set_sensing(false);
+    let (mut lo, mut hi, mut sum) = (f32::INFINITY, f32::NEG_INFINITY, 0.0_f32);
+    let mut before = ant(&c);
+    for _ in 0..2000 {
+        c.step();
+        let now = ant(&c);
+        // The signed angle from the old heading to the new.
+        let turned = libm::atan2f(
+            before.cos * now.sin - before.sin * now.cos,
+            before.cos * now.cos + before.sin * now.sin,
+        );
+        (lo, hi, sum) = (lo.min(turned), hi.max(turned), sum + turned);
+        before = now;
+    }
+    let t = p.turn;
+    assert!(lo >= -t - 1e-4 && hi <= t + 1e-4, "[{lo}, {hi}] past ±{t}");
+    assert!(
+        lo < -0.95 * t && hi > 0.95 * t,
+        "[{lo}, {hi}] short of ±{t}"
+    );
+    assert!((sum / 2000.0).abs() < 0.05 * t, "mean {}", sum / 2000.0);
+}

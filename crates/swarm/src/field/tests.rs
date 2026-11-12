@@ -153,3 +153,62 @@ fn diffusing_with_given_counts_is_diffusing() {
     }
     assert_eq!(a.values(), b.values(), "bit for bit");
 }
+
+// The tests below close gaps a mutation run found (4b299dd).
+
+#[test]
+fn the_size_is_reported_and_a_column_past_the_edge_is_outside() {
+    let mut f = Field::new(7, 5).unwrap();
+    assert_eq!((f.width(), f.height()), (7, 5));
+    // x = width is outside, not the next row's first cell.
+    assert_eq!(f.get(7, 0), None);
+    assert_eq!(f.get(0, 5), None);
+    assert!(!f.deposit(7, 0, 1.0));
+    assert_eq!(f.total(), 0.0);
+}
+
+#[test]
+fn diffusion_at_the_right_edge_does_not_wrap_to_the_next_row() {
+    // Mass is conserved either way, so only the place shows it.
+    let mut f = Field::new(5, 5).unwrap();
+    f.deposit(4, 2, 5.0);
+    assert_eq!(f.open_neighbours(&open(5, 5)).get(2 * 5 + 4), Some(&5));
+    f.diffuse(&open(5, 5), 0.5);
+    for y in 0..5 {
+        assert_eq!(f.get(0, y), Some(0.0), "row {y}'s first cell");
+    }
+    assert_eq!(f.get(4, 2), Some(2.5));
+    assert_eq!(f.get(3, 1), Some(0.5));
+}
+
+#[test]
+fn a_value_inside_a_wall_goes_nowhere() {
+    // Walls hold nothing (a colony clears them); a value left in one is
+    // dropped, not spread.
+    let mut f = Field::new(5, 5).unwrap();
+    let mut o = open(5, 5);
+    o[12] = false;
+    f.deposit(2, 2, 4.0);
+    f.diffuse(&o, 0.5);
+    assert_eq!(f.total(), 0.0);
+}
+
+#[test]
+fn zero_clears_one_cell() {
+    let mut f = Field::new(4, 3).unwrap();
+    f.deposit(1, 1, 2.0);
+    f.deposit(2, 1, 3.0);
+    f.zero(5);
+    assert_eq!((f.get(1, 1), f.get(2, 1)), (Some(0.0), Some(3.0)));
+}
+
+#[test]
+fn the_top_share_of_everything_is_everything() {
+    let mut f = Field::new(4, 3).unwrap();
+    f.deposit(1, 1, 2.0);
+    f.deposit(2, 1, 6.0);
+    assert_eq!(f.top_share(1.0), 1.0);
+    // The top cell of twelve (a twelfth, rounded to one cell): 6 of 8.
+    assert_eq!(f.top_share(1.0 / 12.0), 0.75);
+    assert_eq!(f.top_share(2.0 / 12.0), 1.0);
+}

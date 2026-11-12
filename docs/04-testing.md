@@ -750,6 +750,42 @@ still passed.
   cell (more candidates, never fewer); a disc's `x + dx` for `x − dx`;
   capacity hints (`Vec::with_capacity`); a skip that's exact by design
   (chunks), now observable only through the visited count.
+- **The third full run (after S5, at 4b299dd):** 304 of 5,322 missed
+  (41 timeouts). 128 were in `swarm`, new since the last run and never
+  triaged; those were gone through one by one:
+  - **Real gaps, now tested:** a field's diffusion at the right edge
+    wrapping into the next row's first cell (mass was conserved either
+    way, so the conservation tests passed); a value left inside a wall;
+    `Field::zero`, the sizes, the top share of everything; the ants'
+    disc clipping at each edge, the food accounts when painting over
+    food and erasing, pheromone removed under a new wall, the nest and
+    parameter setters' refusals, and the random-walk baseline's turn
+    (nothing checked its range, only that trails beat it); a flock at
+    exactly `MAX_BOIDS` and one over, the predator's setter, the
+    polarization of off-axis and resting boids; the evolution's mean,
+    its population staying the population, σ's schedule (from −x to x it
+    passes through exactly 0, so one generation is unmutated copies),
+    crossover really mixing two parents, and a golden hash for a whole
+    run; `Vicsek::with_particles` wrapping what it's given.
+  - **Re-run on those mutants: 147 of 164 caught.** The 17 left are
+    equivalent: `is_empty` on collections that are never empty; a
+    polarization sum's sign (only its length is used); `<` against `<=`
+    where equality has probability zero (a random draw against 0.5) or
+    a later bounds check repeats it; a fallback value for an index
+    already checked; the last generation skipping a breeding nobody
+    reads; one thread taking the threaded path (the same numbers, which
+    is the point of it); a tournament's ties (only between NaNs).
+  - **The other 176** (`acoustic` 77, `engine` 71, the rest 28) were
+    not gone through one by one. Their largest groups were checked
+    (`t60`'s least squares, `Chunks::wake`, `count_tunnels`, the
+    waveguide's pickup, `colour`, the hammer's slope) and are the
+    equivalent classes above, with one gap found and tested: `t60`
+    given a window under two samples. The rest are assumed to be what
+    the second run left; a mutant-by-mutant pass is still open.
+  - Code the health pass rewrote after this run (`Field::diffuse`,
+    Physarum's wraps, Vicsek's candidates, the broadphase's cell lookup)
+    was tested as it was written, but not mutated: the next full run
+    covers it.
 
 ## Phase 1 test-first order
 

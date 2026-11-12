@@ -140,3 +140,11 @@ fn order_is_one_aligned_and_zero_opposed() {
     .unwrap();
     assert!(w.order().abs() < 1e-12);
 }
+
+#[test]
+fn given_particles_are_wrapped_into_the_box() {
+    // Found by a mutation run (4b299dd): nothing placed one outside.
+    let v = Vicsek::with_particles(L, VicsekParams::paper(0.0), [p(L + 1.0, -2.0, 1.0, 0.0)], 1)
+        .unwrap();
+    assert_eq!(v.particle(0), Some(p(1.0, L - 2.0, 1.0, 0.0)));
+}
