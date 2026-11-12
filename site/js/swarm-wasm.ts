@@ -23,6 +23,7 @@ export async function loadSwarm(url: URL | string = SWARM_URL): Promise<SwarmExp
   const { swarm_advance: advance, swarm_free: free } = exports;
   const { vicsek_advance: vAdvance, vicsek_free: vFree } = exports;
   const { ant_advance: aAdvance, ant_free: aFree } = exports;
+  const { slime_advance: sAdvance, slime_free: sFree } = exports;
   return {
     ...exports,
     vicsek_advance(d, elapsed) {
@@ -48,6 +49,18 @@ export async function loadSwarm(url: URL | string = SWARM_URL): Promise<SwarmExp
     ant_free(d) {
       swarmStepBudget.forget(d);
       aFree(d);
+    },
+    slime_advance(d, elapsed) {
+      const cap = swarmStepBudget.cap;
+      exports.slime_set_step_cap(d, cap);
+      const t0 = performance.now();
+      const steps = sAdvance(d, elapsed);
+      swarmStepBudget.record(d, steps, performance.now() - t0, cap);
+      return steps;
+    },
+    slime_free(d) {
+      swarmStepBudget.forget(d);
+      sFree(d);
     },
     swarm_advance(d, elapsed) {
       const cap = swarmStepBudget.cap;

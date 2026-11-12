@@ -89,7 +89,11 @@ sensing, concentration, the field through a colour ramp. Mirrored,
 `.d.ts` checked, a call-sequence property test. V8: 100k agents on 512²,
 5.61 ms a step and 0.97 ms to draw; 60 Hz holds to ~250k. The GPU
 question recorded with these numbers, not built.
-## 5. The page (PR): `s4-physarum`
+## ✅ 5. The page (PR)
+
+`s4-physarum`: the 512² field (100k agents), sliders, sensing, click to
+add nodes, restart, concentration; presets (spread, nodes, 250k, a small
+world); two smoke cases; gallery. Your check pending.
 ## 6. Cleanup (PR)
 
 ## Workflow

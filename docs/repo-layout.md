@@ -134,6 +134,7 @@ physics/
     │   ├── s1-boids/
     │   ├── s2-vicsek/
     │   ├── s3-ants/
+    │   ├── s4-physarum/
     │   ├── a1-string/
     │   ├── a2-waveguide/
     │   └── a3-piano/

@@ -787,6 +787,15 @@ contention S3 named, needing atomic adds there, and `wgpu` would be the
 repo's first large runtime dependency, WebGPU-only. Not built: the CPU
 path covers the page, and the question stays open with its numbers.
 
+### The page as built (S4.5, `site/demos/s4-physarum`)
+
+The 512² field one pixel a cell (100k agents), a slider per constant
+(angles in degrees), sensing on or off, a click adds a strong node,
+"clear nodes", "restart" (keeping the sliders), concentration every
+30 frames; presets for the spread setting, three nodes, 250k agents and
+a small world (128², where the band forms in a minute). At 30 steps the
+smoke screenshot already shows a reticulated web.
+
 ### What's measured
 
 - **Concentration**: the share of the field's mass in its top 10% of
