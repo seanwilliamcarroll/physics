@@ -333,8 +333,12 @@ N = 4000.
 
 ## 6. The page (PR)
 
-- [ ] `s2-vicsek`: the live box, η and density controls, the sweep plot
-      (Fig. 2a's sizes), the 0/0 count; smoke; gallery.
+- [x] `s2-vicsek`: the live box (N and ρ by URL, η, v and the rate on
+      sliders, the step budget on `vicsek_advance` too), `v_a` over time,
+      a Fig. 2a sweep in the browser (N = 40, 100, 400, 4000; η 0–5 by
+      0.25; one case per task), the 0/0 count in the HUD; two smoke
+      cases (the default, and 10 particles under three cells: brute
+      force); gallery.
 - [ ] Your check against **Done when**.
 
 ## 7. Cleanup (PR)
