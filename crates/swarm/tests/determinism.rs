@@ -124,3 +124,24 @@ fn the_ants_golden_hash_is_unchanged() {
     assert_eq!(h, run_ants(), "repeatable");
     assert_eq!(h, GOLDEN_ANTS, "if intended, set GOLDEN_ANTS = {h:#018x}");
 }
+
+/// Physarum: 3,000 agents and a node on a 96² field, 300 steps.
+fn run_slime() -> u64 {
+    let mut s = swarm::Slime::new(96, 3000, swarm::SlimeParams::DEFAULT, 42).unwrap();
+    s.add_node(20, 20, 4.0);
+    for _ in 0..300 {
+        s.step();
+    }
+    let mut h = Fnv1a::new();
+    h.write(&s.state_bytes());
+    h.finish()
+}
+
+const GOLDEN_SLIME: u64 = 0x59c1_57e9_4d5c_3901;
+
+#[test]
+fn the_slime_golden_hash_is_unchanged() {
+    let h = run_slime();
+    assert_eq!(h, run_slime(), "repeatable");
+    assert_eq!(h, GOLDEN_SLIME, "if intended, set GOLDEN_SLIME = {h:#018x}");
+}

@@ -133,6 +133,64 @@ impl Field {
         core::mem::swap(&mut self.value, &mut self.scratch);
     }
 
+    /// Diffusion on a periodic grid (no walls, the edges wrapped): every
+    /// cell keeps `1 − d` and takes `d / 8` of each of its eight
+    /// neighbours' values, so the total is conserved (in reals; to
+    /// rounding in f32). `d = 8/9` is the 3 × 3 mean filter. Written as a
+    /// gather (each cell reads its neighbours), which reads in order.
+    pub fn diffuse_periodic(&mut self, d: f32) {
+        let d = if d.is_finite() {
+            d.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let (w, h) = (self.width, self.height);
+        let (keep, share) = (1.0 - d, d / 8.0);
+        for y in 0..h {
+            let (up, down) = ((y + h - 1) % h, (y + 1) % h);
+            for x in 0..w {
+                let (left, right) = ((x + w - 1) % w, (x + 1) % w);
+                let at = |cx: usize, cy: usize| self.value.get(cy * w + cx).copied().unwrap_or(0.0);
+                let around = at(left, up)
+                    + at(x, up)
+                    + at(right, up)
+                    + at(left, y)
+                    + at(right, y)
+                    + at(left, down)
+                    + at(x, down)
+                    + at(right, down);
+                if let Some(s) = self.scratch.get_mut(y * w + x) {
+                    *s = keep * at(x, y) + share * around;
+                }
+            }
+        }
+        core::mem::swap(&mut self.value, &mut self.scratch);
+    }
+
+    /// The share of the total in the `fraction` of cells holding most
+    /// (S4's concentration: 0.1 of a uniform field's mass is in its top
+    /// 10%; a network's is far more). 0 for an empty field.
+    #[must_use]
+    pub fn top_share(&self, fraction: f64) -> f64 {
+        let total = self.total();
+        if total.is_nan() || total <= 0.0 {
+            return 0.0;
+        }
+        let n = self.value.len();
+        let k = math::convert::f64_to_usize(
+            (fraction.clamp(0.0, 1.0) * math::convert::usize_to_f64(n)).round(),
+        )
+        .unwrap_or(0)
+        .min(n);
+        if k == 0 {
+            return 0.0;
+        }
+        let mut v = self.value.clone();
+        // The k largest to the front (descending), in linear time.
+        v.select_nth_unstable_by(k - 1, |a, b| b.total_cmp(a));
+        v.iter().take(k).map(|&x| f64::from(x)).sum::<f64>() / total
+    }
+
     /// Every value times `1 − e` (`e` clamped to `[0, 1]`).
     pub fn decay(&mut self, e: f32) {
         let keep = 1.0

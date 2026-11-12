@@ -714,6 +714,18 @@ SS 1, deposit 5, decay 0.1), not checked against the paper.
   are computed once (`libm`): no trig in the step.
 - No one-agent-per-cell exclusion (Jenson's choice).
 
+### The model as built (S4.2, `swarm::Slime`)
+
+`Field` gains `diffuse_periodic(d)` (a gather: each cell keeps `1 − d`
+and takes `d/8` of each wrapped neighbour; `d` = 8/9 is the mean
+filter) and `top_share(fraction)` (linear time, `select_nth_unstable`).
+`SlimeParams` (checked; the step under half the world), `Slime` (SoA
+agents, one random draw each a step, the rotations' sines and cosines
+computed once a step with `libm`, deposits after sensing, fixed nodes,
+sensing on or off). Measured: the field balances to **2.8e-8** a step
+over 1,000 steps with 5,000 agents and a node; agents never leave the
+field. A golden, the same on wasm32 with and without `simd128`.
+
 ### What's measured
 
 - **Concentration**: the share of the field's mass in its top 10% of
