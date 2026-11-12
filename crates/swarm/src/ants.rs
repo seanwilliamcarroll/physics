@@ -4,7 +4,7 @@
 //! into the other.
 
 use math::SplitMix64;
-use math::convert::{f64_to_f32, f64_to_usize};
+use math::convert::{f64_to_f32, f64_to_usize, usize_to_f64};
 
 use crate::Field;
 
@@ -194,25 +194,32 @@ impl Colony {
 
     /// Cells of the disc of `radius` at `(x, y)`, clipped to the world.
     fn disc(&self, x: f32, y: f32, radius: f32) -> Vec<usize> {
-        let r = radius.max(0.0);
-        let (x0, x1) = (f64::from((x - r).floor()), f64::from((x + r).ceil()));
-        let (y0, y1) = (f64::from((y - r).floor()), f64::from((y + r).ceil()));
-        let mut out = Vec::new();
-        let (mut cy, w) = (y0, self.width);
-        while cy <= y1 {
-            let mut cx = x0;
-            while cx <= x1 {
-                let (dx, dy) = (cx + 0.5 - f64::from(x), cy + 0.5 - f64::from(y));
-                if dx * dx + dy * dy <= f64::from(r * r) + 0.5
-                    && let (Some(ix), Some(iy)) = (f64_to_usize(cx), f64_to_usize(cy))
-                    && ix < w
-                    && iy < self.height
-                {
-                    out.push(iy * w + ix);
-                }
-                cx += 1.0;
+        // The bounding box clipped to the world first, then whole cells:
+        // stepping an f64 by 1.0 from a huge coordinate never advanced
+        // (found by the exports' call-sequence property test: a hang).
+        let (r, w, h) = (f64::from(radius.max(0.0)), self.width, self.height);
+        let (x, y) = (f64::from(x), f64::from(y));
+        let span = |lo: f64, hi: f64, n: usize| -> Option<(usize, usize)> {
+            let top = usize_to_f64(n) - 1.0;
+            if !(lo.is_finite() && hi.is_finite()) || hi < 0.0 || lo > top {
+                return None;
             }
-            cy += 1.0;
+            Some((f64_to_usize(lo.max(0.0))?, f64_to_usize(hi.min(top))?))
+        };
+        let (Some((x0, x1)), Some((y0, y1))) = (
+            span((x - r).floor(), (x + r).ceil(), w),
+            span((y - r).floor(), (y + r).ceil(), h),
+        ) else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for cy in y0..=y1 {
+            for cx in x0..=x1 {
+                let (dx, dy) = (usize_to_f64(cx) + 0.5 - x, usize_to_f64(cy) + 0.5 - y);
+                if dx * dx + dy * dy <= r * r + 0.5 {
+                    out.push(cy * w + cx);
+                }
+            }
         }
         out
     }

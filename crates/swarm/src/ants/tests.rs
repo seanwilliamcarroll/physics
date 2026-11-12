@@ -126,3 +126,14 @@ fn deposits_weaken_with_distance_from_the_source() {
     let expected: f32 = (0..10).map(|s| (-k * s as f32).exp()).sum();
     assert!((c.field(Pheromone::Home).total() as f32 - expected).abs() < 1e-4);
 }
+
+#[test]
+fn painting_far_outside_the_world_paints_nothing_and_returns() {
+    // Stepping an f64 by 1.0 from 1e30 never advanced: it hung.
+    let mut c = one(20.0, 20.0);
+    assert_eq!(c.paint_food(1e30, 1e30, 3.0, 5), 0);
+    assert_eq!(c.paint_wall(-1e30, 5.0, 3.0), 0);
+    assert_eq!(c.erase(f32::INFINITY, 5.0, 3.0), 0);
+    // A huge radius is clipped to the world.
+    assert_eq!(c.paint_food(30.0, 20.0, 1e30, 1), 60 * 40);
+}
