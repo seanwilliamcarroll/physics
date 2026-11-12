@@ -606,6 +606,41 @@ walls over food and erasing; the fields balance to 3.5e-8 a step; ants
 never enter walls. A golden (ants and both fields), the same on wasm32
 with and without `simd128`.
 
+### The double bridge as built (S3.4)
+
+Ours, in Goss et al.'s spirit (not read): a 140 × 120 world of walls, a
+nest chamber and a food chamber 104 cells apart, and two corridors
+5 cells wide. Traffic is **crossings of a gate halfway along each arm**
+(occupancy would favour the longer arm, which holds more ants at the
+same traffic). 400 ants, steps 1,000–4,000, eight seeds:
+
+| Bridge | Ants | Upper arm's share of traffic |
+|---|---|---|
+| short (~78 cells) vs long (~126, 1.6×) | trails | **0.71–0.77** |
+| same | random walk | 0.49–0.61 |
+| equal (both ~102) | trails | 0.41–0.56 |
+| same | random walk | 0.45–0.54 |
+
+- **The shorter arm wins, beyond its geometry**, in every seed. The
+  random walk measures what the corridors' shape alone does (0.49–0.61);
+  trails add 0.1–0.2 to it. (Plausibly the short arm's returners
+  reinforce it sooner; not separately measured.)
+- **Equal arms: no choice.** Real ants are reported to concentrate on
+  one of two equal branches (the line of work Deneubourg et al.'s papers
+  belong to; not read). Ours split. A guess at the missing ingredient,
+  not a measurement: each ant's decision at the fork compares two
+  sensor readings blurred by a 0.4 rad wiggle and diffusion, too soft a
+  choice to amplify a small early imbalance.
+- **A first version failed for an instructive reason**: at twice this
+  scale (arms of 120 and ~194 cells, and equal arms of ~176) the equal
+  bridge delivered almost nothing, since trails couldn't link nest and
+  food that far apart with these defaults; the "short arm wins" result
+  there was partly the long arm simply carrying no trail. At this scale
+  every arm carries food.
+
+Both behaviours are pinned (`tests/bridge.rs`, four seeds): trails above
+every random walk by 0.05; equal arms within 0.3–0.7.
+
 ### What's tested
 
 The accountings; diffusion alone conserving mass and spreading
