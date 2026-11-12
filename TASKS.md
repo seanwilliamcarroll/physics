@@ -355,6 +355,9 @@ from 1e300): fixed and tested. V8: 1.53 ms a step, 1.16 ms to draw.
 
 ## 7. Cleanup (PR)
 
+- [x] `types.md`: S3's types.
+- [ ] S3 collapsed here after your check.
+
 ---
 
 ## Health (after M7)
