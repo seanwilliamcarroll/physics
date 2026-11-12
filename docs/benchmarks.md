@@ -10,6 +10,7 @@ the index and the current state.
 |---|---|
 | `cargo xtask bench --save main` | Every criterion bench (`cargo bench --workspace --benches`), saved as baseline `main`. |
 | `cargo xtask bench --baseline main` | Runs them again and compares: lists every benchmark whose mean moved more than 10% (`--threshold N` changes it), faster or slower, and **fails if anything got slower**. |
+| `cargo xtask profile …` | Where the time goes in one example or bench (`profiling.md`). |
 | `cargo xtask bench-wasm` | Builds the site, then times the modules in Node 22: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`). |
 
 Benchmarks are noisy on a laptop (a few percent run to run, more with
@@ -26,11 +27,13 @@ Neither runs in a hook: a full criterion run takes minutes.
 | `engine` | `step` | `World::step` per scalar and integrator at n = 16, 128, 1024; pairwise gravity; Barnes–Hut θ = 0.5, 1.0; per-call allocation; the broadphase | O(n²) confirmed (~2 ns a pair); Barnes–Hut's crossover (`barnes-hut.md`); M6's broadphase |
 | `acoustic` | `fft`, `dispersion`, `piano` | FFT sizes; stiff-string allpass design; 16 piano voices; designing 88 keys | A2's analyzer budget; A3's design-once decision (`14-piano.md`) |
 | `sand` | `step` | busy and settled grids, chunks on and off, 640 × 360 and 1920 × 1080 | M9's chunks (~175× settled) |
-| `swarm` | `step` | boids by brute force, grid and sorted, 300 to 100k | S1's grid, the lane loop, `simd128` (`15-swarm.md`) |
+| `swarm` | `step` | boids by brute force, grid and sorted, 300 to 100k; one step of Vicsek (N = 4000), the ants (200 × 120, 500) and Physarum (512², 100k) at their pages' sizes | S1's grid, the lane loop, `simd128` (`15-swarm.md`); the hot paths in `profiling.md` |
 
 Not covered by criterion (measured by examples, `crates/swarm/examples/`):
-the Vicsek and Physarum steps (`timing.rs`), the transition sweep
-(`vicsek_sweep.rs`), the ants' evolution (`evolve_ants.rs`).
+native against wasm with and without `simd128` (`timing.rs`), the
+transition sweep (`vicsek_sweep.rs`), the ants' evolution
+(`evolve_ants.rs`). Where the time goes inside a benchmark:
+`profiling.md`.
 
 ## Wasm, as of the last run
 

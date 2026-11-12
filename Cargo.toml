@@ -56,6 +56,14 @@ lto = false
 codegen-units = 16
 incremental = true
 
+# Profiling (`docs/profiling.md`): release as built, plus the symbols a
+# sampling profiler needs to name functions. Its own target dir
+# (target/profiling), so release builds aren't disturbed.
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false
+
 [profile.release]
 opt-level = 3   # try "s"/"z" later and measure size vs speed
 lto = true

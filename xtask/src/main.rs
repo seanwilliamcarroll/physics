@@ -20,6 +20,7 @@ mod bench;
 mod bench_wasm;
 mod coverage;
 mod mutants;
+mod profile;
 mod serve;
 mod slow;
 mod smoke;
@@ -91,6 +92,35 @@ enum Command {
         #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(u32).range(10..))]
         budget_ms: u32,
     },
+    /// Profile one example or bench under samply (built with debug info)
+    /// and print its hottest functions and source lines
+    /// (docs/profiling.md); arguments after -- go to the program (a bench:
+    /// a filter for its cases)
+    Profile {
+        /// The package holding the example or bench
+        #[arg(short, long)]
+        package: String,
+        /// Profile this example
+        #[arg(
+            long,
+            value_name = "NAME",
+            conflicts_with = "bench",
+            required_unless_present = "bench"
+        )]
+        example: Option<String>,
+        /// Profile this criterion bench
+        #[arg(long, value_name = "NAME")]
+        bench: Option<String>,
+        /// Seconds each bench case runs (an example decides its own)
+        #[arg(long, default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..))]
+        seconds: u32,
+        /// How many functions and lines to list
+        #[arg(long, default_value_t = 12, value_parser = clap::value_parser!(u32).range(1..))]
+        top: u32,
+        /// Arguments for the program
+        #[arg(last = true)]
+        args: Vec<String>,
+    },
     /// Measure test coverage of the Rust crates and the site JS; report only, no thresholds
     ///
     /// Rust: cargo-llvm-cov runs the workspace tests (except xtask) instrumented,
@@ -156,6 +186,21 @@ fn run(cmd: Command) -> Result<(), String> {
             (None, None) => Err("give --save NAME or --baseline NAME".to_owned()),
         },
         Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
+        Command::Profile {
+            package,
+            example,
+            bench,
+            seconds,
+            top,
+            args,
+        } => {
+            let target = match (example, bench) {
+                (Some(n), _) => profile::Target::Example(n),
+                (None, Some(n)) => profile::Target::Bench(n),
+                (None, None) => return Err("give --example NAME or --bench NAME".to_owned()),
+            };
+            profile::profile(&root, &package, &target, seconds, top, &args)
+        }
         Command::Coverage => coverage::coverage(&root),
         Command::InstallHooks => install_hooks(&root),
         Command::Slow { cases } => slow::slow(&root, cases),

@@ -20,6 +20,7 @@ physics/
 │   ├── 00-scope.md … 09-billiards.md, 11-falling-sand.md … 14-piano.md, 15-swarm.md
 │   ├── setup.md            # a fresh machine, step by step (nvm for Node)
 │   ├── benchmarks.md       # running and comparing benchmarks; the current numbers
+│   ├── profiling.md        # finding where the time goes: cargo xtask profile, the hot paths found
 │   ├── repo-layout.md      # this file
 │   ├── types.md            # key types, one line each, with links
 │   ├── hosting.md          # future work
@@ -83,7 +84,8 @@ physics/
 │   ├── src/main.rs
 │   ├── serve.py            # dev and smoke server: http.server + no-store + a deep backlog
 │   ├── smoke_page.mjs      # one smoke load: Chrome over DevTools, waits for SMOKE
-│   └── bench_wasm.mjs      # Node side of `cargo xtask bench-wasm`
+│   ├── bench_wasm.mjs      # Node side of `cargo xtask bench-wasm` (bench_modules.mjs: the other modules)
+│   └── profile_top.mjs     # a samply profile's hottest functions and source lines (`cargo xtask profile`)
 │
 └── site/
     ├── index.html          # demo gallery
@@ -181,6 +183,8 @@ Commands (`cargo xtask help` lists what exists):
 | `cargo xtask serve` | M2 | `site`, then serve `site/` with `tsc --watch` alongside (default port 8000) |
 | `cargo xtask smoke` | M0 | `site`, then load the demo in headless Chrome and check it draws (pre-push; `docs/04-testing.md`) |
 | `cargo xtask bench-wasm` | M2 | time the cluster through `engine.wasm` in Node; compare with criterion's native results |
+| `cargo xtask bench` | health | every criterion bench, saved as a baseline (`--save NAME`) or compared with one (`--baseline NAME`; fails on regressions) (`docs/benchmarks.md`) |
+| `cargo xtask profile` | health | one example or bench under `samply`, built with debug info; prints the hottest functions and source lines (`docs/profiling.md`) |
 | `cargo xtask test-wasm` | M1 | `cargo test -p engine -p math --target wasm32-wasip1` under wasmtime (pre-push) |
 | `cargo xtask coverage` | M2 | Rust coverage via `cargo-llvm-cov` (per-crate summary, HTML in `target/llvm-cov/html`) and site JS via `node --test --experimental-test-coverage`; report only (`docs/04-testing.md`) |
 | `cargo xtask dist` | planned | `site` + produce a deployable `dist/` (see `hosting.md`) |
