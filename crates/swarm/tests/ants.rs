@@ -82,17 +82,12 @@ fn the_fields_keep_their_accounts_and_ants_keep_out_of_walls() {
     assert!(worst < 3.5e-7, "field accounting off by {worst:e}");
 }
 
-/// Foraging, measured over four seeds (3,000 steps): the defaults deliver
-/// 1,312–1,959; ants with sensing off (a random walk, same speed and
-/// turns) 12–21; constant deposits (no fall-off) 7–255, no better than a
-/// random walk: without the fall-off a trail has no direction. Bounds:
-/// every default seed at least 20× the best random walk and 2× the best
-/// constant run.
-#[test]
-fn trails_beat_a_random_walk_and_need_the_falloff() {
+/// Foraging over `seeds` (3,000 steps each): every default seed at
+/// least 20× the best random walk (sensing off, same speed and turns) and
+/// 2× the best constant-deposit run (no fall-off).
+fn trails_beat_a_random_walk(seeds: core::ops::RangeInclusive<u64>) {
     let d = AntParams::DEFAULT;
     let constant = AntParams { falloff: 0.0, ..d };
-    let seeds = 1..=4;
     let with: Vec<u64> = seeds.clone().map(|s| delivered(d, true, s)).collect();
     let walk: Vec<u64> = seeds.clone().map(|s| delivered(d, false, s)).collect();
     let flat: Vec<u64> = seeds.map(|s| delivered(constant, true, s)).collect();
@@ -107,4 +102,21 @@ fn trails_beat_a_random_walk_and_need_the_falloff() {
             "foraging {with:?} vs constant deposits {flat:?}"
         );
     }
+}
+
+/// Measured over seeds 1–4: the defaults deliver 1,312–1,959; a random
+/// walk 12–21; constant deposits 7–255, no better than a random walk:
+/// without the fall-off a trail has no direction. Every push runs seed 1
+/// (its constant run is the strongest, 255: the hardest seed for the 2×
+/// bound); all four in `cargo xtask slow` (one run is ~1 s optimized;
+/// twelve timed out at 120 s on a busy machine).
+#[test]
+fn trails_beat_a_random_walk_and_need_the_falloff() {
+    trails_beat_a_random_walk(1..=1);
+}
+
+#[test]
+#[ignore = "slow: cargo xtask slow"]
+fn slow_trails_beat_a_random_walk_on_every_seed() {
+    trails_beat_a_random_walk(1..=4);
 }

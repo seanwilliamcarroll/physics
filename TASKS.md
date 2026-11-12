@@ -1,4 +1,4 @@
-# TASKS — S5: Evolving the rules
+# TASKS — S5: Evolving the rules (done; next milestone to plan)
 
 Source: `docs/05-roadmap.md` ("Swarm track", S5: "evolve rules, build");
 `docs/15-swarm.md` (S3's ants, whose constants this evolves).
@@ -28,63 +28,6 @@ evolved natively (in parallel, the result independent of the thread
 count); the best is measured against the defaults on held-out seeds and
 on the barriers scene; and the page runs defaults and evolved side by
 side with the evolution's history drawn.
-
-## Decisions (your approval given in advance)
-
-1. **Scope: evolving the rules only.** Collective construction (Werfel
-   et al.) is a milestone's worth of its own: deferred, recorded.
-2. **`swarm::evolve`**: a small evolutionary algorithm over a bounded
-   real vector: a population, tournament selection (size 3), Gaussian
-   mutation scaled to each gene's range (and shrinking over the
-   generations), uniform crossover, elitism (the best 2 kept and
-   **re-evaluated** each generation, so a lucky score can't persist).
-   CMA-ES noted, not built.
-3. **Noise-aware fitness**: a run's food delivered depends on its seed,
-   so each individual is scored on K seeds (common to the whole
-   generation, new each generation), the mean its fitness.
-4. **The genome**: S3's seven tunable constants (SA, SD, RA, wiggle,
-   fall-off, diffusion, decay), each within a stated range; speed and
-   deposit fixed (they scale the rest).
-5. **Parallel, deterministic**: evaluations natively on `std::thread::
-   scope`; each depends only on its genome and seeds, so the result is
-   bit-identical with 1 thread or 16 (tested). The wasm build stays
-   single-threaded (`workers.md`).
-6. **Generalization is the result**: the best evolved setting against
-   the defaults on 8 held-out seeds in S3's scene and on the barriers
-   scene. Reported either way.
-7. **No new exports**: the page uses S3's `ant_*` exports
-   (`ant_set_param`) to run defaults and evolved side by side; the
-   evolution's history (best and mean fitness per generation) is
-   embedded from the native run.
-
-## ✅ 1. The doc (PR)
-
-`15-swarm.md`, S5: the algorithm (elites re-scored, tournament,
-crossover, shrinking Gaussian mutation), noise and common seeds, why it
-runs parallel yet bit-identical, the genome, generalization as the
-result; construction deferred. `references.md`: the three, unread.
-## ✅ 2. The algorithm (PR)
-
-`swarm::evolve`: elites re-scored, tournament, uniform crossover,
-shrinking Gaussian mutation (Box–Muller, `libm`), a start genome,
-scoring split over threads by slot. Finds a noisy quadratic's maximum;
-**identical on 1–8 threads**.
-## ✅ 3. Evolving the ants (PR)
-
-25 generations of 20 on 10 threads (~5 min). **Held out: 5,394 against
-the defaults' 1,701; in the barriers scene, never trained on, 3,978
-against 404.** Near a straight-shuttle ceiling (~80%); short, wide
-sensors the scan couldn't have found; two genes at their ranges' edges.
-`AntParams::EVOLVED`, pinned; the history in `site/js/ant-evolution.ts`.
-## ✅ 4. The page (PR)
-
-`s5-evolve`: defaults and evolved side by side (same scene, seed, 500
-ants; four scenes, held-out seeds), the evolution's history and the
-held-out numbers; two smoke cases; gallery. Your check pending.
-## 5. Cleanup (PR)
-
-- [x] `types.md`: S5's types.
-- [ ] S5 collapsed after your check.
 
 ## Workflow
 
@@ -310,6 +253,19 @@ seeds. `slime_*` in `swarm.wasm` (103.8 KB): 100k agents on 512², 5.6
 ms a step in V8, 60 Hz to ~250k; the GPU question recorded with the
 numbers, not built. The `s4-physarum` page (your check: "looks good").
 The slider readouts rounded for custom formats too.
+
+## ✅ S5: Evolving the rules (done, PRs #213–#218)
+
+`docs/15-swarm.md`, S5; collective construction (Werfel et al. 2014)
+deferred to its own milestone. `swarm::evolve`: elites re-scored,
+tournament, crossover, shrinking Gaussian mutation, common seeds; the
+history identical on any thread count (and on threadless wasm, found by
+`test-wasm`). S3's seven ant constants evolved natively (25 × 20, ~5
+min): **held out, 5,394 delivered against the defaults' 1,701; on the
+barriers scene it never saw, 3,978 against 404**; ~80% of a
+straight-shuttle ceiling; short, wide sensors the hand scan couldn't
+have found; two genes at their ranges' edges. `AntParams::EVOLVED`; the
+`s5-evolve` page, side by side (your check: "looks good").
 ---
 
 ## Health (after M7)
@@ -344,7 +300,7 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 
 ---
 
-## Out of scope for S5
+## Out of scope for S5 (carried forward)
 
 - Collective construction (Werfel et al. 2014): deferred to its own
   milestone. CMA-ES. Evolving boids or Physarum (the same machinery
