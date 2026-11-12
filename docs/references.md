@@ -129,6 +129,29 @@ particles.* Phys. Rev. Lett. 75(6), 1226–1229. The order parameter `v_a`
 and its transition with noise (S2).
 - DOI: https://doi.org/10.1103/PhysRevLett.75.1226
 
+**Grégoire, G. & Chaté, H. (2004).** *Onset of collective and cohesive
+motion.* Phys. Rev. Lett. 92(2), 025702. The Vicsek transition is
+"always discontinuous" (S2's reading of its curves).
+- DOI: https://doi.org/10.1103/PhysRevLett.92.025702
+
+**Chaté, H., Ginelli, F., Grégoire, G. & Raynaud, F. (2008).**
+*Collective motion of self-propelled particles interacting without
+cohesion.* Phys. Rev. E 77(4), 046113. First-order-like onset;
+propagating high-density structures near it.
+- DOI: https://doi.org/10.1103/PhysRevE.77.046113
+
+**Chen, M. Z. Q. & Zhang, H.-T. (2007).** *Comment on "Novel type of
+phase transition in a system of self-driven particles".* arXiv
+preprint (no journal version found). The 0/0 case, "direction
+annihilation", and three fixes; S2 keeps the heading and counts it.
+- arXiv: https://arxiv.org/abs/cond-mat/0703532
+
+**Baglietto, G. & Albano, E. V. (2008).** *Finite-size scaling analysis
+and dynamic study of the critical behavior of a model for the
+collective displacement of self-driven individuals.* Phys. Rev. E
+78(2), 021125. (Cited, not yet read.)
+- DOI: https://doi.org/10.1103/PhysRevE.78.021125
+
 **Allen, M. P. & Tildesley, D. J. (2017).** *Computer Simulation of
 Liquids*, 2nd ed. Oxford University Press. Cell lists for fixed-radius
 neighbours: S1's grid.

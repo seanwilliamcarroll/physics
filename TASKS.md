@@ -293,12 +293,13 @@ slider, polarization, a cost table measured in the browser (your check:
 
 ---
 
-## 1. The doc (PR)
+## ✅ 1. The doc (PR)
 
-- [ ] `docs/15-swarm.md`, S2: the model as the paper states it, our
-      readings of it (unit vectors, Eq. 1, the 0/0 rule), the ρ
-      discrepancy, the periodic grid, the measurement plan, the later
-      papers. `references.md`: the five above.
+`docs/15-swarm.md`, S2: the model as the paper states it (quoted), our
+readings (unit vectors for `atan2`'s meaning, Eq. 1 literally, 0/0 kept
+and counted), the ρ = 0.4 / 4 discrepancy, the periodic grid (brute
+force below 3 cells), the measurement plan and what the later papers
+found. `references.md`: the four new papers.
 
 ## 2. The model (PR)
 

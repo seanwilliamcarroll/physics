@@ -323,6 +323,82 @@ within seconds; the sky-wide number waits for them to merge.
 Periodic boundaries and noise (S2); fields (S3, S4); the GPU (S4
 decides); threads (`workers.md`); fixed point (M8); 3D; obstacles.
 
+## S2: The Vicsek model
+
+Status: **Draft** (S2.1). Decisions: TASKS.md, S2.
+
+The physicist's minimal flock (Vicsek et al. 1995): no separation, no
+cohesion, constant speed. Each step every particle takes its
+neighbours' average heading and adds noise. The noise η plays the part
+of temperature: low, the particles move together (`v_a` near 1); high,
+they wander (`v_a` near 0). Between, an order–disorder transition, and
+this is the track's quantitative check, the way M1–M6 reproduce
+analytic results.
+
+### The model as the paper states it
+
+Read in full (arXiv cond-mat/0611743):
+
+- Particle i takes "the average direction of the velocities of
+  particles (including particle i) being within a circle of radius r",
+  written `⟨θ⟩_r = arctg[⟨sin θ⟩_r / ⟨cos θ⟩_r]`, plus `Δθ` uniform on
+  `[−η/2, η/2]`.
+- Positions: `x(t + 1) = x(t) + v(t) Δt` (Eq. 1), the velocity of
+  speed v at the angle just computed taking effect the step after.
+- A square cell of side L, periodic; `r = 1`, `Δt = 1`, `v = 0.03`
+  ("in a wide range of the velocities (0.003 < v < 0.3) the actual value
+  of v does not affect the results"). Random positions and directions
+  to start.
+- The order parameter, `v_a = |Σ vᵢ| / (N v)`: S1's polarization.
+- Fig. 2a: `v_a` against η at N = 40, 100, 400, 4000, 10000 with L =
+  3.1, 5, 10, 31.6, 50: density `ρ = N/L² ≈ 4`. Reported: `β = 0.45 ±
+  0.07` and `η_c(∞) = 2.9 ± 0.05` "for ρ = 0.4". **That disagrees with
+  the figure's ρ ≈ 4** (and Fig. 3a's caption repeats 0.4). We measure
+  at ρ = 4, the figure's, and compare there.
+
+### Our readings of it
+
+- **Unit vectors, not angles.** The average direction is `Σ (cos θ,
+  sin θ)` over the neighbourhood, normalized: the paper's `arctg` with
+  the quadrant right (a ratio's arctangent can't tell θ from θ + π, so
+  the formula must mean `atan2`). The noise rotates the result by `Δθ`,
+  with `sin`/`cos` from `libm` (pure Rust, so bit-identical on wasm). No
+  angle is ever stored.
+- **Eq. 1 literally:** each step moves with the heading the particle
+  had, then takes the new one; double-buffered as S1. Implementations
+  that move with the new heading differ by a one-step lag.
+- **0/0** ("direction annihilation", Chen & Zhang's comment): if the
+  neighbourhood's headings sum to exactly zero there's no average. We
+  keep the previous heading (the comment's first fix) and **count**
+  the cases. The comment plots the probability at up to ~20%; an exact
+  zero sum of floating-point unit vectors needs exact cancellation, so
+  we expect almost none outside constructed cases. The runs say.
+
+### The periodic grid
+
+S1's counting-sort cell list, with wrap-around: an integer number `k`
+of cells per side, each `L / k ≥ r` (1/1024 wider, S1.3's lesson), the
+3 × 3 block taken modulo k, distances by the minimum image. With `k <
+3` the block would wrap onto itself and count particles twice, so below
+three cells (L < ~3r) it's brute force; Fig. 2a's smallest box (L =
+3.1) is right at the edge. At ρ = 4 a particle has about `ρπr²` ≈ 13
+neighbours: light work, the scalar loop.
+
+### Measuring the transition
+
+As the paper: for each η, run a transient, then average `v_a` over a
+window; several seeds; mean ± s.d. At N = 40, 100, 400 and 4000 (10,000
+on the compute node), ρ = 4. What the curves can show at these sizes:
+`v_a` near 1 at small η, near `1/√N`'s scale at large η, and a
+transition that sharpens with N, near the paper's 2.9.
+
+**What they can't show, and what later work found.** Grégoire & Chaté
+(2004) report the transition "always discontinuous, including for the
+minimal model of Vicsek et al.", and Chaté et al. (2008) find it
+first-order-like, with high-density "propagating solitary structures"
+near it: effects of system sizes beyond these. So no exponent here: the
+doc reports the curves, and these papers' reading of them.
+
 ## References
 
 Papers (DOIs checked on Crossref):
@@ -342,6 +418,22 @@ Papers (DOIs checked on Crossref):
   doi:10.1093/oso/9780198803195.001.0001
 - Hockney, R. W. & Eastwood, J. W., *Computer Simulation Using
   Particles* (1981; CRC Press reprint 2021). doi:10.1201/9780367806934
+
+S2 (read 2026-11-11):
+
+- Grégoire, G. & Chaté, H. (2004), *Onset of collective and cohesive
+  motion*, Phys. Rev. Lett. 92(2), 025702.
+  doi:10.1103/PhysRevLett.92.025702
+- Chaté, H., Ginelli, F., Grégoire, G. & Raynaud, F. (2008), *Collective
+  motion of self-propelled particles interacting without cohesion*,
+  Phys. Rev. E 77(4), 046113. doi:10.1103/PhysRevE.77.046113
+- Chen, M. Z. Q. & Zhang, H.-T. (2007), *Comment on "Novel type of
+  phase transition in a system of self-driven particles"*, arXiv
+  preprint cond-mat/0703532. doi:10.48550/arXiv.cond-mat/0703532
+- Baglietto, G. & Albano, E. V. (2008), *Finite-size scaling analysis
+  and dynamic study of the critical behavior of a model for the
+  collective displacement of self-driven individuals*, Phys. Rev. E
+  78(2), 021125. doi:10.1103/PhysRevE.78.021125 (cited, not yet read).
 
 Secondary (values and practice, not claims):
 
