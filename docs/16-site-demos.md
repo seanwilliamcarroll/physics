@@ -54,7 +54,8 @@ What makes the page helpers page-shaped:
   when they arrive by navigation, not only on a fresh load.
 - Dark and light themes through a `data-theme` attribute
   (`src/scripts/theme.ts`).
-- A pre-commit hook (Prettier, ESLint); no tests.
+- Hooks: pre-commit (Prettier, ESLint, `astro check`), pre-push (the
+  production build). No tests, no CI.
 - `main` is now protected the same way as here (a `protect-main`
   ruleset: pull requests only, squash merges, no deletion or force
   push), as of 2026-11-13.
@@ -99,152 +100,257 @@ installing a package from a release tarball URL pinned in
 
 ## The work, as pull requests
 
-Each is small enough to review in one sitting. P is this repo, S is the
-site. The order within a repo is the merge order; the two columns only
-meet at S4.
+Each is small enough to review in one sitting. **P** steps are pull
+requests in this repo, **S** steps in `personal_site`; **V** steps are
+the throwaway checks above. The order within a repo is the merge order.
+The two repos only meet at S6.
+
+Each step says what it touches and when it's done. "Done when" is what
+the PR's description has to show.
 
 ### physics
 
-**P1. The loader, separated from the page.**
-Refactor only; every page behaves as before.
+Nightly CI for this repo is its own plan (`17-nightly-ci.md`, steps
+C1–C4); it doesn't block anything here.
 
-- New `site/js/engine-loader.ts`: `instantiate(source, name)` returning
-  the typed exports, the memory and a way to read the last panic, with
-  **no module-level state** (two modules, or two instances of one, don't
-  share anything).
-- It accepts a URL, a `Response` or bytes, and falls back from
-  `instantiateStreaming` to `instantiate` when streaming is refused
-  (V1).
-- `wasm.ts`, `sand-wasm.ts`, `swarm-wasm.ts` become thin: the loader
-  plus the page's step budget.
-- Tested by: a Node unit test loading the real `engine.wasm` twice and
-  checking the instances are independent; the existing smoke run.
+#### P1. The loader, separated from the page
 
-**P2. `cargo xtask package`.**
-Builds `target/package/physics-engine-<version>.tgz`, npm-shaped:
+Refactor only: every lab page behaves as before.
 
-- `engine.wasm`, `engine.d.ts`, the ABI constants and the loader (as
-  `.js` with `.d.ts`), a `package.json` with an `exports` map and
-  `types`, the licence.
-- The engine only, to begin with. The other modules (sand, swarm,
-  acoustic) are later subpaths of the same package, added when a post
-  wants one.
-- The version comes from one place (a `version` in the workspace's
-  `Cargo.toml`, which has none today).
-- Tested by: the command itself unpacking what it packed into a
-  temporary directory and running the fountain for 60 steps from Node,
-  through the package's own entry points.
+- **Touches:** new `site/js/engine-loader.ts`; `site/js/wasm.ts`,
+  `sand-wasm.ts`, `swarm-wasm.ts`, `synth-live.ts` (thinner);
+  `tests/site/engine-loader.test.js`; `docs/03-wasm-shell.md`.
+- **The loader:** `instantiate(source, name)` returns the typed
+  exports, the memory, and a function reading the last panic. It keeps
+  **no module-level state**: today `wasm.ts` holds `memory` and
+  `lastPanic` for whichever module loaded last.
+- **Sources:** a URL, a `Response`, or bytes.
+- **Fallback:** if `instantiateStreaming` is refused (a wrong content
+  type; V1), it compiles from the fetched bytes instead, and says so
+  once on the console.
+- **The page's part stays in `wasm.ts`:** the step budget, and
+  `lastPanicMessage` for the smoke test, now built on the loader.
+- **Done when:** a Node test loads the real `engine.wasm` twice and
+  shows the two instances share nothing (a panic in one isn't reported
+  by the other); a test covers the fallback with a `Response` of the
+  wrong type; `cargo xtask smoke` passes unchanged (40 pages).
 
-**P3. Releasing, written down.**
-CI is disabled here, so a release is made by hand:
+#### P2. `cargo xtask package`
 
-- `docs/16-site-demos.md` gains the procedure: bump the version, `cargo
-  xtask package`, `gh release create vX.Y.Z` with the tarball attached.
-- What a version means: the ABI is the contract. Pre-1.0, a change to
-  an existing export bumps the minor version and an addition the patch.
+*(after V2, which decides the package's shape)*
+
+- **Touches:** `xtask/src/package.rs` and its tests, `xtask/src/main.rs`;
+  a `package/` directory of templates (`package.json`, a README);
+  `Cargo.toml` (a `version` under `[workspace.package]`: there is none
+  today, and it becomes the package's); `docs/repo-layout.md`.
+- **Builds** `target/package/physics-engine-<version>.tgz`:
+  - `engine.wasm` (the release build `cargo xtask site` makes);
+  - `engine.d.ts` (the export table's types, as checked against the
+    wasm by `xtask site` today);
+  - `abi.js` + `abi.d.ts` (the scene codes and caps);
+  - `loader.js` + `loader.d.ts` (P1's loader, compiled by `tsc` with
+    declarations);
+  - `package.json` with an `exports` map (`.`, `./engine.wasm`),
+    `types`, `"type": "module"`, the MIT licence.
+- **Scope:** the engine only. Sand, swarm and acoustic become subpaths
+  (`physics-engine/swarm`) when a post wants one: the same command,
+  another entry in a table.
+- **Self-check:** the command unpacks what it packed into a temporary
+  directory and, from Node, imports the package by its own entry
+  points, creates the fountain and advances it 60 steps. A package
+  that can't be used fails the command.
+- **Done when:** the tarball's file list is in the PR; the self-check
+  runs in `pre-push` (it's seconds); `npm pack --dry-run` on the
+  unpacked directory agrees with the file list.
+
+#### P3. Releasing, written down and scripted
+
+- **Touches:** this document's "Releases" section (the procedure,
+  final); `xtask/src/package.rs` (a `--release-notes` helper printing
+  the ABI's changes since the last tag, from `docs/api/` and
+  `engine.d.ts`'s diff); `TASKS.md`.
+- **What a version means:** the ABI is the contract. Before 1.0, a
+  change to an existing export bumps the minor version, an addition
+  the patch.
+- **Done when:** the procedure is followed once, as a dry run, up to
+  but not including `gh release create`.
 - **Cutting the first release is a separate, explicit step** (it's
-  public): not part of merging this PR.
+  public), done on request after P3 merges: tag `v0.1.0`.
+
+**Later, not scheduled:**
+
+- *Pruning old releases* (`gh release delete vX --cleanup-tag` for
+  everything but the version the site pins and the last few). Low
+  priority: the files are small and outside both repos' histories.
+- *P4: drawing helpers in the package*, once a second or third demo
+  repeats them on the site ("How this scales").
 
 **Not planned, on purpose:**
 
 - A general "build a world from JS" ABI. A new demo that needs new
   physics gets a scenario in Rust and a release: scenes stay tested and
   deterministic.
-- Making `loop.ts`, `canvas.ts` and `options.ts` mountable. The site
-  writes its own hundred lines per demo; if three demos repeat the same
-  code there, that's the time to share it.
+- Making `loop.ts`, `canvas.ts` and `options.ts` mountable. They stay
+  the lab's.
 
 ### personal_site
 
-**S0. `main` protected.** Done (2026-11-13), by ruleset, not a PR.
+`main` is protected (done 2026-11-13, by a ruleset: pull requests
+only, squash merges, no deletion or force push). The site's hooks
+today: pre-commit runs Prettier (rewriting staged files), ESLint and
+`astro check`; pre-push runs the production build.
 
-**S1. MDX.**
-`@astrojs/mdx`; the blog collection's glob takes `.mdx` too. No post
-changes. Tested by: the build, and every existing post rendering as
-before (a diff of `dist/` for the posts' HTML).
+#### S1. CI on every pull request
 
-**S2. A demo wrapper, with no physics in it.**
-`src/components/demo/`: the lifecycle every demo needs, proven with a
-plain canvas animation.
+The site gets checks **per PR** (decided): they take a couple of
+minutes, and what lands on `main` is deployed by Amplify at once.
 
-- Starts when scrolled into view (so the wasm isn't fetched by readers
-  who never reach it); pauses off-screen and when the tab is hidden.
-- Stops and cleans up on leaving the page, and starts on arriving by
-  client-side navigation (`astro:before-swap`, `astro:page-load`).
-- Colours from the site's CSS variables, redrawn when the theme
-  changes.
-- Respects `prefers-reduced-motion`: starts paused, with a play
-  control.
-- A demo is a function `(canvas, signal) => dispose`: the wrapper knows
-  nothing about wasm.
-- **Hooks for tests**, on the wrapper's element: `data-demo-state`
-  (`idle`, `loading`, `running`, `paused`, `failed`) and
-  `data-demo-frames` (frames drawn), and a page-wide count of live
-  demos. Cheap, and what S3 reads.
-- Checked by hand here, in a draft post; S3 automates it.
+- **Touches:** new `.github/workflows/ci.yml`; `.nvmrc` (the site has
+  none; pinned to the Node major Amplify's build image uses, which is
+  looked up in the Amplify console first); `README.md`, `CLAUDE.md`
+  (the workflow is now: branch, PR, green check, squash).
+- **Triggers:** `pull_request`, and `workflow_dispatch` for a manual
+  run. Not `push` to `main`: Amplify's own build covers that.
+- **One job, `check`**, on `ubuntu-24.04`, mirroring the hooks:
+  1. `npm ci` (cached by the lock file);
+  2. `npm run format:check` (Prettier, checking, not rewriting);
+  3. `npm run lint`;
+  4. `npm run build` (which is `astro check`, the build, and Pagefind).
+- A newer push to the same PR cancels the older run.
+- **Done when:** the PR's own run is green, and a deliberately broken
+  commit on a scratch PR (a type error) goes red.
 
-**S3. A browser test for demos.**
-The site has no tests today. This adds the one kind a demo needs: load
-the built site in a headless browser and see that it draws.
+#### S2. The check, required
 
-- **Runner: Playwright** (a dev dependency; its Chromium download stays
-  on the developer's machine, Amplify never installs it).
-  `npm run test:demos` builds, serves `dist/` with `astro preview`, and
-  runs the checks. The alternative was this repo's own approach
-  (`xtask/smoke_page.mjs`, Chrome over the DevTools protocol): no
-  dependency, but it's a few hundred lines we'd maintain twice.
-- **Where it runs:** a pre-push hook, as here (`install-hooks.sh` gains
-  it), since neither repo runs CI. With `main` protected, that's a
-  convention, not a gate: a PR opened from a machine without the hook
-  isn't checked.
-- **What it checks, against S2's dummy demo first:**
+A settings change, not a PR: the `protect-main` ruleset gains a
+required status check, `check`. From then on a PR can't be merged
+until its run is green. Done after S1 merges (GitHub only offers
+checks it has seen run).
+
+- **Done when:** the scratch PR from S1 can't be merged while red.
+
+#### S3. MDX
+
+- **Touches:** `package.json` (`@astrojs/mdx`), `astro.config.ts` (the
+  integration), `src/content.config.ts` (the blog glob takes
+  `**/[^_]*.{md,mdx}`), the pre-commit hook's file pattern (so `.mdx`
+  is formatted), `CLAUDE.md`.
+- No post changes.
+- **Done when:** the built HTML of every existing post is byte-for-byte
+  what it was (a diff of `dist/posts/` before and after, in the PR),
+  and a throwaway `.mdx` post (not committed) renders a component.
+
+#### S4. A demo wrapper, with no physics in it
+
+The lifecycle every demo needs, proven with a plain canvas animation.
+
+- **Touches:** new `src/components/demo/Demo.astro` (markup, a
+  processed `<script>`, so TypeScript), `src/components/demo/lifecycle.ts`
+  (the logic, importable by tests), `src/components/demo/Bounce.astro`
+  (the dummy: a ball bouncing, no wasm), a draft post using it.
+- **A demo is a function** `(canvas, signal) => dispose`: the wrapper
+  knows nothing about wasm.
+- **Starts** when scrolled into view (so nothing is fetched for readers
+  who never reach it); **pauses** off-screen and when the tab is
+  hidden.
+- **Client-side navigation:** stops and disposes on
+  `astro:before-swap`; starts on `astro:page-load`. The site has
+  `<ClientRouter />` on, so both paths are real.
+- **Themes:** colours read from the site's CSS variables; redrawn when
+  `data-theme` changes.
+- **Reduced motion:** with `prefers-reduced-motion`, starts paused,
+  with a play control.
+- **A failure shows:** if the demo throws (or its wasm doesn't load),
+  the canvas is replaced by a short message, not a blank box.
+- **Hooks for tests,** on the wrapper's element: `data-demo-state`
+  (`idle`, `loading`, `running`, `paused`, `failed`),
+  `data-demo-frames`, and a page-wide count of live demos.
+- **Done when:** checked by hand in the draft post, both themes, both
+  ways of arriving, with a screen recording or notes in the PR. S5
+  automates it.
+
+#### S5. A browser test for demos
+
+- **Touches:** `package.json` (`@playwright/test`, a `test:demos`
+  script), `playwright.config.ts`, `tests/demos.spec.ts`,
+  `tests/demo-pages.ts` (the list of pages), `.github/workflows/ci.yml`
+  (a second job), `.gitignore`.
+- **Runner: Playwright.** `npm run test:demos` builds, serves `dist/`
+  with `astro preview`, and runs the checks in headless Chromium. The
+  browser download stays on developers' machines and CI; Amplify never
+  installs it (it's a dev dependency the build doesn't use).
+- **In CI:** a second job, `demos`, after `check`: installs Chromium
+  (cached), runs `npm run test:demos`, uploads the failure traces. It
+  becomes a second required check (the same settings change as S2).
+- **Locally:** on demand. No hook: per-PR CI is the gate.
+- **The checks,** run against every page in the list (S4's draft post
+  to begin with; drafts are built for the test with a flag):
   1. *It draws:* scrolled into view, the state reaches `running`,
-     frames advance, the canvas isn't blank (pixels differ from the
-     background), and the page logged no errors.
-  2. *It doesn't load early:* before scrolling, the state is `idle` and
-     no `.wasm` was requested.
-  3. *It cleans up:* following a link (client-side navigation) leaves
-     zero live demos; coming back starts one again, and only one.
+     frames advance, the canvas isn't one colour, and the page logged
+     no errors.
+  2. *It doesn't load early:* before scrolling, the state is `idle`
+     and nothing was fetched for it.
+  3. *It cleans up:* following a link leaves zero live demos; coming
+     back starts exactly one.
   4. *It pauses:* a hidden tab stops the frame count.
   5. *Themes:* toggling the theme changes the canvas's colours.
   6. *Reduced motion:* emulated, the demo starts `paused`.
-- **A list of demo pages** the checks loop over: adding a demo to the
-  tests is adding its path.
+- **Done when:** green in CI, and each check is shown to fail when the
+  behaviour it guards is broken on purpose (the PR lists the six
+  breakages tried).
 
-**S4. Hello Particles, as a draft.** *(needs P2, a release, V1, V2)*
+#### S6. Hello Particles, as a draft
 
-- `package.json` depends on the release's tarball URL; the lock file
-  pins its hash.
-- `HelloParticles.astro`: the wrapper from S2, the package's loader,
-  the fountain scene, points drawn on the canvas.
-- A post with `draft: true` that embeds it.
-- Its path added to S3's list, plus two checks only a real demo can
-  have: the `.wasm` is served as `application/wasm` by the preview, and
-  **physics is happening** (the particles' pixels move between two
-  frames a second apart; a blank or frozen canvas fails).
-- `amplify.yml` doesn't change unless V1 says it needs a header.
+*(needs P2, the first release, V1, V2)*
 
-**S5. The post, published.**
-The writing, and `draft: false`.
+- **Touches:** `package.json` and `package-lock.json` (the release's
+  tarball URL; the lock pins its hash),
+  `src/components/demo/HelloParticles.astro`, a post with
+  `draft: true`, `tests/demo-pages.ts`.
+- **The component:** S4's wrapper; the package's loader; the fountain
+  scene; `demo_advance(elapsed)` each frame (the fixed 60 Hz clock is
+  inside the wasm); the positions buffer drawn as points, in the
+  theme's colours. On dispose: `demo_free`.
+- **Two more checks,** which only a real demo can have:
+  - the `.wasm` arrives as `application/wasm` from the preview;
+  - **physics is happening:** the particles' pixels differ between two
+    frames a second apart. A frozen canvas fails.
+- `amplify.yml` doesn't change unless V1 said it needs a header.
+- **Done when:** CI is green including the new checks, and the built
+  `dist/` holds exactly one content-hashed `.wasm` (its name in the
+  PR).
 
-**S6. A check of the live site** (small, after the first deploy).
-`npm run check:live`: fetches the published post and its `.wasm` from
-the real domain and checks the status and content type. This is V1
-kept as a script, for after any change to Amplify's settings. Run by
-hand; it needs the network.
+#### S7. The post, published
+
+The writing, and `draft: false`. Yours to write; I can draft.
+
+- **Done when:** merged, deployed, and the page works on the real
+  domain in both themes.
+
+#### S8. A check of the live site
+
+- **Touches:** `scripts/check-live.mjs`, `package.json`
+  (`check:live`).
+- Fetches the published post and its `.wasm` from the real domain and
+  checks the status and content type: V1, kept as a script, for after
+  any change to Amplify's settings. Run by hand (it needs the network
+  and a deployed site, so it isn't in CI).
+- **Done when:** it passes against production, and fails against a
+  made-up URL.
 
 ### Order
 
 ```
-V1 ─┐
-V2 ─┼───────────────────────────────────┐
-P1 ──► P2 ──► P3 ──► (release) ─────────┼──► S4 ──► S5 ──► S6
-S1 ──► S2 ──► S3 ───────────────────────┘
+V1 ──────────────────────────────────────────────┐
+V2 ──► P2                                        │
+P1 ──► P2 ──► P3 ──► (first release, on request) ┼──► S6 ──► S7 ──► S8
+S1 ──► S2 ──► S3 ──► S4 ──► S5 ──────────────────┘
 ```
 
-P1–P3 and S1–S3 don't depend on each other and can go in parallel. V2
-should come before P2 (it decides the package's shape), and V1 before
-S4.
+- P1–P3 and S1–S5 don't depend on each other: they can go in parallel.
+- V2 comes before P2. V1 comes before S6.
+- S1 and S2 come first on the site so that every later site PR is
+  checked.
 
 ## Releases: how the package gets from here to there
 
@@ -283,7 +389,7 @@ pins the exact bytes, not only the name.
 3. `gh release create v0.1.0 target/package/physics-engine-0.1.0.tgz`
    with notes saying what changed in the ABI.
 4. A PR in the site changes the URL and runs `npm install` (the lock
-   file's hash changes with it); its demo tests run before the push.
+   file's hash changes with it); CI runs the demo tests on it.
 
 **Rules that follow from the hash:**
 
@@ -328,7 +434,7 @@ Two things to know:
 - **Every demo moves together.** There's one dependency, so bumping it
   for one post's sake gives every post the new wasm. A changed function
   signature fails the site's build (`astro check` reads the package's
-  types); a changed *behavior* doesn't, which is what S3 and S4's
+  types); a changed *behavior* doesn't, which is what S5 and S6's
   checks are for. If one post ever must stay on an old version, npm
   can install the package twice under two names, at the price of two
   wasm files.
@@ -381,19 +487,23 @@ new subpath).
 | The loader's module-level state | P1 |
 | Streaming compile needs a content type | P1's fallback; V1 |
 | Getting built files from one repo to the other | P2, P3 |
-| Posts can't hold components | S1 |
-| Client-side navigation, teardown, themes | S2, and S3 keeps it true |
-| A demo that silently stops drawing after an update | S3, S4's checks |
+| Posts can't hold components | S3 |
+| Client-side navigation, teardown, themes | S4, and S5 keeps it true |
+| A demo that silently stops drawing after an update | S5, S6's checks |
 | Page helpers assume a page | Not resolved: not reused |
 | Scenes compiled into the wasm | Not resolved: a release per new scene |
+
+## Decided
+
+- The lab site (`site/` here) is never published.
+- The package travels as a tarball on a GitHub release; nothing goes
+  to the public npm registry.
+- The site gets CI on every pull request (S1, S2, S5); this repo gets
+  it nightly (`17-nightly-ci.md`).
+- Release pruning: later, low priority.
 
 ## Open questions
 
 - **The package's name.** `physics-engine` is a placeholder.
-- **Where the site's tests are enforced.** S3 puts them in a pre-push
-  hook. A GitHub Actions workflow on pull requests would make them a
-  real gate now that `main` is protected (Playwright's browsers
-  install in about a minute there); this repo keeps CI off, so the
-  same choice is assumed for the site until decided otherwise.
 - **Amplify previews.** If pull-request previews are enabled, V1 and
   every S step can be seen before merging. Not checked.
