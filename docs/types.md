@@ -140,10 +140,13 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`Arena`](../crates/swarm/src/params.rs) | The box, two positive finite sides; soft walls, so boids may leave it. |
 | [`Flock`](../crates/swarm/src/flock.rs) | The boids as structure of arrays, double-buffered so a step reads one instant whatever the storage order; the step, polarization, the predator. |
 | [`Neighbours`](../crates/swarm/src/flock.rs) | Brute force, the grid, or the grid with boids sorted into cell order: the same neighbours, three costs. |
-| [`Grid`](../crates/swarm/src/grid.rs) (crate-private) | A cell list by counting sort, cells a hair wider than the range (the property test found why). |
+| [`Grid`](../crates/swarm/src/grid.rs) (crate-private) | A cell list by counting sort, cells a hair wider than the range (the property test found why); clamped (S1) or periodic, at least 3 cells a side (S2). |
 | [`Seen`, `Ranges`](../crates/swarm/src/rules.rs) (crate-private) | What a boid saw, summed one candidate at a time or 8 lanes at once over contiguous runs (the branchless loop SIMD runs). |
 | [`SwarmDemo`](../crates/swarm-web/src/demo.rs) | A flock, its clock and its heading-coloured RGBA buffer behind the `swarm_*` C ABI. |
 | [`SwarmExports`, `SwarmHandle`](../site/js/swarm.d.ts) | Types for `swarm.wasm`'s exports; a branded handle. |
+| [`VicsekParams`](../crates/swarm/src/vicsek.rs) | S2's constants, the paper's units by default (r = 1, v = 0.03), η checked into `[0, 2π]`. |
+| [`Vicsek`, `Particle`](../crates/swarm/src/vicsek.rs) | The Vicsek model: positions and unit headings (`atan2`'s meaning without an angle), double-buffered, periodic; the 0/0 count; `mean_order`, the paper's measurement. |
+| [`VicsekDemo`](../crates/swarm-web/src/vicsek_demo.rs), [`VicsekHandle`](../site/js/swarm.d.ts) | A Vicsek system behind the `vicsek_*` exports in `swarm.wasm`, and its branded handle. |
 
 ## `acoustic` — the plucked string (A1)
 
