@@ -127,3 +127,34 @@ fn a_rate_change_keeps_the_cap() {
     clock.set_rate(NonZeroU32::new(120).unwrap());
     assert_eq!(clock.advance(MAX_FRAME_TIME), 1);
 }
+
+#[test]
+fn a_bare_rate_is_parsed_then_set() {
+    let mut clock = clock_60hz();
+    assert!(!clock.set_rate_hz(0, 240) && !clock.set_rate_hz(241, 240));
+    assert_eq!(clock.rate().get(), 60, "refused: unchanged");
+    assert!(clock.set_rate_hz(240, 240));
+    assert_eq!(clock.rate().get(), 240);
+}
+
+#[test]
+fn a_bare_cap_is_parsed_then_set_and_zero_is_none() {
+    let mut clock = clock_60hz();
+    assert!(clock.set_cap_steps(2, 240));
+    assert_eq!(clock.advance(MAX_FRAME_TIME), 2);
+    assert!(!clock.set_cap_steps(241, 240), "refused");
+    assert_eq!(clock.advance(MAX_FRAME_TIME), 2, "still capped at 2");
+    assert!(clock.set_cap_steps(240, 240));
+    assert!(clock.set_cap_steps(0, 240));
+    assert_eq!(clock.advance(5.0 * DT), 5, "no cap");
+}
+
+#[test]
+fn run_steps_once_per_step_owed() {
+    let mut clock = clock_60hz();
+    let mut count = 0;
+    assert_eq!(clock.run(3.0 * DT, || count += 1), 3);
+    assert_eq!(count, 3);
+    assert_eq!(clock.run(0.0, || count += 1), 0);
+    assert_eq!(count, 3);
+}

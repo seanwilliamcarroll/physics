@@ -87,6 +87,7 @@ npm ci                                 # the pinned TypeScript
 | `cargo xtask mutants`, and the pre-push report with `MUTANTS=1` | `cargo install --locked cargo-mutants` |
 | `cargo xtask coverage` | `cargo install --locked cargo-llvm-cov` |
 | `cargo xtask profile` (`docs/profiling.md`) | `cargo install --locked samply` |
+| The duplication report (`docs/04-testing.md`, "Duplication") | `cargo install --locked cargo-dupes` |
 
 ## 7. Check it works
 

@@ -1,7 +1,6 @@
 //! The C-ABI surface of the Physarum page (S4), over [`SlimeDemo`]: every
 //! argument parsed here; null handles refused.
 
-use core::num::NonZeroU32;
 use core::ptr;
 
 use web_common::boundary::capped;
@@ -56,14 +55,9 @@ pub(crate) unsafe extern "C" fn slime_advance(d: *mut SlimeDemo, elapsed_s: f64)
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_set_rate(d: *mut SlimeDemo, hz: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
-    let (Some(d), Some(rate)) = (
-        unsafe { d.as_mut() },
-        NonZeroU32::new(hz).filter(|r| r.get() <= abi::MAX_RATE_HZ),
-    ) else {
-        return 0;
-    };
-    d.set_rate(rate);
-    1
+    unsafe { d.as_mut() }.map_or(0, |d| {
+        u32::from(d.clock().set_rate_hz(hz, abi::MAX_RATE_HZ))
+    })
 }
 
 /// At most `n` steps per advance (0: no cap): 1, or 0 above
@@ -74,14 +68,9 @@ pub(crate) unsafe extern "C" fn slime_set_rate(d: *mut SlimeDemo, hz: u32) -> u3
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_set_step_cap(d: *mut SlimeDemo, n: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
-    let Some(d) = (unsafe { d.as_mut() }) else {
-        return 0;
-    };
-    if n > abi::MAX_RATE_HZ {
-        return 0;
-    }
-    d.set_step_cap(NonZeroU32::new(n));
-    1
+    unsafe { d.as_mut() }.map_or(0, |d| {
+        u32::from(d.clock().set_cap_steps(n, abi::MAX_RATE_HZ))
+    })
 }
 
 /// Sensing on (1) or off (0): 1, or 0 otherwise or for null.

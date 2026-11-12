@@ -1,7 +1,7 @@
 // Unit tests for the pure helpers in site/js/pixels.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cellAt, strokeCells } from "../../site/js/pixels.ts";
+import { cellAt, countOtherThan, strokeCells } from "../../site/js/pixels.ts";
 
 test("cellAt maps CSS points to cells at any scale", () => {
   // 640 × 360 cells shown 1280 × 720: 2 px a cell.
@@ -25,4 +25,15 @@ test("a stroke includes both ends and has no gaps wider than the spacing", () =>
 
 test("a click (no movement) is one dab, twice", () => {
   assert.deepEqual(strokeCells([5, 5], [5, 5], 3), [[5, 5], [5, 5]]);
+});
+
+test("countOtherThan counts the pixels that aren't the background", () => {
+  const bg = [10, 20, 30];
+  // Four pixels: background, one channel off (each of r, g, b), and a
+  // background pixel with a different alpha (ignored).
+  const data = [10, 20, 30, 255, 11, 20, 30, 255, 10, 21, 30, 255, 10, 20, 31, 255, 10, 20, 30, 0];
+  assert.equal(countOtherThan(data, bg), 3);
+  assert.equal(countOtherThan([], bg), 0);
+  // A trailing partial pixel isn't read.
+  assert.equal(countOtherThan([10, 20, 30, 255, 99], bg), 0);
 });

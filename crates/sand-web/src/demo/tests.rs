@@ -18,7 +18,7 @@ fn advancing_steps_at_the_rate_and_the_cap_holds() {
     d.paint(8, 2, 1, Material::Sand);
     assert_eq!(d.advance(1.0 / 60.0), 1);
     assert!(d.last_moves() > 0);
-    d.set_step_cap(core::num::NonZeroU32::new(2));
+    d.clock().set_cap(core::num::NonZeroU32::new(2));
     assert_eq!(d.advance(0.25), 2);
 }
 
@@ -87,7 +87,7 @@ fn the_rate_sets_steps_per_second() {
     let mut d = SandDemo::new(8, 8, 1).unwrap();
     // A fifth of a second (under FixedStep's 0.25 s frame clamp).
     assert_eq!(d.advance(0.2), 12, "60 a second to start");
-    d.set_rate(core::num::NonZeroU32::new(10).unwrap());
+    d.clock().set_rate(core::num::NonZeroU32::new(10).unwrap());
     assert_eq!(d.advance(0.2), 2);
 }
 

@@ -70,6 +70,34 @@ impl FixedStep {
         };
     }
 
+    /// [`set_rate`](Self::set_rate) from a bare number, as an export gets
+    /// it: `false` (and nothing changed) for 0 or above `max`. The parse
+    /// every `*_set_rate` export does, in one place.
+    pub fn set_rate_hz(&mut self, hz: u32, max: u32) -> bool {
+        let rate = NonZeroU32::new(hz).filter(|r| r.get() <= max);
+        rate.map(|r| self.set_rate(r)).is_some()
+    }
+
+    /// [`set_cap`](Self::set_cap) from a bare number, as an export gets
+    /// it: 0 is no cap; `false` (and nothing changed) above `max`.
+    pub const fn set_cap_steps(&mut self, n: u32, max: u32) -> bool {
+        if n > max {
+            return false;
+        }
+        self.set_cap(NonZeroU32::new(n));
+        true
+    }
+
+    /// [`advance`](Self::advance), then `step` once per step owed; how
+    /// many. A demo's whole `advance`.
+    pub fn run(&mut self, elapsed: f64, mut step: impl FnMut()) -> u32 {
+        let steps = self.advance(elapsed);
+        for _ in 0..steps {
+            step();
+        }
+        steps
+    }
+
     /// Caps the steps per [`advance`](Self::advance) at `cap` (`None`: no
     /// cap, the default). Owed time past the cap is dropped, not carried.
     pub const fn set_cap(&mut self, cap: Option<NonZeroU32>) {

@@ -44,3 +44,30 @@ test("StepBudget always allows a step, and says when it held one back", () => {
   fast.record(1, 1, 0.001, 240);
   assert.equal(fast.limited, false);
 });
+
+test("a budgeted advance sets the cap, times the call, and records it", () => {
+  const b = new StepBudget(10, 240);
+  const caps = [];
+  let clock = 0;
+  const advance = b.budgeted(
+    (demo, elapsed) => {
+      clock += 8; // each call takes 8 ms
+      return elapsed > 0 ? 4 : 0;
+    },
+    (demo, cap) => caps.push([demo, cap]),
+    () => clock,
+  );
+  // Nothing measured yet: no cap (0).
+  assert.equal(advance(7, 1 / 60), 4);
+  assert.deepEqual(caps, [[7, 0]]);
+  // 2 ms a step measured: 5 steps fit the 10 ms budget.
+  assert.equal(b.cap, 5);
+  advance(7, 1 / 60);
+  assert.deepEqual(caps.at(-1), [7, 5]);
+  assert.equal(b.limited, false);
+  // Freed through the wrapper: forgotten, then freed.
+  const freed = [];
+  b.forgetting((demo) => freed.push(demo))(7);
+  assert.deepEqual(freed, [7]);
+  assert.equal(b.cap, 0);
+});

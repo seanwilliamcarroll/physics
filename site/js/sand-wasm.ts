@@ -19,20 +19,9 @@ export async function loadSand(url: URL | string = SAND_URL): Promise<SandExport
   // Unchecked, as in loadEngine: sand.d.ts asserts the shape (and `cargo
   // xtask site` checks it against the export table).
   const exports = (await instantiateWithPanicHook(url, "sand.wasm")) as unknown as SandExports;
-  const { sand_advance: advance, sand_free: free } = exports;
   return {
     ...exports,
-    sand_advance(d, elapsed) {
-      const cap = sandStepBudget.cap;
-      exports.sand_set_step_cap(d, cap);
-      const t0 = performance.now();
-      const steps = advance(d, elapsed);
-      sandStepBudget.record(d, steps, performance.now() - t0, cap);
-      return steps;
-    },
-    sand_free(d) {
-      sandStepBudget.forget(d);
-      free(d);
-    },
+    sand_advance: sandStepBudget.budgeted(exports.sand_advance, exports.sand_set_step_cap),
+    sand_free: sandStepBudget.forgetting(exports.sand_free),
   };
 }

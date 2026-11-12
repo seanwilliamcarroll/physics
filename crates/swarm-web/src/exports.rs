@@ -2,7 +2,6 @@
 //! over [`SwarmDemo`]: every argument parsed here, at the boundary; null
 //! handles refused. All `unsafe` in this crate lives in this file.
 
-use core::num::NonZeroU32;
 use core::ptr;
 
 use swarm::Neighbours;
@@ -67,14 +66,9 @@ pub(crate) unsafe extern "C" fn swarm_advance(d: *mut SwarmDemo, elapsed_s: f64)
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn swarm_set_rate(d: *mut SwarmDemo, hz: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
-    let (Some(d), Some(rate)) = (
-        unsafe { d.as_mut() },
-        NonZeroU32::new(hz).filter(|r| r.get() <= abi::MAX_RATE_HZ),
-    ) else {
-        return 0;
-    };
-    d.set_rate(rate);
-    1
+    unsafe { d.as_mut() }.map_or(0, |d| {
+        u32::from(d.clock().set_rate_hz(hz, abi::MAX_RATE_HZ))
+    })
 }
 
 /// At most `n` steps per [`swarm_advance`] (0: no cap): the step budget.
@@ -85,14 +79,9 @@ pub(crate) unsafe extern "C" fn swarm_set_rate(d: *mut SwarmDemo, hz: u32) -> u3
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn swarm_set_step_cap(d: *mut SwarmDemo, n: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
-    let Some(d) = (unsafe { d.as_mut() }) else {
-        return 0;
-    };
-    if n > abi::MAX_RATE_HZ {
-        return 0;
-    }
-    d.set_step_cap(NonZeroU32::new(n));
-    1
+    unsafe { d.as_mut() }.map_or(0, |d| {
+        u32::from(d.clock().set_cap_steps(n, abi::MAX_RATE_HZ))
+    })
 }
 
 /// How neighbours are found (`abi::NEIGHBOURS_*`). 1, or 0 for an unknown
