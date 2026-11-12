@@ -152,6 +152,28 @@ collective displacement of self-driven individuals.* Phys. Rev. E
 78(2), 021125. (Cited, not yet read.)
 - DOI: https://doi.org/10.1103/PhysRevE.78.021125
 
+**Goss, S., Aron, S., Deneubourg, J.-L. & Pasteels, J. M. (1989).**
+*Self-organized shortcuts in the Argentine ant.* Naturwissenschaften
+76(12), 579–581. The double bridge: a colony converging on the shorter
+route (S3's experiment is ours, in its spirit). Not yet read.
+- DOI: https://doi.org/10.1007/BF00462870
+
+**Deneubourg, J.-L., Aron, S., Goss, S. & Pasteels, J. M. (1990).** *The
+self-organizing exploratory pattern of the Argentine ant.* J. Insect
+Behav. 3(2), 159–168. Trail laying and following. Not yet read.
+- DOI: https://doi.org/10.1007/BF01417909
+
+**Beckers, R., Deneubourg, J.-L. & Goss, S. (1992).** *Trails and U-turns
+in the selection of a path by the ant Lasius niger.* J. Theor. Biol.
+159(4), 397–415. U-turns. Not yet read.
+- DOI: https://doi.org/10.1016/S0022-5193(05)80686-1
+
+**Dorigo, M., Maniezzo, V. & Colorni, A. (1996).** *Ant system:
+optimization by a colony of cooperating agents.* IEEE Trans. SMC-B
+26(1), 29–41. Pheromone as positive feedback with evaporation, on
+graphs (context for S3). Not yet read.
+- DOI: https://doi.org/10.1109/3477.484436
+
 **Allen, M. P. & Tildesley, D. J. (2017).** *Computer Simulation of
 Liquids*, 2nd ed. Oxford University Press. Cell lists for fixed-radius
 neighbours: S1's grid.
