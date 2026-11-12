@@ -271,7 +271,11 @@ fn run(first: (f64, u32), calls: &[Call]) -> Result<(), TestCaseError> {
 }
 
 proptest! {
-    #![proptest_config(test_support::proptest_config())]
+    // 16 cases on a push, not the usual 64: a case renders audio after
+    // every call, and 64 took 22 s, the longest test in the workspace.
+    // The slow tier runs 10 000 (which is what found this test's one
+    // bug; `docs/04-testing.md`).
+    #![proptest_config(test_support::proptest_config_with(16))]
 
     #[test]
     fn any_call_sequence_is_safe(first in (sample_rate(), any::<u32>()), calls in prop::collection::vec(call(), 0..MAX_CALLS)) {

@@ -232,8 +232,12 @@ fn the_ball_box_runs_down_at_e_0_xpbd() {
 fn the_ball_box_runs_down_at_e_0_9_impulse() {
     runs_down(Solver::Impulse, 0.9);
 }
+/// The longest of the six (the impulse solver's piles at e = 0.5 take 20 s
+/// of test time to come to rest): in the slow tier; e = 0.9 and e = 0
+/// cover the impulse solver on every push.
 #[test]
-fn the_ball_box_runs_down_at_e_0_5_impulse() {
+#[ignore = "slow: cargo xtask slow"]
+fn slow_the_ball_box_runs_down_at_e_0_5_impulse() {
     runs_down(Solver::Impulse, 0.5);
 }
 #[test]
