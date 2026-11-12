@@ -3,6 +3,29 @@ pub enum swarm::Neighbours
 pub swarm::Neighbours::Brute
 pub swarm::Neighbours::Grid
 pub swarm::Neighbours::Sorted
+pub enum swarm::Pheromone
+pub swarm::Pheromone::Food
+pub swarm::Pheromone::Home
+pub struct swarm::Ant
+pub swarm::Ant::carrying: bool
+pub swarm::Ant::cos: f32
+pub swarm::Ant::sin: f32
+pub swarm::Ant::since: u32
+pub swarm::Ant::x: f32
+pub swarm::Ant::y: f32
+pub struct swarm::AntParams
+pub swarm::AntParams::decay: f32
+pub swarm::AntParams::deposit: f32
+pub swarm::AntParams::diffusion: f32
+pub swarm::AntParams::falloff: f32
+pub swarm::AntParams::sensor_angle: f32
+pub swarm::AntParams::sensor_distance: f32
+pub swarm::AntParams::speed: f32
+pub swarm::AntParams::turn: f32
+pub swarm::AntParams::wiggle: f32
+impl swarm::AntParams
+pub const swarm::AntParams::DEFAULT: Self
+pub fn swarm::AntParams::checked(self) -> core::option::Option<Self>
 pub struct swarm::Arena
 impl swarm::Arena
 pub const fn swarm::Arena::height(self) -> f32
@@ -13,6 +36,32 @@ pub swarm::Boid::vx: f32
 pub swarm::Boid::vy: f32
 pub swarm::Boid::x: f32
 pub swarm::Boid::y: f32
+pub struct swarm::Colony
+impl swarm::Colony
+pub fn swarm::Colony::ants(&self) -> impl core::iter::traits::iterator::Iterator<Item = swarm::Ant> + '_
+pub fn swarm::Colony::carrying(&self) -> u64
+pub const fn swarm::Colony::delivered(&self) -> u64
+pub fn swarm::Colony::erase(&mut self, f32, f32, f32) -> usize
+pub fn swarm::Colony::field(&self, swarm::Pheromone) -> &swarm::Field
+pub fn swarm::Colony::food(&self) -> &[u16]
+pub fn swarm::Colony::food_in_world(&self) -> u64
+pub fn swarm::Colony::is_empty(&self) -> bool
+pub fn swarm::Colony::last_deposits(&self, swarm::Pheromone) -> f64
+pub fn swarm::Colony::len(&self) -> usize
+pub const fn swarm::Colony::nest(&self) -> (f32, f32, f32)
+pub fn swarm::Colony::new(usize, usize, usize, (f32, f32, f32), swarm::AntParams, u64) -> core::option::Option<Self>
+pub fn swarm::Colony::open(&self) -> &[bool]
+pub fn swarm::Colony::paint_food(&mut self, f32, f32, f32, u16) -> u64
+pub fn swarm::Colony::paint_wall(&mut self, f32, f32, f32) -> usize
+pub const fn swarm::Colony::painted(&self) -> i64
+pub const fn swarm::Colony::params(&self) -> swarm::AntParams
+pub fn swarm::Colony::set_nest(&mut self, f32, f32, f32) -> bool
+pub fn swarm::Colony::set_params(&mut self, swarm::AntParams) -> bool
+pub const fn swarm::Colony::set_sensing(&mut self, bool)
+pub const fn swarm::Colony::size(&self) -> (usize, usize)
+pub fn swarm::Colony::state_bytes(&self) -> alloc::vec::Vec<u8>
+pub fn swarm::Colony::step(&mut self)
+pub const fn swarm::Colony::steps(&self) -> u64
 pub struct swarm::Field
 impl swarm::Field
 pub fn swarm::Field::clear(&mut self)
@@ -25,6 +74,7 @@ pub fn swarm::Field::new(usize, usize) -> core::option::Option<Self>
 pub fn swarm::Field::total(&self) -> f64
 pub fn swarm::Field::values(&self) -> &[f32]
 pub const fn swarm::Field::width(&self) -> usize
+pub fn swarm::Field::zero(&mut self, usize)
 pub struct swarm::Flock
 impl swarm::Flock
 pub const fn swarm::Flock::arena(&self) -> swarm::Arena
@@ -88,6 +138,7 @@ impl swarm::VicsekParams
 pub fn swarm::VicsekParams::checked(self) -> core::option::Option<Self>
 pub const fn swarm::VicsekParams::paper(f32) -> Self
 pub const swarm::FLEE: f32
+pub const swarm::MAX_ANTS: usize
 pub const swarm::MAX_BOIDS: usize
 pub const swarm::MAX_CELLS: usize
 pub const swarm::MAX_PARTICLES: usize

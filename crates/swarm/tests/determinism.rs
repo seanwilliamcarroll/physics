@@ -93,3 +93,34 @@ fn the_vicsek_golden_hashes_are_unchanged() {
         "if intended, set GOLDEN_VICSEK_GRID = {grid:#018x}"
     );
 }
+
+/// Ant foraging: 300 ants, a food patch and a wall, 400 steps; ants and
+/// both fields hashed.
+fn run_ants() -> u64 {
+    let mut c = swarm::Colony::new(
+        120,
+        80,
+        300,
+        (20.0, 40.0, 5.0),
+        swarm::AntParams::DEFAULT,
+        42,
+    )
+    .unwrap();
+    c.paint_food(95.0, 40.0, 6.0, 20);
+    c.paint_wall(60.0, 30.0, 4.0);
+    for _ in 0..400 {
+        c.step();
+    }
+    let mut h = Fnv1a::new();
+    h.write(&c.state_bytes());
+    h.finish()
+}
+
+const GOLDEN_ANTS: u64 = 0xd20c_5b5f_d1ae_0911;
+
+#[test]
+fn the_ants_golden_hash_is_unchanged() {
+    let h = run_ants();
+    assert_eq!(h, run_ants(), "repeatable");
+    assert_eq!(h, GOLDEN_ANTS, "if intended, set GOLDEN_ANTS = {h:#018x}");
+}

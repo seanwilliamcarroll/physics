@@ -6,6 +6,7 @@
 //! speed, align with the neighbourhood, add noise, in a periodic box.
 //! `f32` throughout.
 
+mod ants;
 mod field;
 mod flock;
 mod grid;
@@ -13,6 +14,7 @@ mod params;
 mod rules;
 mod vicsek;
 
+pub use ants::{Ant, AntParams, Colony, MAX_ANTS, Pheromone};
 pub use field::{Field, MAX_CELLS};
 pub use flock::{Boid, Flock, MAX_BOIDS, Neighbours};
 pub use params::{Arena, Params};

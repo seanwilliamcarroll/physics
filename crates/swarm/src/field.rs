@@ -146,6 +146,13 @@ impl Field {
         }
     }
 
+    /// Sets cell `i` (row-major) to zero.
+    pub fn zero(&mut self, i: usize) {
+        if let Some(v) = self.value.get_mut(i) {
+            *v = 0.0;
+        }
+    }
+
     /// Sets every value to zero.
     pub fn clear(&mut self) {
         self.value.fill(0.0);
