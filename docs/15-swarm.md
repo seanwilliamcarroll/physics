@@ -575,6 +575,37 @@ centred deposit stays mirror- and diagonal-symmetric to 2.0e-7 of the
 centre after 60 diffusions (the sweep adds into cells in different
 orders: f32 rounding, not a bias).
 
+### The ants as built (S3.3, `swarm::Colony`)
+
+`AntParams` (checked), `Colony` (the world, two fields, the ants as
+`Ant` records, one random stream with two draws per ant per step so it
+stays aligned), painting (food, walls, erase), the nest, sensing on or
+off. Every ant senses the fields as they were; deposits are collected
+and applied after, in ant order.
+
+**The defaults came from a scan, and the first ones didn't work.** With
+the planned decay `E` = 0.01 a step (a half-life of ~69 steps) a trail
+fades before it reaches food 130 cells away: foraging did no better than
+a random walk. A scan over decay, fall-off, wiggle and diffusion, four
+seeds each, kept the setting with the best *worst* seed: `E` = 0.008,
+`k` = 0.08, wiggle 0.4 rad, `D` = 0.2 (SA, SD, RA, v as planned).
+
+Measured (`tests/ants.rs`; 200 × 120 cells, 500 ants, food 130 cells
+from the nest, 3,000 steps, four seeds):
+
+| | Delivered |
+|---|---|
+| defaults | 1,312–1,959 |
+| sensing off (a random walk) | 12–21 |
+| constant deposits (`k` = 0) | 7–255 |
+
+**The fall-off is the whole mechanism:** without it, trails are as
+strong at one end as the other and following them is no better than
+wandering. Food is accounted for exactly at every step through painting,
+walls over food and erasing; the fields balance to 3.5e-8 a step; ants
+never enter walls. A golden (ants and both fields), the same on wasm32
+with and without `simd128`.
+
 ### What's tested
 
 The accountings; diffusion alone conserving mass and spreading

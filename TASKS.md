@@ -315,11 +315,15 @@ contention. `references.md`: the four ant papers.
 `f64` total. Measured: diffusion conserves to 3.3e-9 a step, decay to
 2.9e-8, walls stay empty, a centred spread symmetric to 2.0e-7.
 
-## 3. The ants (PR)
+## ✅ 3. The ants (PR)
 
-- [ ] Ants: sensing, turning, moving, walls, food and nest, U-turns, the
-      fall-off deposit; food accounting exact; foraging against a random
-      walk; goldens, native and wasm.
+`swarm::Colony`: sensing, turning, walls, food and nest with U-turns,
+the fall-off deposit, painting. **The planned decay (0.01) failed**:
+trails faded before reaching the food. A scan chose `E` = 0.008, `k` =
+0.08, wiggle 0.4, `D` = 0.2: 1,312–1,959 delivered in 3,000 steps
+against a random walk's 12–21 and **constant deposits' 7–255** (the
+fall-off is the mechanism). Food exact every step; fields to 3.5e-8. A
+golden, same on wasm.
 
 ## 4. The double bridge (PR)
 
