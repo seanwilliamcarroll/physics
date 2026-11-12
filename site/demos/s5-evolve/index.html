@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S5 · Evolving the rules: hand-tuned ants against evolved ones</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Evolving the rules: hand-tuned ants against evolved ones</h1>
+    <p class="muted">
+      S3's ants run on seven constants (how far ahead and how wide they
+      sense, how hard they turn, how much they wander, how their trails
+      fade and spread). Their defaults came from a hand scan. Here an
+      evolutionary algorithm searched all seven, scoring each candidate
+      by the food a colony brings home in 3,000 steps, natively and in
+      parallel. Left: the hand-tuned defaults. Right: the evolved
+      setting. Same scene, same seed, same 500 ants.
+      <code>docs/15-swarm.md</code>, S5.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="pair">
+      <div><div class="hud-line" id="left">defaults</div><div class="stage ants"><canvas id="a"></canvas></div></div>
+      <div><div class="hud-line" id="right">evolved</div><div class="stage ants"><canvas id="b"></canvas></div></div>
+    </div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>The evolution</h2>
+    <p class="muted">
+      Best and mean food delivered per generation (20 candidates, three
+      common seeds each). On seeds it never trained on the evolved setting
+      delivers <b id="held-training"></b> where the defaults deliver
+      <b id="held-training-d"></b>; in the <b>barriers</b> scene, which it
+      never saw, <b id="held-barriers"></b> against
+      <b id="held-barriers-d"></b>. It senses only 1.7 cells ahead (the
+      defaults: 9), but 80° to each side.
+    </p>
+    <div class="plot"><canvas id="history"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>

@@ -76,7 +76,11 @@ the defaults' 1,701; in the barriers scene, never trained on, 3,978
 against 404.** Near a straight-shuttle ceiling (~80%); short, wide
 sensors the scan couldn't have found; two genes at their ranges' edges.
 `AntParams::EVOLVED`, pinned; the history in `site/js/ant-evolution.ts`.
-## 4. The page (PR): `s5-evolve`
+## ✅ 4. The page (PR)
+
+`s5-evolve`: defaults and evolved side by side (same scene, seed, 500
+ants; four scenes, held-out seeds), the evolution's history and the
+held-out numbers; two smoke cases; gallery. Your check pending.
 ## 5. Cleanup (PR)
 
 ## Workflow

@@ -63,5 +63,12 @@ function barriers(paint: AntPaint, w: number, h: number): void {
   paint(TOOL_FOOD, w * 0.75, h / 2, 8, FOOD);
 }
 
+/** S3's tests' and S5's training scene: the nest left, one food patch
+ *  130 cells away. */
+function training(paint: AntPaint, w: number, h: number): void {
+  paint(TOOL_NEST, w * 0.15, h / 2, 6, 0);
+  paint(TOOL_FOOD, w * 0.8, h / 2, 8, 50);
+}
+
 /** The scenes by name, the first the default. */
-export const SCENES: Record<string, (paint: AntPaint, w: number, h: number) => void> = { open, bridge, barriers };
+export const SCENES: Record<string, (paint: AntPaint, w: number, h: number) => void> = { open, bridge, barriers, training };

@@ -36,6 +36,7 @@ const S1: &str = "demos/s1-boids/";
 const S2: &str = "demos/s2-vicsek/";
 const S3: &str = "demos/s3-ants/";
 const S4: &str = "demos/s4-physarum/";
+const S5: &str = "demos/s5-evolve/";
 const A1: &str = "demos/a1-string/";
 const A2: &str = "demos/a2-waveguide/";
 const A3: &str = "demos/a3-piano/";
@@ -56,8 +57,9 @@ const A3: &str = "demos/a3-piano/";
 /// default flock (10k, sorted), brute force at 2,000, and 100k boids. S2:
 /// the default (4000 at rho = 4), and 10 particles (L = 1.6: under three
 /// cells, so brute force). S3: the open field and the double bridge. S4:
-/// the default (100k agents) and the nodes preset.
-pub(super) const CASES: [Case; 38] = [
+/// the default (100k agents) and the nodes preset. S5: the pair, in the
+/// training and the barriers scenes.
+pub(super) const CASES: [Case; 40] = [
     Case {
         name: "default",
         page: M0,
@@ -268,6 +270,18 @@ pub(super) const CASES: [Case; 38] = [
         name: "s4nodes",
         page: S4,
         query: "?smoke&nodes=1&agents=20000",
+        check: Check::Draws,
+    },
+    Case {
+        name: "s5evolve",
+        page: S5,
+        query: "?smoke",
+        check: Check::Draws,
+    },
+    Case {
+        name: "s5barriers",
+        page: S5,
+        query: "?smoke&scene=barriers",
         check: Check::Draws,
     },
     // A1: one second rendered offline (OfflineAudioContext): the worklet
