@@ -192,6 +192,7 @@ pub const swarm::MAX_AGENTS: usize
 pub const swarm::MAX_ANTS: usize
 pub const swarm::MAX_BOIDS: usize
 pub const swarm::MAX_CELLS: usize
+pub const swarm::MAX_DEPOSIT: f32
 pub const swarm::MAX_PARTICLES: usize
 pub const swarm::PREDATOR_RANGE: f32
 pub fn swarm::evolve<F>(&[swarm::Gene], &swarm::Evolve, core::option::Option<&[f64]>, F) -> alloc::vec::Vec<swarm::Generation> where F: core::ops::function::Fn(&[f64], &[u64]) -> f64 + core::marker::Sync

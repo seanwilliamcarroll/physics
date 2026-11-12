@@ -43,7 +43,8 @@ impl SlimeParams {
         decay: 0.1,
     };
 
-    /// `self` if usable: angles in `[0, π]`, offset and deposit `≥ 0`,
+    /// `self` if usable: angles in `[0, π]`, offset `≥ 0`, deposit in
+    /// `[0, MAX_DEPOSIT]`,
     /// step `> 0` and under half the world, the rates in `[0, 1]`.
     #[must_use]
     pub fn checked(self) -> Option<Self> {
@@ -54,8 +55,7 @@ impl SlimeParams {
             && self.sensor_offset >= 0.0
             && self.step.is_finite()
             && self.step > 0.0
-            && self.deposit.is_finite()
-            && self.deposit >= 0.0
+            && (0.0..=crate::MAX_DEPOSIT).contains(&self.deposit)
             && (0.0..=1.0).contains(&self.diffusion)
             && (0.0..=1.0).contains(&self.decay);
         ok.then_some(self)
@@ -246,9 +246,10 @@ impl Slime {
     }
 
     /// Adds a fixed source at cell `(x, y)` depositing `amount` a step (a
-    /// nutrient node); `false` outside or for a bad amount.
+    /// nutrient node); `false` outside or for a bad amount (negative, not
+    /// a number, or over [`MAX_DEPOSIT`](crate::MAX_DEPOSIT)).
     pub fn add_node(&mut self, x: usize, y: usize, amount: f32) -> bool {
-        let ok = x < self.side && y < self.side && amount.is_finite() && amount >= 0.0;
+        let ok = x < self.side && y < self.side && (0.0..=crate::MAX_DEPOSIT).contains(&amount);
         if ok {
             self.nodes.push((x, y, amount));
         }

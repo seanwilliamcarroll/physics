@@ -650,6 +650,11 @@ Three tiers (the checklist's §3):
     silenced the ringing key first. The ABI property test needed 10 000
     cases to draw the sequence (a strike, then a refused restrike of the
     same key); a direct regression test now covers it at every push.
+  - **Its first run under nextest found another** (2026-11): a Physarum
+    node depositing 2.6e38 a step, finite as an `f32`, summed the field
+    to infinity and the concentration read NaN. Deposits are capped
+    (`swarm::MAX_DEPOSIT`, for agents, ants and nodes), with the node's
+    shrunk case as a regression test.
 - **By hand, when it matters:** `cargo xtask coverage`, full mutation
   runs, `cargo bench`.
 

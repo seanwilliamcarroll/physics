@@ -18,7 +18,7 @@ mod vicsek;
 
 pub use ants::{Ant, AntParams, Colony, MAX_ANTS, Pheromone};
 pub use evolve::{Evolve, Gene, Generation, evolve, mean_over};
-pub use field::{Field, MAX_CELLS};
+pub use field::{Field, MAX_CELLS, MAX_DEPOSIT};
 pub use flock::{Boid, Flock, MAX_BOIDS, Neighbours};
 pub use params::{Arena, Params};
 pub use physarum::{MAX_AGENTS, Slime, SlimeParams};

@@ -82,8 +82,7 @@ impl AntParams {
             && self.sensor_distance >= 0.0
             && self.speed.is_finite()
             && self.speed > 0.0
-            && self.deposit.is_finite()
-            && self.deposit >= 0.0
+            && (0.0..=crate::MAX_DEPOSIT).contains(&self.deposit)
             && self.falloff.is_finite()
             && self.falloff >= 0.0
             && (0.0..=1.0).contains(&self.diffusion)

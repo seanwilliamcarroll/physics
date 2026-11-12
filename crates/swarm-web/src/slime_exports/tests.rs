@@ -132,6 +132,28 @@ fn run(n: u32, calls: &[Call]) -> Result<(), TestCaseError> {
     Ok(())
 }
 
+/// Found by the slow tier (10 000 cases): a node depositing 2.6e38 a step,
+/// finite as an `f32`, overflowed the field to infinity in a few steps,
+/// and the concentration read NaN. Amounts are capped now
+/// (`swarm::MAX_DEPOSIT`).
+#[test]
+fn a_huge_node_cannot_overflow_the_field() {
+    run(
+        1,
+        &[
+            Call::Node(f64::MIN_POSITIVE, 0.0, 2.593_750_769_286_037_5e38),
+            Call::Advance(0.818_942_818_578_819_2),
+        ],
+    )
+    .unwrap();
+    // The same through the agents' own deposit.
+    run(
+        50,
+        &[Call::Param(abi::SLIME_DEPOSIT, 3.0e38), Call::Advance(0.8)],
+    )
+    .unwrap();
+}
+
 proptest! {
     #![proptest_config(test_support::proptest_config())]
 

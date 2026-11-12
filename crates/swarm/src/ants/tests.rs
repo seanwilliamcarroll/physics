@@ -35,6 +35,15 @@ fn params_and_sizes_are_checked() {
     assert!(d.checked().is_some());
     for bad in [
         AntParams { speed: 0.0, ..d },
+        AntParams {
+            deposit: crate::MAX_DEPOSIT * 1.001,
+            ..d
+        },
+        AntParams {
+            deposit: f32::NAN,
+            ..d
+        },
+        AntParams { deposit: -1.0, ..d },
         AntParams { decay: 1.5, ..d },
         AntParams {
             sensor_angle: 4.0,
