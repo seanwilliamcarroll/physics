@@ -22,7 +22,8 @@ const HALF_NEIGHBORS: [(i64, i64); 4] = [(1, 0), (-1, 1), (0, 1), (1, 1)];
 ///
 /// A *sorted cell list* rather than a dense array of cells: each circle's
 /// cell `(⌊x / cell⌋, ⌊y / cell⌋)` is sorted, and a neighbor cell's
-/// circles are found by binary search. Memory is proportional to the
+/// circles are found in the sorted list (by cursors that follow the
+/// visiting order). Memory is proportional to the
 /// circles, not to the area they span, so one runaway particle can't make
 /// the grid huge; and the sort makes the output deterministic.
 pub fn candidate_pairs<S: Scalar>(
@@ -46,11 +47,23 @@ pub fn candidate_pairs<S: Scalar>(
         .map(|(i, (x, _))| (cell_of(x.x.to_f64(), cell), cell_of(x.y.to_f64(), cell), i))
         .collect();
     sort(&mut keys);
-    // Each run of equal cells is one occupied cell.
+    // Each run of equal cells is one occupied cell: listed once, in
+    // order. The cells are visited in that order, so each of the four
+    // neighbors' positions in the list only moves forward: a cursor per
+    // offset finds it in a step or two (not two binary searches over
+    // every circle, per neighbor: that was over half of this function;
+    // `docs/profiling.md`).
+    let mut runs: Vec<Run> = Vec::new();
+    let mut at = 0;
     for here in keys.chunk_by(|p, q| (p.0, p.1) == (q.0, q.1)) {
-        let Some(&(cx, cy, _)) = here.first() else {
-            continue;
-        };
+        if let Some(&(cx, cy, _)) = here.first() {
+            runs.push((cx, cy, at));
+        }
+        at += here.len();
+    }
+    let mut cursors = [0_usize; 4];
+    for (r, &(cx, cy, start)) in runs.iter().enumerate() {
+        let here = run_at(&keys, &runs, r, start);
         let mut rest = here;
         while let Some((&(_, _, a), tail)) = rest.split_first() {
             for &(_, _, b) in tail {
@@ -58,8 +71,9 @@ pub fn candidate_pairs<S: Scalar>(
             }
             rest = tail;
         }
-        for (dx, dy) in HALF_NEIGHBORS {
-            for &(_, _, b) in cell_run(&keys, cx.saturating_add(dx), cy.saturating_add(dy)) {
+        for ((dx, dy), cursor) in HALF_NEIGHBORS.into_iter().zip(&mut cursors) {
+            let there = (cx.saturating_add(dx), cy.saturating_add(dy));
+            for &(_, _, b) in cell_run(&keys, &runs, cursor, there) {
                 for &(_, _, a) in here {
                     out.push(ordered(a, b));
                 }
@@ -97,11 +111,46 @@ fn cell_of(v: f64, cell: f64) -> i64 {
     (v / cell).floor() as i64
 }
 
-/// The keys in cell `(cx, cy)`: a contiguous run of the sorted `keys`.
-fn cell_run(keys: &[Key], cx: i64, cy: i64) -> &[Key] {
-    let lo = keys.partition_point(|k| (k.0, k.1) < (cx, cy));
-    let hi = keys.partition_point(|k| (k.0, k.1) <= (cx, cy));
-    keys.get(lo..hi).unwrap_or_default()
+/// An occupied cell `(cx, cy)` and where its run starts in the sorted
+/// keys (it ends where the next begins).
+type Run = (i64, i64, usize);
+
+/// The keys of run `r`, which starts at `start`.
+fn run_at<'a>(keys: &'a [Key], runs: &[Run], r: usize, start: usize) -> &'a [Key] {
+    let end = runs.get(r + 1).map_or(keys.len(), |next| next.2);
+    keys.get(start..end).unwrap_or_default()
+}
+
+/// The keys in cell `there`: a contiguous run of the sorted `keys`, found
+/// through `runs` (the occupied cells in order); empty if the cell is.
+///
+/// `cursor` is where the last search for this neighbor offset ended: the
+/// first run at or after its cell. Visiting cells in order, the next
+/// search's cell is later still, so the cursor walks forward to it. The
+/// one exception is at the edge of the `i64` range, where the offset
+/// saturates and a later cell's neighbor can be an earlier cell (after
+/// column `MAX − 1`, which no `f64` coordinate lands in: cells that far
+/// out are 1024 apart; handled all the same): seen as a run before the
+/// cursor that isn't before `there`, and answered by binary search,
+/// leaving the cursor alone.
+fn cell_run<'a>(keys: &'a [Key], runs: &[Run], cursor: &mut usize, there: (i64, i64)) -> &'a [Key] {
+    let cell = |r: usize| runs.get(r).map(|&(cx, cy, _)| (cx, cy));
+    let behind = cursor
+        .checked_sub(1)
+        .and_then(cell)
+        .is_some_and(|c| c >= there);
+    let r = if behind {
+        runs.partition_point(|&(cx, cy, _)| (cx, cy) < there)
+    } else {
+        while cell(*cursor).is_some_and(|c| c < there) {
+            *cursor += 1;
+        }
+        *cursor
+    };
+    match runs.get(r) {
+        Some(&(cx, cy, start)) if (cx, cy) == there => run_at(keys, runs, r, start),
+        _ => &[],
+    }
 }
 
 const fn ordered(a: usize, b: usize) -> (usize, usize) {

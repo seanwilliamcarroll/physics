@@ -99,14 +99,18 @@ pairs. Missing a pair is a bug; extra pairs only cost time.
 **As built (M6.3,** `collision::candidate_pairs`**):** a *sorted cell list*
 rather than a dense array of cells. Each circle's cell
 `(⌊x/cell⌋, ⌊y/cell⌋)` is sorted, runs of equal cells are the occupied
-cells, and a neighbor's run is found by binary search. Memory follows the
+cells, and a neighbor's run is found in that list (first by binary
+search; since the health pass by cursors, below). Memory follows the
 number of circles, not the area they span (one runaway particle can't
 blow up a dense grid), and the sort makes the output order deterministic
 for free. Cost (`cargo bench -p engine --bench step -- broadphase`, f64,
 lattice of nearly touching 5 cm circles, Apple silicon): 12.6 µs at 128
 circles, 158 µs at 1,024, 802 µs at 4,096; about N log N (the sort).
 M6.11 sorts through the engine's one key type to save `.wasm` size
-(`03-wasm-shell.md`), at 13.8, 175 and 908 µs. Once
+(`03-wasm-shell.md`), at 13.8, 175 and 908 µs. Profiling then found
+over half of that in the binary searches for neighbor cells; cursors
+that follow the visiting order replaced them (`profiling.md`, "Fixed"):
+6.2, 65 and 303 µs, of which the final pair sort is now over half. Once
 per substep, so a few hundred balls at 10 substeps stay well under a
 millisecond a frame. It allocates its key list per call; reusing a buffer
 is the first optimization if it ever shows up in a profile.

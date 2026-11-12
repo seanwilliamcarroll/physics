@@ -100,7 +100,7 @@ Native, Apple silicon, 4 s each at 1 kHz. Self time by source line.
 | ants, 200 × 120, 500 ants | 527 µs | 96% `Field::diffuse`: a third recounting each cell's open neighbours through an iterator chain, the rest the scatter | fixable: the counts change only with the walls |
 | Physarum, 512², 100k | 3.5 ms | 28% the sensors' field reads (random access); ~40% `fmod`, from `rem_euclid` in `Slime::cell` (four calls an agent) and the position wrap; 12% `diffuse_periodic` | the `fmod` is fixable; the reads are the model |
 | Vicsek, N = 4000, grid | 0.91 ms | 76% charged to the candidates loop's line (nine cells chained into one iterator); 14% the distance test | partly: see "Fixed" (most of that line was the loads, not the iterator) |
-| broadphase, 4096 bodies | | 56% `cell_run`'s two binary searches over all keys, per neighbour cell; 22% sorting the keys; `sort_pairs` 2% | fixable: the second search |
+| broadphase, 4096 bodies | 903 µs | 56% `cell_run`'s two binary searches over all keys, per neighbour cell; about 30% sorting (the cell keys, then the pairs: `sort_pairs` is 19% with what it calls) | fixable: the searches |
 | boids, 10k, sorted | 1.36 ms | 87% `Seen::add_span`, the lane loop | the work itself |
 | pairwise gravity, N = 1024 | | 100% the pair loop | the work itself (Barnes–Hut is the answer) |
 | Barnes–Hut, N = 4096 | | the walk in `accel_on`; build and sort 3% | nothing stands out |
@@ -108,10 +108,13 @@ Native, Apple silicon, 4 s each at 1 kHz. Self time by source line.
 | piano, 16 voices × 3 | | 33% the dispersion cascade (`bridge.rs`), 23% the delay lines | the filter itself |
 | piano design, 88 keys | | 75% `libm`'s `atan`, `sin`, `cos` from `dispersion::refine` | only by fewer evaluations |
 
-Two things this settled that weren't about speed: the ants' own logic
-is 3% of a colony step (the fields are the cost, so more ants are nearly
-free), and the broadphase's pair sort is 2% of it (dropping the sort, an
-open M6 question, would buy nothing).
+One thing this settled that wasn't about speed: the ants' own logic is
+3% of a colony step (the fields are the cost, so more ants are nearly
+free). And one it sharpened: the broadphase's pair sort, which M6 left
+as an open question (drop it?), was 19% of the broadphase before the fix
+below and is over half of what remains after it. `sort_pairs` showed as
+2% under "self": the sorting it calls is charged to the sort routine,
+and only "total" adds them up.
 
 ## Fixed
 
@@ -154,3 +157,15 @@ work itself. After the change the samples sit on the loads, the
 distance test and the adds, about evenly. Going further means storing
 the particles in cell order and scanning lanes, as boids' `Sorted` does
 (1.7× there); not done, the page runs N = 4000 in under a millisecond.
+
+**The broadphase's neighbor cells: 903 → 303 µs at 4096 circles
+(−66%; −55% at 128).** Each occupied cell looked up four neighbor cells,
+each by two binary searches over every circle's key: about 100
+unpredictable branches a cell. Now the occupied cells are listed once,
+in order, and because cells are visited in that order each neighbor's
+place in the list only moves forward: a cursor per offset finds it in a
+step or two. A first attempt, one binary search over the cells instead
+of two over the circles, gained 23%: the branches, not the count of
+searches, were the cost. The pairs come out sorted as before, so every
+engine golden is unchanged; the old algorithm is kept in the tests as a
+reference.
