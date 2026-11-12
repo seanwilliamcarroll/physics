@@ -2,7 +2,7 @@
 //! neighbours"). The cell side is at least the visual range, so every
 //! neighbour of a boid is in the 3 × 3 block of cells around its own.
 
-use math::convert::f64_to_usize;
+use math::convert::{f64_to_f32, f64_to_usize, usize_to_f64};
 
 /// The most cells along a side: a tiny visual range on a big arena would
 /// otherwise mean millions of cells. Larger cells are still correct
@@ -43,6 +43,33 @@ impl Grid {
         self.inv_cell = 1.0 / cell;
         self.cols = count(width * self.inv_cell);
         self.rows = count(height * self.inv_cell);
+        self.fill(x, y);
+    }
+
+    /// For a periodic `side × side` box: the most whole cells per side
+    /// that are each at least `range` (a hair wider, as [`Self::rebuild`]),
+    /// at most 1024; `None` (nothing built) below 3, where a 3 × 3 block
+    /// would wrap onto itself and see a particle twice.
+    pub(crate) fn rebuild_periodic(
+        &mut self,
+        side: f32,
+        range: f32,
+        x: &[f32],
+        y: &[f32],
+    ) -> Option<()> {
+        let k = f64_to_usize(f64::from((side / (range * CELL_SLACK)).floor()))?.min(1024);
+        if k < 3 {
+            return None;
+        }
+        self.cols = k;
+        self.rows = k;
+        self.inv_cell = f64_to_f32(usize_to_f64(k)) / side;
+        self.fill(x, y);
+        Some(())
+    }
+
+    /// The counting sort itself, into the current cells.
+    fn fill(&mut self, x: &[f32], y: &[f32]) {
         let cells = self.cols * self.rows;
         // 1. Histogram, shifted by one so the prefix sum gives starts.
         self.start.clear();
@@ -131,6 +158,31 @@ impl Grid {
                 }
                 _ => 0..0,
             }
+        })
+    }
+
+    /// The particles in the 3 × 3 block around `(x, y)`'s cell, taken
+    /// modulo the grid (after [`Self::rebuild_periodic`]: at least 3 a
+    /// side, so the nine cells are distinct).
+    pub(crate) fn around_wrapped(&self, x: f32, y: f32) -> impl Iterator<Item = usize> + '_ {
+        let (cx, cy) = self.coords(x, y);
+        let (k, l) = (self.cols, self.rows);
+        let wrap = |c: usize, d: usize, n: usize| (c + n + d - 1) % n;
+        (0..3).flat_map(move |dy| {
+            (0..3).flat_map(move |dx| {
+                let c = wrap(cy, dy, l) * k + wrap(cx, dx, k);
+                let span = match (self.start.get(c), self.start.get(c + 1)) {
+                    (Some(&s), Some(&e)) => {
+                        usize::try_from(s).unwrap_or(0)..usize::try_from(e).unwrap_or(0)
+                    }
+                    _ => 0..0,
+                };
+                self.order
+                    .get(span)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(|&j| usize::try_from(j).ok())
+            })
         })
     }
 

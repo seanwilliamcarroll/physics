@@ -61,8 +61,9 @@ fn the_sorted_golden_hash_is_unchanged() {
 
 /// The Vicsek model: 400 particles at ρ = 4, η = 2, 300 steps
 /// (`libm`'s sin and cos: the same bits on wasm).
-fn run_vicsek() -> u64 {
+fn run_vicsek(brute_force: bool) -> u64 {
     let mut v = swarm::Vicsek::new(400, 10.0, swarm::VicsekParams::paper(2.0), 42).unwrap();
+    v.set_brute_force(brute_force);
     for _ in 0..300 {
         v.step();
     }
@@ -72,13 +73,23 @@ fn run_vicsek() -> u64 {
 }
 
 const GOLDEN_VICSEK: u64 = 0x95da_8d6f_33a2_1b2d;
+/// Through the periodic grid (the default): the sums in cell order.
+const GOLDEN_VICSEK_GRID: u64 = 0x575e_de0c_9e4a_d022;
 
 #[test]
-fn the_vicsek_golden_hash_is_unchanged() {
-    let h = run_vicsek();
-    assert_eq!(h, run_vicsek(), "repeatable");
+fn the_vicsek_golden_hashes_are_unchanged() {
+    let (brute, grid) = (run_vicsek(true), run_vicsek(false));
     assert_eq!(
-        h, GOLDEN_VICSEK,
-        "if intended, set GOLDEN_VICSEK = {h:#018x}"
+        (brute, grid),
+        (run_vicsek(true), run_vicsek(false)),
+        "repeatable"
+    );
+    assert_eq!(
+        brute, GOLDEN_VICSEK,
+        "if intended, set GOLDEN_VICSEK = {brute:#018x}"
+    );
+    assert_eq!(
+        grid, GOLDEN_VICSEK_GRID,
+        "if intended, set GOLDEN_VICSEK_GRID = {grid:#018x}"
     );
 }

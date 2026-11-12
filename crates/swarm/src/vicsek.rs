@@ -6,6 +6,8 @@
 use math::SplitMix64;
 use math::convert::f64_to_f32;
 
+use crate::grid::Grid;
+
 /// The most particles a system holds (as [`MAX_BOIDS`](crate::MAX_BOIDS)).
 pub const MAX_PARTICLES: usize = 1 << 18;
 
@@ -108,6 +110,10 @@ pub struct Vicsek {
     rng: SplitMix64,
     steps: u64,
     annihilations: u64,
+    /// Neighbours through the periodic grid (when ≥ 3 cells fit), or
+    /// every pair.
+    brute_force: bool,
+    grid: Grid,
 }
 
 impl Vicsek {
@@ -175,6 +181,8 @@ impl Vicsek {
             rng: SplitMix64::new(seed),
             steps: 0,
             annihilations: 0,
+            brute_force: false,
+            grid: Grid::default(),
         })
     }
 
@@ -184,19 +192,25 @@ impl Vicsek {
     pub fn step(&mut self) {
         let n = self.cur.len();
         let (side, p) = (self.side, self.params);
-        let r_sq = p.radius * p.radius;
+        let gridded = !self.brute_force
+            && self
+                .grid
+                .rebuild_periodic(side, p.radius, &self.cur.x, &self.cur.y)
+                .is_some();
         for i in 0..n {
             let Some(me) = self.cur.get(i) else { continue };
             // The neighbourhood's heading sum, `me` included (distance 0).
-            let (mut sc, mut ss) = (0.0_f32, 0.0_f32);
-            for j in 0..n {
-                let Some(o) = self.cur.get(j) else { continue };
-                let (dx, dy) = (image(me.x - o.x, side), image(me.y - o.y, side));
-                if dx * dx + dy * dy < r_sq {
-                    sc += o.cos;
-                    ss += o.sin;
-                }
-            }
+            let (sc, ss) = if gridded {
+                heading_sum(
+                    &self.cur,
+                    me,
+                    side,
+                    p.radius,
+                    self.grid.around_wrapped(me.x, me.y),
+                )
+            } else {
+                heading_sum(&self.cur, me, side, p.radius, 0..n)
+            };
             let next = self.turn(me, sc, ss);
             self.next.set(i, next);
         }
@@ -226,6 +240,13 @@ impl Vicsek {
             cos: c * cs - s * sn,
             sin: c * sn + s * cs,
         }
+    }
+
+    /// Every pair (`true`) or the periodic grid (`false`, the default;
+    /// brute force anyway when fewer than 3 cells fit across the box).
+    /// The same neighbours either way.
+    pub const fn set_brute_force(&mut self, on: bool) {
+        self.brute_force = on;
     }
 
     #[must_use]
@@ -295,6 +316,28 @@ impl Vicsek {
             .flat_map(|p| [p.x, p.y, p.cos, p.sin])
             .flat_map(f32::to_le_bytes)
     }
+}
+
+/// The heading sum over `candidates` within `r` of `me` (minimum image),
+/// `me` included if it's among them.
+fn heading_sum(
+    s: &State,
+    me: Particle,
+    side: f32,
+    r: f32,
+    candidates: impl Iterator<Item = usize>,
+) -> (f32, f32) {
+    let r_sq = r * r;
+    let (mut sc, mut ss) = (0.0_f32, 0.0_f32);
+    for j in candidates {
+        let Some(o) = s.get(j) else { continue };
+        let (dx, dy) = (image(me.x - o.x, side), image(me.y - o.y, side));
+        if dx * dx + dy * dy < r_sq {
+            sc += o.cos;
+            ss += o.sin;
+        }
+    }
+    (sc, ss)
 }
 
 /// `d` as the minimum image in a box of side `l`: in `[−l/2, l/2]`.
