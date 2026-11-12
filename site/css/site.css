@@ -199,3 +199,11 @@ main.wide {
   image-rendering: pixelated;
   cursor: crosshair;
 }
+
+/* S4: the Physarum field, square (pixels.ts sets its aspect ratio). */
+.stage.slime canvas {
+  image-rendering: pixelated;
+  max-width: 720px;
+  margin: 0 auto;
+  cursor: crosshair;
+}

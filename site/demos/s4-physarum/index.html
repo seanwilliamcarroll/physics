@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S4 · Physarum: networks from one shared field</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>Physarum: networks from one shared field</h1>
+    <p class="muted">
+      Jones's (2010) model of a slime mould: 100,000 agents and one field.
+      Each agent senses the field at three points ahead, turns toward the
+      strongest, steps forward and deposits; the field spreads (a 3 × 3
+      mean) and decays. What you see is the field. From a random start a
+      web of strands forms within seconds, then contracts, loops
+      shortening and closing (on a small wrapped-around world, measured
+      at 128², it ends as a single straight band; try "a small world").
+      <b>Click</b>
+      to add a nutrient node, which deposits every step; strong nodes can
+      pull the strands between them. Turn <b>sensing</b> off and the
+      field stays a fog. <code>docs/15-swarm.md</code>, S4.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="stage slime"><canvas id="view"></canvas></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <p class="muted">
+      Concentration is the share of the field in its brightest tenth of
+      cells: 0.1 for an even fog, near 1 for a single band. Every value
+      here is ours, starting from those commonly reported for Jones's
+      model: his paper's text wasn't available.
+    </p>
+    <section id="options"></section>
+  </main>
+</body>
+</html>
