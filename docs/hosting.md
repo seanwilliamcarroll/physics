@@ -1,10 +1,10 @@
 # Hosting (future work)
 
-Status: **Superseded as the plan** by `16-site-demos.md` (2026-11-13):
-the personal site runs on AWS Amplify, not S3 + CloudFront, and the
-demos are to be written in the site against a package from this repo,
-not published from `site/`. Kept as a guide to what wasm needs from a
-server, should `site/` itself ever be hosted.
+Status: **Not planned** (2026-11-13). The lab site under `site/` is
+never to be published; public demos are written in the personal site
+against a package from this repo (`16-site-demos.md`). Kept only for
+its notes on what wasm needs from a server (Part 2), which apply to the
+personal site too.
 Written November 2026; re-verify AWS specifics before acting.
 
 Goal: publish the demos on the personal website, which lives in a
