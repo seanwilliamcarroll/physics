@@ -108,6 +108,37 @@ pub(crate) fn bench_wasm(root: &Path, budget_ms: u32) -> Result<(), String> {
         );
     }
     println!("note: wasm times include the O(n) render-buffer fill; native is World::step alone");
+    modules(root, budget_ms)
+}
+
+/// The other modules (`xtask/bench_modules.mjs`): sand, boids, Vicsek,
+/// ants and Physarum through their exports, as the docs quote them.
+fn modules(root: &Path, budget_ms: u32) -> Result<(), String> {
+    let script = root.join("xtask").join("bench_modules.mjs");
+    println!("\ntiming sand.wasm and swarm.wasm in Node ({budget_ms} ms per case)…");
+    let output = process::Command::new("node")
+        .arg(&script)
+        .arg(root.join("site").join("pkg"))
+        .arg(budget_ms.to_string())
+        .output()
+        .map_err(|e| format!("failed to run node: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "module benchmark failed ({}): {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    println!("{:<10} {:<28} {:>12}", "module", "case", "wasm");
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        let mut parts = line.split('\t');
+        if let (Some(m), Some(case), Some(ns)) = (parts.next(), parts.next(), parts.next()) {
+            let ns: f64 = ns
+                .parse()
+                .map_err(|e| format!("bad time in `{line}`: {e}"))?;
+            println!("{m:<10} {case:<28} {:>12}", format_ns(ns));
+        }
+    }
     Ok(())
 }
 

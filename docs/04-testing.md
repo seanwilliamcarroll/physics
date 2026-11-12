@@ -291,6 +291,9 @@ Golden-hash tests running on both targets give the cross-platform check above.
 
 ## Benchmarks
 
+How to run every bench, save and compare baselines, and the current
+numbers per module: `benchmarks.md`. The tables below are M2's.
+
 - `criterion` natively: `World::step` for N ∈ {16, 128, 1024} per scalar;
   pairwise gravity and Barnes–Hut in isolation; SoA vs fully split SoA
   later.

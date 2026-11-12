@@ -19,6 +19,7 @@ physics/
 ├── docs/
 │   ├── 00-scope.md … 09-billiards.md, 11-falling-sand.md … 14-piano.md, 15-swarm.md
 │   ├── setup.md            # a fresh machine, step by step (nvm for Node)
+│   ├── benchmarks.md       # running and comparing benchmarks; the current numbers
 │   ├── repo-layout.md      # this file
 │   ├── types.md            # key types, one line each, with links
 │   ├── hosting.md          # future work

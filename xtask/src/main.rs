@@ -16,6 +16,7 @@ use clap::{Parser, Subcommand};
 
 mod abi_check;
 mod api;
+mod bench;
 mod bench_wasm;
 mod coverage;
 mod mutants;
@@ -69,6 +70,20 @@ enum Command {
     Smoke,
     /// Run the math and engine tests as wasm32-wasip1 under wasmtime
     TestWasm,
+    /// Run every criterion benchmark, saving a named baseline (--save) or
+    /// comparing with one (--baseline): lists what moved past the
+    /// threshold and fails on regressions (docs/benchmarks.md)
+    Bench {
+        /// Save this run as baseline NAME
+        #[arg(long, value_name = "NAME", conflicts_with = "baseline")]
+        save: Option<String>,
+        /// Compare this run with baseline NAME
+        #[arg(long, value_name = "NAME")]
+        baseline: Option<String>,
+        /// The change in a mean that counts, whole percent
+        #[arg(long, default_value_t = 10)]
+        threshold: u32,
+    },
     /// Time the cluster through engine.wasm in Node and compare with the
     /// native criterion results (run cargo bench -p engine --bench step first)
     BenchWasm {
@@ -131,6 +146,15 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Serve { port } => serve::serve(&root, port),
         Command::Smoke => smoke::smoke(&root),
         Command::TestWasm => test_wasm(&root),
+        Command::Bench {
+            save,
+            baseline,
+            threshold,
+        } => match (save.as_deref(), baseline.as_deref()) {
+            (Some(n), _) => bench::bench(&root, &bench::Mode::Save(n), f64::from(threshold)),
+            (None, Some(n)) => bench::bench(&root, &bench::Mode::Compare(n), f64::from(threshold)),
+            (None, None) => Err("give --save NAME or --baseline NAME".to_owned()),
+        },
         Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
         Command::Coverage => coverage::coverage(&root),
         Command::InstallHooks => install_hooks(&root),
