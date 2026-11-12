@@ -51,6 +51,24 @@ impl AntParams {
         decay: 0.008,
     };
 
+    /// The best of S5's evolution (`docs/15-swarm.md`, S5.3;
+    /// `examples/evolve_ants.rs`, 25 generations of 20, seeds 2026): SA
+    /// 79.8°, SD 1.7 cells, RA 32.8°, wiggle 2.9°, a steep fall-off, the
+    /// most diffusion its range allowed, slow decay. Held out: 5,394
+    /// delivered against the defaults' 1,701, and 3,978 against 404 in the
+    /// barriers scene it never saw.
+    pub const EVOLVED: Self = Self {
+        sensor_angle: 1.392_224_1,
+        sensor_distance: 1.674_356_8,
+        turn: 0.573_285_6,
+        wiggle: 0.050_456_405,
+        speed: 1.0,
+        deposit: 1.0,
+        falloff: 0.187_099_08,
+        diffusion: 0.5,
+        decay: 0.006_431_879_5,
+    };
+
     /// `self` if every value is finite and in range: angles in `[0, π]`,
     /// distances, speed and deposit `≥ 0` (speed `> 0`), the rates in
     /// `[0, 1]`.

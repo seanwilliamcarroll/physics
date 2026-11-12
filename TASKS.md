@@ -69,7 +69,13 @@ result; construction deferred. `references.md`: the three, unread.
 shrinking Gaussian mutation (Box–Muller, `libm`), a start genome,
 scoring split over threads by slot. Finds a noisy quadratic's maximum;
 **identical on 1–8 threads**.
-## 3. Evolving the ants (PR): the run, held-out seeds, the barriers scene
+## ✅ 3. Evolving the ants (PR)
+
+25 generations of 20 on 10 threads (~5 min). **Held out: 5,394 against
+the defaults' 1,701; in the barriers scene, never trained on, 3,978
+against 404.** Near a straight-shuttle ceiling (~80%); short, wide
+sensors the scan couldn't have found; two genes at their ranges' edges.
+`AntParams::EVOLVED`, pinned; the history in `site/js/ant-evolution.ts`.
 ## 4. The page (PR): `s5-evolve`
 ## 5. Cleanup (PR)
 

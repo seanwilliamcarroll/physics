@@ -856,6 +856,38 @@ score never wins; normal deviates (Box–Muller, `libm`) have mean 0 and
 variance 1 to 0.01 and 0.02; **the history is identical on 1, 2, 3 and 8
 threads**.
 
+### The ants evolved (S5.3)
+
+`examples/evolve_ants.rs`: 25 generations of 20, three common seeds a
+generation, starting from S3's defaults, on 10 threads (about five
+minutes). Best and mean fitness by generation: 4,493 and 1,574 at the
+start (one random genome already beat the defaults' ~1,700), the mean
+catching the best by generation 13, the best near 5,430 from generation
+16 on.
+
+| Held-out seeds 1000–1007 | Defaults (S3's scan) | Evolved |
+|---|---|---|
+| training scene | 1,701 (1,392–1,813) | **5,394** (5,370–5,420) |
+| barriers scene, never trained on | 404 (282–543) | **3,978** (3,957–4,015) |
+
+- **It generalizes**, most of all to the scene it never saw (9.8×), and
+  it's nearly seed-proof where the defaults vary by a third.
+- **It's near a ceiling.** Nest and food edges are ~116 cells apart: an
+  ant shuttling in straight lines delivers at most ~13 times in 3,000
+  steps, ~6,700 for 500 ants. The evolved colony gets ~80% of that.
+- **The setting is not what the scan would have found**: sensors only
+  1.7 cells ahead (the defaults: 9) but 80° to the side, a 33° turn,
+  almost no wiggle (3°), a steep fall-off (0.187) and the most diffusion
+  its range allowed (0.5). **Two genes ended at or near their ranges'
+  edges** (diffusion at 0.5, fall-off near 0.2): wider ranges might do
+  better still.
+- S3's scan varied four of the seven, coarsely, with sensors fixed at 9
+  cells: it couldn't have found short, wide sensors.
+
+Kept as `AntParams::EVOLVED`; pinned (`tests/evolved.rs`, two held-out
+seeds): above twice the defaults' best in training, five times in the
+barriers scene.
+
 ### The genome
 
 S3's seven tunable constants, each in a range: SA and RA 0–90°, SD 1–30

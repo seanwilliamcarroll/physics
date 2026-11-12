@@ -25,6 +25,7 @@ pub swarm::AntParams::turn: f32
 pub swarm::AntParams::wiggle: f32
 impl swarm::AntParams
 pub const swarm::AntParams::DEFAULT: Self
+pub const swarm::AntParams::EVOLVED: Self
 pub fn swarm::AntParams::checked(self) -> core::option::Option<Self>
 pub struct swarm::Arena
 impl swarm::Arena
