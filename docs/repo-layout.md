@@ -19,6 +19,7 @@ physics/
 ├── docs/
 │   ├── 00-scope.md … 09-billiards.md, 11-falling-sand.md … 14-piano.md, 15-swarm.md
 │   ├── setup.md            # a fresh machine, step by step (nvm for Node)
+│   ├── 16-site-demos.md    # plan: demos on the personal site, from a package built here (proposed)
 │   ├── benchmarks.md       # running and comparing benchmarks; the current numbers
 │   ├── profiling.md        # finding where the time goes: cargo xtask profile, the hot paths found
 │   ├── repo-layout.md      # this file

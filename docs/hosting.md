@@ -1,6 +1,10 @@
 # Hosting (future work)
 
-Status: **Future work — guide, not a plan.** Nothing here blocks any milestone.
+Status: **Superseded as the plan** by `16-site-demos.md` (2026-11-13):
+the personal site runs on AWS Amplify, not S3 + CloudFront, and the
+demos are to be written in the site against a package from this repo,
+not published from `site/`. Kept as a guide to what wasm needs from a
+server, should `site/` itself ever be hosted.
 Written November 2026; re-verify AWS specifics before acting.
 
 Goal: publish the demos on the personal website, which lives in a
