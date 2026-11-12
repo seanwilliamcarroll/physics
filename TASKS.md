@@ -1,107 +1,71 @@
-# TASKS — S4: Physarum
+# TASKS — S5: Evolving the rules
 
-Source: `docs/05-roadmap.md` ("Swarm track", S4), `docs/15-swarm.md`
-(S3's `Field`, which this reuses).
+Source: `docs/05-roadmap.md` ("Swarm track", S5: "evolve rules, build");
+`docs/15-swarm.md` (S3's ants, whose constants this evolves).
 
-**Sources:**
-- Jones (2010), *Characteristics of pattern formation and evolution in
-  approximations of Physarum transport networks*, Artificial Life 16(2),
-  127–153. doi:10.1162/artl.2010.16.2.16202 — **abstract read**: agents
-  sensing and depositing into a field form transport networks; by
-  adjusting parameters, "maps of characteristic patterning", including
-  "irregular spots and labyrinthine and reticulated patterns"; with
-  chemorepulsion, spots and stripes. Full text not read (no access).
-- Jones (2011, online 2010), *Influences on the formation and
-  evolution of Physarum polycephalum inspired emergent transport
-  networks*, Natural Computing 10(4), 1345–1369.
-  doi:10.1007/s11047-010-9223-z (Crossref) — not read; cited for its known
-  result (networks between nutrient sources approximating proximity
-  graphs and Steiner trees).
-- Jenson, S., *physarum* (read 2026-11-11, secondary): three sensors
-  (FL, F, FR); "a simple 3-by-3 mean filter" for diffusion; "a
-  multiplicative decay factor"; Jones's "at most one particle in each
-  grid square", which Jenson usually omits. **No parameter values**.
+**Sources** (DOIs checked on Crossref, 2026-11-12):
+- Eiben & Smith (2015), *Introduction to Evolutionary Computing*, 2nd
+  ed., Springer. doi:10.1007/978-3-662-44874-8 — the standard textbook
+  for the terms used (tournament selection, Gaussian mutation, elitism);
+  **not read** here, cited for vocabulary, not results.
+- Hansen & Ostermeier (2001), *Completely derandomized self-adaptation
+  in evolution strategies*, Evolutionary Computation 9(2), 159–195.
+  doi:10.1162/106365601750190398 — CMA-ES, the stronger method; noted,
+  not built; not read.
+- Werfel, Petersen & Nagpal (2014), *Designing collective behavior in a
+  termite-inspired robot construction team*, Science 343(6172), 754–758.
+  doi:10.1126/science.1245842 — collective construction, S5's other
+  half, **deferred**; not read.
 
-**Goal:** the slime-mould model: one field, many agents that sense it,
-turn, move and deposit into it. Networks form, contract and reconnect.
-The quantitative side: how strongly agents organize the field, against
-agents that don't sense, and what the parameters do (Jones's
-"parameter mapping").
+**Goal:** search S3's ant constants with an evolutionary algorithm, the
+fitness a headless native run (food delivered), and ask the question
+that matters: does the evolved setting beat S3's hand-scanned defaults
+**on seeds and a scene it never saw**, or did it learn its training
+seeds?
 
-**Done when:** the page shows networks forming from a random start at
-100k agents and 60 Hz in the browser; the tests pin that sensing
-concentrates the field far beyond a random walk, that the field
-accounting holds, and that nutrient nodes get connected.
+**Done when:** the algorithm is tested on a toy problem; the ants are
+evolved natively (in parallel, the result independent of the thread
+count); the best is measured against the defaults on held-out seeds and
+on the barriers scene; and the page runs defaults and evolved side by
+side with the evolution's history drawn.
 
 ## Decisions (your approval given in advance)
 
-1. **In `swarm` and `swarm.wasm` again**: `swarm::physarum`, `slime_*`
-   exports, a page `s4-physarum`.
-2. **A periodic square world, no walls**: `Field` gains a periodic
-   diffusion; the 3 × 3 mean filter is `D = 8/9` of the conserving
-   diffusion (each cell keeps a ninth, gives a ninth to each of eight).
-3. **The agent step** (Jones's arrangement, as S3's ants, one field):
-   sense at `SO` ahead at `−SA`, `0`, `+SA`; turn `RA` toward the
-   strongest (straight if the middle is; random if both sides beat it);
-   move `SS`; deposit `dep`. Rotations by `±SA` and `±RA` precomputed
-   (`libm`), so no trig per step.
-4. **Values are ours**, labelled so: the paper's full text wasn't read
-   and Jenson gives none. Starting point SA 22.5°, RA 45°, SO 9 cells,
-   SS 1, `dep` 5, decay 0.1, the mean filter, values commonly reported
-   for Jones's model but not checked against it. A small parameter map
-   (SA × RA) is measured and shown.
-5. **No one-particle-per-cell exclusion** (Jenson's choice): cheaper,
-   and S4's measurements say what changes without it are out of scope.
-6. **Measured, not just pictured:** *concentration*, the field mass in
-   the top 10% of cells; sensing against a random walk (sensing off);
-   its rise over time; the parameter map's patterns told apart by it;
-   **nodes**: fixed sources that deposit every step, the field along the
-   straight lines between them against away from them.
-7. **Scale:** 100k agents in a 512 × 512 field by default; the step and
-   the diffusion measured native and in V8. Single-threaded on the CPU:
-   the GPU question (`wgpu`, WebGPU-only) is recorded with the numbers,
-   not built.
+1. **Scope: evolving the rules only.** Collective construction (Werfel
+   et al.) is a milestone's worth of its own: deferred, recorded.
+2. **`swarm::evolve`**: a small evolutionary algorithm over a bounded
+   real vector: a population, tournament selection (size 3), Gaussian
+   mutation scaled to each gene's range (and shrinking over the
+   generations), uniform crossover, elitism (the best 2 kept and
+   **re-evaluated** each generation, so a lucky score can't persist).
+   CMA-ES noted, not built.
+3. **Noise-aware fitness**: a run's food delivered depends on its seed,
+   so each individual is scored on K seeds (common to the whole
+   generation, new each generation), the mean its fitness.
+4. **The genome**: S3's seven tunable constants (SA, SD, RA, wiggle,
+   fall-off, diffusion, decay), each within a stated range; speed and
+   deposit fixed (they scale the rest).
+5. **Parallel, deterministic**: evaluations natively on `std::thread::
+   scope`; each depends only on its genome and seeds, so the result is
+   bit-identical with 1 thread or 16 (tested). The wasm build stays
+   single-threaded (`workers.md`).
+6. **Generalization is the result**: the best evolved setting against
+   the defaults on 8 held-out seeds in S3's scene and on the barriers
+   scene. Reported either way.
+7. **No new exports**: the page uses S3's `ant_*` exports
+   (`ant_set_param`) to run defaults and evolved side by side; the
+   evolution's history (best and mean fitness per generation) is
+   embedded from the native run.
 
-## ✅ 1. The doc (PR)
-
-`15-swarm.md`, S4: what's read (Jones 2010's abstract, Jenson's
-structure) and not (the papers' text: every value ours), the model
-(periodic, the mean filter as `D = 8/9`, precomputed rotations), what's
-measured (concentration, a map, nodes, cost). `references.md`.
-## ✅ 2. The model (PR)
-
-`Field::diffuse_periodic` (gather; 8/9 is the mean filter) and
-`top_share`; `swarm::Slime` (sense, turn, move, deposit; nodes; sensing
-off as the baseline). The field balances to 2.8e-8 a step. A golden,
-same on wasm.
-## ✅ 3. Measurements (PR)
-
-Sensing concentrates the field (top 10%: 0.97 against a random walk's
-0.13). **The network contracts into one straight band wrapping the
-torus** (0.76–0.81 at 250 steps, 0.97 by 1,500). A 4 × 3 SA × RA map
-(0.72–1.00). **Nodes linked in some seeds** (strong nodes: 3.9 and 4.2×
-in two seeds, 0.08 in the third, whose band wraps elsewhere). Native:
-100k agents on 512², 3.55 ms a step.
-## ✅ 4. Web layer (PR)
-
-`slime_*` exports in `swarm.wasm` (103.8 KB): agents, nodes, constants,
-sensing, concentration, the field through a colour ramp. Mirrored,
-`.d.ts` checked, a call-sequence property test. V8: 100k agents on 512²,
-5.61 ms a step and 0.97 ms to draw; 60 Hz holds to ~250k. The GPU
-question recorded with these numbers, not built.
-## ✅ 5. The page (PR)
-
-`s4-physarum`: the 512² field (100k agents), sliders, sensing, click to
-add nodes, restart, concentration; presets (spread, nodes, 250k, a small
-world); two smoke cases; gallery. Your check pending.
-## 6. Cleanup (PR)
-
-- [x] `types.md`: S4's types.
-- [ ] S4 collapsed after your check.
+## 1. The doc (PR)
+## 2. The algorithm (PR): `swarm::evolve`, toy tests, thread-count determinism
+## 3. Evolving the ants (PR): the run, held-out seeds, the barriers scene
+## 4. The page (PR): `s5-evolve`
+## 5. Cleanup (PR)
 
 ## Workflow
 
-- Each numbered section gets its own branch (`s4/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`s5/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -310,6 +274,19 @@ arms split (no symmetry breaking). Two bugs found by tests and the page
 (a brush that hung at 1e300; ants left at the old nest). `ant_*` in
 `swarm.wasm` (84.4 KB); the `s3-ants` page (your check: "looks good";
 the long slider decimals fixed for custom formats too).
+
+## ✅ S4: Physarum (done, PRs #205–#211)
+
+`docs/15-swarm.md`, S4 (Jones 2010's abstract read; every value ours).
+`Field::diffuse_periodic` (the mean filter as `D = 8/9`) and
+`top_share`; `swarm::Slime`. **Sensing concentrates the field** (top
+10%: 0.97 against a random walk's 0.13); **the web contracts into one
+straight band wrapping the torus** (128²: 0.76–0.81 at 250 steps, 0.97 by
+1,500); an SA × RA map (0.72–1.00); strong nodes linked in two of three
+seeds. `slime_*` in `swarm.wasm` (103.8 KB): 100k agents on 512², 5.6
+ms a step in V8, 60 Hz to ~250k; the GPU question recorded with the
+numbers, not built. The `s4-physarum` page (your check: "looks good").
+The slider readouts rounded for custom formats too.
 ---
 
 ## Health (after M7)
@@ -344,7 +321,13 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 
 ---
 
-## Out of scope for S4
+## Out of scope for S5
+
+- Collective construction (Werfel et al. 2014): deferred to its own
+  milestone. CMA-ES. Evolving boids or Physarum (the same machinery
+  would apply). Evolution in the browser.
+
+## Out of scope for S4 (carried forward)
 
 - The GPU path (recorded as a decision with numbers, not built);
   chemorepulsion; the one-particle-per-cell exclusion; multiple species.
