@@ -98,6 +98,12 @@ fn call() -> impl Strategy<Value = Call> {
     ]
 }
 
+/// `v_a`'s ceiling: headings are `f32` unit vectors, each of length 1
+/// only to a few ulps (re-normalized every step, so it can't grow), and
+/// the property test found aligned ones averaging 1 + 2.2e-8. A few f32
+/// epsilons: 1 + 1e-6.
+const V_A_MAX: f64 = 1.0 + 1e-6;
+
 fn run(n: u32, calls: &[Call]) -> Result<(), TestCaseError> {
     let d = vicsek_new(n, 5.0, 1.0, 64, 3);
     prop_assert!(!d.is_null());
@@ -112,13 +118,13 @@ fn run(n: u32, calls: &[Call]) -> Result<(), TestCaseError> {
                 Call::Cap(k) => prop_assert!(vicsek_set_step_cap(d, k) <= 1),
                 Call::Measure(t, w) => {
                     let v = vicsek_mean_order(d, t, w);
-                    prop_assert!(v.is_nan() || (0.0..=1.0 + 1e-9).contains(&v), "{}", v);
+                    prop_assert!(v.is_nan() || (0.0..=V_A_MAX).contains(&v), "{}", v);
                 }
                 Call::Render => prop_assert!(!vicsek_render(d).is_null()),
             }
             prop_assert_eq!(vicsek_len(d), n);
             let v = vicsek_order(d);
-            prop_assert!((0.0..=1.0 + 1e-9).contains(&v), "v_a {} after {:?}", v, c);
+            prop_assert!((0.0..=V_A_MAX).contains(&v), "v_a {} after {:?}", v, c);
         }
         vicsek_free(d);
     }
