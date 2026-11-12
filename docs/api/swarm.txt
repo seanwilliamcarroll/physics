@@ -55,11 +55,13 @@ impl swarm::Vicsek
 pub const fn swarm::Vicsek::annihilations(&self) -> u64
 pub fn swarm::Vicsek::is_empty(&self) -> bool
 pub fn swarm::Vicsek::len(&self) -> usize
+pub fn swarm::Vicsek::mean_order(&mut self, u32, u32) -> f64
 pub fn swarm::Vicsek::new(usize, f32, swarm::VicsekParams, u64) -> core::option::Option<Self>
 pub fn swarm::Vicsek::order(&self) -> f64
 pub const fn swarm::Vicsek::params(&self) -> swarm::VicsekParams
 pub fn swarm::Vicsek::particle(&self, usize) -> core::option::Option<swarm::Particle>
 pub fn swarm::Vicsek::particles(&self) -> impl core::iter::traits::iterator::Iterator<Item = swarm::Particle> + '_
+pub const fn swarm::Vicsek::set_brute_force(&mut self, bool)
 pub fn swarm::Vicsek::set_params(&mut self, swarm::VicsekParams) -> bool
 pub const fn swarm::Vicsek::side(&self) -> f32
 pub fn swarm::Vicsek::state_bytes(&self) -> impl core::iter::traits::iterator::Iterator<Item = u8> + '_
