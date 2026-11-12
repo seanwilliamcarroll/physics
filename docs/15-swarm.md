@@ -325,7 +325,8 @@ decides); threads (`workers.md`); fixed point (M8); 3D; obstacles.
 
 ## S2: The Vicsek model
 
-Status: **Draft** (S2.1). Decisions: TASKS.md, S2.
+Status: **Adopted** (S2.1; as built: the model S2.2, the periodic grid
+S2.3, the transition S2.4, the browser S2.5–6).
 
 The physicist's minimal flock (Vicsek et al. 1995): no separation, no
 cohesion, constant speed. Each step every particle takes its

@@ -1,42 +1,51 @@
-# TASKS — S2: The Vicsek model
+# TASKS — S3: Ant foraging
 
-Source: `docs/05-roadmap.md` ("Swarm track", S2), `docs/15-swarm.md`
-(S1, whose crate, grid and polarization this reuses).
+Source: `docs/05-roadmap.md` ("Swarm track", S3), `docs/15-swarm.md`
+(S1–S2: the crate, the grid, the page machinery). S4 (Physarum) builds
+on this section's fields.
 
-**Papers** (read 2026-11-11; DOIs checked on Crossref):
-- Vicsek, Czirók, Ben-Jacob, Cohen & Shochet (1995), *Novel type of
-  phase transition in a system of self-driven particles*, PRL 75(6),
-  1226–1229. doi:10.1103/PhysRevLett.75.1226 (read in full: arXiv
-  cond-mat/0611743) — the model, its parameters, `v_a`, Fig. 2a's sizes.
-- Grégoire & Chaté (2004), *Onset of collective and cohesive motion*,
-  PRL 92(2), 025702. doi:10.1103/PhysRevLett.92.025702 — the transition
-  is "always discontinuous, including for the minimal model of Vicsek et
-  al.", against the original's continuous one.
-- Chaté, Ginelli, Grégoire & Raynaud (2008), *Collective motion of
-  self-propelled particles interacting without cohesion*, PRE 77(4),
-  046113. doi:10.1103/PhysRevE.77.046113 — first-order-like, with
-  "propagating solitary structures" (high-density, high-order) near the
-  transition, at sizes beyond small simulations.
-- Chen & Zhang (2007), *Comment on "Novel type of phase transition..."*,
-  arXiv cond-mat/0703532 (a preprint; no journal version found) — the
-  0/0 case ("direction annihilation") and three fixes.
-- Baglietto & Albano (2008), PRE 78(2), 021125.
-  doi:10.1103/PhysRevE.78.021125 — a finite-size scaling study of the
-  same model; cited for its existence, not yet read.
+**Papers** (DOIs checked on Crossref, 2026-11-11). Read and not read are
+marked: the publishers' pages refused automated reading, so section 1
+starts by reading what can be got (your library access would help).
+- Jones (2010), *Characteristics of pattern formation and evolution in
+  approximations of Physarum transport networks*, Artificial Life
+  16(2), 127–153. doi:10.1162/artl.2010.16.2.16202 — **abstract read**:
+  agents sensing a chemoattractant field and depositing into it
+  ("simple local behaviors based on chemotaxis"). The sensing scheme
+  (three sensors ahead, turn toward the strongest) S3's ants use; S4's
+  own model.
+- Goss, Aron, Deneubourg & Pasteels (1989), *Self-organized shortcuts in
+  the Argentine ant*, Naturwissenschaften 76(12), 579–581.
+  doi:10.1007/BF00462870 — not yet read; cited for the double-bridge
+  experiment (a colony converging on the shorter of two routes), S3's
+  quantitative target.
+- Deneubourg, Aron, Goss & Pasteels (1990), *The self-organizing
+  exploratory pattern of the Argentine ant*, J. Insect Behav. 3(2),
+  159–168. doi:10.1007/BF01417909 — not yet read; trail laying and
+  following as the mechanism.
+- Beckers, Deneubourg & Goss (1992), *Trails and U-turns in the
+  selection of a path by the ant Lasius niger*, J. Theor. Biol. 159(4),
+  397–415. doi:10.1016/S0022-5193(05)80686-1 — not yet read; U-turns.
+- Dorigo, Maniezzo & Colorni (1996), *Ant system: optimization by a
+  colony of cooperating agents*, IEEE Trans. SMC-B 26(1), 29–41.
+  doi:10.1109/3477.484436 — not yet read; pheromone as positive
+  feedback with evaporation, abstracted to graphs (context, not model).
 
-**Goal:** the swarm track's quantitative check. The minimal flocking
-model (constant speed, align with neighbours, add noise) and its
-order–disorder transition: `v_a` falls from 1 to ~0 as the noise η
-rises, measured as Fig. 2a measured it, and set beside what later,
-larger studies found (the transition is discontinuous).
+**Goal:** agents that react to a **shared field** rather than to each
+other (stigmergy). Ants leave pheromone, follow pheromone, and trails
+form, reinforce and evaporate. New machinery the track keeps: fields
+that are deposited into, diffused and decayed, and the first **writes
+to shared state** (two ants depositing in one cell).
 
-**Done when:** the page sweeps η and draws `v_a(η)` for several sizes at
-the paper's density, the curves sharpening with N as Fig. 2a's do, and
-the tests pin the model's limits and the paper's parameters.
+**Done when:** ants on the page find painted food and bring it home
+along trails that form and fade; the field and food accounting tests
+hold exactly; foraging beats a random walk by a measured margin; and
+the double-bridge experiment is run and its result reported against
+Goss et al.'s.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`s2/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`s3/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -216,139 +225,117 @@ scalar brute force 20× slower. The `s1-boids` page: a 2560 × 1440
 world at half scale, the pointer as predator, every constant on a
 slider, polarization, a cost table measured in the browser (your check:
 "looks good"). 10k boids 2.37 ms a step in V8.
+
+## ✅ S2: The Vicsek model (done, PRs #187–#194)
+
+`docs/15-swarm.md`, S2; the paper read in full (its "ρ = 0.4" against
+Fig. 2a's ρ ≈ 4 recorded). `swarm::vicsek`: unit headings (`atan2`'s
+meaning), Eq. 1 literally, `libm` noise, a periodic grid (exact; brute
+force below 3 cells; 135–170 ns a particle to 100,000). **No exact 0/0
+in ~5M averages**, against Chen & Zhang's "fairly high probability". At
+η = 2π, `v_a` = √π/(2√N), not 1/√N. **Fig. 2a reproduced to N = 4000:**
+alike at low noise, larger systems less ordered past the drop, the 0.5
+crossing 3.69 → 2.67, fluctuations peaking at the transition; the later
+papers (discontinuous) beyond these sizes. `vicsek_*` in `swarm.wasm`
+(64.9 KB); the `s2-vicsek` page with a browser sweep (your check: "looks
+good"). N = 10,000 on the node: `vicsek_sweep 10000`.
 ---
-
-## What the paper says (read, not recalled)
-
-- **Rule:** each step, a particle takes "the average direction of the
-  velocities of particles (including particle i) being within a circle
-  of radius r", plus `Δθ` uniform on `[−η/2, η/2]`. The average is
-  written `arctg[⟨sin θ⟩/⟨cos θ⟩]`.
-- **Update (Eq. 1):** `x(t + 1) = x(t) + v(t) Δt`: positions move with
-  the *old* velocity; the new angle is for the next step.
-- **Units:** `r = 1`, `Δt = 1`, `v = 0.03` ("in a wide range of the
-  velocities (0.003 < v < 0.3) the actual value of v does not affect
-  the results"); a square cell of side L, periodic.
-- **Start:** random positions, speed v, random directions.
-- **Fig. 2a** (v_a against η): N = 40 (L = 3.1), 100 (5), 400 (10),
-  4000 (31.6), 10000 (50): density ρ = N/L² ≈ 4. Errors from 5 runs.
-- **Reported:** `β = 0.45 ± 0.07`; `η_c(∞) = 2.9 ± 0.05` "for ρ = 0.4".
-  **A discrepancy:** Fig. 2a's sizes give ρ ≈ 4, not 0.4, and Fig. 3a's
-  caption says ρ = 0.4 too. We measure at ρ = 4 (the figure's) and say
-  which.
 
 ## Decisions to review before starting
 
-1. **In the `swarm` crate and `swarm.wasm`**, not new ones: a `vicsek`
-   module beside the boids (`Vicsek`, its own SoA state), new
-   `vicsek_*` exports, a page `s2-vicsek`. S1's `pixels.ts`, step
-   budget, smoke and cost machinery carry over.
-2. **The paper's units**: `r = 1`, `Δt = 1`, `v = 0.03` by default (a
-   slider), L and N chosen as Fig. 2a's. The page scales the L × L box
-   to the canvas.
-3. **Headings as unit vectors**, not angles: the neighbourhood's
-   average direction is `Σ (cos θ, sin θ)` normalized, which is the
-   paper's `arctg` with the quadrant right (the literal `arctg` of a
-   ratio can't tell θ from θ + π; every implementation means `atan2`).
-   The noise rotates it by `Δθ`, `sin`/`cos` from `libm` (pure Rust:
-   bit-identical on wasm, as `acoustic` already relies on). No `atan2`
-   needed.
-4. **The 0/0 case: keep the previous direction** (Chen & Zhang's first
-   fix, and S1's clamp's choice), and **count it**. Their comment
-   plots its probability at up to ~20% (it grows with noise and falls
-   with density); in floating point an *exact*
-   zero sum needs exact cancellation, so we expect it essentially never
-   outside constructed cases. A test constructs it (two particles
-   exactly opposite); the long runs report the count. Which is right is
-   then a measurement, not an argument.
-5. **Eq. 1 literally**: move with `v(t)`, then take the new heading
-   (double-buffered, as S1). Many implementations move with the new
-   heading instead (a one-step lag either way); we follow the paper and
-   say so. Your call if you'd rather the other.
-6. **Vicsek's angular noise only.** Grégoire & Chaté's vectorial
-   ("extrinsic") noise is the variant behind their discontinuity
-   results; noted, not built (a candidate extra if the page wants it).
-7. **Periodic neighbour search**: S1's cell list with wrap-around and
-   minimum-image distances; an integer number of cells per side, each
-   at least `r` (1/1024 wider, S1.3's lesson), and **brute force when
-   fewer than 3 cells fit** (L < 3r: the 3 × 3 block would wrap onto
-   itself and see particles twice; Fig. 2a's N = 40 box, L = 3.1, is
-   right at that edge). Tested exact against brute force, as S1's. At ρ
-   = 4 a particle has ~ρπr² ≈ 13 neighbours: the scalar loop is enough;
-   S1's lanes only if measurement says so.
-8. **The transition, measured as the paper did:** for each η, discard a
-   transient, then average `v_a` over a window; several seeds; mean ±
-   s.d. Native sweeps for N = 40, 100, 400, 4000 at ρ = 4 (10,000 on
-   the compute node, `cargo xtask slow`). Tests: `η = 0` from an aligned
-   start stays at `v_a = 1`; `η = 2π` gives `v_a ≈ 1/√N`'s scale;
-   `v_a(η)` decreasing; the curves sharper with N; the transition region
-   against the paper's `η_c ≈ 2.9`. **Not** the exponent β (the later
-   papers dispute that there is one) and not the discontinuity (it
-   needs sizes beyond these); the doc reports what the curves show and
-   what the later papers say.
-9. **The page**: the live system (η, ρ via N and L, v, the rate),
-   coloured by heading as S1; a sweep that runs η from 0 to 2π in
-   chunks off the main loop and plots `v_a(η)` for N = 40, 100, 400,
-   4000 together, Fig. 2a's layout; the 0/0 count in the HUD.
+1. **In `swarm` and `swarm.wasm` again**: a `swarm::ants` module, `ant_*`
+   exports, a page `s3-ants`.
+2. **A cell world.** The fields, walls, food and nest live on one grid
+   of `W × H` cells (default 400 × 225, drawn at 3 px a cell); ants move
+   continuously in cell units. Two `f32` fields at cell resolution:
+   **home** (laid by ants searching, so it points back to the nest) and
+   **food** (laid by ants carrying food, so it points to the food).
+3. **An ant's step** (searching follows food, carrying follows home):
+   sense the followed field at three points `SD` ahead, at `−SA`, `0`,
+   `+SA` (Jones 2010's scheme), turn `RA` toward the strongest, plus a
+   small random wiggle; move speed `v`; a wall or the edge ahead turns
+   it around in place. At food (searching): take one unit, carry, and
+   **U-turn** (Beckers et al.). At the nest (carrying): deliver, count,
+   U-turn. Defaults are **our choices**, measured (SA 45°, SD 9 cells,
+   RA 45°, v = 1 cell a step, 2,000 ants).
+4. **Deposits weaken with distance from where the ant left.** An ant
+   deposits `q · e^(−k s)`, `s` its steps since it last left the nest
+   (home field) or the food (food field). Without it a trail is uniform
+   along its length and gives no direction; with it, following the
+   stronger side climbs toward the source. **Our choice**, common in
+   foraging simulations rather than taken from the biology papers; the
+   alternative is constant deposits, and we'll measure both.
+5. **Deposit, then diffuse, then decay, every step.** Deposits are
+   written serially in ant order (deterministic: float sums depend on
+   order; this is the write contention the track meets here, and S4's
+   GPU path would need atomics for it). Diffusion **conserves mass**:
+   each open cell gives a fraction `D` of its value, split equally among
+   its open neighbours (walls take none), so the blur can't create or
+   destroy pheromone at edges or walls. Then decay multiplies by `1 − E`.
+6. **Accounting, exact where it can be.** Field: `Σ(t+1) = (Σ(t) +
+   deposits)·(1 − E)`, to float rounding (summed in `f64` to measure
+   it). **Food in integers:** in the world + carried + delivered =
+   painted, every step, exactly.
+7. **No double buffer for ants**: they never read each other, only the
+   fields as they were before this step's deposits (deposits go into the
+   field after every ant has sensed). Order-independence then holds for
+   movement; the deposits' float sums are the only order effect.
+8. **Randomness**: one `SplitMix64` stream, drawn in ant order each
+   step (no reordering in this module).
+9. **Tests**: the two accountings; diffusion alone conserves mass to
+   rounding and spreads symmetrically; foraging delivers more than ants
+   with sensing off (a random walk), by a measured factor; the
+   **double bridge** (Goss et al.): nest and food joined by two branches
+   of unequal length, the share of traffic on the shorter measured over
+   seeds, and reported against the paper's result whether or not it
+   matches (if it doesn't, the doc says which ingredient we lack);
+   goldens, native and wasm.
+10. **Rendering in Rust**: the fields as colour (home blue, food green,
+    a log scale so faint trails show), walls grey, food yellow, the nest
+    marked, ants as dots (carrying ones brighter).
+11. **The page**: paint food, walls, or erase; move the nest; presets
+    (an open field, the double bridge, a maze); sliders for SA, SD, RA,
+    the deposit and its fall-off, D and E; the HUD with food delivered
+    per minute and ants carrying.
 
 ---
 
-## ✅ 1. The doc (PR)
+## 1. The doc (PR)
 
-`docs/15-swarm.md`, S2: the model as the paper states it (quoted), our
-readings (unit vectors for `atan2`'s meaning, Eq. 1 literally, 0/0 kept
-and counted), the ρ = 0.4 / 4 discrepancy, the periodic grid (brute
-force below 3 cells), the measurement plan and what the later papers
-found. `references.md`: the four new papers.
+- [ ] Read what can be got of Goss 1989, Deneubourg 1990, Beckers 1992
+      (and Dorigo 1996 for context); note what each shows and how.
+- [ ] `docs/15-swarm.md`, S3: the world, the ant step, the fall-off
+      deposit and why, deposit → diffuse → decay and its accounting, the
+      write contention, the double-bridge plan. `references.md`.
 
-## ✅ 2. The model (PR)
+## 2. The fields (PR)
 
-`swarm::vicsek`: unit headings, double buffer, minimum image, `libm`
-noise, 0/0 kept and counted. Measured: speed exactly v; η = 0 aligned
-stays exactly 1; at η = 2π `v_a` is √π/(2√N) (0.0443 at N = 400), not
-1/√N; **no exact 0/0 in ~5M averages** (the constructed case tested). A
-golden, same on wasm with and without `simd128`.
+- [ ] A field grid with walls: deposit, conserving diffusion, decay;
+      accounting tests (diffusion alone; the full step), symmetry.
 
-## ✅ 3. The periodic grid (PR)
+## 3. The ants (PR)
 
-S1's grid split into geometry and counting sort; `rebuild_periodic`
-(whole cells ≥ r, none below 3) and `around_wrapped`. Exact at 2,000
-cases (boxes under 3 cells refused; lattice points on edges and through
-the wrap). Native at ρ = 4: 135–170 ns a particle, flat to 100,000
-(N = 4000: 0.57 ms a step; brute force 28.5).
+- [ ] Ants: sensing, turning, moving, walls, food and nest, U-turns, the
+      fall-off deposit; food accounting exact; foraging against a random
+      walk; goldens, native and wasm.
 
-## ✅ 4. The transition (PR)
+## 4. The double bridge (PR)
 
-`Vicsek::mean_order`; `examples/vicsek_sweep.rs` at Fig. 2a's sizes (5
-seeds, 3,000 + 3,000 steps). Fig. 2a's finite-size picture: alike at low
-noise, larger systems less ordered past the drop; `v_a` crosses 0.5 at η
-≈ 3.69, 3.53, 3.28, 2.67 (N = 40–4000), a marker that falls through the
-paper's `η_c` = 2.9 as N grows; fluctuations peak at the transition;
-large boxes order slowly at low noise. Tests pin N ≤ 400. **To run on
-the node:** `cargo run --release -p swarm --example vicsek_sweep 10000`.
+- [ ] Goss et al.'s setup; the shorter branch's share of traffic over
+      seeds; with and without the fall-off; reported against the paper.
 
-## ✅ 5. Web layer (PR)
+## 5. Web layer (PR)
 
-`vicsek_*` exports in `swarm.wasm` (64.9 KB): create, advance, rate,
-cap, η, v, `mean_order` (one call per measurement, ≤ 20,000 steps),
-`v_a`, the 0/0 count, a square heading-coloured view. Codes mirrored,
-`.d.ts` checked, a call-sequence property test. V8: 0.98 ms a step at
-N = 4000.
+- [ ] `ant_*` exports in `swarm.wasm`: create, advance, paint, the
+      parameters, render, counts; `.d.ts`, abi mirror, the call-sequence
+      property test.
 
 ## 6. The page (PR)
 
-- [x] `s2-vicsek`: the live box (N and ρ by URL, η, v and the rate on
-      sliders, the step budget on `vicsek_advance` too), `v_a` over time,
-      a Fig. 2a sweep in the browser (N = 40, 100, 400, 4000; η 0–5 by
-      0.25; one case per task), the 0/0 count in the HUD; two smoke
-      cases (the default, and 10 particles under three cells: brute
-      force); gallery.
+- [ ] `s3-ants`: painting, presets, sliders, HUD; smoke; gallery.
 - [ ] Your check against **Done when**.
 
 ## 7. Cleanup (PR)
-
-- [x] `types.md`: S2's types.
-- [ ] S2 collapsed here after your check.
 
 ---
 
@@ -384,7 +371,13 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 
 ---
 
-## Out of scope for S2
+## Out of scope for S3
+
+- Ant Colony Optimization on graphs (Dorigo et al.): context only.
+- Several colonies, castes, recruitment beyond pheromone; 3D; the GPU
+  (S4 decides).
+
+## Out of scope for S2 (carried forward)
 
 - Vectorial noise and the large-system bands (Grégoire & Chaté 2004;
   Chaté et al. 2008): noted, not reproduced.
