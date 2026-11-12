@@ -9,7 +9,7 @@
 use std::time::Instant;
 
 use math::convert::{f64_to_f32, u64_to_f64, usize_to_f64};
-use swarm::{Arena, Flock, Neighbours, Params};
+use swarm::{Arena, Flock, Neighbours, Params, Vicsek, VicsekParams};
 
 fn main() {
     for (how, sizes) in [
@@ -35,6 +35,30 @@ fn main() {
             let per_step_ms = ns / u64_to_f64(steps) / 1e6;
             let per_boid = ns / u64_to_f64(steps) / usize_to_f64(n);
             println!("{how:?} {n}: {per_step_ms:.2} ms/step, {per_boid:.0} ns/boid");
+        }
+    }
+    // Vicsek at the paper's density (ρ = 4), η = 2: brute force and the
+    // periodic grid.
+    for (brute, sizes) in [
+        (true, &[400_usize, 4_000][..]),
+        (false, &[400, 4_000, 10_000, 100_000][..]),
+    ] {
+        for &n in sizes {
+            let side = f64_to_f32((usize_to_f64(n) / 4.0).sqrt());
+            let mut v = Vicsek::new(n, side, VicsekParams::paper(2.0), 1).unwrap();
+            v.set_brute_force(brute);
+            let steps: u64 = if brute && n > 1_000 { 5 } else { 100 };
+            let t = Instant::now();
+            for _ in 0..steps {
+                v.step();
+            }
+            let ns = u64_to_f64(u64::try_from(t.elapsed().as_nanos()).unwrap());
+            let what = if brute { "Vicsek brute" } else { "Vicsek grid" };
+            println!(
+                "{what} {n}: {:.3} ms/step, {:.0} ns/particle",
+                ns / u64_to_f64(steps) / 1e6,
+                ns / u64_to_f64(steps) / usize_to_f64(n)
+            );
         }
     }
 }

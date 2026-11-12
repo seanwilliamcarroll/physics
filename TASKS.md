@@ -309,10 +309,13 @@ stays exactly 1; at η = 2π `v_a` is √π/(2√N) (0.0443 at N = 400), not
 1/√N; **no exact 0/0 in ~5M averages** (the constructed case tested). A
 golden, same on wasm with and without `simd128`.
 
-## 3. The periodic grid (PR)
+## ✅ 3. The periodic grid (PR)
 
-- [ ] Cells with wrap, integer per side, brute force below 3; exact
-      against brute force (proptest, boxes near 3r included); cost.
+S1's grid split into geometry and counting sort; `rebuild_periodic`
+(whole cells ≥ r, none below 3) and `around_wrapped`. Exact at 2,000
+cases (boxes under 3 cells refused; lattice points on edges and through
+the wrap). Native at ρ = 4: 135–170 ns a particle, flat to 100,000
+(N = 4000: 0.57 ms a step; brute force 28.5).
 
 ## 4. The transition (PR)
 

@@ -403,6 +403,22 @@ three cells (L < ~3r) it's brute force; Fig. 2a's smallest box (L =
 3.1) is right at the edge. At ρ = 4 a particle has about `ρπr²` ≈ 13
 neighbours: light work, the scalar loop.
 
+### The periodic grid as built (S2.3)
+
+S1's `Grid` split into its geometry and its counting sort:
+`rebuild_periodic` (k whole cells a side, each at least r and 1/1024
+wider; none below 3) and `around_wrapped` (the nine cells modulo k).
+`Vicsek` uses it by default, brute force below 3 cells or on request.
+**Exact at 2,000 cases** (random boxes from under 3 cells up, particles
+on half-cell lattices: on edges and a cell apart through the wrap).
+Fig. 2a's L = 3.1 is three cells, just. Two goldens (brute force keeps
+its hash; the grid sums in cell order).
+
+Cost at ρ = 4, η = 2 (`examples/timing.rs`, native): the grid 135–170
+ns a particle from 400 to 100,000 (0.57 ms a step at N = 4000, 17 ms at
+100,000); brute force 0.25 ms at 400, 28.5 ms at 4000. Each particle
+checks ~ 9 cells of ~4 particles and calls `sin` and `cos` once.
+
 ### Measuring the transition
 
 As the paper: for each η, run a transient, then average `v_a` over a
