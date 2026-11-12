@@ -151,25 +151,37 @@ where
 }
 
 /// Every genome's fitness, split across `threads` by slot: the same
-/// numbers in the same places whatever the count.
+/// numbers in the same places whatever the count. Where a thread can't be
+/// started (wasm32-wasip1 has none; found by `cargo xtask test-wasm`),
+/// that chunk is scored here instead: same numbers, just not parallel.
 fn score<F>(pop: &[Vec<f64>], seeds: &[u64], threads: usize, fitness: &F) -> Vec<f64>
 where
     F: Fn(&[f64], &[u64]) -> f64 + Sync,
 {
+    let one = |part: &[Vec<f64>]| part.iter().map(|g| fitness(g, seeds)).collect::<Vec<f64>>();
     if threads <= 1 {
-        return pop.iter().map(|g| fitness(g, seeds)).collect();
+        return one(pop);
     }
     let chunk = pop.len().div_ceil(threads).max(1);
     std::thread::scope(|s| {
-        let handles: Vec<_> = pop
+        let parts: Vec<_> = pop
             .chunks(chunk)
             .map(|part| {
-                s.spawn(move || part.iter().map(|g| fitness(g, seeds)).collect::<Vec<f64>>())
+                (
+                    part,
+                    std::thread::Builder::new()
+                        .spawn_scoped(s, move || one(part))
+                        .ok(),
+                )
             })
             .collect();
-        handles
+        parts
             .into_iter()
-            .flat_map(|h| h.join().unwrap_or_default())
+            .flat_map(|(part, handle)| {
+                handle
+                    .and_then(|h| h.join().ok())
+                    .unwrap_or_else(|| one(part))
+            })
             .collect()
     })
 }
