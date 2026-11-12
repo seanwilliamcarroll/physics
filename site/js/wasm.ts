@@ -1,60 +1,33 @@
-// Loads the engine module and supplies its one import (console_error, used
-// by the Rust panic hook; see crates/engine-web/src/imports.rs).
+// The lab pages' engine: engine-loader.ts's instance, plus what a page
+// adds (where the file is, the step budget, views of its buffers).
 
 // `import type` is erased when compiling: no runtime import of engine.d.ts.
 import { COORDS_PER_PARTICLE, MAX_RATE_HZ } from "./abi.ts";
 import { STEP_BUDGET_MS, StepBudget } from "./loop.ts";
-import type { DemoHandle, EngineExports, EngineImports } from "./engine";
+import { instantiate } from "./engine-loader.ts";
+import type { Loaded } from "./engine-loader.ts";
+import type { DemoHandle, EngineExports } from "./engine";
 
 /** Default location, resolved relative to this file (not the page), so any
  *  demo at any depth finds it and the site works under a sub-path. */
 const ENGINE_URL = new URL("../pkg/engine.wasm", import.meta.url);
 
-/** Text of the most recent Rust panic, or null. Pages load one module, so
- *  module-level state is enough; the smoke test reads it. */
-let lastPanic: string | null = null;
+/** The engine this page loaded last (a page loads one). */
+let loaded: Loaded | null = null;
 
+/** Text of the most recent Rust panic in the page's engine, or null; the
+ *  smoke test reads it. */
 export function lastPanicMessage(): string | null {
-  return lastPanic;
+  return loaded?.lastPanic() ?? null;
 }
 
-/** Fetches, compiles, and instantiates a module built on `web-common`,
- *  supplying its one import (the panic hook's `console_error`); returns
- *  the raw exports. `name` labels its console messages. Shared by
- *  `loadEngine` and the sand page's `loadSand` (sand-wasm.ts). */
-export async function instantiateWithPanicHook(url: URL | string, name: string): Promise<WebAssembly.Exports> {
-  /** Set right after instantiation, before any call into Rust. */
-  let memory: WebAssembly.Memory | null = null;
-  const imports: EngineImports = {
-    env: {
-      // Called by the Rust panic hook just before the module traps
-      // ("RuntimeError: unreachable"): `len` UTF-8 bytes at `ptr`.
-      console_error(ptr, len) {
-        if (memory === null) {
-          // A panic during instantiation itself: no memory to read yet.
-          console.error(`${name} panicked before instantiation finished`);
-          return;
-        }
-        lastPanic = new TextDecoder().decode(new Uint8Array(memory.buffer, ptr, len));
-        console.error(`${name} ${lastPanic}`);
-      },
-    },
-  };
-  // instantiateStreaming compiles while downloading. It requires the server
-  // to send `Content-Type: application/wasm` (python's http.server does).
-  const { instance } = await WebAssembly.instantiateStreaming(fetch(url), imports);
-  const memoryExport = instance.exports.memory;
-  if (!(memoryExport instanceof WebAssembly.Memory)) throw new Error(`${name} exports no memory`);
-  memory = memoryExport;
-  return instance.exports;
-}
-
-/** Fetches, compiles, and instantiates engine.wasm; returns its exports. */
+/** Fetches, compiles, and instantiates engine.wasm; returns its exports,
+ *  with the page's step budget around `demo_advance`. */
 export async function loadEngine(url: URL | string = ENGINE_URL): Promise<EngineExports> {
+  loaded = await instantiate(url, "engine.wasm");
   // The one unchecked step: wasm exports arrive untyped, and engine.d.ts
   // asserts their shape. The smoke test is what verifies it at runtime.
-  const exports = (await instantiateWithPanicHook(url, "engine.wasm")) as unknown as EngineExports;
-  return withStepBudget(exports);
+  return withStepBudget(loaded.exports as unknown as EngineExports);
 }
 
 /** The page's step budget (loop.ts): every `demo_advance` through the

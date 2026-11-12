@@ -215,6 +215,17 @@ Later option: render-time interpolation between the last two states, using
 
 ### JS side
 
+The sketch below is the idea. As built, instantiation is
+`site/js/engine-loader.ts`: `instantiate(source, name)` takes a URL, a
+`Response` or bytes, supplies the panic hook's import, and returns the
+exports, the memory and that instance's last panic. It keeps nothing
+at module level, so instances are independent, and it has no page in
+it: the lab pages add theirs in `wasm.ts` (where the file is, the step
+budget), and the package for the website ships the loader as is
+(`16-site-demos.md`). Streaming compilation needs the server to send
+`application/wasm`; where it's refused, the loader compiles the
+downloaded bytes instead and says so once.
+
 ```js
 const { instance } = await WebAssembly.instantiateStreaming(fetch("engine.wasm"));
 const e = instance.exports;
