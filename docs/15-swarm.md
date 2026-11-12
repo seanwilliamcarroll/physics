@@ -641,6 +641,19 @@ same traffic). 400 ants, steps 1,000–4,000, eight seeds:
 Both behaviours are pinned (`tests/bridge.rs`, four seeds): trails above
 every random walk by 0.05; equal arms within 0.3–0.7.
 
+### In the browser (S3.5)
+
+`ant_*` exports in `swarm.wasm` (84.4 KB): create (cells, ants, pixels a
+cell), advance with the step cap, sensing on or off, one `ant_paint`
+for four tools (food, wall, erase, the nest), every constant by code,
+counts (delivered, carrying, food in the world), and a rendered view:
+walls grey, food yellow, the home field blue and the food field green on
+a log scale (faint trails show), the nest's rim, ants white (carrying:
+orange). A call-sequence property test, which found a hang: the brush's
+disc stepped an `f64` by 1.0 from a coordinate like 1e300, where the
+step never advances; it now clips to the world first. In V8, 400 × 225
+cells and 2,000 ants: 1.53 ms a step, 1.16 ms to draw (1200 × 675).
+
 ### What's tested
 
 The accountings; diffusion alone conserving mass and spreading

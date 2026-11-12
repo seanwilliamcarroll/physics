@@ -55,7 +55,35 @@ export interface SwarmExports {
   vicsek_render(d: VicsekHandle): number;
   vicsek_view(d: VicsekHandle): number;
   vicsek_len(d: VicsekHandle): number;
+
+  // S3: ant foraging.
+  /** A width × height world (cells) with n ants, drawn scale px a cell; 0 if refused. */
+  ant_new(width: number, height: number, n: number, scale: number, seed: number): AntHandle;
+  ant_free(d: AntHandle): void;
+  /** Adds real elapsed seconds; returns the fixed steps taken. */
+  ant_advance(d: AntHandle, elapsedSeconds: number): number;
+  ant_set_rate(d: AntHandle, hz: number): Status;
+  ant_set_step_cap(d: AntHandle, n: number): Status;
+  /** 1: ants follow trails; 0: a random walk. */
+  ant_set_sensing(d: AntHandle, on: number): Status;
+  /** TOOL_* at cell (x, y), radius in cells, food per cell; what changed, or -1 if refused. */
+  ant_paint(d: AntHandle, tool: number, x: number, y: number, radius: number, amount: number): number;
+  /** ANT_* code and value; refused if unusable. */
+  ant_set_param(d: AntHandle, code: number, value: number): Status;
+  /** An ANT_* value, or NaN. */
+  ant_param(d: AntHandle, code: number): number;
+  /** Draws and returns a pointer to the view's RGBA u32s. */
+  ant_render(d: AntHandle): number;
+  ant_view_width(d: AntHandle): number;
+  ant_view_height(d: AntHandle): number;
+  ant_len(d: AntHandle): number;
+  ant_delivered(d: AntHandle): number;
+  ant_carrying(d: AntHandle): number;
+  ant_food(d: AntHandle): number;
 }
+
+/** A `*mut AntDemo`: 0 is null. */
+export type AntHandle = number & { readonly __ant: unique symbol };
 
 /** A `*mut VicsekDemo`: 0 is null. */
 export type VicsekHandle = number & { readonly __vicsek: unique symbol };

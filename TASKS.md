@@ -335,11 +335,13 @@ do; the doc guesses at the missing ingredient and labels it a guess. A
 first version at twice the scale failed (trails couldn't span it).
 Both behaviours pinned.
 
-## 5. Web layer (PR)
+## ✅ 5. Web layer (PR)
 
-- [ ] `ant_*` exports in `swarm.wasm`: create, advance, paint, the
-      parameters, render, counts; `.d.ts`, abi mirror, the call-sequence
-      property test.
+`ant_*` exports in `swarm.wasm` (84.4 KB): create, advance, sensing,
+four paint tools, every constant by code, counts, a rendered view
+(fields on a log scale). Mirrored, `.d.ts` checked, a call-sequence
+property test, **which found a hang** (the brush stepping an f64 by 1.0
+from 1e300): fixed and tested. V8: 1.53 ms a step, 1.16 ms to draw.
 
 ## 6. The page (PR)
 
