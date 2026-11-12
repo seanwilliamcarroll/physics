@@ -96,7 +96,12 @@ fn same_neighbours_periodic(side: f32, r: f32, x: &[f32], y: &[f32]) -> Result<(
         return Ok(());
     }
     for i in 0..x.len() {
-        let mut seen: Vec<usize> = g.around_wrapped(x[i], y[i]).collect();
+        let mut seen: Vec<usize> = g
+            .cells_wrapped(x[i], y[i])
+            .into_iter()
+            .flatten()
+            .map(|&j| j as usize)
+            .collect();
         let before = seen.len();
         seen.sort_unstable();
         seen.dedup();

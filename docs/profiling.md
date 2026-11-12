@@ -99,7 +99,7 @@ Native, Apple silicon, 4 s each at 1 kHz. Self time by source line.
 |---|---|---|---|
 | ants, 200 × 120, 500 ants | 527 µs | 96% `Field::diffuse`: a third recounting each cell's open neighbours through an iterator chain, the rest the scatter | fixable: the counts change only with the walls |
 | Physarum, 512², 100k | 3.5 ms | 28% the sensors' field reads (random access); ~40% `fmod`, from `rem_euclid` in `Slime::cell` (four calls an agent) and the position wrap; 12% `diffuse_periodic` | the `fmod` is fixable; the reads are the model |
-| Vicsek, N = 4000, grid | 0.94 ms | 76% the candidates iterator (nine cells chained into one iterator the compiler doesn't flatten); 14% the distance test | fixable: per-cell slices, as boids' `add_span` |
+| Vicsek, N = 4000, grid | 0.91 ms | 76% charged to the candidates loop's line (nine cells chained into one iterator); 14% the distance test | partly: see "Fixed" (most of that line was the loads, not the iterator) |
 | broadphase, 4096 bodies | | 56% `cell_run`'s two binary searches over all keys, per neighbour cell; 22% sorting the keys; `sort_pairs` 2% | fixable: the second search |
 | boids, 10k, sorted | 1.36 ms | 87% `Seen::add_span`, the lane loop | the work itself |
 | pairwise gravity, N = 1024 | | 100% the pair loop | the work itself (Barnes–Hut is the answer) |
@@ -140,3 +140,17 @@ same values (tested against the general form at every branch boundary).
 What's left is mostly the sensors' reads, three random accesses into a
 1 MB field per agent: sorting agents by cell would make them local, at
 the cost of the agents' order (and so the random stream's); not done.
+
+**Vicsek's candidates: 910 → 795 µs a step (−13%), and a lesson in
+reading lines.** The first profile charged 76% to the line `for j in
+candidates`, over a nine-cell iterator built with two `flat_map`s, and
+the adapters' names (`flatten`, `fuse`) were all over the inlined
+frames: it read as iterator overhead. `Grid::cells_wrapped` now hands
+back nine slices and the sum runs a plain loop over each, in the same
+order. That removed the adapters and 13% of the time, not 76%: the line
+of a loop is also charged for what the loop waits on, here the four
+loads per candidate through an index (`State::get(j)`), which are the
+work itself. After the change the samples sit on the loads, the
+distance test and the adds, about evenly. Going further means storing
+the particles in cell order and scanning lanes, as boids' `Sorted` does
+(1.7× there); not done, the page runs N = 4000 in under a millisecond.

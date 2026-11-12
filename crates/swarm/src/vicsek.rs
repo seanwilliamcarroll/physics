@@ -200,17 +200,16 @@ impl Vicsek {
         for i in 0..n {
             let Some(me) = self.cur.get(i) else { continue };
             // The neighbourhood's heading sum, `me` included (distance 0).
-            let (sc, ss) = if gridded {
-                heading_sum(
-                    &self.cur,
-                    me,
-                    side,
-                    p.radius,
-                    self.grid.around_wrapped(me.x, me.y),
-                )
+            let mut sum = (0.0_f32, 0.0_f32);
+            if gridded {
+                for cell in self.grid.cells_wrapped(me.x, me.y) {
+                    let candidates = cell.iter().filter_map(|&j| usize::try_from(j).ok());
+                    add_headings(&mut sum, &self.cur, me, side, p.radius, candidates);
+                }
             } else {
-                heading_sum(&self.cur, me, side, p.radius, 0..n)
-            };
+                add_headings(&mut sum, &self.cur, me, side, p.radius, 0..n);
+            }
+            let (sc, ss) = sum;
             let next = self.turn(me, sc, ss);
             self.next.set(i, next);
         }
@@ -333,17 +332,20 @@ impl Vicsek {
     }
 }
 
-/// The heading sum over `candidates` within `r` of `me` (minimum image),
-/// `me` included if it's among them.
-fn heading_sum(
+/// Adds to `sum` the headings of the `candidates` within `r` of `me`
+/// (minimum image), `me` included if it's among them. Called once per
+/// cell on the grid: the sum carries on from cell to cell, in the same
+/// order as one pass over them all.
+fn add_headings(
+    sum: &mut (f32, f32),
     s: &State,
     me: Particle,
     side: f32,
     r: f32,
     candidates: impl Iterator<Item = usize>,
-) -> (f32, f32) {
+) {
     let r_sq = r * r;
-    let (mut sc, mut ss) = (0.0_f32, 0.0_f32);
+    let (mut sc, mut ss) = *sum;
     for j in candidates {
         let Some(o) = s.get(j) else { continue };
         let (dx, dy) = (image(me.x - o.x, side), image(me.y - o.y, side));
@@ -352,7 +354,7 @@ fn heading_sum(
             ss += o.sin;
         }
     }
-    (sc, ss)
+    *sum = (sc, ss);
 }
 
 /// `d` as the minimum image in a box of side `l`: in `[−l/2, l/2]`.
