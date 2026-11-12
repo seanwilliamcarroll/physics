@@ -343,6 +343,9 @@ N = 4000.
 
 ## 7. Cleanup (PR)
 
+- [x] `types.md`: S2's types.
+- [ ] S2 collapsed here after your check.
+
 ---
 
 ## Health (after M7)
