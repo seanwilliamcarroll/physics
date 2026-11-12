@@ -5,6 +5,14 @@
 /// The most cells a field holds: 2²² (4M; 400 × 225 is 90k).
 pub const MAX_CELLS: usize = 1 << 22;
 
+/// The most one deposit may add (an agent's, an ant's, a node's): a
+/// million. Values are `f32`, and nothing else bounds what's laid down
+/// each step: a deposit near `f32::MAX` (finite, so it passed) summed to
+/// infinity in a few steps and every reading after was NaN (found by the
+/// slow tier's export sequences). At a million a step, a cell is 10²⁰
+/// times further from overflow than any run is long.
+pub const MAX_DEPOSIT: f32 = 1.0e6;
+
 /// A `width × height` grid of non-negative `f32` values, row-major.
 #[derive(Clone, Debug)]
 pub struct Field {

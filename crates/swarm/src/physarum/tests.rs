@@ -10,9 +10,23 @@ fn sizes_and_params_are_checked() {
         SlimeParams { step: 0.0, ..d },
         SlimeParams { decay: 2.0, ..d },
         SlimeParams { turn: 4.0, ..d },
+        SlimeParams {
+            deposit: crate::MAX_DEPOSIT * 1.001,
+            ..d
+        },
+        SlimeParams {
+            deposit: f32::NAN,
+            ..d
+        },
+        SlimeParams { deposit: -1.0, ..d },
     ] {
         assert!(bad.checked().is_none(), "{bad:?}");
     }
+    let most = SlimeParams {
+        deposit: crate::MAX_DEPOSIT,
+        ..d
+    };
+    assert!(most.checked().is_some(), "the cap itself is allowed");
     assert!(Slime::new(0, 10, d, 1).is_none());
     assert!(Slime::new(64, 0, d, 1).is_none());
     assert!(
@@ -136,4 +150,21 @@ fn wrap_position_is_rem_euclid_bit_for_bit() {
             );
         }
     }
+}
+
+#[test]
+fn a_node_deposits_at_most_the_cap() {
+    let mut s = Slime::new(64, 10, SlimeParams::DEFAULT, 1).unwrap();
+    assert!(s.add_node(3, 3, crate::MAX_DEPOSIT));
+    for bad in [
+        crate::MAX_DEPOSIT * 1.001,
+        f32::MAX,
+        f32::INFINITY,
+        f32::NAN,
+        -1.0,
+    ] {
+        assert!(!s.add_node(3, 3, bad), "{bad}");
+    }
+    assert_eq!(s.nodes().len(), 1);
+    assert!(!s.add_node(64, 3, 1.0) && !s.add_node(3, 64, 1.0));
 }
