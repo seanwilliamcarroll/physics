@@ -83,3 +83,41 @@ fn decay_and_clear() {
     f.clear();
     assert_eq!(f.total(), 0.0);
 }
+
+#[test]
+fn periodic_diffusion_wraps_and_the_mean_filter_is_d_eight_ninths() {
+    let mut f = Field::new(5, 4).unwrap();
+    f.deposit(0, 0, 9.0);
+    f.diffuse_periodic(8.0 / 9.0);
+    // The corner's eight neighbours, wrapped: (4,3) (0,3) (1,3) (4,0) (1,0)
+    // (4,1) (0,1) (1,1); each gets a ninth, the cell keeps a ninth.
+    for (x, y) in [
+        (0, 0),
+        (4, 3),
+        (0, 3),
+        (1, 3),
+        (4, 0),
+        (1, 0),
+        (4, 1),
+        (0, 1),
+        (1, 1),
+    ] {
+        assert!((f.get(x, y).unwrap() - 1.0).abs() < 1e-6, "({x}, {y})");
+    }
+    assert!((f.total() - 9.0).abs() < 1e-5);
+}
+
+#[test]
+fn top_share_of_uniform_and_concentrated_fields() {
+    let mut f = Field::new(10, 10).unwrap();
+    assert_eq!(f.top_share(0.1), 0.0, "empty");
+    for y in 0..10 {
+        for x in 0..10 {
+            f.deposit(x, y, 1.0);
+        }
+    }
+    assert!((f.top_share(0.1) - 0.1).abs() < 1e-12, "uniform");
+    let mut g = Field::new(10, 10).unwrap();
+    g.deposit(3, 3, 5.0);
+    assert!((g.top_share(0.1) - 1.0).abs() < 1e-12, "all in one cell");
+}

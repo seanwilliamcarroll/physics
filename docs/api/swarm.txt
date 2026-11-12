@@ -68,9 +68,11 @@ pub fn swarm::Field::clear(&mut self)
 pub fn swarm::Field::decay(&mut self, f32)
 pub fn swarm::Field::deposit(&mut self, usize, usize, f32) -> bool
 pub fn swarm::Field::diffuse(&mut self, &[bool], f32)
+pub fn swarm::Field::diffuse_periodic(&mut self, f32)
 pub fn swarm::Field::get(&self, usize, usize) -> core::option::Option<f32>
 pub const fn swarm::Field::height(&self) -> usize
 pub fn swarm::Field::new(usize, usize) -> core::option::Option<Self>
+pub fn swarm::Field::top_share(&self, f64) -> f64
 pub fn swarm::Field::total(&self) -> f64
 pub fn swarm::Field::values(&self) -> &[f32]
 pub const fn swarm::Field::width(&self) -> usize
@@ -112,6 +114,35 @@ pub swarm::Particle::cos: f32
 pub swarm::Particle::sin: f32
 pub swarm::Particle::x: f32
 pub swarm::Particle::y: f32
+pub struct swarm::Slime
+impl swarm::Slime
+pub fn swarm::Slime::add_node(&mut self, usize, usize, f32) -> bool
+pub fn swarm::Slime::clear_nodes(&mut self)
+pub const fn swarm::Slime::field(&self) -> &swarm::Field
+pub fn swarm::Slime::is_empty(&self) -> bool
+pub fn swarm::Slime::last_deposits(&self) -> f64
+pub fn swarm::Slime::len(&self) -> usize
+pub fn swarm::Slime::new(usize, usize, swarm::SlimeParams, u64) -> core::option::Option<Self>
+pub fn swarm::Slime::nodes(&self) -> &[(usize, usize, f32)]
+pub const fn swarm::Slime::params(&self) -> swarm::SlimeParams
+pub fn swarm::Slime::positions(&self) -> impl core::iter::traits::iterator::Iterator<Item = (f32, f32)> + '_
+pub fn swarm::Slime::set_params(&mut self, swarm::SlimeParams) -> bool
+pub const fn swarm::Slime::set_sensing(&mut self, bool)
+pub const fn swarm::Slime::side(&self) -> usize
+pub fn swarm::Slime::state_bytes(&self) -> alloc::vec::Vec<u8>
+pub fn swarm::Slime::step(&mut self)
+pub const fn swarm::Slime::steps(&self) -> u64
+pub struct swarm::SlimeParams
+pub swarm::SlimeParams::decay: f32
+pub swarm::SlimeParams::deposit: f32
+pub swarm::SlimeParams::diffusion: f32
+pub swarm::SlimeParams::sensor_angle: f32
+pub swarm::SlimeParams::sensor_offset: f32
+pub swarm::SlimeParams::step: f32
+pub swarm::SlimeParams::turn: f32
+impl swarm::SlimeParams
+pub const swarm::SlimeParams::DEFAULT: Self
+pub fn swarm::SlimeParams::checked(self) -> core::option::Option<Self>
 pub struct swarm::Vicsek
 impl swarm::Vicsek
 pub const fn swarm::Vicsek::annihilations(&self) -> u64
@@ -138,6 +169,7 @@ impl swarm::VicsekParams
 pub fn swarm::VicsekParams::checked(self) -> core::option::Option<Self>
 pub const fn swarm::VicsekParams::paper(f32) -> Self
 pub const swarm::FLEE: f32
+pub const swarm::MAX_AGENTS: usize
 pub const swarm::MAX_ANTS: usize
 pub const swarm::MAX_BOIDS: usize
 pub const swarm::MAX_CELLS: usize

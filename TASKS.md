@@ -68,7 +68,12 @@ accounting holds, and that nutrient nodes get connected.
 structure) and not (the papers' text: every value ours), the model
 (periodic, the mean filter as `D = 8/9`, precomputed rotations), what's
 measured (concentration, a map, nodes, cost). `references.md`.
-## 2. The model (PR): periodic diffusion, agents, accounting, goldens
+## ✅ 2. The model (PR)
+
+`Field::diffuse_periodic` (gather; 8/9 is the mean filter) and
+`top_share`; `swarm::Slime` (sense, turn, move, deposit; nodes; sensing
+off as the baseline). The field balances to 2.8e-8 a step. A golden,
+same on wasm.
 ## 3. Measurements (PR): concentration vs a random walk, the map, nodes
 ## 4. Web layer (PR): `slime_*` exports
 ## 5. The page (PR): `s4-physarum`
