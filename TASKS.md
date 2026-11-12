@@ -96,6 +96,9 @@ add nodes, restart, concentration; presets (spread, nodes, 250k, a small
 world); two smoke cases; gallery. Your check pending.
 ## 6. Cleanup (PR)
 
+- [x] `types.md`: S4's types.
+- [ ] S4 collapsed after your check.
+
 ## Workflow
 
 - Each numbered section gets its own branch (`s4/<n>-<name>`) and one PR
