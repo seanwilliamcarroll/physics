@@ -49,6 +49,17 @@ fn js_mirror_matches() {
         ("MAX_ANTS", super::MAX_ANTS),
         ("MAX_ANT_BRUSH", super::MAX_ANT_BRUSH),
         ("MAX_FOOD", super::MAX_FOOD),
+        ("SLIME_SENSOR_ANGLE", super::SLIME_SENSOR_ANGLE),
+        ("SLIME_SENSOR_OFFSET", super::SLIME_SENSOR_OFFSET),
+        ("SLIME_TURN", super::SLIME_TURN),
+        ("SLIME_STEP", super::SLIME_STEP),
+        ("SLIME_DEPOSIT", super::SLIME_DEPOSIT),
+        ("SLIME_DIFFUSION", super::SLIME_DIFFUSION),
+        ("SLIME_DECAY", super::SLIME_DECAY),
+        ("SLIME_PARAM_COUNT", super::SLIME_PARAM_COUNT),
+        ("MAX_SLIME_SIDE", super::MAX_SLIME_SIDE),
+        ("MAX_AGENTS", super::MAX_AGENTS),
+        ("MAX_NODES", super::MAX_NODES),
         ("DEFAULT_RATE_HZ", DEFAULT_RATE_HZ),
         ("MAX_RATE_HZ", MAX_RATE_HZ),
     ] {
@@ -64,6 +75,10 @@ fn js_mirror_matches() {
 fn the_caps_are_the_crates() {
     assert_eq!(usize::try_from(MAX_BOIDS).unwrap(), swarm::MAX_BOIDS);
     assert_eq!(usize::try_from(super::MAX_ANTS).unwrap(), swarm::MAX_ANTS);
+    assert_eq!(
+        usize::try_from(super::MAX_AGENTS).unwrap(),
+        swarm::MAX_AGENTS
+    );
     assert_eq!(
         usize::try_from(super::MAX_PARTICLES).unwrap(),
         swarm::MAX_PARTICLES

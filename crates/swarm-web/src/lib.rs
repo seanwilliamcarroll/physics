@@ -12,6 +12,9 @@ mod ant_exports;
 pub mod demo;
 #[expect(unsafe_code, reason = "the C ABI boundary: raw pointers in and out")]
 mod exports;
+pub mod slime_demo;
+#[expect(unsafe_code, reason = "the C ABI boundary: raw pointers in and out")]
+mod slime_exports;
 pub mod vicsek_demo;
 #[expect(unsafe_code, reason = "the C ABI boundary: raw pointers in and out")]
 mod vicsek_exports;

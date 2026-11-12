@@ -58,6 +58,21 @@ export const MAX_ANTS = 262144;
 export const MAX_ANT_BRUSH = 64;
 export const MAX_FOOD = 1000;
 
+/** S4: Physarum's constants, for slime_set_param and slime_param. */
+export const SLIME_SENSOR_ANGLE = 0;
+export const SLIME_SENSOR_OFFSET = 1;
+export const SLIME_TURN = 2;
+export const SLIME_STEP = 3;
+export const SLIME_DEPOSIT = 4;
+export const SLIME_DIFFUSION = 5;
+export const SLIME_DECAY = 6;
+export const SLIME_PARAM_COUNT = 7;
+
+/** S4: caps: field side (cells), agents, nodes. */
+export const MAX_SLIME_SIDE = 1024;
+export const MAX_AGENTS = 2097152;
+export const MAX_NODES = 64;
+
 /** Steps per simulated second: the default, and the most. */
 export const DEFAULT_RATE_HZ = 60;
 export const MAX_RATE_HZ = 240;

@@ -65,6 +65,22 @@ pub const MAX_ANTS: u32 = 262_144;
 pub const MAX_ANT_BRUSH: u32 = 64;
 pub const MAX_FOOD: u32 = 1000;
 
+/// S4: Physarum's constants (`swarm::SlimeParams`), for
+/// `slime_set_param` and `slime_param`.
+pub const SLIME_SENSOR_ANGLE: u32 = 0;
+pub const SLIME_SENSOR_OFFSET: u32 = 1;
+pub const SLIME_TURN: u32 = 2;
+pub const SLIME_STEP: u32 = 3;
+pub const SLIME_DEPOSIT: u32 = 4;
+pub const SLIME_DIFFUSION: u32 = 5;
+pub const SLIME_DECAY: u32 = 6;
+pub const SLIME_PARAM_COUNT: u32 = 7;
+
+/// S4: the largest field side (cells), the most agents, the most nodes.
+pub const MAX_SLIME_SIDE: u32 = 1024;
+pub const MAX_AGENTS: u32 = 2_097_152;
+pub const MAX_NODES: u32 = 64;
+
 /// Steps per simulated second: the page's default and most.
 pub const DEFAULT_RATE_HZ: u32 = 60;
 pub const MAX_RATE_HZ: u32 = 240;

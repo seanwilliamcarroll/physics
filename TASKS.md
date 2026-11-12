@@ -82,7 +82,13 @@ torus** (0.76–0.81 at 250 steps, 0.97 by 1,500). A 4 × 3 SA × RA map
 (0.72–1.00). **Nodes linked in some seeds** (strong nodes: 3.9 and 4.2×
 in two seeds, 0.08 in the third, whose band wraps elsewhere). Native:
 100k agents on 512², 3.55 ms a step.
-## 4. Web layer (PR): `slime_*` exports
+## ✅ 4. Web layer (PR)
+
+`slime_*` exports in `swarm.wasm` (103.8 KB): agents, nodes, constants,
+sensing, concentration, the field through a colour ramp. Mirrored,
+`.d.ts` checked, a call-sequence property test. V8: 100k agents on 512²,
+5.61 ms a step and 0.97 ms to draw; 60 Hz holds to ~250k. The GPU
+question recorded with these numbers, not built.
 ## 5. The page (PR): `s4-physarum`
 ## 6. Cleanup (PR)
 

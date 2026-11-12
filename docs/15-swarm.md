@@ -764,6 +764,29 @@ field. A golden, the same on wasm32 with and without `simd128`.
   a step; the field alone (diffusion and decay) 0.47 ms. The agents'
   ~31 ns each are mostly three scattered reads of the field.
 
+### In the browser (S4.4)
+
+`slime_*` exports in `swarm.wasm` (103.8 KB): create (side, agents,
+pixels a cell), advance with the step cap, sensing on or off, nodes (up
+to 64), every constant by code, concentration (linear time: the page
+asks now and then), and the field drawn through a ramp (the background,
+teal, amber, near white; `v/(v + 5)` on it). A call-sequence property
+test. In V8:
+
+| Field, agents | Step | Draw |
+|---|---|---|
+| 512², 100k (the page's default) | 5.61 ms | 0.97 ms |
+| 512², 250k | 13.4 ms | 0.93 ms |
+| 1024², 500k | 28.8 ms | 3.72 ms |
+
+**The GPU question, with these numbers:** the CPU path holds 60 Hz to
+about 250k agents; past that the step budget turns it to slow motion.
+Every agent's update is independent (it reads the old field), so it is
+the shape a compute shader wants, but its deposits are the write
+contention S3 named, needing atomic adds there, and `wgpu` would be the
+repo's first large runtime dependency, WebGPU-only. Not built: the CPU
+path covers the page, and the question stays open with its numbers.
+
 ### What's measured
 
 - **Concentration**: the share of the field's mass in its top 10% of
