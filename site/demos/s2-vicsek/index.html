@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S2 · The Vicsek model: order from noise and alignment</title>
+  <link rel="stylesheet" href="../../css/site.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main class="wide">
+    <p><a href="../../">← all demos</a></p>
+    <h1>The Vicsek model: order from noise and alignment</h1>
+    <p class="muted">
+      The physicist's minimal flock (Vicsek et al. 1995). Every particle
+      moves at the same speed and, each step, takes the average heading
+      of the particles within one unit of it (itself included), then
+      turns by a random angle up to <b>η</b>/2 either way. Nothing else:
+      no separation, no cohesion. At low noise they move together; at
+      high noise they wander. Colour is heading. The box wraps.
+      <code>docs/15-swarm.md</code>, S2.
+    </p>
+    <div class="controls" id="controls"></div>
+    <div class="stage vicsek"><canvas id="view"></canvas></div>
+    <div class="hud-line" id="hud">loading…</div>
+    <h2>Order</h2>
+    <p class="muted">
+      v<sub>a</sub> = |Σ v<sub>i</sub>| / (N v): 1 when every particle heads
+      the same way; for random headings √π/(2√N), not 1/√N.
+    </p>
+    <div class="plot"><canvas id="order"></canvas></div>
+    <h2>The transition</h2>
+    <p class="muted">
+      The paper's Fig. 2a, measured here: for each η, fresh systems of
+      N = 40, 100, 400 and 4000 at the paper's density (ρ ≈ 4), 1,000
+      steps discarded, then v<sub>a</sub> averaged over 1,000 more. As
+      N grows the drop sharpens and moves toward the paper's
+      η<sub>c</sub> ≈ 2.9. Later, larger simulations (Grégoire &amp;
+      Chaté 2004; Chaté et al. 2008) found the transition is in fact
+      discontinuous, which these sizes can't show. N = 4000 takes most of
+      the ~45 s.
+    </p>
+    <p><button type="button" id="sweep">sweep η</button> <span class="muted" id="sweeping"></span></p>
+    <div class="plot"><canvas id="transition"></canvas></div>
+    <section id="options"></section>
+  </main>
+</body>
+</html>

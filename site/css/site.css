@@ -14,6 +14,7 @@
   --series-1: #ff7b72;
   --series-2: #e3b341;
   --series-3: #56d364;
+  --series-4: #6cb6ff;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -184,4 +185,11 @@ main.wide {
 .stage.swarm canvas {
   image-rendering: pixelated;
   cursor: crosshair;
+}
+
+/* S2: the Vicsek box, square (pixels.ts sets its aspect ratio). */
+.stage.vicsek canvas {
+  image-rendering: pixelated;
+  max-width: 720px;
+  margin: 0 auto;
 }

@@ -473,6 +473,12 @@ heading-coloured square view. A call-sequence property test. In V8 a
 step is 0.012 ms at N = 40, 0.095 at 400, 0.98 at 4000: a 21-point
 sweep at 1,000 + 1,000 steps is about 45 s, nearly all of it N = 4000.
 
+**The page (S2.6, `site/demos/s2-vicsek`):** the live box at N and ρ
+from the URL (L = √(N/ρ)), η, v and the rate on sliders, `v_a` over
+time, the 0/0 count, and the Fig. 2a sweep run in the browser
+(`vicsek-sweep.ts`, unit-tested: fresh systems per (η, N), one case per
+task, a column of points per η).
+
 **What they can't show, and what later work found.** Grégoire & Chaté
 (2004) report the transition "always discontinuous, including for the
 minimal model of Vicsek et al.", and Chaté et al. (2008) find it
