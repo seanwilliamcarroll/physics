@@ -8,6 +8,7 @@ license.workspace = true
 description = "Agents that follow rules: boids (docs/15-swarm.md)."
 
 [dependencies]
+libm.workspace = true
 math = { path = "../math" }
 
 [dev-dependencies]

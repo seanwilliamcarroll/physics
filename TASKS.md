@@ -301,14 +301,13 @@ and counted), the ρ = 0.4 / 4 discrepancy, the periodic grid (brute
 force below 3 cells), the measurement plan and what the later papers
 found. `references.md`: the four new papers.
 
-## 2. The model (PR)
+## ✅ 2. The model (PR)
 
-- [ ] `swarm::vicsek`: SoA positions and unit headings, double buffer,
-      brute-force neighbours (minimum image), the noise, the 0/0 rule
-      and its count.
-- [ ] Tests: speed exactly v (to rounding) every step; `η = 0` aligned
-      stays aligned; the constructed 0/0 keeps its heading; periodic
-      wrap; goldens, native and wasm.
+`swarm::vicsek`: unit headings, double buffer, minimum image, `libm`
+noise, 0/0 kept and counted. Measured: speed exactly v; η = 0 aligned
+stays exactly 1; at η = 2π `v_a` is √π/(2√N) (0.0443 at N = 400), not
+1/√N; **no exact 0/0 in ~5M averages** (the constructed case tested). A
+golden, same on wasm with and without `simd128`.
 
 ## 3. The periodic grid (PR)
 
