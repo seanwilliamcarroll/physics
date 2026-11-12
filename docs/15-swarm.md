@@ -427,6 +427,13 @@ on the compute node), ρ = 4. What the curves can show at these sizes:
 `v_a` near 1 at small η, near `1/√N`'s scale at large η, and a
 transition that sharpens with N, near the paper's 2.9.
 
+**What they can't show, and what later work found.** Grégoire & Chaté
+(2004) report the transition "always discontinuous, including for the
+minimal model of Vicsek et al.", and Chaté et al. (2008) find it
+first-order-like, with high-density "propagating solitary structures"
+near it: effects of system sizes beyond these. So no exponent here: the
+doc reports the curves, and these papers' reading of them.
+
 ### The transition as measured (S2.4)
 
 `examples/vicsek_sweep.rs` (Fig. 2a's sizes, ρ ≈ 4, η from 0 to 5 by
@@ -478,13 +485,6 @@ from the URL (L = √(N/ρ)), η, v and the rate on sliders, `v_a` over
 time, the 0/0 count, and the Fig. 2a sweep run in the browser
 (`vicsek-sweep.ts`, unit-tested: fresh systems per (η, N), one case per
 task, a column of points per η).
-
-**What they can't show, and what later work found.** Grégoire & Chaté
-(2004) report the transition "always discontinuous, including for the
-minimal model of Vicsek et al.", and Chaté et al. (2008) find it
-first-order-like, with high-density "propagating solitary structures"
-near it: effects of system sizes beyond these. So no exponent here: the
-doc reports the curves, and these papers' reading of them.
 
 ## References
 
