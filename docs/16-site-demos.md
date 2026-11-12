@@ -147,10 +147,11 @@ documented behavior, not exercised here).
 
 ### V3. Which Node version does Amplify build with?
 
-The site has no `.nvmrc`; Amplify uses whatever its build image
-provides, or a version set in the app's build settings. CI (S1) and
-local development should use the same major version, or "green in CI"
-doesn't mean "builds on Amplify".
+The site's `.nvmrc` says `22` (it was first written here that there
+was none: wrong), but nothing made Amplify read it: its build used
+whatever the image provides. CI (S1) and local development should use
+the same major version as the deploy, or "green in CI" doesn't mean
+"builds on Amplify".
 
 - **How:** the app's build settings (the build image and any "live
   package updates" for Node), and the `node --version` line in the
@@ -220,6 +221,8 @@ C1–C4); it doesn't block anything here.
 
 #### P1. The loader, separated from the page
 
+**Done** (2026-11-12, #237).
+
 Refactor only: every lab page behaves as before.
 
 - **Touches:** new `site/js/engine-loader.ts`; `site/js/wasm.ts`,
@@ -246,31 +249,40 @@ Refactor only: every lab page behaves as before.
 
 #### P2. `cargo xtask package`
 
-*(after V2, which decides the package's shape)*
+**Done** (2026-11-12). `cargo xtask package` writes
+`target/package/physics-engine-<version>.tgz` (84 KB) and checks it.
 
-- **Touches:** `xtask/src/package.rs` and its tests, `xtask/src/main.rs`;
-  a `package/` directory of templates (`package.json`, a README);
-  `Cargo.toml` (a `version` under `[workspace.package]`: there is none
-  today, and it becomes the package's); `docs/repo-layout.md`.
-- **Builds** `target/package/physics-engine-<version>.tgz`:
-  - `engine.wasm` (the release build `cargo xtask site` makes);
-  - `engine.d.ts` (the export table's types, as checked against the
-    wasm by `xtask site` today);
-  - `abi.js` + `abi.d.ts` (the scene codes and caps);
-  - `loader.js` + `loader.d.ts` (P1's loader, compiled by `tsc` with
-    declarations);
-  - `package.json` with an `exports` map (`.`, `./engine.wasm`),
-    `types`, `"type": "module"`, the MIT licence.
+- **In the tarball** (13 files):
+  - `engine.wasm`: the release build `cargo xtask site` makes, already
+    checked against `engine.d.ts`;
+  - `engine-package.js`: the entry point (`loadEngine`, and everything
+    below re-exported);
+  - `engine-loader.js` (P1's loader), `engine-views.js` (typed-array
+    views of the buffers, moved out of the lab's `wasm.ts`), `abi.js`
+    (scene codes and caps);
+  - a `.d.ts` beside each, and `engine.d.ts`;
+  - `package.json`, `README.md`, `LICENSE`.
+- **How a site uses it:**
+  ```js
+  import wasmUrl from "physics-engine/engine.wasm?url";
+  import { loadEngine, DEMO_FOUNTAIN, SCALAR_F32, positionsView } from "physics-engine";
+  const { engine } = await loadEngine(wasmUrl);
+  ```
+- **The version** is `version` under `[workspace.package]` in
+  `Cargo.toml` (`0.1.0`); the command refuses anything that isn't
+  `MAJOR.MINOR.PATCH`.
+- **Its check, every time it runs** (and it runs in `pre-push`): the
+  tarball is unpacked as `node_modules/physics-engine` of a scratch
+  project; a TypeScript consumer is type-checked against its `.d.ts`
+  (`xtask/package_check.ts`, including that a bare number is refused
+  where a handle belongs); and the fountain runs 60 steps in Node
+  through the package's entry points (`xtask/package_check.mjs`).
+- **One thing the check found while it was being written:** `tsc`
+  rewrites `"./abi.ts"` to `"./abi.js"` in the JavaScript it emits but
+  not in the declarations, so a consumer's type-check couldn't find
+  the files. The command rewrites those specifiers in the `.d.ts`.
 - **Scope:** the engine only. Sand, swarm and acoustic become subpaths
-  (`physics-engine/swarm`) when a post wants one: the same command,
-  another entry in a table.
-- **Self-check:** the command unpacks what it packed into a temporary
-  directory and, from Node, imports the package by its own entry
-  points, creates the fountain and advances it 60 steps. A package
-  that can't be used fails the command.
-- **Done when:** the tarball's file list is in the PR; the self-check
-  runs in `pre-push` (it's seconds); `npm pack --dry-run` on the
-  unpacked directory agrees with the file list.
+  when a post wants one.
 
 #### P3. Releasing, written down and scripted
 
@@ -314,9 +326,10 @@ today: pre-commit runs Prettier (rewriting staged files), ESLint and
 The site gets checks **per PR** (decided): they take a couple of
 minutes, and what lands on `main` is deployed by Amplify at once.
 
-- **Touches:** new `.github/workflows/ci.yml`; `.nvmrc` (`22`: V3);
-  `amplify.yml` (`nvm use` before `npm ci`: V3); `README.md`,
-  `CLAUDE.md`
+- **Done** (2026-11-12, personal_site #2).
+- **Touches:** new `.github/workflows/ci.yml`; `amplify.yml`
+  (`nvm install` before `npm ci`, so Amplify follows `.nvmrc`, which
+  already existed and said `22`); `README.md`, `CLAUDE.md`
   (the workflow is now: branch, PR, green check, squash).
 - **Triggers:** `pull_request`, and `workflow_dispatch` for a manual
   run. Not `push` to `main`: Amplify's own build covers that.
@@ -330,6 +343,9 @@ minutes, and what lands on `main` is deployed by Amplify at once.
   commit on a scratch PR (a type error) goes red.
 
 #### S2. The check, required
+
+**Done** (2026-11-12): a scratch pull request with a type error was
+reported `BLOCKED` by GitHub, then closed.
 
 A settings change, not a PR: the `protect-main` ruleset gains a
 required status check, `check`. From then on a PR can't be merged

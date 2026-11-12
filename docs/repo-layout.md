@@ -82,6 +82,7 @@ physics/
 │   ├── swarm-web/          # cdylib → swarm.wasm (simd128; the boids page's C ABI)
 │   └── acoustic/           # A1+
 │
+├── package/                # the physics-engine npm package's README and tsconfig (cargo xtask package)
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)
 │   ├── src/main.rs
 │   ├── serve.py            # dev and smoke server: http.server + no-store + a deep backlog
@@ -188,6 +189,7 @@ Commands (`cargo xtask help` lists what exists):
 | `cargo xtask bench-wasm` | M2 | time the cluster through `engine.wasm` in Node; compare with criterion's native results |
 | `cargo xtask bench` | health | every criterion bench, saved as a baseline (`--save NAME`) or compared with one (`--baseline NAME`; fails on regressions) (`docs/benchmarks.md`) |
 | `cargo xtask profile` | health | one example or bench under `samply`, built with debug info; prints the hottest functions and source lines (`docs/profiling.md`) |
+| `cargo xtask package` | site demos | the `physics-engine` npm package (engine.wasm, its types, the loader) as a tarball in `target/package/`, checked by using it (`docs/16-site-demos.md`) |
 | `cargo xtask test-wasm` | M1 | `cargo test -p engine -p math --target wasm32-wasip1` under wasmtime (pre-push) |
 | `cargo xtask coverage` | M2 | Rust coverage via `cargo-llvm-cov` (per-crate summary, HTML in `target/llvm-cov/html`) and site JS via `node --test --experimental-test-coverage`; report only (`docs/04-testing.md`) |
 | `cargo xtask dist` | planned | `site` + produce a deployable `dist/` (see `hosting.md`) |

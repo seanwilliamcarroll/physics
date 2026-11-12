@@ -1,0 +1,14 @@
+{
+  // Compiles the `physics-engine` package's entry point and what it
+  // imports (cargo xtask package passes --outDir): plain .js with .d.ts
+  // beside it, no source maps.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "sourceMap": false,
+    "inlineSources": false,
+    "rootDir": "../site/js"
+  },
+  "include": [],
+  "files": ["../site/js/engine-package.ts"]
+}
