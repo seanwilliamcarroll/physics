@@ -10,11 +10,11 @@ fn args(a: &[&str]) -> Vec<String> {
 #[test]
 fn defaults_fill_in_only_what_isnt_given() {
     assert_eq!(
-        with_defaults(&args(&["--list"])),
+        with_defaults(&args(&["--list"]), false),
         args(&["-j", "8", "--no-shuffle", "--list"])
     );
     for given in [&["-j", "4"][..], &["-j4"], &["--jobs", "2"], &["--jobs=2"]] {
-        let out = with_defaults(&args(given));
+        let out = with_defaults(&args(given), false);
         assert_eq!(
             out.iter().filter(|a| a.as_str() == "8").count(),
             0,
@@ -23,9 +23,30 @@ fn defaults_fill_in_only_what_isnt_given() {
         assert!(out.contains(&"--no-shuffle".to_owned()));
     }
     assert_eq!(
-        with_defaults(&args(&["--shuffle"])),
+        with_defaults(&args(&["--shuffle"]), false),
         args(&["-j", "8", "--shuffle"])
     );
+}
+
+#[test]
+fn nextest_runs_the_tests_when_installed_unless_a_tool_is_given() {
+    assert_eq!(
+        with_defaults(&args(&["--list"]), true),
+        args(&[
+            "-j",
+            "8",
+            "--no-shuffle",
+            "--test-tool",
+            "nextest",
+            "--list"
+        ])
+    );
+    for given in [&["--test-tool", "cargo"][..], &["--test-tool=cargo"]] {
+        let out = with_defaults(&args(given), true);
+        assert!(!out.contains(&"nextest".to_owned()), "{given:?}: {out:?}");
+    }
+    // Not installed: cargo-mutants' own default (cargo test).
+    assert!(!with_defaults(&args(&[]), false).contains(&"--test-tool".to_owned()));
 }
 
 #[test]
