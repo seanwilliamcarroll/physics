@@ -151,6 +151,9 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`AntParams`](../crates/swarm/src/ants.rs) | The ants' constants, checked once; the defaults from a scan (the planned decay failed). |
 | [`Colony`, `Ant`, `Pheromone`](../crates/swarm/src/ants.rs) | The ant world (walls, integer food, the nest), two fields, the ants; sensing on or off; exact food accounting through painting. |
 | [`AntDemo`](../crates/swarm-web/src/ant_demo.rs), [`AntHandle`](../site/js/swarm.d.ts) | A colony behind the `ant_*` exports, its rendered view, and its branded handle. |
+| [`SlimeParams`](../crates/swarm/src/physarum.rs) | Physarum's constants (our values; Jones's text unread), checked once. |
+| [`Slime`](../crates/swarm/src/physarum.rs) | One periodic field and its agents (sense, turn, move, deposit), nutrient nodes, sensing on or off; `Field::diffuse_periodic` is its mean filter. |
+| [`SlimeDemo`](../crates/swarm-web/src/slime_demo.rs), [`SlimeHandle`](../site/js/swarm.d.ts) | A Physarum system behind the `slime_*` exports, its field drawn through a colour ramp, and its branded handle. |
 
 ## `acoustic` — the plucked string (A1)
 
