@@ -675,7 +675,8 @@ goldens, native and wasm.
 
 ## S4: Physarum
 
-Status: **Draft** (S4.1). Decisions: TASKS.md, S4.
+Status: **Adopted** (S4.1; as built: the model S4.2, measurements S4.3,
+the browser S4.4–5).
 
 Jones's (2010) model of the slime mould *Physarum polycephalum*: many
 agents, one field. Each agent senses the field ahead, turns toward the
