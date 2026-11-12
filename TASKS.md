@@ -83,6 +83,9 @@ ants; four scenes, held-out seeds), the evolution's history and the
 held-out numbers; two smoke cases; gallery. Your check pending.
 ## 5. Cleanup (PR)
 
+- [x] `types.md`: S5's types.
+- [ ] S5 collapsed after your check.
+
 ## Workflow
 
 - Each numbered section gets its own branch (`s5/<n>-<name>`) and one PR
