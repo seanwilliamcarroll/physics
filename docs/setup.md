@@ -86,6 +86,7 @@ npm ci                                 # the pinned TypeScript
 | `cargo xtask api` (pre-push checks the public API; skipped without it) | `cargo install --locked cargo-public-api` and `rustup toolchain install nightly-2026-10-15 --profile minimal` |
 | `cargo xtask mutants`, and the pre-push report with `MUTANTS=1` | `cargo install --locked cargo-mutants` |
 | `cargo xtask coverage` | `cargo install --locked cargo-llvm-cov` |
+| `cargo xtask profile` (`docs/profiling.md`) | `cargo install --locked samply` |
 
 ## 7. Check it works
 

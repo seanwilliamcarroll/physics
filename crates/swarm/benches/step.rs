@@ -8,7 +8,9 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use math::convert::{f64_to_f32, usize_to_f64};
-use swarm::{Arena, Flock, Neighbours, Params};
+use swarm::{
+    AntParams, Arena, Colony, Flock, Neighbours, Params, Slime, SlimeParams, Vicsek, VicsekParams,
+};
 
 /// A warmed-up flock of `n` at the page's density.
 fn flock(n: usize) -> Flock {
@@ -41,6 +43,27 @@ fn bench(c: &mut Criterion) {
             });
         }
     }
+    group.finish();
+    models(c);
+}
+
+/// The other models' steps, each at its page's size (what
+/// `examples/workload.rs` runs for a profiler): Vicsek on the grid, the
+/// ants with food to find, Physarum.
+fn models(c: &mut Criterion) {
+    let mut group = c.benchmark_group("swarm_models");
+    group.sample_size(20);
+    let mut v = Vicsek::new(4_000, 31.6, VicsekParams::paper(2.0), 1).unwrap();
+    // Warmed up: the cost follows the clustering, which takes a while.
+    for _ in 0..500 {
+        v.step();
+    }
+    group.bench_function("vicsek/4000", |b| b.iter(|| v.step()));
+    let mut ants = Colony::new(200, 120, 500, (25.0, 60.0, 6.0), AntParams::DEFAULT, 1).unwrap();
+    ants.paint_food(160.0, 60.0, 8.0, 50);
+    group.bench_function("ants/200x120_500", |b| b.iter(|| ants.step()));
+    let mut slime = Slime::new(512, 100_000, SlimeParams::DEFAULT, 1).unwrap();
+    group.bench_function("physarum/512_100k", |b| b.iter(|| slime.step()));
     group.finish();
 }
 
