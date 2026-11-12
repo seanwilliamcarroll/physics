@@ -76,6 +76,10 @@ fn stage(
             "--workspace",
             "--cargo-profile",
             "slow",
+            // nextest's own profile (.config/nextest.toml): the default
+            // stops a test at 2 minutes, which is for pushes.
+            "--profile",
+            "slow",
             "--no-fail-fast",
         ]);
         if let Ignored::SlowOnly = ignored {
