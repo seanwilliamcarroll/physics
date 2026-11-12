@@ -120,6 +120,9 @@ pub struct Colony {
     height: usize,
     /// `true` for an open cell, `false` for a wall.
     open: Vec<bool>,
+    /// Each cell's open neighbours, for the fields' diffusion: recounted
+    /// only when walls change (`Field::diffuse_counted`).
+    neighbours: Vec<u8>,
     food: Vec<u16>,
     nest: (f32, f32, f32),
     home_field: Field,
@@ -178,10 +181,11 @@ impl Colony {
                 }
             })
             .collect();
-        Some(Self {
+        let mut colony = Self {
             width,
             height,
             open: vec![true; width * height],
+            neighbours: Vec::new(),
             food: vec![0; width * height],
             nest,
             home_field,
@@ -194,7 +198,14 @@ impl Colony {
             delivered: 0,
             painted: 0,
             deposits: Vec::new(),
-        })
+        };
+        colony.recount();
+        Some(colony)
+    }
+
+    /// Recounts each cell's open neighbours (after walls change).
+    fn recount(&mut self) {
+        self.neighbours = self.home_field.open_neighbours(&self.open);
     }
 
     fn index(&self, x: f32, y: f32) -> Option<usize> {
@@ -273,6 +284,7 @@ impl Colony {
             self.remove_food(i);
         }
         self.clear_walls_from_fields();
+        self.recount();
         changed
     }
 
@@ -287,6 +299,7 @@ impl Colony {
             }
             changed += usize::from(was_wall || self.remove_food(i) > 0);
         }
+        self.recount();
         changed
     }
 
@@ -459,7 +472,7 @@ impl Colony {
             field.deposit(x, y, amount);
         }
         for field in [&mut self.home_field, &mut self.food_field] {
-            field.diffuse(&self.open, p.diffusion);
+            field.diffuse_counted(&self.open, &self.neighbours, p.diffusion);
             field.decay(p.decay);
         }
         self.steps += 1;
