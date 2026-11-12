@@ -57,7 +57,12 @@ side with the evolution's history drawn.
    evolution's history (best and mean fitness per generation) is
    embedded from the native run.
 
-## 1. The doc (PR)
+## ✅ 1. The doc (PR)
+
+`15-swarm.md`, S5: the algorithm (elites re-scored, tournament,
+crossover, shrinking Gaussian mutation), noise and common seeds, why it
+runs parallel yet bit-identical, the genome, generalization as the
+result; construction deferred. `references.md`: the three, unread.
 ## 2. The algorithm (PR): `swarm::evolve`, toy tests, thread-count determinism
 ## 3. Evolving the ants (PR): the run, held-out seeds, the barriers scene
 ## 4. The page (PR): `s5-evolve`

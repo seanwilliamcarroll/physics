@@ -810,6 +810,55 @@ smoke screenshot already shows a reticulated web.
 - **Cost**: the agent step and the diffusion, native and in V8, at 100k
   agents and 512². The GPU question is recorded with these numbers.
 
+## S5: Evolving the rules
+
+Status: **Draft** (S5.1). Decisions: TASKS.md, S5.
+
+S3's ant constants came from a hand scan: four of seven parameters,
+two or three values each, four seeds. S5 hands the search to an
+evolutionary algorithm over all seven, scored by headless native runs,
+and asks whether what it finds **generalizes**: better than the scan on
+seeds it never trained on, and on a scene it never saw (barriers).
+Collective construction, the roadmap's other S5 idea (Werfel et al.
+2014), is deferred to a milestone of its own.
+
+### The algorithm
+
+A population of real vectors, each gene within a stated range. Each
+generation: score everyone; keep the best two (**elites**); fill the
+rest by **tournament selection** (the best of three at random, twice),
+**uniform crossover** (each gene from either parent), and **Gaussian
+mutation** (σ a fraction of the gene's range, shrinking over the run),
+clamped to the range. The vocabulary is the textbook's (Eiben & Smith
+2015; not read here: cited for terms, not results). CMA-ES (Hansen &
+Ostermeier 2001) adapts its own mutation and would likely search
+better; it's noted, not built.
+
+**Noise.** A run's deliveries depend on its seed, so a single run is a
+noisy score and a lucky individual can look great. Each individual is
+scored as the mean over K seeds, the same K for the whole generation
+(common random numbers: differences between individuals aren't seed
+luck), new each generation; and elites are **re-scored** every
+generation rather than keeping an old lucky score.
+
+**Parallel and deterministic.** A score depends only on the genome and
+the seeds, so scoring the population on any number of threads gives
+the same numbers in the same slots. Selection then draws from one
+seeded stream. The run is bit-identical with one thread or sixteen.
+
+### The genome
+
+S3's seven tunable constants, each in a range: SA and RA 0–90°, SD 1–30
+cells, wiggle 0–90°, fall-off 0–0.2, diffusion 0–0.5, decay 0–0.05.
+Speed and deposit are fixed (scaling them scales the rest).
+
+### The result that matters
+
+The best genome against S3's defaults on 8 held-out seeds in the
+training scene, and on the barriers scene (walls between nest and food,
+never trained on). If it only beats them on its training seeds it has
+learned those seeds, and the doc will say so.
+
 ## References
 
 Papers (DOIs checked on Crossref):
@@ -871,6 +920,17 @@ S4:
   doi:10.1007/s11047-010-9223-z (not read)
 - Jenson, S., *physarum*, https://cargocollective.com/sagejenson/physarum
   (secondary; read 2026-11-11: structure, no values).
+
+S5 (DOIs checked on Crossref, 2026-11-12; none read):
+
+- Eiben, A. E. & Smith, J. E. (2015), *Introduction to Evolutionary
+  Computing*, 2nd ed., Springer. doi:10.1007/978-3-662-44874-8
+- Hansen, N. & Ostermeier, A. (2001), *Completely derandomized
+  self-adaptation in evolution strategies*, Evol. Comput. 9(2), 159–195.
+  doi:10.1162/106365601750190398
+- Werfel, J., Petersen, K. & Nagpal, R. (2014), *Designing collective
+  behavior in a termite-inspired robot construction team*, Science
+  343(6172), 754–758. doi:10.1126/science.1245842
 
 Secondary (values and practice, not claims):
 

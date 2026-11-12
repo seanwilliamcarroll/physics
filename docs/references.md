@@ -184,6 +184,22 @@ sources (S4's nodes). Not read.
 (https://cargocollective.com/sagejenson/physarum): the agent step's
 structure, the 3 × 3 mean filter, multiplicative decay; no values.
 
+**Eiben, A. E. & Smith, J. E. (2015).** *Introduction to Evolutionary
+Computing*, 2nd ed. Springer. The terms S5 uses (tournament selection,
+Gaussian mutation, elitism). Not read.
+- DOI: https://doi.org/10.1007/978-3-662-44874-8
+
+**Hansen, N. & Ostermeier, A. (2001).** *Completely derandomized
+self-adaptation in evolution strategies.* Evolutionary Computation
+9(2), 159–195. CMA-ES: noted for S5, not built. Not read.
+- DOI: https://doi.org/10.1162/106365601750190398
+
+**Werfel, J., Petersen, K. & Nagpal, R. (2014).** *Designing collective
+behavior in a termite-inspired robot construction team.* Science
+343(6172), 754–758. Collective construction: S5's deferred half. Not
+read.
+- DOI: https://doi.org/10.1126/science.1245842
+
 **Allen, M. P. & Tildesley, D. J. (2017).** *Computer Simulation of
 Liquids*, 2nd ed. Oxford University Press. Cell lists for fixed-radius
 neighbours: S1's grid.
