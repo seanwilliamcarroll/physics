@@ -121,8 +121,9 @@ fn is_leftover(name: &str) -> bool {
 /// given.
 ///
 /// Nextest because each mutant's tests then run as one pool with a
-/// process per test: measured on the node over one shard of 270 mutants,
-/// 197 s against `cargo test`'s 294 s at `-j 8`, the same mutants missed
+/// process per test: measured on the node over a twentieth of the
+/// mutants, spread across the workspace, 365 s against `cargo test`'s
+/// 626 s at `-j 8` (and 369 s at `-j 12`: 8 stays)
 /// (`docs/04-testing.md`, "Mutation testing").
 fn with_defaults(args: &[String], nextest: bool) -> Vec<String> {
     let has_jobs = args
