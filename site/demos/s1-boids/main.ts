@@ -3,7 +3,7 @@
 // controls, the pointer predator, the plot and the cost table.
 
 import { loadSwarm, swarmStepBudget } from "../../js/swarm-wasm.ts";
-import { blit, pixelCanvas } from "../../js/pixels.ts";
+import { blit, countOtherThan, pixelCanvas } from "../../js/pixels.ts";
 import { DEFAULT_N, WORLD, costHtml, nsPerBoid, worldFor } from "../../js/swarm-cost.ts";
 import {
   DEFAULT_RATE_HZ, MAX_BOIDS, MAX_BRUTE, MAX_RATE_HZ, NEIGHBOURS_BRUTE, NEIGHBOURS_GRID,
@@ -94,11 +94,7 @@ function smoke(s: SwarmExports, d: SwarmHandle, ctx: CanvasRenderingContext2D, w
     reportSmoke(`error polarization ${p}`);
     return;
   }
-  const { data } = ctx.getImageData(0, 0, w, h);
-  let px = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] !== BACKGROUND_RGB[0] || data[i + 1] !== BACKGROUND_RGB[1] || data[i + 2] !== BACKGROUND_RGB[2]) px += 1;
-  }
+  const px = countOtherThan(ctx.getImageData(0, 0, w, h).data, BACKGROUND_RGB);
   reportSmoke(`ok steps=${steps} particle_px=${px}`);
 }
 

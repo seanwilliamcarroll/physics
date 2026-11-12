@@ -648,6 +648,39 @@ Three tiers (the checklist's §3):
 A new long-running check goes in as a `slow_*` test, with what it
 measured written next to its bound, as every tolerance here is.
 
+## Duplication
+
+`cargo dupes` (`cargo install --locked cargo-dupes`) compares functions
+by the shape of their syntax trees. Not in a hook: most of what it finds
+is meant (one-line getters, an export per setting), so it's a report to
+read now and then, not a gate:
+
+```sh
+cargo dupes stats  --exclude-tests --exclude target --exclude xtask --min-lines 8
+cargo dupes report --exclude-tests --exclude target --exclude xtask --min-lines 8
+```
+
+`--min-lines 8` drops the getters and thin ABI adapters. As of the
+health pass (2026-11-12): 1.9% of lines in functions of 8 lines or more
+are exact duplicates (3.6% before it). What it removed, each to one
+definition:
+
+- every `*_set_rate` and `*_set_step_cap` export's parse:
+  `FixedStep::set_rate_hz`, `set_cap_steps` (`web-common`), through
+  each demo's `clock()`;
+- every demo's advance loop: `FixedStep::run`;
+- the export-sequence tests' argument strategy: `test_support::hostile_f64`;
+- the loaders' budgeted advance and free: `StepBudget.budgeted`,
+  `.forgetting` (`site/js/loop.ts`);
+- the pixel pages' smoke count: `countOtherThan` (`site/js/pixels.ts`).
+
+What's left is the same shape over different types, where sharing would
+need a macro or a trait for a few lines each: the engine's code-to-enum
+setters, the swarm demos' parameter slots (`slot`, `param_slot`: one
+match per parameter struct), `Boids::get`/`set` beside Vicsek's
+`State::get`/`set` (two structs of arrays with different fields), the
+checked casts in `math::convert`. Left alone on purpose.
+
 ## Mutation testing
 
 Coverage says code ran during a test; mutation testing says whether a

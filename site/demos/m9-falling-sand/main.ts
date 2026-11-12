@@ -3,7 +3,7 @@
 // brush, blits the buffer (pixels.ts) and reports what a step costs.
 
 import { loadSand, sandStepBudget } from "../../js/sand-wasm.ts";
-import { blit, cellAt, pixelCanvas, strokeCells } from "../../js/pixels.ts";
+import { blit, cellAt, countOtherThan, pixelCanvas, strokeCells } from "../../js/pixels.ts";
 import { SCENES } from "../../js/sand-scenes.ts";
 import {
   DEFAULT_RATE_HZ, MATERIAL_EMPTY, MATERIAL_LAVA, MATERIAL_SAND, MATERIAL_STEAM, MATERIAL_STONE,
@@ -93,11 +93,7 @@ function smoke(sand: SandExports, d: SandHandle): void {
     reportSmoke(`error accounts changed: ${before} -> ${after}`);
     return;
   }
-  const { data } = ctx.getImageData(0, 0, w, h);
-  let px = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] !== EMPTY_RGB[0] || data[i + 1] !== EMPTY_RGB[1] || data[i + 2] !== EMPTY_RGB[2]) px += 1;
-  }
+  const px = countOtherThan(ctx.getImageData(0, 0, w, h).data, EMPTY_RGB);
   reportSmoke(`ok steps=${steps} particle_px=${px}`);
 }
 

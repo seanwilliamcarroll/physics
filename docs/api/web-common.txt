@@ -6,7 +6,10 @@ impl web_common::FixedStep
 pub fn web_common::FixedStep::advance(&mut self, f64) -> u32
 pub fn web_common::FixedStep::new(core::num::nonzero::NonZeroU32) -> Self
 pub const fn web_common::FixedStep::rate(&self) -> core::num::nonzero::NonZeroU32
+pub fn web_common::FixedStep::run(&mut self, f64, impl core::ops::function::FnMut()) -> u32
 pub const fn web_common::FixedStep::set_cap(&mut self, core::option::Option<core::num::nonzero::NonZeroU32>)
+pub const fn web_common::FixedStep::set_cap_steps(&mut self, u32, u32) -> bool
 pub fn web_common::FixedStep::set_rate(&mut self, core::num::nonzero::NonZeroU32)
+pub fn web_common::FixedStep::set_rate_hz(&mut self, u32, u32) -> bool
 pub const web_common::MAX_FRAME_TIME: f64
 pub const fn web_common::install_panic_hook()

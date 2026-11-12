@@ -20,59 +20,16 @@ export async function loadSwarm(url: URL | string = SWARM_URL): Promise<SwarmExp
   // Unchecked, as in loadEngine: swarm.d.ts asserts the shape (and `cargo
   // xtask site` checks it against the export table).
   const exports = (await instantiateWithPanicHook(url, "swarm.wasm")) as unknown as SwarmExports;
-  const { swarm_advance: advance, swarm_free: free } = exports;
-  const { vicsek_advance: vAdvance, vicsek_free: vFree } = exports;
-  const { ant_advance: aAdvance, ant_free: aFree } = exports;
-  const { slime_advance: sAdvance, slime_free: sFree } = exports;
+  const b = swarmStepBudget;
   return {
     ...exports,
-    vicsek_advance(d, elapsed) {
-      const cap = swarmStepBudget.cap;
-      exports.vicsek_set_step_cap(d, cap);
-      const t0 = performance.now();
-      const steps = vAdvance(d, elapsed);
-      swarmStepBudget.record(d, steps, performance.now() - t0, cap);
-      return steps;
-    },
-    vicsek_free(d) {
-      swarmStepBudget.forget(d);
-      vFree(d);
-    },
-    ant_advance(d, elapsed) {
-      const cap = swarmStepBudget.cap;
-      exports.ant_set_step_cap(d, cap);
-      const t0 = performance.now();
-      const steps = aAdvance(d, elapsed);
-      swarmStepBudget.record(d, steps, performance.now() - t0, cap);
-      return steps;
-    },
-    ant_free(d) {
-      swarmStepBudget.forget(d);
-      aFree(d);
-    },
-    slime_advance(d, elapsed) {
-      const cap = swarmStepBudget.cap;
-      exports.slime_set_step_cap(d, cap);
-      const t0 = performance.now();
-      const steps = sAdvance(d, elapsed);
-      swarmStepBudget.record(d, steps, performance.now() - t0, cap);
-      return steps;
-    },
-    slime_free(d) {
-      swarmStepBudget.forget(d);
-      sFree(d);
-    },
-    swarm_advance(d, elapsed) {
-      const cap = swarmStepBudget.cap;
-      exports.swarm_set_step_cap(d, cap);
-      const t0 = performance.now();
-      const steps = advance(d, elapsed);
-      swarmStepBudget.record(d, steps, performance.now() - t0, cap);
-      return steps;
-    },
-    swarm_free(d) {
-      swarmStepBudget.forget(d);
-      free(d);
-    },
+    swarm_advance: b.budgeted(exports.swarm_advance, exports.swarm_set_step_cap),
+    swarm_free: b.forgetting(exports.swarm_free),
+    vicsek_advance: b.budgeted(exports.vicsek_advance, exports.vicsek_set_step_cap),
+    vicsek_free: b.forgetting(exports.vicsek_free),
+    ant_advance: b.budgeted(exports.ant_advance, exports.ant_set_step_cap),
+    ant_free: b.forgetting(exports.ant_free),
+    slime_advance: b.budgeted(exports.slime_advance, exports.slime_set_step_cap),
+    slime_free: b.forgetting(exports.slime_free),
   };
 }

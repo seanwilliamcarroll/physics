@@ -2,7 +2,7 @@
 // S2). The live box, its order over time, and a Fig. 2a sweep.
 
 import { loadSwarm, swarmStepBudget } from "../../js/swarm-wasm.ts";
-import { blit, pixelCanvas } from "../../js/pixels.ts";
+import { blit, countOtherThan, pixelCanvas } from "../../js/pixels.ts";
 import { FIG_2A, cases, etaGrid, sideFor } from "../../js/vicsek-sweep.ts";
 import { DEFAULT_RATE_HZ, MAX_PARTICLES, MAX_RATE_HZ } from "../../js/swarm-abi.ts";
 import { RateMeter, Smoothed, runLoop } from "../../js/loop.ts";
@@ -74,11 +74,7 @@ try {
     if (!Number.isFinite(va) || !Number.isFinite(measured)) {
       reportSmoke(`error v_a ${va}, mean ${measured}`);
     } else {
-      const { data } = ctx.getImageData(0, 0, view, view);
-      let px = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i] !== BACKGROUND_RGB[0] || data[i + 1] !== BACKGROUND_RGB[1] || data[i + 2] !== BACKGROUND_RGB[2]) px += 1;
-      }
+      const px = countOtherThan(ctx.getImageData(0, 0, view, view).data, BACKGROUND_RGB);
       reportSmoke(`ok steps=${steps} particle_px=${px}`);
     }
   } else {

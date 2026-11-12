@@ -3,7 +3,7 @@
 // side by side through S3's ant_* exports, and the evolution's history.
 
 import { loadSwarm } from "../../js/swarm-wasm.ts";
-import { blit, pixelCanvas } from "../../js/pixels.ts";
+import { blit, countOtherThan, pixelCanvas } from "../../js/pixels.ts";
 import { SCENES, WORLD } from "../../js/ant-scenes.ts";
 import { BEST, EVOLVED, HELD_OUT, MEAN } from "../../js/ant-evolution.ts";
 import {
@@ -85,11 +85,7 @@ try {
       for (let k = 0; k < SMOKE_STEPS; k++) steps += s.ant_advance(d, 1 / DEFAULT_RATE_HZ + 1e-9);
       blit(ctxs[i], s.memory, s.ant_render(d), w, h);
     }
-    const { data } = ctxs[1].getImageData(0, 0, w, h);
-    let px = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] !== BACKGROUND_RGB[0] || data[i + 1] !== BACKGROUND_RGB[1] || data[i + 2] !== BACKGROUND_RGB[2]) px += 1;
-    }
+    const px = countOtherThan(ctxs[1].getImageData(0, 0, w, h).data, BACKGROUND_RGB);
     reportSmoke(`ok steps=${steps / 2} particle_px=${px}`);
   } else {
     const controls = byId("controls", HTMLElement);

@@ -128,6 +128,33 @@ export class StepBudget {
     return Math.min(this.maxCap, Math.max(1, Math.floor(this.budgetMs / total)));
   }
 
+  /** `advance` (a module's `*_advance` export) capped by this budget and
+   *  timed: sets the cap through `setCap` (its `*_set_step_cap`), runs,
+   *  records. What every loader wraps its module's advance in. Physics
+   *  only: drawing isn't inside it. */
+  budgeted<H extends number>(
+    advance: (demo: H, elapsed: number) => number,
+    setCap: (demo: H, cap: number) => unknown,
+    now: () => number = () => performance.now(),
+  ): (demo: H, elapsed: number) => number {
+    return (demo, elapsed) => {
+      const cap = this.cap;
+      setCap(demo, cap);
+      const t0 = now();
+      const steps = advance(demo, elapsed);
+      this.record(demo, steps, now() - t0, cap);
+      return steps;
+    };
+  }
+
+  /** `free` (a module's `*_free` export), forgetting the demo first. */
+  forgetting<H extends number>(free: (demo: H) => void): (demo: H) => void {
+    return (demo) => {
+      this.forget(demo);
+      free(demo);
+    };
+  }
+
   /** Whether the last advance was held to its cap: the page is running in
    *  slow motion. */
   get limited(): boolean {

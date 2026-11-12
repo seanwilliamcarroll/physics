@@ -23,16 +23,10 @@ enum Call {
     Render,
 }
 
+/// What a page could pass (`test_support::hostile_f64`), around this
+/// module's usual values.
 fn hostile_f64() -> impl Strategy<Value = f64> {
-    prop_oneof![
-        Just(f64::NAN),
-        Just(f64::INFINITY),
-        Just(f64::NEG_INFINITY),
-        Just(-1.0),
-        Just(0.0),
-        Just(1e300),
-        -10.0..200.0,
-    ]
+    test_support::hostile_f64(-10.0..200.0)
 }
 
 fn call() -> impl Strategy<Value = Call> {

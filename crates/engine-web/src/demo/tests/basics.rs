@@ -32,7 +32,7 @@ fn set_integrator_round_trips() {
 fn set_rate_changes_how_many_steps_a_frame_buys() {
     let mut d = orbit_demo(ScalarKind::F64);
     assert_eq!(d.advance(1.0 / 30.0), 2); // 60 Hz: two steps per 30 Hz frame
-    d.set_rate(NonZeroU32::new(30).unwrap());
+    d.clock().set_rate(NonZeroU32::new(30).unwrap());
     assert_eq!(d.advance(1.0 / 30.0), 1);
 }
 

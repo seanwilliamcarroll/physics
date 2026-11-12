@@ -56,19 +56,14 @@ impl VicsekDemo {
 
     /// Real time in, fixed steps run; how many.
     pub fn advance(&mut self, elapsed: f64) -> u32 {
-        let steps = self.clock.advance(elapsed);
-        for _ in 0..steps {
-            self.sys.step();
-        }
-        steps
+        self.clock.run(elapsed, || self.sys.step())
     }
 
-    pub fn set_rate(&mut self, rate: NonZeroU32) {
-        self.clock.set_rate(rate);
-    }
-
-    pub const fn set_step_cap(&mut self, cap: Option<NonZeroU32>) {
-        self.clock.set_cap(cap);
+    /// The clock, for the rate and the step budget's cap (the exports
+    /// parse and set both through it: `FixedStep::set_rate_hz`,
+    /// `set_cap_steps`).
+    pub const fn clock(&mut self) -> &mut FixedStep {
+        &mut self.clock
     }
 
     /// The noise η; `false` outside `[0, 2π]` (nothing changed).

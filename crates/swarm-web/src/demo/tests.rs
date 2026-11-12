@@ -92,9 +92,9 @@ fn brute_force_is_refused_for_a_big_flock() {
 fn advancing_steps_at_the_rate_with_the_cap_and_the_predator() {
     let mut d = SwarmDemo::new(20, 640, 480, 2, 1).unwrap();
     assert_eq!(d.advance(0.2), 12);
-    d.set_rate(core::num::NonZeroU32::new(10).unwrap());
+    d.clock().set_rate(core::num::NonZeroU32::new(10).unwrap());
     assert_eq!(d.advance(0.2), 2);
-    d.set_step_cap(core::num::NonZeroU32::new(1));
+    d.clock().set_cap(core::num::NonZeroU32::new(1));
     assert_eq!(d.advance(0.25), 1);
     assert!(d.set_predator(Some((320.0, 240.0))));
     assert_eq!(d.flock().predator(), Some((320.0, 240.0)));

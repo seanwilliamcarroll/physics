@@ -3,7 +3,7 @@
 // nodes and wires the constants.
 
 import { loadSwarm, swarmStepBudget } from "../../js/swarm-wasm.ts";
-import { blit, cellAt, pixelCanvas } from "../../js/pixels.ts";
+import { blit, cellAt, countOtherThan, pixelCanvas } from "../../js/pixels.ts";
 import {
   DEFAULT_RATE_HZ, MAX_AGENTS, MAX_RATE_HZ, SLIME_DECAY, SLIME_DEPOSIT, SLIME_DIFFUSION, SLIME_SENSOR_ANGLE,
   SLIME_SENSOR_OFFSET, SLIME_STEP, SLIME_TURN,
@@ -97,11 +97,7 @@ try {
     for (let i = 0; i < SMOKE_STEPS; i++) steps += s.slime_advance(d, 1 / DEFAULT_RATE_HZ + 1e-9);
     blit(ctx, s.memory, s.slime_render(d), view, view);
     const c = s.slime_concentration(d);
-    const { data } = ctx.getImageData(0, 0, view, view);
-    let px = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] !== BACKGROUND_RGB[0] || data[i + 1] !== BACKGROUND_RGB[1] || data[i + 2] !== BACKGROUND_RGB[2]) px += 1;
-    }
+    const px = countOtherThan(ctx.getImageData(0, 0, view, view).data, BACKGROUND_RGB);
     reportSmoke(Number.isFinite(c) && c > 0.1 ? `ok steps=${steps} particle_px=${px}` : `error concentration ${c}`);
   } else {
     const controls = byId("controls", HTMLElement);

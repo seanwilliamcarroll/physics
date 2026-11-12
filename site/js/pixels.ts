@@ -60,3 +60,15 @@ export function strokeCells(
     Math.round(y0 + ((y1 - y0) * i) / n),
   ]);
 }
+
+/** How many RGBA pixels in `data` (an ImageData's) aren't exactly `rgb`:
+ *  what a pixel page's smoke check reports as drawn (everything that
+ *  isn't background). Alpha is ignored. */
+export function countOtherThan(data: ArrayLike<number>, rgb: ArrayLike<number>): number {
+  const [r, g, b] = [rgb[0], rgb[1], rgb[2]];
+  let count = 0;
+  for (let i = 0; i + 3 < data.length; i += 4) {
+    if (data[i] !== r || data[i + 1] !== g || data[i + 2] !== b) count += 1;
+  }
+  return count;
+}

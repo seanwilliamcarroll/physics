@@ -2,7 +2,7 @@
 // S3). Rust owns the world and draws it; this page paints into it.
 
 import { loadSwarm, swarmStepBudget } from "../../js/swarm-wasm.ts";
-import { blit, cellAt, pixelCanvas, strokeCells } from "../../js/pixels.ts";
+import { blit, cellAt, countOtherThan, pixelCanvas, strokeCells } from "../../js/pixels.ts";
 import { SCENES, WORLD } from "../../js/ant-scenes.ts";
 import {
   ANT_DECAY, ANT_DEPOSIT, ANT_DIFFUSION, ANT_FALLOFF, ANT_SENSOR_ANGLE, ANT_SENSOR_DISTANCE, ANT_TURN,
@@ -83,11 +83,7 @@ try {
     let steps = 0;
     for (let i = 0; i < SMOKE_STEPS; i++) steps += s.ant_advance(d, 1 / DEFAULT_RATE_HZ + 1e-9);
     blit(ctx, s.memory, s.ant_render(d), w, h);
-    const { data } = ctx.getImageData(0, 0, w, h);
-    let px = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] !== BACKGROUND_RGB[0] || data[i + 1] !== BACKGROUND_RGB[1] || data[i + 2] !== BACKGROUND_RGB[2]) px += 1;
-    }
+    const px = countOtherThan(ctx.getImageData(0, 0, w, h).data, BACKGROUND_RGB);
     const food = s.ant_food(d);
     reportSmoke(Number.isFinite(food) && food > 0 ? `ok steps=${steps} particle_px=${px}` : `error no food (${food})`);
   } else {

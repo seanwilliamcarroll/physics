@@ -65,22 +65,10 @@ export const stepBudget = new StepBudget(STEP_BUDGET_MS, MAX_RATE_HZ);
  *  only: drawing isn't in it), and `demo_free` forgetting the demo. The
  *  exports object itself is frozen, so this is a copy. */
 function withStepBudget(exports: EngineExports): EngineExports {
-  const advance = exports.demo_advance;
-  const free = exports.demo_free;
   return {
     ...exports,
-    demo_advance(demo, elapsed) {
-      const cap = stepBudget.cap;
-      exports.demo_set_step_cap(demo, cap);
-      const t0 = performance.now();
-      const steps = advance(demo, elapsed);
-      stepBudget.record(demo, steps, performance.now() - t0, cap);
-      return steps;
-    },
-    demo_free(demo) {
-      stepBudget.forget(demo);
-      free(demo);
-    },
+    demo_advance: stepBudget.budgeted(exports.demo_advance, exports.demo_set_step_cap),
+    demo_free: stepBudget.forgetting(exports.demo_free),
   };
 }
 

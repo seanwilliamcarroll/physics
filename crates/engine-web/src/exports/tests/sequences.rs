@@ -55,23 +55,10 @@ const SMALL_ITERATIONS: u32 = 4;
 /// Codes drawn from 0 up to here: every valid code and some unknown ones.
 const MAX_CODE: u32 = 8;
 
-/// Any `f64` JS could pass, weighted toward the edges.
+/// What a page could pass (`test_support::hostile_f64`), around this
+/// module's usual values.
 fn hostile_f64() -> impl Strategy<Value = f64> {
-    prop_oneof![
-        Just(f64::NAN),
-        Just(f64::INFINITY),
-        Just(f64::NEG_INFINITY),
-        Just(0.0),
-        Just(-0.0),
-        Just(f64::MAX),
-        Just(f64::MIN),
-        Just(f64::MIN_POSITIVE),
-        Just(1e300),
-        Just(-1e-300),
-        -3.0..3.0,
-        -1e6..1e6,
-        any::<f64>(),
-    ]
+    test_support::hostile_f64(-3.0..3.0)
 }
 
 /// A code: the valid ones, unknown ones, and `u32::MAX`.

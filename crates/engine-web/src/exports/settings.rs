@@ -40,12 +40,10 @@ pub(crate) unsafe extern "C" fn demo_set_integrator(d: *mut Demo, code: u32) -> 
 /// `d` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_set_rate(d: *mut Demo, hz: u32) -> u32 {
-    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(rate)) = (unsafe { d.as_mut() }, at_most(hz, abi::MAX_RATE_HZ)) else {
-        return 0;
-    };
-    d.set_rate(rate);
-    1
+    // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
+    unsafe { d.as_mut() }.map_or(0, |d| {
+        u32::from(d.clock().set_rate_hz(hz, abi::MAX_RATE_HZ))
+    })
 }
 
 /// Sets the softening length ε (meters) of a gravity scene, from the next
@@ -207,13 +205,8 @@ pub(crate) unsafe extern "C" fn demo_set_damping(d: *mut Demo, c: f64) -> u32 {
 /// `d` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_set_step_cap(d: *mut Demo, n: u32) -> u32 {
-    // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let Some(d) = (unsafe { d.as_mut() }) else {
-        return 0;
-    };
-    if n > abi::MAX_RATE_HZ {
-        return 0;
-    }
-    d.set_step_cap(NonZeroU32::new(n));
-    1
+    // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
+    unsafe { d.as_mut() }.map_or(0, |d| {
+        u32::from(d.clock().set_cap_steps(n, abi::MAX_RATE_HZ))
+    })
 }
