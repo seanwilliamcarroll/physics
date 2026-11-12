@@ -53,6 +53,12 @@ cargo xtask site
 echo "pre-push: node --test (site JS)"
 node --test 'tests/site/**/*.test.js'
 
+# The website's package (docs/16-site-demos.md): built, packed, and used
+# from a scratch project (types and a run). A few seconds after the site
+# build above.
+echo "pre-push: cargo xtask package"
+cargo xtask package
+
 # Every library crate must compile for wasm, not just `web` (xtask is a
 # host-only CLI; test-support is test tooling whose proptest dependency
 # needs OS randomness, which wasm32-unknown-unknown lacks). `check` skips codegen, so this is fast; the release .wasm

@@ -20,6 +20,7 @@ mod bench;
 mod bench_wasm;
 mod coverage;
 mod mutants;
+mod package;
 mod profile;
 mod serve;
 mod slow;
@@ -60,6 +61,10 @@ struct Cli {
 enum Command {
     /// Compile the site TypeScript and build crates/engine-web and crates/acoustic-web for wasm32 into site/pkg/{engine,acoustic}.wasm
     Site,
+    /// Build the physics-engine npm package for the website into
+    /// target/package/ (engine.wasm, its types, the loader), and check the
+    /// tarball by using it (docs/16-site-demos.md)
+    Package,
     /// Build the site, then serve it with tsc --watch alongside; Ctrl-C stops both
     Serve {
         /// Port to serve on (1-65535)
@@ -175,6 +180,7 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Site => site(&root),
         Command::Serve { port } => serve::serve(&root, port),
         Command::Smoke => smoke::smoke(&root),
+        Command::Package => package::package(&root),
         Command::TestWasm => test_wasm(&root),
         Command::Bench {
             save,
