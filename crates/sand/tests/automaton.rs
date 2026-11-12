@@ -88,48 +88,60 @@ fn water_spreads_at_most_its_dispersion_a_step() {
     }
 }
 
-/// A pour of 3,000 grains at the centre, a grain a step, then settled.
-/// Measured over four grids: the left-right imbalance at most 0.60% of the
-/// mass, the centre of mass within 0.075 cells of the pour; bounds ~5x.
+/// A pour of 3,000 grains at the centre of a `w`-wide grid, a grain a
+/// step, then settled: it must pile symmetrically. Measured over four
+/// grids: the left-right imbalance at most 0.60% of the mass, the centre
+/// of mass within 0.075 cells of the pour; bounds ~5x.
+fn pour_piles_symmetrically(w: usize, seed: u64) {
+    let mut g = floored(w, 120, seed);
+    let c = w / 2;
+    for _ in 0..3000 {
+        if g.get(c, 0) == Some(Material::Empty) {
+            g.set(c, 0, Material::Sand);
+        }
+        g.step();
+    }
+    let mut settle = 0;
+    while g.step() > 0 {
+        settle += 1;
+        assert!(settle < 1000, "w {w}: never settled");
+    }
+    let (mut balance, mut moment, mut total) = (0_i64, 0_i64, 0_i64);
+    for y in 0..120 {
+        for x in 0..w {
+            if g.get(x, y) == Some(Material::Sand) {
+                let d = signed(x) - signed(c);
+                balance += d.signum();
+                moment += d;
+                total += 1;
+            }
+        }
+    }
+    assert_eq!(total, 3000);
+    // Both far below 2^31: exact through i32.
+    let ratio = |n: i64| f64::from(i32::try_from(n).unwrap()) / 3000.0;
+    let (imbalance, offset) = (ratio(balance), ratio(moment));
+    assert!(
+        imbalance.abs() < 0.03,
+        "w {w} seed {seed}: imbalance {imbalance}"
+    );
+    assert!(
+        offset.abs() < 0.4,
+        "w {w} seed {seed}: centre off by {offset}"
+    );
+}
+
+/// One grid on every push (about 5 s); all four in the slow tier.
 #[test]
 fn a_centred_pour_piles_symmetrically_and_settles() {
+    pour_piles_symmetrically(201, 1);
+}
+
+#[test]
+#[ignore = "slow: cargo xtask slow"]
+fn slow_a_centred_pour_piles_symmetrically_on_every_grid() {
     for (w, seed) in [(201, 1), (201, 2), (201, 3), (151, 4)] {
-        let mut g = floored(w, 120, seed);
-        let c = w / 2;
-        for _ in 0..3000 {
-            if g.get(c, 0) == Some(Material::Empty) {
-                g.set(c, 0, Material::Sand);
-            }
-            g.step();
-        }
-        let mut settle = 0;
-        while g.step() > 0 {
-            settle += 1;
-            assert!(settle < 1000, "w {w}: never settled");
-        }
-        let (mut balance, mut moment, mut total) = (0_i64, 0_i64, 0_i64);
-        for y in 0..120 {
-            for x in 0..w {
-                if g.get(x, y) == Some(Material::Sand) {
-                    let d = signed(x) - signed(c);
-                    balance += d.signum();
-                    moment += d;
-                    total += 1;
-                }
-            }
-        }
-        assert_eq!(total, 3000);
-        // Both far below 2^31: exact through i32.
-        let ratio = |n: i64| f64::from(i32::try_from(n).unwrap()) / 3000.0;
-        let (imbalance, offset) = (ratio(balance), ratio(moment));
-        assert!(
-            imbalance.abs() < 0.03,
-            "w {w} seed {seed}: imbalance {imbalance}"
-        );
-        assert!(
-            offset.abs() < 0.4,
-            "w {w} seed {seed}: centre off by {offset}"
-        );
+        pour_piles_symmetrically(w, seed);
     }
 }
 

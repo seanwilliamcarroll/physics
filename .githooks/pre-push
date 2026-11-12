@@ -20,6 +20,17 @@ else
   cargo test --workspace --quiet
 fi
 
+# Unused dependencies (cargo-machete: a text search of each crate for its
+# dependencies' names, under a second). Skipped with a note if it isn't
+# installed. A false positive is silenced in that crate's Cargo.toml
+# ([package.metadata.cargo-machete] ignored = ["name"]).
+if cargo machete --version >/dev/null 2>&1; then
+  echo "pre-push: cargo machete (unused dependencies)"
+  cargo machete
+else
+  echo "pre-push: cargo machete skipped (cargo install --locked cargo-machete)"
+fi
+
 # Site JS unit tests (pure modules only; node's built-in runner, no deps).
 # A glob, not a directory: node --test treats a directory as a module path.
 # Doc comments' intra-doc links ([`Item`]) must resolve: moving items

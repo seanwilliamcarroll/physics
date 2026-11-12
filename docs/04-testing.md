@@ -619,7 +619,8 @@ installed. `cargo test` still works as ever by hand.
 Three tiers (the checklist's §3):
 
 - **Every push (the pre-push hook, ~60 s warm):** every test at its
-  default size (nextest), with property tests at 64 cases; the public API
+  default size (nextest), with property tests at 64 cases; unused
+  dependencies (`cargo machete`, when installed); the public API
   snapshots; doc links; wasm tests (built at `opt-level = 1`: 88 s became
   15 s); smoke. The mutation report on the push's own lines is **opt-in**
   (`MUTANTS=1`): otherwise the hook prints how many there are and the
@@ -634,7 +635,9 @@ Three tiers (the checklist's §3):
     `#[ignore = "slow: …"]`, so plain `cargo test` skips them. The name is
     the filter, so other ignored tests (generators, such as the hammer
     table's) stay out. Today: the integrator orders at 8 halvings, the
-    symplectic orbits over 2 000 orbits, the chain for a minute.
+    symplectic orbits over 2 000 orbits, the chain for a minute, the
+    ants' trails and the evolved constants on every seed, the sand pour
+    on every grid, the ball box at e = 0.5 by impulses.
   - **Built with the `slow` profile:** optimized, with debug assertions
     and overflow checks kept. About 6 minutes in all, most of it the
     synth's property test.
@@ -647,6 +650,16 @@ Three tiers (the checklist's §3):
 
 A new long-running check goes in as a `slow_*` test, with what it
 measured written next to its bound, as every tolerance here is.
+
+**Keeping the push tier quick.** Nextest runs tests in parallel, so the
+suite's time is about its longest test plus the queue behind it. When
+one grows past ~15 s (`slow-timeout` flags it), split it rather than
+drop it: the pattern is one representative case on every push and the
+full sweep as a `slow_*` test (the ants' seeds, the sand pour's grids),
+or, for a property test whose cases are each expensive, fewer cases on
+a push (`test_support::proptest_config_with`; the slow tier still runs
+10 000). The health pass (2026-11-12) did this for the three longest:
+the suite went from 28 s to 22 s, its longest test from 23 s to 13 s.
 
 ## Duplication
 

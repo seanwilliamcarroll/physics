@@ -73,9 +73,17 @@ pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> Wo
 /// e.g. `PROPTEST_CASES=5000 cargo test -p engine --test properties`.
 #[must_use]
 pub fn proptest_config() -> ProptestConfig {
+    proptest_config_with(PROP_DEFAULT_CASES)
+}
+
+/// As [`proptest_config`], with `cases` on an ordinary run: for a property
+/// whose cases are each expensive. `PROPTEST_CASES` still overrides, so
+/// the slow tier runs it at full count.
+#[must_use]
+pub fn proptest_config_with(cases: u32) -> ProptestConfig {
     let mut config = ProptestConfig::default();
     if std::env::var_os("PROPTEST_CASES").is_none() {
-        config.cases = PROP_DEFAULT_CASES;
+        config.cases = cases;
     }
     config
 }
