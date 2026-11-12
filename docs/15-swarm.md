@@ -487,6 +487,89 @@ time, the 0/0 count, and the Fig. 2a sweep run in the browser
 (`vicsek-sweep.ts`, unit-tested: fresh systems per (η, N), one case per
 task, a column of points per η).
 
+## S3: Ant foraging
+
+Status: **Draft** (S3.1). Decisions: TASKS.md, S3.
+
+S1's boids watch each other; S2's particles too. Ants mostly don't:
+they read and write a **shared field**, pheromone on the ground, and
+the colony's behaviour comes through it (stigmergy). A searching ant
+lays a trail that leads home; one carrying food lays a trail that leads
+to the food; each follows the other kind. Trails reinforce where many
+ants walk and fade where few do. S4 (Physarum) is this field machinery
+with one field.
+
+### What's read, and what isn't
+
+Jones (2010), **abstract read**: agents with "simple local behaviors
+based on chemotaxis" sensing and depositing into a field form transport
+networks. The ant papers (Goss et al. 1989, Deneubourg et al. 1990,
+Beckers et al. 1992) and Dorigo et al. (1996) are **cited for their
+known results without having been read**: the publishers' pages and
+the repository copies all need a login. So the double bridge below is
+*our* experiment in the spirit of Goss et al.'s (two routes of unequal
+length between nest and food), not a reproduction of their setup, and
+its result is reported as ours.
+
+### The world
+
+One grid of `W × H` cells (400 × 225 by default, drawn 3 px a cell)
+holds everything that isn't an ant: walls, food (an integer count per
+cell), the nest (a disc of cells), and two `f32` fields, **home** and
+**food**. Ants move continuously, in cell units, each with a heading (a
+unit vector, as S2) and a flag: searching or carrying.
+
+### An ant's step
+
+1. **Sense** the field it follows (searching: food; carrying: home) at
+   three points `SD` cells ahead, at `−SA`, `0` and `+SA` (Jones's
+   arrangement).
+2. **Turn** `RA` toward the strongest (straight on if that's the
+   middle; a random side if both outer ones beat it), plus a small
+   random wiggle.
+3. **Move** `v` cells. A wall or the edge in the way turns it around in
+   place instead.
+4. **Food and nest:** a searching ant on food takes one unit and
+   U-turns; a carrying ant at the nest delivers it (counted) and
+   U-turns.
+5. **Deposit** into the other field (searching into home, carrying into
+   food): `q · e^(−k s)`, with `s` its steps since it last left the nest
+   or the food.
+
+The fall-off is the design choice that matters. With a constant
+deposit, a trail is as strong at one end as the other: following
+"stronger" gives no direction. With the fall-off, a trail is strongest
+near its source, so climbing it leads there. It's a standard device in
+foraging simulations, not something the biology papers prescribe; we
+measure foraging with and without it.
+
+### Deposit, diffuse, decay
+
+Every step, after every ant has sensed (so all read the same field),
+deposits go in serially, in ant order. That's the track's first **write
+contention**: two ants in one cell both add to it. On a CPU, serial and
+in a fixed order, it's simply deterministic (float sums depend on their
+order). A GPU (S4's question) would need atomic adds, whose order isn't
+fixed.
+
+Then **diffusion that conserves mass**: each open cell keeps `1 − D` of
+its value and gives `D`, split equally among its open neighbours (of
+eight); walls and the outside take nothing. A plain 3 × 3 blur loses
+mass at edges and walls; this can't. Then **decay**: everything times
+`1 − E`.
+
+So the field's total obeys `Σ(t+1) = (Σ(t) + deposits) · (1 − E)`, to
+float rounding (measured in `f64` sums). **Food is integers**: in the
+world + carried + delivered = painted, at every step, exactly.
+
+### What's tested
+
+The accountings; diffusion alone conserving mass and spreading
+symmetrically; foraging delivering more than ants with sensing off (a
+random walk), by a measured factor, with and without the fall-off; the
+double bridge, the shorter branch's share of traffic over seeds;
+goldens, native and wasm.
+
 ## References
 
 Papers (DOIs checked on Crossref):
@@ -522,6 +605,23 @@ S2 (read 2026-11-11):
   and dynamic study of the critical behavior of a model for the
   collective displacement of self-driven individuals*, Phys. Rev. E
   78(2), 021125. doi:10.1103/PhysRevE.78.021125 (cited, not yet read).
+
+S3 (DOIs checked on Crossref 2026-11-11; read status as above):
+
+- Goss, S., Aron, S., Deneubourg, J.-L. & Pasteels, J. M. (1989),
+  *Self-organized shortcuts in the Argentine ant*, Naturwissenschaften
+  76(12), 579–581. doi:10.1007/BF00462870 (not read)
+- Deneubourg, J.-L., Aron, S., Goss, S. & Pasteels, J. M. (1990), *The
+  self-organizing exploratory pattern of the Argentine ant*, J. Insect
+  Behav. 3(2), 159–168. doi:10.1007/BF01417909 (not read)
+- Beckers, R., Deneubourg, J.-L. & Goss, S. (1992), *Trails and U-turns
+  in the selection of a path by the ant Lasius niger*, J. Theor. Biol.
+  159(4), 397–415. doi:10.1016/S0022-5193(05)80686-1 (not read)
+- Dorigo, M., Maniezzo, V. & Colorni, A. (1996), *Ant system:
+  optimization by a colony of cooperating agents*, IEEE Trans. Syst.
+  Man Cybern. B 26(1), 29–41. doi:10.1109/3477.484436 (not read;
+  context)
+- Jones, J. (2010), see S1's list above (abstract read).
 
 Secondary (values and practice, not claims):
 

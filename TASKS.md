@@ -300,13 +300,14 @@ good"). N = 10,000 on the node: `vicsek_sweep 10000`.
 
 ---
 
-## 1. The doc (PR)
+## ✅ 1. The doc (PR)
 
-- [ ] Read what can be got of Goss 1989, Deneubourg 1990, Beckers 1992
-      (and Dorigo 1996 for context); note what each shows and how.
-- [ ] `docs/15-swarm.md`, S3: the world, the ant step, the fall-off
-      deposit and why, deposit → diffuse → decay and its accounting, the
-      write contention, the double-bridge plan. `references.md`.
+The ant papers couldn't be read (publishers and the ULB repository copies
+need a login): the doc says so, cites them for their known results only,
+and calls the double bridge ours, in Goss et al.'s spirit. `15-swarm.md`,
+S3: the cell world, the ant step, the fall-off deposit and why,
+deposit → conserving diffusion → decay with its accounting, the write
+contention. `references.md`: the four ant papers.
 
 ## 2. The fields (PR)
 
