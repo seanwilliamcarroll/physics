@@ -62,7 +62,12 @@ accounting holds, and that nutrient nodes get connected.
    the GPU question (`wgpu`, WebGPU-only) is recorded with the numbers,
    not built.
 
-## 1. The doc (PR)
+## ✅ 1. The doc (PR)
+
+`15-swarm.md`, S4: what's read (Jones 2010's abstract, Jenson's
+structure) and not (the papers' text: every value ours), the model
+(periodic, the mean filter as `D = 8/9`, precomputed rotations), what's
+measured (concentration, a map, nodes, cost). `references.md`.
 ## 2. The model (PR): periodic diffusion, agents, accounting, goldens
 ## 3. Measurements (PR): concentration vs a random walk, the map, nodes
 ## 4. Web layer (PR): `slime_*` exports

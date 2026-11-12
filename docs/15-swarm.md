@@ -673,6 +673,60 @@ random walk), by a measured factor, with and without the fall-off; the
 double bridge, the shorter branch's share of traffic over seeds;
 goldens, native and wasm.
 
+## S4: Physarum
+
+Status: **Draft** (S4.1). Decisions: TASKS.md, S4.
+
+Jones's (2010) model of the slime mould *Physarum polycephalum*: many
+agents, one field. Each agent senses the field ahead, turns toward the
+strongest reading, moves, and deposits. The field diffuses and decays.
+Nothing else, and the agents organize the field into networks that
+contract, branch and reconnect. It is S3's ants with one field, no
+nest, no food and no fall-off: the trail an agent follows is the one
+the whole population lays.
+
+### What's read
+
+Jones (2010), **abstract read**: by "adjusting simple model parameters,
+maps of characteristic patterning are obtained", "irregular spots and
+labyrinthine and reticulated patterns" among them. Jones (2011), on
+networks between nutrient sources, and the full 2010 paper: **not
+read** (no access). Jenson's write-up (secondary, read) gives the
+structure: three sensors (FL, F, FR), "a simple 3-by-3 mean filter"
+for diffusion, "a multiplicative decay factor", and notes Jones's "at
+most one particle in each grid square", which Jenson usually omits. It
+gives no parameter values. **So every value here is ours**, starting
+from those commonly reported for Jones's model (SA 22.5°, RA 45°, SO 9,
+SS 1, deposit 5, decay 0.1), not checked against the paper.
+
+### The model
+
+- A periodic square field of `L × L` cells (512 by default). The **mean
+  filter** is S3's conserving diffusion at `D = 8/9` (each cell keeps a
+  ninth and gives a ninth to each of its eight neighbours), now
+  periodic: nothing to lose at edges, so it conserves exactly in reals.
+- An agent: position, heading. Each step: sense at `SO` ahead at `−SA`,
+  `0`, `+SA`; turn by `RA` toward the strongest (straight if the middle
+  is; a random side if both outer beat it); move `SS`, wrapping; deposit
+  `dep` at its cell. Every agent senses the field as it was; deposits go
+  in after (S3's order); then the mean filter, then decay.
+- The rotations by `±SA` and `±RA` are fixed, so their sines and cosines
+  are computed once (`libm`): no trig in the step.
+- No one-agent-per-cell exclusion (Jenson's choice).
+
+### What's measured
+
+- **Concentration**: the share of the field's mass in its top 10% of
+  cells. A uniform field gives 0.1; a network, far more. Sensing against
+  agents that don't sense (a random walk, the same deposits).
+- **A parameter map**: concentration over a small grid of SA × RA,
+  Jones's "maps of characteristic patterning" in miniature.
+- **Nodes**: fixed sources depositing every step (Jones 2011's nutrient
+  sources): the field along the straight lines between them against the
+  field away from them.
+- **Cost**: the agent step and the diffusion, native and in V8, at 100k
+  agents and 512². The GPU question is recorded with these numbers.
+
 ## References
 
 Papers (DOIs checked on Crossref):
@@ -725,6 +779,15 @@ S3 (DOIs checked on Crossref 2026-11-11; read status as above):
   Man Cybern. B 26(1), 29–41. doi:10.1109/3477.484436 (not read;
   context)
 - Jones, J. (2010), see S1's list above (abstract read).
+
+S4:
+
+- Jones, J. (2011; online 2010), *Influences on the formation and
+  evolution of Physarum polycephalum inspired emergent transport
+  networks*, Natural Computing 10(4), 1345–1369.
+  doi:10.1007/s11047-010-9223-z (not read)
+- Jenson, S., *physarum*, https://cargocollective.com/sagejenson/physarum
+  (secondary; read 2026-11-11: structure, no values).
 
 Secondary (values and practice, not claims):
 
