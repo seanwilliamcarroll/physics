@@ -562,6 +562,19 @@ So the field's total obeys `Σ(t+1) = (Σ(t) + deposits) · (1 − E)`, to
 float rounding (measured in `f64` sums). **Food is integers**: in the
 world + carried + delivered = painted, at every step, exactly.
 
+### The field as built (S3.2, `swarm::Field`)
+
+A `width × height` grid of `f32` (up to 2²² cells): `deposit`,
+`diffuse(open, D)` (conserving: each open cell keeps `v − give` and
+passes `give / k` to each of its `k` open neighbours; no open neighbour,
+it keeps all), `decay(E)`, `total` in `f64`. Measured
+(`tests/field.rs`; 120 × 80 with a fifth walls, 200 deposits a step,
+2,000 steps): diffusion changes the total by at most **3.3e-9**
+(relative) a step, decay matches `1 − E` to 2.9e-8, walls stay empty; a
+centred deposit stays mirror- and diagonal-symmetric to 2.0e-7 of the
+centre after 60 diffusions (the sweep adds into cells in different
+orders: f32 rounding, not a bias).
+
 ### What's tested
 
 The accountings; diffusion alone conserving mass and spreading
