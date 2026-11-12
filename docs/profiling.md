@@ -129,3 +129,14 @@ cell reads its neighbours, as `diffuse_periodic` does, at a quarter of
 the cost per cell) would be faster again but adds in a different order,
 so every ant result would shift in its last bits and the evolved
 constants would need re-scoring; not done.
+
+**Physarum's wraps: 3.40 → 2.54 ms a step (−25%).** `Slime::cell`
+wrapped each coordinate with `rem_euclid`, which is a call to `fmod`,
+four lookups an agent (three sensors and the deposit), and the position
+wrap two more. A sensor or a step lands at most one world-width outside,
+where wrapping is one add or subtract: `wrap_cell` and `wrap_position`
+take that path and keep `rem_euclid` for anything further. Exactly the
+same values (tested against the general form at every branch boundary).
+What's left is mostly the sensors' reads, three random accesses into a
+1 MB field per agent: sorting agents by cell would make them local, at
+the cost of the agents' order (and so the random stream's); not done.

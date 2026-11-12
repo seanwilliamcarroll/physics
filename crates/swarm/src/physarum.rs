@@ -62,6 +62,45 @@ impl SlimeParams {
     }
 }
 
+/// The cell index (along one axis of `side` cells) holding coordinate `v`,
+/// wrapped: `floor(v) mod side`. A sensor or a step reaches at most one
+/// world-width outside in practice, where the wrap is one add; anything
+/// further takes the general `rem_euclid` (an `fmod` call: with it on
+/// every lookup, 40% of a step; `docs/profiling.md`). The same integer
+/// either way: these are whole numbers in `f64`, so the add is exact.
+fn wrap_cell(v: f32, side: usize) -> usize {
+    let (f, l) = (f64::from(v.floor()), usize_to_f64(side));
+    let c = if (0.0..l).contains(&f) {
+        f
+    } else if (-l..0.0).contains(&f) {
+        f + l
+    } else if (l..2.0 * l).contains(&f) {
+        f - l
+    } else {
+        f.rem_euclid(l)
+    };
+    f64_to_usize(c).unwrap_or(0).min(side - 1)
+}
+
+/// Position `v` wrapped into `[0, l)`: `v.rem_euclid(l)`, and exactly
+/// what it returns (`fmod` is exact; `v − l` is exact for `v` in
+/// `[l, 2l)`; below zero `rem_euclid` itself adds `l`), without the call
+/// when `v` is within one `l` outside. A sum that rounds up to `l`
+/// becomes 0.
+fn wrap_position(v: f32, l: f32) -> f32 {
+    let w = if (0.0..l).contains(&v) {
+        v
+    } else if v > -l && v < 0.0 {
+        // Not −l itself: `rem_euclid` gives −0 there, and this would +0.
+        v + l
+    } else if (l..2.0 * l).contains(&v) {
+        v - l
+    } else {
+        v.rem_euclid(l)
+    };
+    if w >= l { 0.0 } else { w }
+}
+
 /// A Physarum system on a periodic `side × side` field.
 #[derive(Clone, Debug)]
 pub struct Slime {
@@ -130,11 +169,7 @@ impl Slime {
     /// The cell holding `(x, y)`, wrapped into the field.
     fn cell(&self, x: f32, y: f32) -> usize {
         let l = self.side;
-        let wrap = |v: f32| {
-            let c = f64_to_usize(f64::from(v.floor()).rem_euclid(usize_to_f64(l))).unwrap_or(0);
-            c.min(l - 1)
-        };
-        wrap(y) * l + wrap(x)
+        wrap_cell(y, l) * l + wrap_cell(x, l)
     }
 
     /// One step: every agent senses (the field as it was), turns, moves,
@@ -183,11 +218,10 @@ impl Slime {
                 1 => (c * ra_c - s * ra_s, s * ra_c + c * ra_s),
                 _ => (c, s),
             };
-            let wrap = |v: f32| {
-                let w = v.rem_euclid(l);
-                if w >= l { 0.0 } else { w }
-            };
-            let (nx, ny) = (wrap(x + p.step * nc), wrap(y + p.step * ns));
+            let (nx, ny) = (
+                wrap_position(x + p.step * nc, l),
+                wrap_position(y + p.step * ns, l),
+            );
             let at = self.cell(nx, ny);
             self.deposits.push((at, p.deposit));
             if let (Some(xs), Some(ys), Some(cs), Some(ss)) = (
