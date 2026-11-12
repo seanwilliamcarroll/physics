@@ -5,3 +5,11 @@
 # Flag a test past 15 s; stop one at 2 min (8 periods): a hung test fails
 # the run instead of stalling a push.
 slow-timeout = { period = "15s", terminate-after = 8 }
+
+# `cargo xtask slow` (`--profile slow`): the same flag at a minute, but a
+# test is stopped only after an hour. The slow tier's tests are long on
+# purpose: acoustic-web's export sequences at 10 000 cases take about 20
+# minutes, and under the default profile's 2 minutes the tier could never
+# pass (found on the first run after nextest was adopted).
+[profile.slow]
+slow-timeout = { period = "60s", terminate-after = 60 }

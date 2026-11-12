@@ -639,8 +639,13 @@ Three tiers (the checklist's §3):
     ants' trails and the evolved constants on every seed, the sand pour
     on every grid, the ball box at e = 0.5 by impulses.
   - **Built with the `slow` profile:** optimized, with debug assertions
-    and overflow checks kept. About 6 minutes in all, most of it the
-    synth's property test.
+    and overflow checks kept, and run under nextest's `slow` profile
+    (`.config/nextest.toml`): a test is stopped after an hour, not the
+    2 minutes that protect a push. Under the default the tier could not
+    pass: the synth's export-sequence property test at 10 000 cases
+    takes about 20 minutes (0.13 s a case on Apple silicon), and was
+    killed at 2. Expect about 25 minutes in all, nearly all of it that
+    test; `--cases 2000` is a 5-minute version.
   - **Its first run found a bug:** a strike refused for its velocity
     silenced the ringing key first. The ABI property test needed 10 000
     cases to draw the sequence (a strike, then a refused restrike of the
