@@ -31,25 +31,42 @@ fn barriers(p: AntParams, seed: u64) -> u64 {
     c.delivered()
 }
 
-/// Measured over held-out seeds 1000–1007 (`examples/evolve_ants.rs`):
-/// training scene, defaults 1,392–1,813 and evolved 5,370–5,420; barriers,
-/// defaults 282–543 and evolved 3,957–4,015. Pinned on two of them:
-/// evolved above twice the defaults' best (training) and five times
-/// (barriers).
-#[test]
-fn the_evolved_setting_generalizes() {
+/// Over held-out `seeds`: evolved above twice the defaults' best in the
+/// training scene, five times in the barriers scene.
+fn generalizes(seeds: core::ops::Range<u64>) {
     for (name, scene, factor) in [
         ("training", training as fn(AntParams, u64) -> u64, 2),
         ("barriers", barriers, 5),
     ] {
-        let d: Vec<u64> = (1000..1002).map(|s| scene(AntParams::DEFAULT, s)).collect();
-        let e: Vec<u64> = (1000..1002).map(|s| scene(AntParams::EVOLVED, s)).collect();
+        let d: Vec<u64> = seeds
+            .clone()
+            .map(|s| scene(AntParams::DEFAULT, s))
+            .collect();
+        let e: Vec<u64> = seeds
+            .clone()
+            .map(|s| scene(AntParams::EVOLVED, s))
+            .collect();
         let best_default = *d.iter().max().unwrap();
         assert!(
             e.iter().all(|&x| x > factor * best_default),
             "{name}: defaults {d:?}, evolved {e:?}"
         );
     }
+}
+
+/// Measured over held-out seeds 1000–1007 (`examples/evolve_ants.rs`):
+/// training scene, defaults 1,392–1,813 and evolved 5,370–5,420; barriers,
+/// defaults 282–543 and evolved 3,957–4,015. Every push runs seed 1000;
+/// all eight in `cargo xtask slow`.
+#[test]
+fn the_evolved_setting_generalizes() {
+    generalizes(1000..1001);
+}
+
+#[test]
+#[ignore = "slow: cargo xtask slow"]
+fn slow_the_evolved_setting_generalizes_on_every_held_out_seed() {
+    generalizes(1000..1008);
 }
 
 #[test]
