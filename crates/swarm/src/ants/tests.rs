@@ -137,3 +137,15 @@ fn painting_far_outside_the_world_paints_nothing_and_returns() {
     // A huge radius is clipped to the world.
     assert_eq!(c.paint_food(30.0, 20.0, 1e30, 1), 60 * 40);
 }
+
+#[test]
+fn before_the_first_step_the_ants_move_with_the_nest() {
+    let mut c = Colony::new(60, 40, 5, (10.0, 10.0, 2.0), AntParams::DEFAULT, 1).unwrap();
+    assert!(c.set_nest(40.0, 30.0, 3.0));
+    assert!(c.ants().all(|a| (a.x, a.y) == (40.0, 30.0)));
+    c.step();
+    let before: Vec<(f32, f32)> = c.ants().map(|a| (a.x, a.y)).collect();
+    assert!(c.set_nest(5.0, 5.0, 2.0));
+    let after: Vec<(f32, f32)> = c.ants().map(|a| (a.x, a.y)).collect();
+    assert_eq!(before, after, "after the first step they stay");
+}

@@ -299,7 +299,9 @@ impl Colony {
     }
 
     /// Moves the nest; `false` (unchanged) for a centre outside the world
-    /// or a radius not positive.
+    /// or a radius not positive. **Before the first step the ants move with
+    /// it** (they start at the nest: a scene places it after creating the
+    /// colony); after, they stay where they are.
     pub fn set_nest(&mut self, x: f32, y: f32, radius: f32) -> bool {
         let w = f64::from(u32::try_from(self.width).unwrap_or(u32::MAX));
         let h = f64::from(u32::try_from(self.height).unwrap_or(u32::MAX));
@@ -313,6 +315,11 @@ impl Colony {
             && f64::from(y) < h;
         if ok {
             self.nest = (x, y, radius);
+            if self.steps == 0 {
+                for a in &mut self.ants {
+                    (a.x, a.y) = (x, y);
+                }
+            }
         }
         ok
     }

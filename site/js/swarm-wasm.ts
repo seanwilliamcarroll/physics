@@ -22,6 +22,7 @@ export async function loadSwarm(url: URL | string = SWARM_URL): Promise<SwarmExp
   const exports = (await instantiateWithPanicHook(url, "swarm.wasm")) as unknown as SwarmExports;
   const { swarm_advance: advance, swarm_free: free } = exports;
   const { vicsek_advance: vAdvance, vicsek_free: vFree } = exports;
+  const { ant_advance: aAdvance, ant_free: aFree } = exports;
   return {
     ...exports,
     vicsek_advance(d, elapsed) {
@@ -35,6 +36,18 @@ export async function loadSwarm(url: URL | string = SWARM_URL): Promise<SwarmExp
     vicsek_free(d) {
       swarmStepBudget.forget(d);
       vFree(d);
+    },
+    ant_advance(d, elapsed) {
+      const cap = swarmStepBudget.cap;
+      exports.ant_set_step_cap(d, cap);
+      const t0 = performance.now();
+      const steps = aAdvance(d, elapsed);
+      swarmStepBudget.record(d, steps, performance.now() - t0, cap);
+      return steps;
+    },
+    ant_free(d) {
+      swarmStepBudget.forget(d);
+      aFree(d);
     },
     swarm_advance(d, elapsed) {
       const cap = swarmStepBudget.cap;
