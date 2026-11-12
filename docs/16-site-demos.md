@@ -99,6 +99,30 @@ installing a package from a release tarball URL pinned in
   `public/` in a build step, with the version in its path. Less tidy,
   still workable.
 
+**Result (2026-11-13): yes.** In a scratch copy of the site (Astro
+7, nothing committed), with a hand-made package of today's
+`engine.wasm`, `engine.d.ts` and a stand-in loader, packed with `npm
+pack` and served from a local HTTP server:
+
+- `npm install http://…/physics-engine-0.0.1-v2check.tgz` wrote the URL
+  into `package.json` and the URL plus a `sha512` integrity into
+  `package-lock.json`; a clean `npm ci` then installed it from the
+  lock file.
+- A page whose `<script>` does `import wasmUrl from
+  "physics-engine/engine.wasm?url"` built to
+  `dist/_astro/engine.CpN_iahK.wasm`: content-hashed, and byte for byte
+  the file that went in.
+- `astro check` passed with the package's types (0 errors), and the
+  `?url` import needed no declaration of ours.
+- Under `astro preview`, headless Chrome ran the fountain 60 steps
+  through the package (600 floats, apex 7.0 m), and the preview served
+  the file as `application/wasm`.
+
+So the package needs an `exports` entry for the wasm
+(`"./engine.wasm": "./engine.wasm"`), and nothing else special. Not
+tried: that `npm ci` refuses a tarball whose bytes changed (npm's
+documented behavior, not exercised here).
+
 ### V3. Which Node version does Amplify build with?
 
 The site has no `.nvmrc`; Amplify uses whatever its build image
