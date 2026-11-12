@@ -174,6 +174,16 @@ optimization by a colony of cooperating agents.* IEEE Trans. SMC-B
 graphs (context for S3). Not yet read.
 - DOI: https://doi.org/10.1109/3477.484436
 
+**Jones, J. (2011; online 2010).** *Influences on the formation and
+evolution of Physarum polycephalum inspired emergent transport
+networks.* Natural Computing 10(4), 1345–1369. Networks between nutrient
+sources (S4's nodes). Not read.
+- DOI: https://doi.org/10.1007/s11047-010-9223-z
+
+*Secondary:* Jenson, S., *physarum*
+(https://cargocollective.com/sagejenson/physarum): the agent step's
+structure, the 3 × 3 mean filter, multiplicative decay; no values.
+
 **Allen, M. P. & Tildesley, D. J. (2017).** *Computer Simulation of
 Liquids*, 2nd ed. Oxford University Press. Cell lists for fixed-radius
 neighbours: S1's grid.
