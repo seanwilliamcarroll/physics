@@ -309,10 +309,11 @@ S3: the cell world, the ant step, the fall-off deposit and why,
 deposit → conserving diffusion → decay with its accounting, the write
 contention. `references.md`: the four ant papers.
 
-## 2. The fields (PR)
+## ✅ 2. The fields (PR)
 
-- [ ] A field grid with walls: deposit, conserving diffusion, decay;
-      accounting tests (diffusion alone; the full step), symmetry.
+`swarm::Field`: deposit, conserving diffusion around walls, decay, an
+`f64` total. Measured: diffusion conserves to 3.3e-9 a step, decay to
+2.9e-8, walls stay empty, a centred spread symmetric to 2.0e-7.
 
 ## 3. The ants (PR)
 

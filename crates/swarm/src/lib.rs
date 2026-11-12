@@ -6,12 +6,14 @@
 //! speed, align with the neighbourhood, add noise, in a periodic box.
 //! `f32` throughout.
 
+mod field;
 mod flock;
 mod grid;
 mod params;
 mod rules;
 mod vicsek;
 
+pub use field::{Field, MAX_CELLS};
 pub use flock::{Boid, Flock, MAX_BOIDS, Neighbours};
 pub use params::{Arena, Params};
 pub use rules::{FLEE, PREDATOR_RANGE};

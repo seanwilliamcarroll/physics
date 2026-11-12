@@ -13,6 +13,18 @@ pub swarm::Boid::vx: f32
 pub swarm::Boid::vy: f32
 pub swarm::Boid::x: f32
 pub swarm::Boid::y: f32
+pub struct swarm::Field
+impl swarm::Field
+pub fn swarm::Field::clear(&mut self)
+pub fn swarm::Field::decay(&mut self, f32)
+pub fn swarm::Field::deposit(&mut self, usize, usize, f32) -> bool
+pub fn swarm::Field::diffuse(&mut self, &[bool], f32)
+pub fn swarm::Field::get(&self, usize, usize) -> core::option::Option<f32>
+pub const fn swarm::Field::height(&self) -> usize
+pub fn swarm::Field::new(usize, usize) -> core::option::Option<Self>
+pub fn swarm::Field::total(&self) -> f64
+pub fn swarm::Field::values(&self) -> &[f32]
+pub const fn swarm::Field::width(&self) -> usize
 pub struct swarm::Flock
 impl swarm::Flock
 pub const fn swarm::Flock::arena(&self) -> swarm::Arena
@@ -77,5 +89,6 @@ pub fn swarm::VicsekParams::checked(self) -> core::option::Option<Self>
 pub const fn swarm::VicsekParams::paper(f32) -> Self
 pub const swarm::FLEE: f32
 pub const swarm::MAX_BOIDS: usize
+pub const swarm::MAX_CELLS: usize
 pub const swarm::MAX_PARTICLES: usize
 pub const swarm::PREDATOR_RANGE: f32
