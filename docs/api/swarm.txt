@@ -62,6 +62,15 @@ pub const fn swarm::Colony::size(&self) -> (usize, usize)
 pub fn swarm::Colony::state_bytes(&self) -> alloc::vec::Vec<u8>
 pub fn swarm::Colony::step(&mut self)
 pub const fn swarm::Colony::steps(&self) -> u64
+pub struct swarm::Evolve
+pub swarm::Evolve::elites: usize
+pub swarm::Evolve::generations: u32
+pub swarm::Evolve::population: usize
+pub swarm::Evolve::seed: u64
+pub swarm::Evolve::seeds: usize
+pub swarm::Evolve::sigma: (f64, f64)
+pub swarm::Evolve::threads: usize
+pub swarm::Evolve::tournament: usize
 pub struct swarm::Field
 impl swarm::Field
 pub fn swarm::Field::clear(&mut self)
@@ -96,6 +105,13 @@ pub fn swarm::Flock::state_bytes(&self) -> impl core::iter::traits::iterator::It
 pub fn swarm::Flock::step(&mut self)
 pub const fn swarm::Flock::steps(&self) -> u64
 pub fn swarm::Flock::with_boids(swarm::Arena, swarm::Params, impl core::iter::traits::collect::IntoIterator<Item = swarm::Boid>) -> core::option::Option<Self>
+pub struct swarm::Gene
+pub swarm::Gene::hi: f64
+pub swarm::Gene::lo: f64
+pub struct swarm::Generation
+pub swarm::Generation::best: f64
+pub swarm::Generation::best_genome: alloc::vec::Vec<f64>
+pub swarm::Generation::mean: f64
 pub struct swarm::Params
 pub swarm::Params::avoid: f32
 pub swarm::Params::centering: f32
@@ -175,3 +191,5 @@ pub const swarm::MAX_BOIDS: usize
 pub const swarm::MAX_CELLS: usize
 pub const swarm::MAX_PARTICLES: usize
 pub const swarm::PREDATOR_RANGE: f32
+pub fn swarm::evolve<F>(&[swarm::Gene], &swarm::Evolve, core::option::Option<&[f64]>, F) -> alloc::vec::Vec<swarm::Generation> where F: core::ops::function::Fn(&[f64], &[u64]) -> f64 + core::marker::Sync
+pub fn swarm::mean_over(&[u64], impl core::ops::function::Fn(u64) -> f64) -> f64

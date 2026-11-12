@@ -7,6 +7,7 @@
 //! `f32` throughout.
 
 mod ants;
+mod evolve;
 mod field;
 mod flock;
 mod grid;
@@ -16,6 +17,7 @@ mod rules;
 mod vicsek;
 
 pub use ants::{Ant, AntParams, Colony, MAX_ANTS, Pheromone};
+pub use evolve::{Evolve, Gene, Generation, evolve, mean_over};
 pub use field::{Field, MAX_CELLS};
 pub use flock::{Boid, Flock, MAX_BOIDS, Neighbours};
 pub use params::{Arena, Params};
