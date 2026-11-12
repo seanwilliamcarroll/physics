@@ -888,6 +888,17 @@ Kept as `AntParams::EVOLVED`; pinned (`tests/evolved.rs`, two held-out
 seeds): above twice the defaults' best in training, five times in the
 barriers scene.
 
+### The page (S5.4, `site/demos/s5-evolve`)
+
+Two colonies side by side through S3's `ant_*` exports, the same scene,
+seed and 500 ants: the defaults, and the evolved constants set with
+`ant_set_param`. Scenes: training (added to `ant-scenes.ts`: S3's tests'
+scene), barriers, open, the bridge; seeds from 1000 (held out). The
+evolution's best and mean by generation, and the held-out numbers, from
+`site/js/ant-evolution.ts`. Already at 30 steps they differ: the
+defaults' ants a ragged cloud, the evolved ones (almost no wiggle) a
+clean expanding ring.
+
 ### The genome
 
 S3's seven tunable constants, each in a range: SA and RA 0–90°, SD 1–30

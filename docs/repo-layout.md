@@ -99,6 +99,7 @@ physics/
     │   ├── swarm-cost.ts   # S1: the world for n boids, the cost table (pure)
     │   ├── vicsek-sweep.ts # S2: Fig. 2a's sizes, the η grid, the sweep's cases (pure)
     │   ├── ant-scenes.ts   # S3: the ants page's scenes, drawn with the paint tools (pure)
+    │   ├── ant-evolution.ts # S5: the native evolution's history and result (data)
     │   ├── pixels.ts       # RGBA buffer → ImageData → canvas; CSS point → cell; strokes
     │   ├── loop.ts         # rAF loop → demo_advance
     │   ├── canvas.ts       # world↔screen, high-DPI, batched drawing (points, links, disks, grid)
@@ -135,6 +136,7 @@ physics/
     │   ├── s2-vicsek/
     │   ├── s3-ants/
     │   ├── s4-physarum/
+    │   ├── s5-evolve/
     │   ├── a1-string/
     │   ├── a2-waveguide/
     │   └── a3-piano/

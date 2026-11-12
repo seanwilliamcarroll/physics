@@ -207,3 +207,10 @@ main.wide {
   margin: 0 auto;
   cursor: crosshair;
 }
+
+/* S5: two worlds side by side. */
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
