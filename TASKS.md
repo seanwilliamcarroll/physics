@@ -74,7 +74,14 @@ measured (concentration, a map, nodes, cost). `references.md`.
 `top_share`; `swarm::Slime` (sense, turn, move, deposit; nodes; sensing
 off as the baseline). The field balances to 2.8e-8 a step. A golden,
 same on wasm.
-## 3. Measurements (PR): concentration vs a random walk, the map, nodes
+## ✅ 3. Measurements (PR)
+
+Sensing concentrates the field (top 10%: 0.97 against a random walk's
+0.13). **The network contracts into one straight band wrapping the
+torus** (0.76–0.81 at 250 steps, 0.97 by 1,500). A 4 × 3 SA × RA map
+(0.72–1.00). **Nodes linked in some seeds** (strong nodes: 3.9 and 4.2×
+in two seeds, 0.08 in the third, whose band wraps elsewhere). Native:
+100k agents on 512², 3.55 ms a step.
 ## 4. Web layer (PR): `slime_*` exports
 ## 5. The page (PR): `s4-physarum`
 ## 6. Cleanup (PR)

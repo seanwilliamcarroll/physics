@@ -726,6 +726,44 @@ sensing on or off). Measured: the field balances to **2.8e-8** a step
 over 1,000 steps with 5,000 agents and a node; agents never leave the
 field. A golden, the same on wasm32 with and without `simd128`.
 
+### Measured (S4.3, `tests/slime_measure.rs`)
+
+128² field, 6,000 agents (37% occupancy), the default values:
+
+- **Sensing concentrates the field**: the top 10% of cells hold 0.968–
+  0.969 of the mass at 1,000 steps; agents that don't sense (same
+  deposits) 0.127–0.131 (a uniform field: 0.1).
+- **The network contracts**, then collapses. At ~200 steps the field is
+  a web of curved strands (concentration 0.76–0.81 at 250); by 1,500 it
+  is **one straight band wrapping the periodic world** (0.97): every
+  loop of the web shortens, and on a torus the loop that can't shrink is
+  a straight line around it. Jones's abstract names "the circular
+  contraction of network lacunae"; whether his runs end in a band we
+  can't say (his text unread, and his agents exclude each other per
+  cell, ours don't).
+- **The parameters change the pattern** (concentration at 1,500 steps):
+
+  | SA \ RA | 22.5° | 45° | 90° |
+  |---|---|---|---|
+  | 11.25° | 0.972 | 0.966 | 0.835 |
+  | 22.5° | 0.913 | 0.968 | 0.804 |
+  | 45° | 0.780 | 0.721 | 0.960 |
+  | 90° | 0.987 | 0.745 | 1.000 |
+
+  SA 45°, RA 45° stays spread where the default collapses to a band.
+- **Nodes are linked, in some seeds.** Three nodes depositing 1,000 a
+  step, 1,000 agents, 2,000 steps: the field on the straight lines
+  between them (away from the nodes) is 3.91 and 4.18 times its mean
+  elsewhere for seeds 1 and 3, but 0.08 for seed 2, whose band wraps the
+  torus elsewhere; a random walk 0.64. Weaker nodes (100) or more agents
+  (3,000–6,000) connect less or not at all: a band fed by the agents
+  outcompetes the nodes. A guess at the difference from Jones (2011,
+  not read): agents placed at the nodes, and no wrap-around band to
+  compete with. Pinned as measured.
+- **Cost** (native, `examples/timing.rs`): 512² and 100k agents, 3.55 ms
+  a step; the field alone (diffusion and decay) 0.47 ms. The agents'
+  ~31 ns each are mostly three scattered reads of the field.
+
 ### What's measured
 
 - **Concentration**: the share of the field's mass in its top 10% of
