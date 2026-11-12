@@ -46,6 +46,10 @@ cargo xtask api --check
 echo "pre-push: cargo doc (links checked)"
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
 
+# The loader's tests run the real engine.wasm (tests/site/engine-loader.test.js),
+# so the site is built first; the smoke test below then finds it built.
+echo "pre-push: cargo xtask site"
+cargo xtask site
 echo "pre-push: node --test (site JS)"
 node --test 'tests/site/**/*.test.js'
 

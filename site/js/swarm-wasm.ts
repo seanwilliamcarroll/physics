@@ -3,7 +3,7 @@
 
 import { MAX_RATE_HZ } from "./swarm-abi.ts";
 import { STEP_BUDGET_MS, StepBudget } from "./loop.ts";
-import { instantiateWithPanicHook } from "./wasm.ts";
+import { instantiate } from "./engine-loader.ts";
 import type { SwarmExports } from "./swarm";
 
 const SWARM_URL = new URL("../pkg/swarm.wasm", import.meta.url);
@@ -19,7 +19,7 @@ export const swarmStepBudget = new StepBudget(STEP_BUDGET_MS, MAX_RATE_HZ);
 export async function loadSwarm(url: URL | string = SWARM_URL): Promise<SwarmExports> {
   // Unchecked, as in loadEngine: swarm.d.ts asserts the shape (and `cargo
   // xtask site` checks it against the export table).
-  const exports = (await instantiateWithPanicHook(url, "swarm.wasm")) as unknown as SwarmExports;
+  const exports = (await instantiate(url, "swarm.wasm")).exports as unknown as SwarmExports;
   const b = swarmStepBudget;
   return {
     ...exports,

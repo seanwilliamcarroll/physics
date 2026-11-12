@@ -93,7 +93,8 @@ physics/
     ├── index.html          # demo gallery
     ├── css/site.css
     ├── js/                 # TypeScript library; tsc emits .js beside it (gitignored)
-    │   ├── wasm.ts         # load + instantiate engine.wasm (the panic hook, shared)
+    │   ├── engine-loader.ts # instantiate a module (the panic hook, streaming with a fallback); no page state
+    │   ├── wasm.ts         # the lab pages' engine: the loader, the step budget, buffer views
     │   ├── sand-wasm.ts    # M9: load sand.wasm, its step budget
     │   ├── sand-abi.ts     # M9: material codes, caps (mirrors sand-web abi.rs)
     │   ├── sand.d.ts       # M9: types for sand.wasm's exports

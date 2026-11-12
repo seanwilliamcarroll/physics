@@ -223,8 +223,12 @@ C1–C4); it doesn't block anything here.
 Refactor only: every lab page behaves as before.
 
 - **Touches:** new `site/js/engine-loader.ts`; `site/js/wasm.ts`,
-  `sand-wasm.ts`, `swarm-wasm.ts`, `synth-live.ts` (thinner);
-  `tests/site/engine-loader.test.js`; `docs/03-wasm-shell.md`.
+  `sand-wasm.ts`, `swarm-wasm.ts` (thinner);
+  `tests/site/engine-loader.test.js`; `.githooks/pre-push` (the site
+  is built before the JS tests, which now need the wasm);
+  `docs/03-wasm-shell.md`. Not `synth-live.ts`: the acoustic module is
+  compiled on the page and instantiated inside the audio worklet, a
+  different path, to be packaged when a post wants sound.
 - **The loader:** `instantiate(source, name)` returns the typed
   exports, the memory, and a function reading the last panic. It keeps
   **no module-level state**: today `wasm.ts` holds `memory` and

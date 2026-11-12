@@ -3,7 +3,7 @@
 
 import { MAX_RATE_HZ } from "./sand-abi.ts";
 import { STEP_BUDGET_MS, StepBudget } from "./loop.ts";
-import { instantiateWithPanicHook } from "./wasm.ts";
+import { instantiate } from "./engine-loader.ts";
 import type { SandExports } from "./sand";
 
 const SAND_URL = new URL("../pkg/sand.wasm", import.meta.url);
@@ -18,7 +18,7 @@ export const sandStepBudget = new StepBudget(STEP_BUDGET_MS, MAX_RATE_HZ);
 export async function loadSand(url: URL | string = SAND_URL): Promise<SandExports> {
   // Unchecked, as in loadEngine: sand.d.ts asserts the shape (and `cargo
   // xtask site` checks it against the export table).
-  const exports = (await instantiateWithPanicHook(url, "sand.wasm")) as unknown as SandExports;
+  const exports = (await instantiate(url, "sand.wasm")).exports as unknown as SandExports;
   return {
     ...exports,
     sand_advance: sandStepBudget.budgeted(exports.sand_advance, exports.sand_set_step_cap),
