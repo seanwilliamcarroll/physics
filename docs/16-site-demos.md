@@ -101,7 +101,7 @@ installing a package from a release tarball URL pinned in
 
 Each is small enough to review in one sitting. P is this repo, S is the
 site. The order within a repo is the merge order; the two columns only
-meet at S3.
+meet at S4.
 
 ### physics
 
