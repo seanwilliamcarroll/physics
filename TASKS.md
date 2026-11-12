@@ -1,51 +1,77 @@
-# TASKS — S3: Ant foraging
+# TASKS — S4: Physarum
 
-Source: `docs/05-roadmap.md` ("Swarm track", S3), `docs/15-swarm.md`
-(S1–S2: the crate, the grid, the page machinery). S4 (Physarum) builds
-on this section's fields.
+Source: `docs/05-roadmap.md` ("Swarm track", S4), `docs/15-swarm.md`
+(S3's `Field`, which this reuses).
 
-**Papers** (DOIs checked on Crossref, 2026-11-11). Read and not read are
-marked: the publishers' pages refused automated reading, so section 1
-starts by reading what can be got (your library access would help).
+**Sources:**
 - Jones (2010), *Characteristics of pattern formation and evolution in
-  approximations of Physarum transport networks*, Artificial Life
-  16(2), 127–153. doi:10.1162/artl.2010.16.2.16202 — **abstract read**:
-  agents sensing a chemoattractant field and depositing into it
-  ("simple local behaviors based on chemotaxis"). The sensing scheme
-  (three sensors ahead, turn toward the strongest) S3's ants use; S4's
-  own model.
-- Goss, Aron, Deneubourg & Pasteels (1989), *Self-organized shortcuts in
-  the Argentine ant*, Naturwissenschaften 76(12), 579–581.
-  doi:10.1007/BF00462870 — not yet read; cited for the double-bridge
-  experiment (a colony converging on the shorter of two routes), S3's
-  quantitative target.
-- Deneubourg, Aron, Goss & Pasteels (1990), *The self-organizing
-  exploratory pattern of the Argentine ant*, J. Insect Behav. 3(2),
-  159–168. doi:10.1007/BF01417909 — not yet read; trail laying and
-  following as the mechanism.
-- Beckers, Deneubourg & Goss (1992), *Trails and U-turns in the
-  selection of a path by the ant Lasius niger*, J. Theor. Biol. 159(4),
-  397–415. doi:10.1016/S0022-5193(05)80686-1 — not yet read; U-turns.
-- Dorigo, Maniezzo & Colorni (1996), *Ant system: optimization by a
-  colony of cooperating agents*, IEEE Trans. SMC-B 26(1), 29–41.
-  doi:10.1109/3477.484436 — not yet read; pheromone as positive
-  feedback with evaporation, abstracted to graphs (context, not model).
+  approximations of Physarum transport networks*, Artificial Life 16(2),
+  127–153. doi:10.1162/artl.2010.16.2.16202 — **abstract read**: agents
+  sensing and depositing into a field form transport networks; by
+  adjusting parameters, "maps of characteristic patterning", including
+  "irregular spots and labyrinthine and reticulated patterns"; with
+  chemorepulsion, spots and stripes. Full text not read (no access).
+- Jones (2011, online 2010), *Influences on the formation and
+  evolution of Physarum polycephalum inspired emergent transport
+  networks*, Natural Computing 10(4), 1345–1369.
+  doi:10.1007/s11047-010-9223-z (Crossref) — not read; cited for its known
+  result (networks between nutrient sources approximating proximity
+  graphs and Steiner trees).
+- Jenson, S., *physarum* (read 2026-11-11, secondary): three sensors
+  (FL, F, FR); "a simple 3-by-3 mean filter" for diffusion; "a
+  multiplicative decay factor"; Jones's "at most one particle in each
+  grid square", which Jenson usually omits. **No parameter values**.
 
-**Goal:** agents that react to a **shared field** rather than to each
-other (stigmergy). Ants leave pheromone, follow pheromone, and trails
-form, reinforce and evaporate. New machinery the track keeps: fields
-that are deposited into, diffused and decayed, and the first **writes
-to shared state** (two ants depositing in one cell).
+**Goal:** the slime-mould model: one field, many agents that sense it,
+turn, move and deposit into it. Networks form, contract and reconnect.
+The quantitative side: how strongly agents organize the field, against
+agents that don't sense, and what the parameters do (Jones's
+"parameter mapping").
 
-**Done when:** ants on the page find painted food and bring it home
-along trails that form and fade; the field and food accounting tests
-hold exactly; foraging beats a random walk by a measured margin; and
-the double-bridge experiment is run and its result reported against
-Goss et al.'s.
+**Done when:** the page shows networks forming from a random start at
+100k agents and 60 Hz in the browser; the tests pin that sensing
+concentrates the field far beyond a random walk, that the field
+accounting holds, and that nutrient nodes get connected.
+
+## Decisions (your approval given in advance)
+
+1. **In `swarm` and `swarm.wasm` again**: `swarm::physarum`, `slime_*`
+   exports, a page `s4-physarum`.
+2. **A periodic square world, no walls**: `Field` gains a periodic
+   diffusion; the 3 × 3 mean filter is `D = 8/9` of the conserving
+   diffusion (each cell keeps a ninth, gives a ninth to each of eight).
+3. **The agent step** (Jones's arrangement, as S3's ants, one field):
+   sense at `SO` ahead at `−SA`, `0`, `+SA`; turn `RA` toward the
+   strongest (straight if the middle is; random if both sides beat it);
+   move `SS`; deposit `dep`. Rotations by `±SA` and `±RA` precomputed
+   (`libm`), so no trig per step.
+4. **Values are ours**, labelled so: the paper's full text wasn't read
+   and Jenson gives none. Starting point SA 22.5°, RA 45°, SO 9 cells,
+   SS 1, `dep` 5, decay 0.1, the mean filter, values commonly reported
+   for Jones's model but not checked against it. A small parameter map
+   (SA × RA) is measured and shown.
+5. **No one-particle-per-cell exclusion** (Jenson's choice): cheaper,
+   and S4's measurements say what changes without it are out of scope.
+6. **Measured, not just pictured:** *concentration*, the field mass in
+   the top 10% of cells; sensing against a random walk (sensing off);
+   its rise over time; the parameter map's patterns told apart by it;
+   **nodes**: fixed sources that deposit every step, the field along the
+   straight lines between them against away from them.
+7. **Scale:** 100k agents in a 512 × 512 field by default; the step and
+   the diffusion measured native and in V8. Single-threaded on the CPU:
+   the GPU question (`wgpu`, WebGPU-only) is recorded with the numbers,
+   not built.
+
+## 1. The doc (PR)
+## 2. The model (PR): periodic diffusion, agents, accounting, goldens
+## 3. Measurements (PR): concentration vs a random walk, the map, nodes
+## 4. Web layer (PR): `slime_*` exports
+## 5. The page (PR): `s4-physarum`
+## 6. Cleanup (PR)
 
 ## Workflow
 
-- Each numbered section gets its own branch (`s3/<n>-<name>`) and one PR
+- Each numbered section gets its own branch (`s4/<n>-<name>`) and one PR
   into `main`, merged in order. Each branches from an up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
@@ -239,125 +265,21 @@ crossing 3.69 → 2.67, fluctuations peaking at the transition; the later
 papers (discontinuous) beyond these sizes. `vicsek_*` in `swarm.wasm`
 (64.9 KB); the `s2-vicsek` page with a browser sweep (your check: "looks
 good"). N = 10,000 on the node: `vicsek_sweep 10000`.
----
 
-## Decisions to review before starting
+## ✅ S3: Ant foraging (done, PRs #196–#203)
 
-1. **In `swarm` and `swarm.wasm` again**: a `swarm::ants` module, `ant_*`
-   exports, a page `s3-ants`.
-2. **A cell world.** The fields, walls, food and nest live on one grid
-   of `W × H` cells (default 400 × 225, drawn at 3 px a cell); ants move
-   continuously in cell units. Two `f32` fields at cell resolution:
-   **home** (laid by ants searching, so it points back to the nest) and
-   **food** (laid by ants carrying food, so it points to the food).
-3. **An ant's step** (searching follows food, carrying follows home):
-   sense the followed field at three points `SD` ahead, at `−SA`, `0`,
-   `+SA` (Jones 2010's scheme), turn `RA` toward the strongest, plus a
-   small random wiggle; move speed `v`; a wall or the edge ahead turns
-   it around in place. At food (searching): take one unit, carry, and
-   **U-turn** (Beckers et al.). At the nest (carrying): deliver, count,
-   U-turn. Defaults are **our choices**, measured (SA 45°, SD 9 cells,
-   RA 45°, v = 1 cell a step, 2,000 ants).
-4. **Deposits weaken with distance from where the ant left.** An ant
-   deposits `q · e^(−k s)`, `s` its steps since it last left the nest
-   (home field) or the food (food field). Without it a trail is uniform
-   along its length and gives no direction; with it, following the
-   stronger side climbs toward the source. **Our choice**, common in
-   foraging simulations rather than taken from the biology papers; the
-   alternative is constant deposits, and we'll measure both.
-5. **Deposit, then diffuse, then decay, every step.** Deposits are
-   written serially in ant order (deterministic: float sums depend on
-   order; this is the write contention the track meets here, and S4's
-   GPU path would need atomics for it). Diffusion **conserves mass**:
-   each open cell gives a fraction `D` of its value, split equally among
-   its open neighbours (walls take none), so the blur can't create or
-   destroy pheromone at edges or walls. Then decay multiplies by `1 − E`.
-6. **Accounting, exact where it can be.** Field: `Σ(t+1) = (Σ(t) +
-   deposits)·(1 − E)`, to float rounding (summed in `f64` to measure
-   it). **Food in integers:** in the world + carried + delivered =
-   painted, every step, exactly.
-7. **No double buffer for ants**: they never read each other, only the
-   fields as they were before this step's deposits (deposits go into the
-   field after every ant has sensed). Order-independence then holds for
-   movement; the deposits' float sums are the only order effect.
-8. **Randomness**: one `SplitMix64` stream, drawn in ant order each
-   step (no reordering in this module).
-9. **Tests**: the two accountings; diffusion alone conserves mass to
-   rounding and spreads symmetrically; foraging delivers more than ants
-   with sensing off (a random walk), by a measured factor; the
-   **double bridge** (Goss et al.): nest and food joined by two branches
-   of unequal length, the share of traffic on the shorter measured over
-   seeds, and reported against the paper's result whether or not it
-   matches (if it doesn't, the doc says which ingredient we lack);
-   goldens, native and wasm.
-10. **Rendering in Rust**: the fields as colour (home blue, food green,
-    a log scale so faint trails show), walls grey, food yellow, the nest
-    marked, ants as dots (carrying ones brighter).
-11. **The page**: paint food, walls, or erase; move the nest; presets
-    (an open field, the double bridge, a maze); sliders for SA, SD, RA,
-    the deposit and its fall-off, D and E; the HUD with food delivered
-    per minute and ants carrying.
-
----
-
-## ✅ 1. The doc (PR)
-
-The ant papers couldn't be read (publishers and the ULB repository copies
-need a login): the doc says so, cites them for their known results only,
-and calls the double bridge ours, in Goss et al.'s spirit. `15-swarm.md`,
-S3: the cell world, the ant step, the fall-off deposit and why,
-deposit → conserving diffusion → decay with its accounting, the write
-contention. `references.md`: the four ant papers.
-
-## ✅ 2. The fields (PR)
-
-`swarm::Field`: deposit, conserving diffusion around walls, decay, an
-`f64` total. Measured: diffusion conserves to 3.3e-9 a step, decay to
-2.9e-8, walls stay empty, a centred spread symmetric to 2.0e-7.
-
-## ✅ 3. The ants (PR)
-
-`swarm::Colony`: sensing, turning, walls, food and nest with U-turns,
-the fall-off deposit, painting. **The planned decay (0.01) failed**:
-trails faded before reaching the food. A scan chose `E` = 0.008, `k` =
-0.08, wiggle 0.4, `D` = 0.2: 1,312–1,959 delivered in 3,000 steps
-against a random walk's 12–21 and **constant deposits' 7–255** (the
-fall-off is the mechanism). Food exact every step; fields to 3.5e-8. A
-golden, same on wasm.
-
-## ✅ 4. The double bridge (PR)
-
-Ours (Goss et al. not read): gate traffic in a walled bridge, eight
-seeds. **Short vs 1.6× long: the short arm carries 0.71–0.77** against a
-random walk's 0.49–0.61 (the geometry's own bias). **Equal arms: no
-symmetry breaking** (0.41–0.56), unlike what real ants are reported to
-do; the doc guesses at the missing ingredient and labels it a guess. A
-first version at twice the scale failed (trails couldn't span it).
-Both behaviours pinned.
-
-## ✅ 5. Web layer (PR)
-
-`ant_*` exports in `swarm.wasm` (84.4 KB): create, advance, sensing,
-four paint tools, every constant by code, counts, a rendered view
-(fields on a log scale). Mirrored, `.d.ts` checked, a call-sequence
-property test, **which found a hang** (the brush stepping an f64 by 1.0
-from 1e300): fixed and tested. V8: 1.53 ms a step, 1.16 ms to draw.
-
-## 6. The page (PR)
-
-- [x] `s3-ants`: 200 × 120 cells at 5 px; scenes drawn with the tools
-      (open field, the double bridge, barriers; `ant-scenes.ts` tested);
-      painting food, walls, erase, the nest; a slider per constant;
-      sensing on or off; deliveries a minute in the HUD; two smoke cases;
-      gallery. Found: ants left at the default nest when a scene moved it
-      (now they move with it before the first step).
-- [ ] Your check against **Done when**.
-
-## 7. Cleanup (PR)
-
-- [x] `types.md`: S3's types.
-- [ ] S3 collapsed here after your check.
-
+`docs/15-swarm.md`, S3 (the ant papers unread: logins; cited for their
+known results, the bridge called ours). `swarm::Field` (diffusion
+conserving mass around walls, to 3.3e-9 a step), `swarm::Colony` (Jones's
+three sensors, U-turns, the fall-off deposit, exact food accounting).
+**The planned decay failed**; a scan chose the defaults: 1,312–1,959
+delivered against a random walk's 12–21 and **constant deposits' 7–255**
+(the fall-off is the mechanism). **The double bridge (ours):** the short
+arm 0.71–0.77 of the traffic against the geometry's 0.49–0.61; equal
+arms split (no symmetry breaking). Two bugs found by tests and the page
+(a brush that hung at 1e300; ants left at the old nest). `ant_*` in
+`swarm.wasm` (84.4 KB); the `s3-ants` page (your check: "looks good";
+the long slider decimals fixed for custom formats too).
 ---
 
 ## Health (after M7)
@@ -392,7 +314,12 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 
 ---
 
-## Out of scope for S3
+## Out of scope for S4
+
+- The GPU path (recorded as a decision with numbers, not built);
+  chemorepulsion; the one-particle-per-cell exclusion; multiple species.
+
+## Out of scope for S3 (carried forward)
 
 - Ant Colony Optimization on graphs (Dorigo et al.): context only.
 - Several colonies, castes, recruitment beyond pheromone; 3D; the GPU

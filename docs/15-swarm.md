@@ -489,7 +489,8 @@ task, a column of points per η).
 
 ## S3: Ant foraging
 
-Status: **Draft** (S3.1). Decisions: TASKS.md, S3.
+Status: **Adopted** (S3.1; as built: the field S3.2, the ants S3.3,
+the double bridge S3.4, the browser S3.5–6).
 
 S1's boids watch each other; S2's particles too. Ants mostly don't:
 they read and write a **shared field**, pheromone on the ground, and
