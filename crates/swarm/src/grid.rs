@@ -163,26 +163,24 @@ impl Grid {
 
     /// The particles in the 3 × 3 block around `(x, y)`'s cell, taken
     /// modulo the grid (after [`Self::rebuild_periodic`]: at least 3 a
-    /// side, so the nine cells are distinct).
-    pub(crate) fn around_wrapped(&self, x: f32, y: f32) -> impl Iterator<Item = usize> + '_ {
+    /// side, so the nine cells are distinct): each cell's indices as a
+    /// slice, rows first. Slices, not one chained iterator: the caller's
+    /// loop over a slice compiles to a plain loop, where nine cells
+    /// flattened into one iterator cost five times the distance tests
+    /// they fed (`docs/profiling.md`).
+    pub(crate) fn cells_wrapped(&self, x: f32, y: f32) -> [&[u32]; 9] {
         let (cx, cy) = self.coords(x, y);
         let (k, l) = (self.cols, self.rows);
         let wrap = |c: usize, d: usize, n: usize| (c + n + d - 1) % n;
-        (0..3).flat_map(move |dy| {
-            (0..3).flat_map(move |dx| {
-                let c = wrap(cy, dy, l) * k + wrap(cx, dx, k);
-                let span = match (self.start.get(c), self.start.get(c + 1)) {
-                    (Some(&s), Some(&e)) => {
-                        usize::try_from(s).unwrap_or(0)..usize::try_from(e).unwrap_or(0)
-                    }
-                    _ => 0..0,
-                };
-                self.order
-                    .get(span)
-                    .unwrap_or_default()
-                    .iter()
-                    .filter_map(|&j| usize::try_from(j).ok())
-            })
+        core::array::from_fn(|i| {
+            let c = wrap(cy, i / 3, l) * k + wrap(cx, i % 3, k);
+            let span = match (self.start.get(c), self.start.get(c + 1)) {
+                (Some(&s), Some(&e)) => {
+                    usize::try_from(s).unwrap_or(0)..usize::try_from(e).unwrap_or(0)
+                }
+                _ => 0..0,
+            };
+            self.order.get(span).unwrap_or_default()
         })
     }
 
