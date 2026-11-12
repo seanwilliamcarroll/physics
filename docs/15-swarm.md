@@ -812,7 +812,8 @@ smoke screenshot already shows a reticulated web.
 
 ## S5: Evolving the rules
 
-Status: **Draft** (S5.1). Decisions: TASKS.md, S5.
+Status: **Adopted** (S5.1; as built: the algorithm S5.2, the ants
+evolved S5.3, the page S5.4).
 
 S3's ant constants came from a hand scan: four of seven parameters,
 two or three values each, four seeds. S5 hands the search to an
