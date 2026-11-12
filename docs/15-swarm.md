@@ -846,6 +846,16 @@ the seeds, so scoring the population on any number of threads gives
 the same numbers in the same slots. Selection then draws from one
 seeded stream. The run is bit-identical with one thread or sixteen.
 
+### The algorithm as built (S5.2, `swarm::evolve`)
+
+`evolve(genes, &Evolve, start, fitness)`: one record a generation (best,
+mean, best genome). Tested: on a noisy shifted quadratic in four
+dimensions it lands within 0.1 of the maximum in 40 generations; genes
+stay in range and the start genome is in the first generation; a NaN
+score never wins; normal deviates (Box–Muller, `libm`) have mean 0 and
+variance 1 to 0.01 and 0.02; **the history is identical on 1, 2, 3 and 8
+threads**.
+
 ### The genome
 
 S3's seven tunable constants, each in a range: SA and RA 0–90°, SD 1–30

@@ -63,7 +63,12 @@ side with the evolution's history drawn.
 crossover, shrinking Gaussian mutation), noise and common seeds, why it
 runs parallel yet bit-identical, the genome, generalization as the
 result; construction deferred. `references.md`: the three, unread.
-## 2. The algorithm (PR): `swarm::evolve`, toy tests, thread-count determinism
+## ✅ 2. The algorithm (PR)
+
+`swarm::evolve`: elites re-scored, tournament, uniform crossover,
+shrinking Gaussian mutation (Box–Muller, `libm`), a start genome,
+scoring split over threads by slot. Finds a noisy quadratic's maximum;
+**identical on 1–8 threads**.
 ## 3. Evolving the ants (PR): the run, held-out seeds, the barriers scene
 ## 4. The page (PR): `s5-evolve`
 ## 5. Cleanup (PR)
