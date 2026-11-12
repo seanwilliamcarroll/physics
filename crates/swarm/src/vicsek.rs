@@ -310,6 +310,21 @@ impl Vicsek {
         (c * c + s * s).sqrt() / n
     }
 
+    /// The paper's measurement: `transient` steps discarded, then the mean
+    /// of [`Self::order`] over the next `window` steps (NaN for an empty
+    /// window).
+    pub fn mean_order(&mut self, transient: u32, window: u32) -> f64 {
+        for _ in 0..transient {
+            self.step();
+        }
+        let mut sum = 0.0;
+        for _ in 0..window {
+            self.step();
+            sum += self.order();
+        }
+        sum / f64::from(window)
+    }
+
     /// The state's bytes for hashing (goldens).
     pub fn state_bytes(&self) -> impl Iterator<Item = u8> + '_ {
         self.particles()

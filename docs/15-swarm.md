@@ -427,6 +427,42 @@ on the compute node), ρ = 4. What the curves can show at these sizes:
 `v_a` near 1 at small η, near `1/√N`'s scale at large η, and a
 transition that sharpens with N, near the paper's 2.9.
 
+### The transition as measured (S2.4)
+
+`examples/vicsek_sweep.rs` (Fig. 2a's sizes, ρ ≈ 4, η from 0 to 5 by
+0.25, 5 seeds, 3,000 steps discarded then 3,000 averaged), native.
+Mean `v_a` (± s.d. over seeds where it matters):
+
+| η | N = 40 | 100 | 400 | 4000 |
+|---|---|---|---|---|
+| 1.0 | 0.957 | 0.953 | 0.945 | 0.927 |
+| 2.0 | 0.835 | 0.822 | 0.795 | 0.727 |
+| 2.5 | 0.749 | 0.727 | 0.699 | 0.560 ± 0.058 |
+| 3.0 | 0.649 | 0.620 | 0.558 | 0.419 ± 0.089 |
+| 3.5 | 0.544 | 0.508 | 0.442 ± 0.034 | 0.289 |
+| 4.0 | 0.424 | 0.370 | 0.268 | 0.134 |
+| 4.5 | 0.303 | 0.233 | 0.133 | 0.046 |
+| 5.0 | 0.204 | 0.129 | 0.067 | 0.021 |
+
+- **The finite-size picture of Fig. 2a:** at low noise the sizes agree;
+  past the drop, larger systems are less ordered (at η = 5, `v_a`
+  falls with N toward the random-heading value's scale); the drop
+  sharpens with N.
+- **Where `v_a` crosses 0.5** (interpolated): η ≈ 3.69, 3.53, 3.28, 2.67
+  for N = 40 to 4000. That's a finite-size marker, not `η_c`: in the
+  infinite system `v_a` goes to 0 at `η_c`, so the crossing falls
+  through and below the paper's `η_c(∞)` = 2.9 as N grows, as it should.
+- **Fluctuations peak at the transition** (s.d. 0.058–0.089 at N = 4000,
+  η = 2.5–3), as the paper reports ("large fluctuations" and "slow
+  convergence" for its 4000 and 10,000 near the transition).
+- **Large boxes order slowly at low noise:** at N = 4000, η = 0.25 gave
+  0.979 ± 0.031, below η = 0.5's 0.984; some seeds hadn't finished
+  ordering in 3,000 steps (crossing the box once takes ~1,000).
+- `tests/transition.rs` pins N = 40, 100, 400 (3 seeds, 2,000 + 2,000
+  steps): low noise alike (0.93–0.97), `v_a` falling with η, larger
+  systems less ordered past the drop, the crossing moving down with N.
+- 0/0: none in any of these runs.
+
 **What they can't show, and what later work found.** Grégoire & Chaté
 (2004) report the transition "always discontinuous, including for the
 minimal model of Vicsek et al.", and Chaté et al. (2008) find it
