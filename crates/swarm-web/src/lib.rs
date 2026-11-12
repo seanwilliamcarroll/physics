@@ -6,6 +6,9 @@
 //! (`cargo xtask site`; `docs/15-swarm.md`, S1.4).
 
 pub mod abi;
+pub mod ant_demo;
+#[expect(unsafe_code, reason = "the C ABI boundary: raw pointers in and out")]
+mod ant_exports;
 pub mod demo;
 #[expect(unsafe_code, reason = "the C ABI boundary: raw pointers in and out")]
 mod exports;

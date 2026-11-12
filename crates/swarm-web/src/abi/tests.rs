@@ -31,6 +31,24 @@ fn js_mirror_matches() {
         ("MAX_VIEW", super::MAX_VIEW),
         ("MAX_PARTICLES", super::MAX_PARTICLES),
         ("MAX_RUN", super::MAX_RUN),
+        ("TOOL_FOOD", super::TOOL_FOOD),
+        ("TOOL_WALL", super::TOOL_WALL),
+        ("TOOL_ERASE", super::TOOL_ERASE),
+        ("TOOL_NEST", super::TOOL_NEST),
+        ("ANT_SENSOR_ANGLE", super::ANT_SENSOR_ANGLE),
+        ("ANT_SENSOR_DISTANCE", super::ANT_SENSOR_DISTANCE),
+        ("ANT_TURN", super::ANT_TURN),
+        ("ANT_WIGGLE", super::ANT_WIGGLE),
+        ("ANT_SPEED", super::ANT_SPEED),
+        ("ANT_DEPOSIT", super::ANT_DEPOSIT),
+        ("ANT_FALLOFF", super::ANT_FALLOFF),
+        ("ANT_DIFFUSION", super::ANT_DIFFUSION),
+        ("ANT_DECAY", super::ANT_DECAY),
+        ("ANT_PARAM_COUNT", super::ANT_PARAM_COUNT),
+        ("MAX_ANT_SIDE", super::MAX_ANT_SIDE),
+        ("MAX_ANTS", super::MAX_ANTS),
+        ("MAX_ANT_BRUSH", super::MAX_ANT_BRUSH),
+        ("MAX_FOOD", super::MAX_FOOD),
         ("DEFAULT_RATE_HZ", DEFAULT_RATE_HZ),
         ("MAX_RATE_HZ", MAX_RATE_HZ),
     ] {
@@ -45,6 +63,7 @@ fn js_mirror_matches() {
 #[test]
 fn the_caps_are_the_crates() {
     assert_eq!(usize::try_from(MAX_BOIDS).unwrap(), swarm::MAX_BOIDS);
+    assert_eq!(usize::try_from(super::MAX_ANTS).unwrap(), swarm::MAX_ANTS);
     assert_eq!(
         usize::try_from(super::MAX_PARTICLES).unwrap(),
         swarm::MAX_PARTICLES

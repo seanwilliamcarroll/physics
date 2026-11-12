@@ -13,6 +13,7 @@ description = "Wasm shell for the swarm track: a flock behind raw C-ABI exports 
 crate-type = ["cdylib"]
 
 [dependencies]
+libm.workspace = true
 math = { path = "../math" }
 swarm = { path = "../swarm" }
 web-common = { path = "../web-common" }

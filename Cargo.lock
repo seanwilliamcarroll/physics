@@ -600,6 +600,7 @@ dependencies = [
 name = "swarm-web"
 version = "0.1.0"
 dependencies = [
+ "libm",
  "math",
  "proptest",
  "swarm",

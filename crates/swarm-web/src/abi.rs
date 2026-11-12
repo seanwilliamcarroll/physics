@@ -39,6 +39,32 @@ pub const MAX_VIEW: u32 = 2048;
 pub const MAX_PARTICLES: u32 = 262_144;
 pub const MAX_RUN: u32 = 20_000;
 
+/// S3: paint tools for `ant_paint`.
+pub const TOOL_FOOD: u32 = 0;
+pub const TOOL_WALL: u32 = 1;
+pub const TOOL_ERASE: u32 = 2;
+pub const TOOL_NEST: u32 = 3;
+
+/// S3: the ants' constants (`swarm::AntParams`), for `ant_set_param` and
+/// `ant_param`.
+pub const ANT_SENSOR_ANGLE: u32 = 0;
+pub const ANT_SENSOR_DISTANCE: u32 = 1;
+pub const ANT_TURN: u32 = 2;
+pub const ANT_WIGGLE: u32 = 3;
+pub const ANT_SPEED: u32 = 4;
+pub const ANT_DEPOSIT: u32 = 5;
+pub const ANT_FALLOFF: u32 = 6;
+pub const ANT_DIFFUSION: u32 = 7;
+pub const ANT_DECAY: u32 = 8;
+pub const ANT_PARAM_COUNT: u32 = 9;
+
+/// S3: the largest world side (cells), the most ants, the widest brush
+/// (cells), the most food a dab adds per cell.
+pub const MAX_ANT_SIDE: u32 = 1024;
+pub const MAX_ANTS: u32 = 262_144;
+pub const MAX_ANT_BRUSH: u32 = 64;
+pub const MAX_FOOD: u32 = 1000;
+
 /// Steps per simulated second: the page's default and most.
 pub const DEFAULT_RATE_HZ: u32 = 60;
 pub const MAX_RATE_HZ: u32 = 240;
