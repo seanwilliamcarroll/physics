@@ -27,6 +27,10 @@ fn js_mirror_matches() {
         ("MAX_BRUTE", MAX_BRUTE),
         ("MAX_SIDE", MAX_SIDE),
         ("MAX_SCALE", MAX_SCALE),
+        ("MAX_VICSEK_SIDE", super::MAX_VICSEK_SIDE),
+        ("MAX_VIEW", super::MAX_VIEW),
+        ("MAX_PARTICLES", super::MAX_PARTICLES),
+        ("MAX_RUN", super::MAX_RUN),
         ("DEFAULT_RATE_HZ", DEFAULT_RATE_HZ),
         ("MAX_RATE_HZ", MAX_RATE_HZ),
     ] {
@@ -41,5 +45,9 @@ fn js_mirror_matches() {
 #[test]
 fn the_caps_are_the_crates() {
     assert_eq!(usize::try_from(MAX_BOIDS).unwrap(), swarm::MAX_BOIDS);
+    assert_eq!(
+        usize::try_from(super::MAX_PARTICLES).unwrap(),
+        swarm::MAX_PARTICLES
+    );
     const { assert!(MAX_BRUTE < MAX_BOIDS) };
 }

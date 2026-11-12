@@ -32,7 +32,7 @@ const START_RATE: NonZeroU32 = match NonZeroU32::new(abi::DEFAULT_RATE_HZ) {
 /// The background: the site's `--stage-bg` (#161a22), RGBA as `u32`.
 pub const BACKGROUND: u32 = 0xff22_1a16;
 /// A boid's dot, drawn pixels a side.
-const DOT: usize = 2;
+pub(crate) const DOT: usize = 2;
 
 impl SwarmDemo {
     /// `n` boids in a `width × height` world (pixels), drawn at one pixel
@@ -190,7 +190,7 @@ pub fn heading_index(x: f32, y: f32) -> usize {
 
 /// A colour at `turn` (0..1) round the hue wheel: HSV at saturation 0.65,
 /// value 0.95, as RGBA `u32` (R in the low byte).
-fn hue(turn: f64) -> u32 {
+pub(crate) fn hue(turn: f64) -> u32 {
     let (s, v) = (0.65, 0.95);
     let h = turn * 6.0;
     let f = h - h.floor();

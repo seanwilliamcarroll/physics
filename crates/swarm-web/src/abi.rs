@@ -31,6 +31,14 @@ pub const MAX_BRUTE: u32 = 16_384;
 pub const MAX_SIDE: u32 = 8192;
 /// The most world pixels per drawn pixel.
 pub const MAX_SCALE: u32 = 8;
+/// S2: the largest Vicsek box side (interaction radii; Fig. 2a's largest
+/// is 50), the largest drawn side (pixels), the most particles, and the
+/// most steps one `vicsek_mean_order` call may run.
+pub const MAX_VICSEK_SIDE: u32 = 1024;
+pub const MAX_VIEW: u32 = 2048;
+pub const MAX_PARTICLES: u32 = 262_144;
+pub const MAX_RUN: u32 = 20_000;
+
 /// Steps per simulated second: the page's default and most.
 pub const DEFAULT_RATE_HZ: u32 = 60;
 pub const MAX_RATE_HZ: u32 = 240;

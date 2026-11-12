@@ -327,10 +327,13 @@ paper's `η_c` = 2.9 as N grows; fluctuations peak at the transition;
 large boxes order slowly at low noise. Tests pin N ≤ 400. **To run on
 the node:** `cargo run --release -p swarm --example vicsek_sweep 10000`.
 
-## 5. Web layer (PR)
+## ✅ 5. Web layer (PR)
 
-- [ ] `vicsek_*` exports in `swarm.wasm`; `swarm-abi.ts`, `swarm.d.ts`,
-      the call-sequence property test.
+`vicsek_*` exports in `swarm.wasm` (64.9 KB): create, advance, rate,
+cap, η, v, `mean_order` (one call per measurement, ≤ 20,000 steps),
+`v_a`, the 0/0 count, a square heading-coloured view. Codes mirrored,
+`.d.ts` checked, a call-sequence property test. V8: 0.98 ms a step at
+N = 4000.
 
 ## 6. The page (PR)
 

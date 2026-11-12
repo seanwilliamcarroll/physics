@@ -26,6 +26,13 @@ export const MAX_BRUTE = 16384;
 export const MAX_SIDE = 8192;
 export const MAX_SCALE = 8;
 
+/** S2: the largest Vicsek box side (radii), drawn side (px), particle
+ *  count, and steps one vicsek_mean_order call may run. */
+export const MAX_VICSEK_SIDE = 1024;
+export const MAX_VIEW = 2048;
+export const MAX_PARTICLES = 262144;
+export const MAX_RUN = 20000;
+
 /** Steps per simulated second: the default, and the most. */
 export const DEFAULT_RATE_HZ = 60;
 export const MAX_RATE_HZ = 240;

@@ -462,6 +462,16 @@ Mean `v_a` (± s.d. over seeds where it matters):
   steps): low noise alike (0.93–0.97), `v_a` falling with η, larger
   systems less ordered past the drop, the crossing moving down with N.
 - 0/0: none in any of these runs.
+### In the browser (S2.5–6)
+
+`vicsek_*` exports in `swarm.wasm` (now
+64.9 KB: `libm`'s sin and cos and the model), over a `VicsekDemo`:
+create (N, L, η, the drawn side), advance, the rate and step cap, η and
+v, `vicsek_mean_order(transient, window)` (the whole measurement in one
+call, at most `MAX_RUN` = 20,000 steps), `v_a`, the 0/0 count, a
+heading-coloured square view. A call-sequence property test. In V8 a
+step is 0.012 ms at N = 40, 0.095 at 400, 0.98 at 4000: a 21-point
+sweep at 1,000 + 1,000 steps is about 45 s, nearly all of it N = 4000.
 
 **What they can't show, and what later work found.** Grégoire & Chaté
 (2004) report the transition "always discontinuous, including for the

@@ -34,7 +34,31 @@ export interface SwarmExports {
   swarm_len(d: SwarmHandle): number;
   /** |Σ unit velocities| / n: 0 disordered, 1 all one way. */
   swarm_polarization(d: SwarmHandle): number;
+
+  // S2: the Vicsek model.
+  /** n particles in an L × L box (radii) at noise η, drawn view px a side; 0 if refused. */
+  vicsek_new(n: number, side: number, noise: number, view: number, seed: number): VicsekHandle;
+  vicsek_free(d: VicsekHandle): void;
+  /** Adds real elapsed seconds; returns the fixed steps taken. */
+  vicsek_advance(d: VicsekHandle, elapsedSeconds: number): number;
+  vicsek_set_rate(d: VicsekHandle, hz: number): Status;
+  vicsek_set_step_cap(d: VicsekHandle, n: number): Status;
+  /** η in [0, 2π]. */
+  vicsek_set_noise(d: VicsekHandle, eta: number): Status;
+  vicsek_set_speed(d: VicsekHandle, v: number): Status;
+  /** transient steps, then v_a's mean over window steps (≤ MAX_RUN in all); NaN if refused. */
+  vicsek_mean_order(d: VicsekHandle, transient: number, window: number): number;
+  vicsek_order(d: VicsekHandle): number;
+  /** Exact zero heading sums so far (0/0, kept). */
+  vicsek_annihilations(d: VicsekHandle): number;
+  /** Draws and returns a pointer to view × view RGBA u32s. */
+  vicsek_render(d: VicsekHandle): number;
+  vicsek_view(d: VicsekHandle): number;
+  vicsek_len(d: VicsekHandle): number;
 }
+
+/** A `*mut VicsekDemo`: 0 is null. */
+export type VicsekHandle = number & { readonly __vicsek: unique symbol };
 
 /** What swarm.wasm imports from JS (module "env"). */
 export type SwarmImports = {
