@@ -80,7 +80,34 @@ export interface SwarmExports {
   ant_delivered(d: AntHandle): number;
   ant_carrying(d: AntHandle): number;
   ant_food(d: AntHandle): number;
+
+  // S4: Physarum.
+  /** n agents on a side × side periodic field (cells), drawn scale px a cell (1–4); 0 if refused. */
+  slime_new(side: number, n: number, scale: number, seed: number): SlimeHandle;
+  slime_free(d: SlimeHandle): void;
+  /** Adds real elapsed seconds; returns the fixed steps taken. */
+  slime_advance(d: SlimeHandle, elapsedSeconds: number): number;
+  slime_set_rate(d: SlimeHandle, hz: number): Status;
+  slime_set_step_cap(d: SlimeHandle, n: number): Status;
+  /** 1: agents sense; 0: a random walk. */
+  slime_set_sensing(d: SlimeHandle, on: number): Status;
+  /** A node at cell (x, y) depositing amount a step; refused past MAX_NODES. */
+  slime_add_node(d: SlimeHandle, x: number, y: number, amount: number): Status;
+  slime_clear_nodes(d: SlimeHandle): void;
+  /** SLIME_* code and value; refused if unusable. */
+  slime_set_param(d: SlimeHandle, code: number, value: number): Status;
+  /** A SLIME_* value, or NaN. */
+  slime_param(d: SlimeHandle, code: number): number;
+  /** Draws the field; a pointer to view × view RGBA u32s. */
+  slime_render(d: SlimeHandle): number;
+  slime_view(d: SlimeHandle): number;
+  slime_len(d: SlimeHandle): number;
+  /** The top 10% of cells' share of the field (linear time: not every frame). */
+  slime_concentration(d: SlimeHandle): number;
 }
+
+/** A `*mut SlimeDemo`: 0 is null. */
+export type SlimeHandle = number & { readonly __slime: unique symbol };
 
 /** A `*mut AntDemo`: 0 is null. */
 export type AntHandle = number & { readonly __ant: unique symbol };
