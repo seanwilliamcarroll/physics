@@ -60,10 +60,11 @@ What makes the page helpers page-shaped:
   ruleset: pull requests only, squash merges, no deletion or force
   push), as of 2026-11-13.
 
-## Prerequisites: two things to verify first
+## Prerequisites: four things to check first
 
-Both are throwaway checks. Neither merges anything; each ends with a
-yes or a no written back into this section.
+V1 and V2 are throwaway experiments; V3 and V4 are lookups in the
+Amplify console (or `aws amplify get-app` / `get-branch`). None merges
+anything; each ends with its answer written back into this section.
 
 ### V1. Does Amplify serve `.wasm` as `application/wasm`?
 
@@ -72,8 +73,8 @@ Nothing on the site is a `.wasm` file today, so there's nothing to look
 at.
 
 - **How:** a branch in `personal_site` adding one tiny `.wasm` under
-  `public/`, deployed through an Amplify branch preview if previews are
-  enabled, otherwise merged, checked with `curl -I`, and reverted.
+  `public/`, looked at with `curl -I` on a pull-request preview if
+  those are on (V4); otherwise merged, checked, and reverted.
 - **If no:** either a `customHeaders` rule in `amplify.yml` for
   `**/*.wasm`, or the loader falls back to `WebAssembly.instantiate` on
   the fetched bytes (slower to start, no server requirement). The
@@ -97,6 +98,36 @@ installing a package from a release tarball URL pinned in
 - **If no:** the package ships the wasm as a file the site copies into
   `public/` in a build step, with the version in its path. Less tidy,
   still workable.
+
+### V3. Which Node version does Amplify build with?
+
+The site has no `.nvmrc`; Amplify uses whatever its build image
+provides, or a version set in the app's build settings. CI (S1) and
+local development should use the same major version, or "green in CI"
+doesn't mean "builds on Amplify".
+
+- **How:** the app's build settings (the build image and any "live
+  package updates" for Node), and the `node --version` line in the
+  last build's log.
+- **Decides:** the number S1 writes into `.nvmrc`, and whether
+  `amplify.yml` should say `nvm use` so the three agree by
+  construction instead of by coincidence.
+
+### V4. Are Amplify pull-request previews on?
+
+With previews, every site PR gets its own deployed URL before it
+merges.
+
+- **How:** the app's "Previews" setting.
+- **If yes:** V1 needs no merge-and-revert (the test file is looked at
+  on a preview), and S4, S6 and S7 can be seen live in review.
+- **If no:** decide whether to turn them on. They build each PR on
+  Amplify's side (build minutes are billed past the free tier, unlike
+  GitHub's runners for a public repo), and a preview of a public repo's
+  PR is public. Without them, V1 falls back to a brief merge and
+  revert, and S7 is first seen live in production.
+- **Decides:** how V1 is done, and what "done when" can mean for the
+  site's steps.
 
 ## The work, as pull requests
 
@@ -206,8 +237,8 @@ The site gets checks **per PR** (decided): they take a couple of
 minutes, and what lands on `main` is deployed by Amplify at once.
 
 - **Touches:** new `.github/workflows/ci.yml`; `.nvmrc` (the site has
-  none; pinned to the Node major Amplify's build image uses, which is
-  looked up in the Amplify console first); `README.md`, `CLAUDE.md`
+  none; the version V3 found); `amplify.yml` if V3 says to pin it
+  there too; `README.md`, `CLAUDE.md`
   (the workflow is now: branch, PR, green check, squash).
 - **Triggers:** `pull_request`, and `workflow_dispatch` for a manual
   run. Not `push` to `main`: Amplify's own build covers that.
@@ -341,14 +372,15 @@ The writing, and `draft: false`. Yours to write; I can draft.
 ### Order
 
 ```
-V1 ──────────────────────────────────────────────┐
+V4 ──► V1 ───────────────────────────────────────┐
+V3 ──► S1                                        │
 V2 ──► P2                                        │
 P1 ──► P2 ──► P3 ──► (first release, on request) ┼──► S6 ──► S7 ──► S8
 S1 ──► S2 ──► S3 ──► S4 ──► S5 ──────────────────┘
 ```
 
 - P1–P3 and S1–S5 don't depend on each other: they can go in parallel.
-- V2 comes before P2. V1 comes before S6.
+- V2 comes before P2; V3 before S1; V4 before V1; V1 before S6.
 - S1 and S2 come first on the site so that every later site PR is
   checked.
 
@@ -505,5 +537,3 @@ new subpath).
 ## Open questions
 
 - **The package's name.** `physics-engine` is a placeholder.
-- **Amplify previews.** If pull-request previews are enabled, V1 and
-  every S step can be seen before merging. Not checked.
