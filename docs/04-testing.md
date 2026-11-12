@@ -726,9 +726,12 @@ still passed.
     `cargo test` did not under nextest and weren't missed: a hung test
     holds its whole binary under `cargo test`, where under nextest
     another test's failure ends the run (inferred, not confirmed from
-    the logs). The shard was a contiguous slice heavy in those timeouts,
-    which flatters nextest: the next full run's total is the real
-    figure.
+    the logs). That shard was a contiguous slice heavy in those
+    timeouts, so it was run again spread across the workspace
+    (`--sharding round-robin`, one run each): `cargo test` at `-j 8`
+    626 s; nextest at `-j 8` 365 s (−42%), at `-j 12` 369 s. The gain
+    held (it was larger), and more jobs than 8 bought nothing. The
+    outcomes of that second sample weren't compared.
   - **Under nextest the push profile's 2-minute stop applies**
     (`.config/nextest.toml`): a test it kills fails the mutant, so the
     mutant counts as caught, where cargo-mutants' own timeout would
