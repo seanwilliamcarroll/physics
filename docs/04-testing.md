@@ -715,8 +715,24 @@ still passed.
   `/tmp` failed with "Disk quota exceeded"; a dir inside the workspace is
   refused, since the copy would copy itself); leftover
   `cargo-mutants-*.tmp` build dirs from killed runs removed before and
-  after, nothing else touched; `-j 8 --no-shuffle` unless given; every
-  other argument passed through, and its exit code returned.
+  after, nothing else touched; `-j 8 --no-shuffle` unless given, and
+  `--test-tool nextest` when nextest is installed (unless a tool is
+  given); every other argument passed through, and its exit code
+  returned.
+  - **Why nextest:** measured on the node over one shard (270 mutants,
+    `--shard 1/20`, one run each): `cargo test` at `-j 8` 294 s; nextest
+    at `-j 8` 197 s, `-j 4` 231 s, `-j 2` 344 s. The same mutants missed
+    in all four. Five to seven hammer mutants that timed out under
+    `cargo test` did not under nextest and weren't missed: a hung test
+    holds its whole binary under `cargo test`, where under nextest
+    another test's failure ends the run (inferred, not confirmed from
+    the logs). The shard was a contiguous slice heavy in those timeouts,
+    which flatters nextest: the next full run's total is the real
+    figure.
+  - **Under nextest the push profile's 2-minute stop applies**
+    (`.config/nextest.toml`): a test it kills fails the mutant, so the
+    mutant counts as caught, where cargo-mutants' own timeout would
+    have called it a timeout. Both count as detected.
 - **Pre-push (opt-in, informational, never a gate):** without
   `MUTANTS=1` the hook only counts the mutants in the push's changed
   lines and prints the `cargo xtask mutants --in-diff …` command. With

@@ -23,13 +23,13 @@ const DEFAULT_JOBS: &str = "8";
 pub(crate) fn mutants(root: &Path, args: &[String]) -> Result<(), String> {
     let scratch = scratch_dir(root)?;
     clean_leftovers(&scratch)?;
-    let args = with_defaults(args);
+    let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
+    let args = with_defaults(args, crate::has_nextest(&cargo));
     println!(
         "mutants: TMPDIR={} cargo mutants {}",
         scratch.display(),
         args.join(" ")
     );
-    let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     let status = process::Command::new(cargo)
         .current_dir(root)
         .arg("mutants")
@@ -115,19 +115,32 @@ fn is_leftover(name: &str) -> bool {
 }
 
 /// `args` with the node's defaults where they don't say otherwise: `-j 8`
-/// unless jobs are given (`-j`, `-jN`, `--jobs`, `--jobs=N`), and
-/// `--no-shuffle` unless `--shuffle` or `--no-shuffle` is.
-fn with_defaults(args: &[String]) -> Vec<String> {
+/// unless jobs are given (`-j`, `-jN`, `--jobs`, `--jobs=N`),
+/// `--no-shuffle` unless `--shuffle` or `--no-shuffle` is, and, when
+/// `nextest` is installed, `--test-tool nextest` unless a test tool is
+/// given.
+///
+/// Nextest because each mutant's tests then run as one pool with a
+/// process per test: measured on the node over one shard of 270 mutants,
+/// 197 s against `cargo test`'s 294 s at `-j 8`, the same mutants missed
+/// (`docs/04-testing.md`, "Mutation testing").
+fn with_defaults(args: &[String], nextest: bool) -> Vec<String> {
     let has_jobs = args
         .iter()
         .any(|a| a.starts_with("-j") || a == "--jobs" || a.starts_with("--jobs="));
     let has_shuffle = args.iter().any(|a| a == "--shuffle" || a == "--no-shuffle");
-    let mut out = Vec::with_capacity(args.len() + 3);
+    let has_tool = args
+        .iter()
+        .any(|a| a == "--test-tool" || a.starts_with("--test-tool="));
+    let mut out = Vec::with_capacity(args.len() + 5);
     if !has_jobs {
         out.extend(["-j".to_owned(), DEFAULT_JOBS.to_owned()]);
     }
     if !has_shuffle {
         out.push("--no-shuffle".to_owned());
+    }
+    if nextest && !has_tool {
+        out.extend(["--test-tool".to_owned(), "nextest".to_owned()]);
     }
     out.extend_from_slice(args);
     out
