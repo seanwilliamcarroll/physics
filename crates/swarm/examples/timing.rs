@@ -9,7 +9,7 @@
 use std::time::Instant;
 
 use math::convert::{f64_to_f32, u64_to_f64, usize_to_f64};
-use swarm::{Arena, Flock, Neighbours, Params, Vicsek, VicsekParams};
+use swarm::{Arena, Flock, Neighbours, Params, Slime, SlimeParams, Vicsek, VicsekParams};
 
 fn main() {
     for (how, sizes) in [
@@ -60,5 +60,22 @@ fn main() {
                 ns / u64_to_f64(steps) / usize_to_f64(n)
             );
         }
+    }
+    // Physarum at the page's scale: 512² and 100k agents; and the field
+    // alone (no agents' work: 1 agent).
+    for (n, label) in [
+        (100_000_usize, "Slime 100k agents, 512²"),
+        (1, "Slime field only, 512²"),
+    ] {
+        let mut s = Slime::new(512, n, SlimeParams::DEFAULT, 1).unwrap();
+        for _ in 0..50 {
+            s.step();
+        }
+        let t = Instant::now();
+        for _ in 0..100 {
+            s.step();
+        }
+        let ns = u64_to_f64(u64::try_from(t.elapsed().as_nanos()).unwrap());
+        println!("{label}: {:.2} ms/step", ns / 100.0 / 1e6);
     }
 }
