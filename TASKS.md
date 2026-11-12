@@ -325,10 +325,15 @@ against a random walk's 12–21 and **constant deposits' 7–255** (the
 fall-off is the mechanism). Food exact every step; fields to 3.5e-8. A
 golden, same on wasm.
 
-## 4. The double bridge (PR)
+## ✅ 4. The double bridge (PR)
 
-- [ ] Goss et al.'s setup; the shorter branch's share of traffic over
-      seeds; with and without the fall-off; reported against the paper.
+Ours (Goss et al. not read): gate traffic in a walled bridge, eight
+seeds. **Short vs 1.6× long: the short arm carries 0.71–0.77** against a
+random walk's 0.49–0.61 (the geometry's own bias). **Equal arms: no
+symmetry breaking** (0.41–0.56), unlike what real ants are reported to
+do; the doc guesses at the missing ingredient and labels it a guess. A
+first version at twice the scale failed (trails couldn't span it).
+Both behaviours pinned.
 
 ## 5. Web layer (PR)
 
