@@ -1,5 +1,5 @@
 #!/bin/sh
-# The nightly run's last job (docs/17-nightly-ci.md, C4): a failed night
+# The nightly run's last job (docs/17-nightly-ci.md, "A failure that can't be missed"): a failed night
 # opens an issue titled "Nightly CI failed", or comments on it if it is
 # already open; the next green night closes it. One issue, so a red
 # `main` is one thread and not one a night.

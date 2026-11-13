@@ -31,6 +31,6 @@ echo "pre-commit: cargo clippy (warnings are errors)"
 cargo clippy --workspace --all-targets --quiet -- -D warnings
 
 # Code behind #[cfg(target_arch = "wasm32")] (the JS imports) is invisible
-# to the native run above; lint the web crate as wasm too.
+# to the native run above; lint the `*-web` crates as wasm too.
 echo "pre-commit: cargo clippy engine-web, acoustic-web, sand-web, swarm-web (wasm32)"
 cargo clippy -p engine-web -p acoustic-web -p sand-web -p swarm-web --target wasm32-unknown-unknown --quiet -- -D warnings

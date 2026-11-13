@@ -9,7 +9,7 @@ description = "Wasm shell for the falling-sand automaton: a grid behind raw C-AB
 
 [lib]
 # cdylib: a standalone .wasm module (sand.wasm), separate from the
-# engine's and the synth's (TASKS M9 decision 1).
+# engine's and the synth's (docs/repo-layout.md, "One `.wasm` per track").
 crate-type = ["cdylib"]
 
 [dependencies]
