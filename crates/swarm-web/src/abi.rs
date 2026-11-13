@@ -25,7 +25,7 @@ pub const MAX_BOIDS: u32 = 262_144;
 /// The most boids brute force runs for: 16k is 2.7 × 10⁸ pair checks a
 /// step, measured ~0.14 s natively and ~0.45 s in V8 (1.65 ns a pair);
 /// at 100k one step would take a minute, and the step budget can't split
-/// a step (TASKS S1 decision 10).
+/// a step.
 pub const MAX_BRUTE: u32 = 16_384;
 /// The largest world side, pixels.
 pub const MAX_SIDE: u32 = 8192;

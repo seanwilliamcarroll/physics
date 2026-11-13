@@ -1,5 +1,5 @@
 //! Checks a `.wasm`'s export table against its hand-written `.d.ts`
-//! (`site/js/engine.d.ts`, `acoustic.d.ts`): the C ABI's one copy that no
+//! (`site/js/*.d.ts`, one per module): the C ABI's one copy that no
 //! compiler sees. Every exported function must be declared, every
 //! declared one exported, with the same parameter and result counts, and
 //! `bigint` exactly where wasm has `i64` (`number` covers `i32`, `f32`

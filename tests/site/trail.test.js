@@ -1,4 +1,4 @@
-// Unit tests for the pure fade math in site/js/trail.js.
+// Unit tests for the pure fade math in site/js/trail.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fadeBands } from "../../site/js/trail.ts";

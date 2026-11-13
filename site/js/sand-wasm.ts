@@ -10,7 +10,7 @@ const SAND_URL = new URL("../pkg/sand.wasm", import.meta.url);
 
 /** The sand page's step budget: a busy 1920 × 1080 grid takes about 12 ms
  *  a step natively, so past the budget the page slows down rather than
- *  freezing (TASKS M9 decision 9). */
+ *  freezing (docs/workers.md, option 1). */
 export const sandStepBudget = new StepBudget(STEP_BUDGET_MS, MAX_RATE_HZ);
 
 /** Fetches and instantiates sand.wasm; `sand_advance` capped by

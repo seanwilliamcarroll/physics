@@ -1,5 +1,5 @@
 //! The C-ABI surface JS calls. Each export is a thin adapter over [`Demo`];
-//! all `unsafe` in the workspace lives in this file.
+//! all `unsafe` in this crate lives in this module.
 //!
 //! Handles are opaque `*mut Demo` from `Box::into_raw`, so several demos can
 //! coexist on one page. Wasm is single-threaded and JS never holds a Rust

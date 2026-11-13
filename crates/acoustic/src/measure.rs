@@ -150,7 +150,7 @@ fn bin(chunk: &[f64], fs: f64, f: f64) -> Option<(f64, f64)> {
 /// through its level in dB against time, from `start` s to `end` s.
 /// Measuring one bin matters: a plucked string's higher partials decay
 /// faster than its fundamental, so the total RMS falls faster than the
-/// decay the loop formula predicts for `f0` (M A1.2: 6.2 s of RMS decay
+/// decay the loop formula predicts for `f0` (A1.2: 6.2 s of RMS decay
 /// against the fundamental's 7.6 s). `None` if fewer than two windows fall
 /// in the span, or the level doesn't fall.
 #[must_use]

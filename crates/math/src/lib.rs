@@ -1,4 +1,4 @@
-//! Shared math types for the physics engine and the acoustic track:
+//! Shared math types for every track (engine, acoustic, sand, swarm):
 //! the [`Scalar`] trait, [`Vec2<S>`](Vec2), [`UnitVec2<S>`](UnitVec2), and
 //! the [`SplitMix64`] PRNG and the [`Fnv1a`] hash (determinism tooling),
 //! and checked numeric conversions ([`convert`]).

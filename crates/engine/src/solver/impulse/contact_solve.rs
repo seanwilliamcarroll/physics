@@ -1,7 +1,7 @@
 //! Contacts in the sequential-impulse substep (`docs/08-collision.md`,
 //! "Sequential impulses"): the accumulated clamp, speculative targets, and
 //! split pseudo-impulses. Restitution is the impact stage's
-//! (`impacts.rs`).
+//! (`solver/impacts.rs`).
 
 use crate::collision::Contact;
 use crate::solver::contacts::{bodies, normal_velocity, normal_velocity_in, push_apart};

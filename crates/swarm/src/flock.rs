@@ -8,7 +8,7 @@ use crate::grid::Grid;
 use crate::rules::{Ranges, Seen, finish, steer};
 use crate::{Arena, Params};
 
-/// The most boids a flock holds: 2¹⁸ (TASKS S1 decision 10).
+/// The most boids a flock holds: 2¹⁸.
 pub const MAX_BOIDS: usize = 1 << 18;
 
 /// How a step finds each boid's neighbours (`docs/15-swarm.md`, "Finding

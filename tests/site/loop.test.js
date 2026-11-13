@@ -1,4 +1,4 @@
-// Unit tests for the pure parts of site/js/loop.js.
+// Unit tests for the pure parts of site/js/loop.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RateMeter, Smoothed, StepBudget } from "../../site/js/loop.ts";

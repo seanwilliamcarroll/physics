@@ -1,4 +1,4 @@
-// Unit tests for site/js/ring.js.
+// Unit tests for site/js/ring.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Ring } from "../../site/js/ring.ts";

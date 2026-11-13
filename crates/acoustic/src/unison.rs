@@ -5,7 +5,7 @@
 //! **A hammer per string.** At impact the strings are identical, and a
 //! cent of detuning barely changes them during a 1–4 ms contact, so `N`
 //! hammers of mass `M` on `N` strings behave like one of `N M` on all of
-//! them: the fitted hammer (section 3) is a hammer *per string*, and the
+//! them: the fitted hammer (A3.3) is a hammer *per string*, and the
 //! contact times stay the tested ones.
 
 use crate::dispersion::Dispersion;

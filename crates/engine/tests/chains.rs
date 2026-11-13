@@ -189,7 +189,7 @@ fn classic_baumgarte_blows_up_on_heavy_chains() {
     assert!(twenty > two, "{two} J at 2 substeps vs {twenty} J at 20");
 }
 
-// The double pendulum: `TASKS.md` decision 9's default, impulse with 20
+// The double pendulum at the page's default, impulse with 20
 // substeps, the solver that keeps the energy (chaos needs it to stay put).
 
 const CHAOS_SUBSTEPS: u32 = 20;

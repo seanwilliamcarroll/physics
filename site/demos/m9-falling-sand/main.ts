@@ -23,7 +23,7 @@ const OPTIONS: {
   chunks: ChoiceOption; rate: IntOption; fps: IntOption;
 } = {
   scene: { kind: "choice", values: Object.keys(SCENES), default: "hourglass", help: "starting scene" },
-  // 640 × 360: TASKS M9 decision 7 (2 px a cell across a 1280 px page).
+  // 640 × 360: 2 px a cell across a 1280 px page (docs/11-falling-sand.md).
   w: { kind: "int", min: 1, max: MAX_SIDE, default: 640, help: "grid width, cells" },
   h: { kind: "int", min: 1, max: MAX_SIDE, default: 360, help: "grid height, cells" },
   seed: { kind: "int", min: 0, max: 2 ** 32 - 1, default: 1, help: "the rules' random choices; same seed, same run" },

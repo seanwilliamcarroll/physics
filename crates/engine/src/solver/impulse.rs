@@ -32,7 +32,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// pseudo-velocity instead (`solve_split`), and `x += h (v + v_pseudo)`.
     ///
     /// With contacts (M6): found before the kick; impacts resolved by the
-    /// impact stage (Generalized Reflections, `impulse/impacts.rs`)
+    /// impact stage (Generalized Reflections, `solver/impacts.rs`)
     /// between two half kicks; then warm-started by pair and solved after
     /// the rods each pass, inelastically (accumulated clamp, speculative
     /// targets, a one-sided pseudo-impulse in split mode); their impulses

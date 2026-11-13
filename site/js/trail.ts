@@ -1,6 +1,6 @@
 // Fading position history per particle ("orbit trails"). Rendering only:
 // Rust returns current positions, and JS remembers where they've been
-// (TASKS.md M1 decision 6).
+// (docs/types.md, `Trail`).
 
 import { Ring } from "./ring.ts";
 import { COORDS_PER_PARTICLE } from "./abi.ts";

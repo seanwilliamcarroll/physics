@@ -1,6 +1,6 @@
 //! Conservation and correctness invariants (`docs/04-testing.md`, phase 1).
 // Marks the whole file as test code, so clippy's `allow-*-in-tests` settings
-// cover the generic test bodies and `common` too (see docs/lint-policy.md).
+// cover the generic test bodies too (see docs/lint-policy.md).
 #![cfg(test)]
 
 use engine::diagnostics::{center_of_mass, momentum};
@@ -328,7 +328,7 @@ fn velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_euler<S: Tol>() 
 for_each_scalar!(velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_euler);
 
 /// The slow tier (`cargo xtask slow`): the symplectic integrators over
-/// 2 000 orbits (20x the every-commit run), same bounds: bounded, no
+/// 2 000 orbits (20x the every-push run), same bounds: bounded, no
 /// trend, separation in its band.
 const LONG_ORBITS: f64 = 2000.0;
 

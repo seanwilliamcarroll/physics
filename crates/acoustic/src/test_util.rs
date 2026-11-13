@@ -4,7 +4,7 @@
 
 use math::convert::usize_to_f64;
 /// A deterministic "noise" for tests: a fixed integer hash, zero-mean
-/// enough for a pluck (section 4 brings the real excitations).
+/// enough for a pluck (the real excitations are in `excitation.rs`).
 pub(crate) fn hash_noise(i: usize) -> f64 {
     let h = (i.wrapping_mul(2_654_435_761) >> 7) & 0xffff;
     usize_to_f64(h) / 32768.0 - 1.0

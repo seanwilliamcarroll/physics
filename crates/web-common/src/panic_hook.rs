@@ -12,7 +12,7 @@
 mod wasm {
     use std::sync::Once;
 
-    // Provided by each module's loader (`site/js/wasm.ts`, the synth
+    // Provided by each module's loader (`site/js/engine-loader.ts`, the synth
     // worklet) under the default import module, "env".
     #[link(wasm_import_module = "env")]
     unsafe extern "C" {

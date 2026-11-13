@@ -1,4 +1,4 @@
-// Unit tests for site/js/vicsek-sweep.js.
+// Unit tests for site/js/vicsek-sweep.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { FIG_2A, cases, etaGrid, sideFor } from "../../site/js/vicsek-sweep.ts";

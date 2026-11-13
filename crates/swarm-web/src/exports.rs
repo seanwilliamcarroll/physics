@@ -1,6 +1,6 @@
 //! The C-ABI surface the boids page calls. Each export is a thin adapter
 //! over [`SwarmDemo`]: every argument parsed here, at the boundary; null
-//! handles refused. All `unsafe` in this crate lives in this file.
+//! handles refused. This crate's `unsafe` is in its four exports files.
 
 use core::ptr;
 

@@ -1,5 +1,5 @@
 // How far two runs of the same scene have drifted apart: the M2 page's
-// f32-vs-f64 metric (TASKS.md M2 decision 6). Pure, so `node --test`
+// f32-vs-f64 metric. Pure, so `node --test`
 // covers it.
 
 import { COORDS_PER_PARTICLE } from "./abi.ts";

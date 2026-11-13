@@ -1,4 +1,4 @@
-// Unit tests for site/js/ant-scenes.js: every scene, painted into a fake
+// Unit tests for site/js/ant-scenes.ts: every scene, painted into a fake
 // world, stays inside it, places a nest and food, and keeps the food
 // within ~130 cells of the nest.
 import { test } from "node:test";

@@ -1,4 +1,4 @@
-// Unit tests for the pure helpers in site/js/pixels.js.
+// Unit tests for the pure helpers in site/js/pixels.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cellAt, countOtherThan, strokeCells } from "../../site/js/pixels.ts";

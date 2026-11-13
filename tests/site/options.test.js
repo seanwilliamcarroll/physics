@@ -1,4 +1,4 @@
-// Unit tests for site/js/options.js (run by `node --test`, pre-push).
+// Unit tests for site/js/options.ts (run by `node --test`, pre-push).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readChoice, readInt, optionsTableHtml } from "../../site/js/options.ts";

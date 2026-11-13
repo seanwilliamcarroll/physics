@@ -1,9 +1,9 @@
 //! `cargo xtask slow`: the slow tier (`docs/04-testing.md`, "Running
-//! strategy"). Not part of any hook: run it by hand before a release, or
-//! nightly (the compute node, next to the mutation runs).
+//! strategy"). Not part of any hook: nightly CI runs it
+//! (`docs/17-nightly-ci.md`); by hand, before a release.
 //!
 //! 1. Every test, with each property test at `cases` cases
-//!    (`PROPTEST_CASES`; every-commit runs use 64).
+//!    (`PROPTEST_CASES`; every-push runs use 64).
 //! 2. The long runs: `#[ignore = "slow: …"]` tests named `slow_*`. The
 //!    name is the filter, so other ignored tests (generators, such as the
 //!    hammer table's) stay out.

@@ -1,4 +1,4 @@
-//! Shared helpers for the engine's integration tests: per-scalar
+//! Shared helpers for the workspace's integration tests: per-scalar
 //! tolerances and error laws, orbit measurements, the state hash behind the
 //! golden hashes, and `proptest` world generators.
 //!

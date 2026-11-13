@@ -1,4 +1,4 @@
-// Unit tests for the pure scale math in site/js/plot.js.
+// Unit tests for the pure scale math in site/js/plot.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { LOG_FLOOR, plotValue, yRange, decadeTicks } from "../../site/js/plot.ts";

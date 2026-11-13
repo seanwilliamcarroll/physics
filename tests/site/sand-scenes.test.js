@@ -1,4 +1,4 @@
-// Unit tests for site/js/sand-scenes.js: every scene, painted into an
+// Unit tests for site/js/sand-scenes.ts: every scene, painted into an
 // array at several sizes, stays in the grid and paints what it says.
 import { test } from "node:test";
 import assert from "node:assert/strict";

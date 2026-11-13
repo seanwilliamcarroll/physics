@@ -10,7 +10,7 @@ const SWARM_URL = new URL("../pkg/swarm.wasm", import.meta.url);
 
 /** The boids page's step budget: brute force at its cap takes ~0.45 s a
  *  step, so past the budget the page slows down rather than freezing
- *  more than one step's worth (TASKS S1 decision 10). */
+ *  more than one step's worth (crates/swarm-web abi.rs MAX_BRUTE). */
 export const swarmStepBudget = new StepBudget(STEP_BUDGET_MS, MAX_RATE_HZ);
 
 /** Fetches and instantiates swarm.wasm; `swarm_advance` and

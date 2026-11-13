@@ -1,6 +1,6 @@
-//! `cargo xtask smoke`: load the demo in headless Chrome and check that the
+//! `cargo xtask smoke`: load every demo in headless Chrome and check that the
 //! whole pipeline (wasm load, stepping, drawing) produces particles on the
-//! canvas. The page side lives in `site/js/smoke.js` (`?smoke` mode).
+//! canvas. The page side lives in `site/js/smoke.ts` (`?smoke` mode).
 
 use std::env;
 use std::fmt::Write as _;
@@ -25,7 +25,7 @@ const WINDOW_SIZE: &str = "1000,900";
 /// Chrome's log line when it drops a draw command that's too large.
 const SERIALIZE_FAILURE: &str = "Failed to serialize";
 
-/// Prefix of the console line `site/js/wasm.js` writes for a Rust panic
+/// Prefix of the console line `site/js/engine-loader.ts` writes for a Rust panic
 /// (`engine.wasm ` + std's "panicked at <file:line:col>:").
 const PANIC_CONSOLE_PREFIX: &str = "engine.wasm panicked at";
 
