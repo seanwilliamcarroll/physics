@@ -11,6 +11,7 @@ the index and the current state.
 | `cargo xtask bench [FILTER]` | Every criterion bench (`cargo bench --workspace --benches`), or those whose names contain FILTER (e.g. `sand_step`), then a table of the results. |
 | `cargo xtask bench --save main` | The same, saved as baseline `main`. |
 | `cargo xtask bench --baseline main` | Runs them again and compares: lists every benchmark whose mean moved more than 10% (`--threshold N` changes it), faster or slower, and **fails if anything got slower**. |
+| `cargo xtask bench --record` | Any of the above, and the table kept as `docs/bench/<machine>.md`, proposed in a pull request (below). |
 | `cargo xtask profile …` | Where the time goes in one example or bench (`profiling.md`). |
 | `cargo xtask bench-wasm` | Builds the site, then times the modules in Node 22: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`). |
 
@@ -40,8 +41,24 @@ sand_step/settled/640x360_chunks        3.3 µs    0.1%      70.4 Gelem/s    +0.
   plain run from that benchmark's previous run (criterion keeps one).
   Within a few percent is noise.
 
-Criterion's own lines (one block per benchmark, `--quiet`) still print
-above it as each finishes.
+Criterion's own output (a block per benchmark, with its progress) still
+prints above it as each finishes.
+
+**Keeping a record:** `cargo xtask bench --record` (with any of the
+above) also writes the table as `docs/bench/<machine>.md`, with the
+date, the commit, the machine and the toolchain, and opens a pull request
+changing just that file. One file per machine, replaced each time:
+numbers from different machines don't compare, and git's history keeps
+the earlier ones (`git log -p docs/bench/llm.md`). It makes the branch and commit through GitHub's
+API (`gh api`), so nothing in the checkout changes and no hooks run;
+without a `gh` login it writes the file into `docs/bench/` to commit by
+hand. It never merges. Record on one quiet machine (the compute node,
+idle), so records compare; GitHub's shared runners are too noisy.
+
+The records are for reading, not for comparing runs automatically:
+`--baseline` compares with criterion's own saved results on this
+machine (`target/criterion/`), which keep every sample and so can say
+whether a change is more than noise; a record keeps only the means.
 
 ## The suites
 

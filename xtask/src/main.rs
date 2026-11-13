@@ -102,6 +102,10 @@ enum Command {
         threshold: u32,
         /// Run only benchmarks whose names contain this (criterion's filter)
         filter: Option<String>,
+        /// Also record the table as `docs/bench/<machine>.md` (replacing
+        /// that machine's last record), in a pull request if gh is logged in
+        #[arg(long)]
+        record: bool,
     },
     /// Time the cluster through engine.wasm in Node and compare with the
     /// native criterion results (run cargo bench -p engine --bench step first)
@@ -201,13 +205,20 @@ fn run(cmd: Command) -> Result<(), String> {
             baseline,
             threshold,
             filter,
+            record,
         } => {
             let mode = match (save.as_deref(), baseline.as_deref()) {
                 (Some(n), _) => bench::Mode::Save(n),
                 (None, Some(n)) => bench::Mode::Compare(n),
                 (None, None) => bench::Mode::Run,
             };
-            bench::bench(&root, &mode, filter.as_deref(), f64::from(threshold))
+            bench::bench(
+                &root,
+                &mode,
+                filter.as_deref(),
+                f64::from(threshold),
+                record,
+            )
         }
         Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
         Command::Profile {

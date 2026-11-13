@@ -83,6 +83,24 @@ fn rate(per_second: f64, unit: &str) -> String {
     format!("{value:.1} {prefix}{unit}/s")
 }
 
+/// A row's cells after its id: time, ±, throughput, change.
+fn cells(r: &Row) -> [String; 4] {
+    let throughput = r.throughput.map_or_else(String::new, |t| {
+        let (per_iter, unit) = match t {
+            Throughput::Elements(n) => (n, "elem"),
+            Throughput::Bytes(n) => (n, "B"),
+        };
+        rate(per_iter / (r.mean_ns * 1e-9), unit)
+    });
+    [
+        format_ns(r.mean_ns),
+        format!("{:.1}%", r.spread * 100.0),
+        throughput,
+        r.change
+            .map_or_else(String::new, |c| format!("{:+.1}%", c * 100.0)),
+    ]
+}
+
 /// The table, one line per row, sorted by id.
 pub(crate) fn format(rows: &mut [Row]) -> String {
     rows.sort_by(|a, b| a.id.cmp(&b.id));
@@ -95,27 +113,27 @@ pub(crate) fn format(rows: &mut [Row]) -> String {
     );
     let _ = writeln!(out, "{}", "-".repeat(width + 47));
     for r in rows.iter() {
-        let throughput = r.throughput.map_or_else(String::new, |t| {
-            let per_iter = match t {
-                Throughput::Elements(n) | Throughput::Bytes(n) => n,
-            };
-            let unit = match t {
-                Throughput::Elements(_) => "elem",
-                Throughput::Bytes(_) => "B",
-            };
-            rate(per_iter / (r.mean_ns * 1e-9), unit)
-        });
-        let change = r
-            .change
-            .map_or_else(String::new, |c| format!("{:+.1}%", c * 100.0));
+        let [time, spread, throughput, change] = cells(r);
         let _ = writeln!(
             out,
-            "{:<width$}  {:>10}  {:>5.1}%  {:>16}  {:>7}",
-            r.id,
-            format_ns(r.mean_ns),
-            r.spread * 100.0,
-            throughput,
-            change
+            "{:<width$}  {time:>10}  {spread:>6}  {throughput:>16}  {change:>7}",
+            r.id
+        );
+    }
+    out
+}
+
+/// The same table in Markdown (for `--record`), sorted by id.
+pub(crate) fn markdown(rows: &mut [Row]) -> String {
+    rows.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut out =
+        String::from("| Benchmark | Time | ± | Throughput | Change |\n|---|---:|---:|---:|---:|\n");
+    for r in rows.iter() {
+        let [time, spread, throughput, change] = cells(r);
+        let _ = writeln!(
+            out,
+            "| `{}` | {time} | {spread} | {throughput} | {change} |",
+            r.id
         );
     }
     out
