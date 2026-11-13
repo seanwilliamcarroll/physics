@@ -272,13 +272,10 @@ the GPU.
 
 ## References
 
-- Purho, P. (2019), *Exploring the Tech and Design of Noita*, GDC 2019,
-  Independent Games Summit. https://gdcvault.com/play/1025695/Exploring-the-Tech-and-Design
-  (free on GDC's YouTube channel).
-- 80.lv (2019), *Noita: a game based on falling sand simulation* (the
-  talk's technical points: bottom-up updates, 64 × 64 chunks with dirty
-  rectangles, the four-pass checkerboard).
-  https://80.lv/articles/noita-a-game-based-on-falling-sand-simulation/
-- Toffoli, T. & Margolus, N. (1987), *Cellular Automata Machines: A New
-  Environment for Modeling*, MIT Press. doi:10.7551/mitpress/1763.001.0001
-  (the Margolus neighbourhood has its own chapter).
+Full entries in `references.md` ("Falling sand").
+
+- Purho (2019), *Exploring the Tech and Design of Noita* (GDC), and
+  80.lv's summary of it: bottom-up updates, 64 × 64 chunks with dirty
+  rectangles, the four-pass checkerboard.
+- Toffoli & Margolus (1987), *Cellular Automata Machines*: the Margolus
+  neighbourhood.

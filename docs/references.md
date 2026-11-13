@@ -112,6 +112,10 @@ order-free and conserving by construction; weighed for M9, noted for M10.
 
 ## Swarms (`15-swarm.md`, S1–S5)
 
+DOIs checked on Crossref (S1–S4's on 2026-11-11, S5's on 2026-11-12).
+Each entry says whether the paper itself was read: several are cited
+for their known results only, their publishers' copies needing a login.
+
 **Reynolds, C. W. (1987).** *Flocks, herds and schools: a distributed
 behavioral model.* SIGGRAPH Computer Graphics 21(4), 25–34. Boids:
 separation, alignment and cohesion from local perception.
@@ -126,24 +130,26 @@ attraction; group polarization, S1's order measure.
 **Vicsek, T., Czirók, A., Ben-Jacob, E., Cohen, I. & Shochet, O.
 (1995).** *Novel type of phase transition in a system of self-driven
 particles.* Phys. Rev. Lett. 75(6), 1226–1229. The order parameter `v_a`
-and its transition with noise (S2).
+and its transition with noise (S2). Read in full.
 - DOI: https://doi.org/10.1103/PhysRevLett.75.1226
+- arXiv: https://arxiv.org/abs/cond-mat/0611743
 
 **Grégoire, G. & Chaté, H. (2004).** *Onset of collective and cohesive
 motion.* Phys. Rev. Lett. 92(2), 025702. The Vicsek transition is
-"always discontinuous" (S2's reading of its curves).
+"always discontinuous" (S2's reading of its curves). Read 2026-11-11.
 - DOI: https://doi.org/10.1103/PhysRevLett.92.025702
 
 **Chaté, H., Ginelli, F., Grégoire, G. & Raynaud, F. (2008).**
 *Collective motion of self-propelled particles interacting without
 cohesion.* Phys. Rev. E 77(4), 046113. First-order-like onset;
-propagating high-density structures near it.
+propagating high-density structures near it. Read 2026-11-11.
 - DOI: https://doi.org/10.1103/PhysRevE.77.046113
 
 **Chen, M. Z. Q. & Zhang, H.-T. (2007).** *Comment on "Novel type of
 phase transition in a system of self-driven particles".* arXiv
 preprint (no journal version found). The 0/0 case, "direction
 annihilation", and three fixes; S2 keeps the heading and counts it.
+Read 2026-11-11.
 - arXiv: https://arxiv.org/abs/cond-mat/0703532
 
 **Baglietto, G. & Albano, E. V. (2008).** *Finite-size scaling analysis
@@ -188,7 +194,8 @@ sources (S4's nodes). Not read.
 
 *Secondary:* Jenson, S., *physarum*
 (https://cargocollective.com/sagejenson/physarum): the agent step's
-structure, the 3 × 3 mean filter, multiplicative decay; no values.
+structure, the 3 × 3 mean filter, multiplicative decay; no values
+(read 2026-11-11).
 
 **Eiben, A. E. & Smith, J. E. (2015).** *Introduction to Evolutionary
 Computing*, 2nd ed. Springer. The terms S5 uses (tournament selection,
@@ -221,7 +228,8 @@ parameter values and update order, read 2026-11-11):
 https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html.
 Reynolds, C. W. (1999), *Steering behaviors for autonomous characters*,
 GDC (flee): http://www.red3d.com/cwr/steer/gdc99/. Le Grand, S. (2007),
-*Broad-phase collision detection with CUDA*, GPU Gems 3, ch. 32.
+*Broad-phase collision detection with CUDA*, GPU Gems 3, ch. 32 (grids
+by sorting on the GPU; S4's GPU question).
 
 ## Integrators and stability (`07-soft-bodies.md`, M1–M5)
 

@@ -64,6 +64,11 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   checked, typed element or a clear error; `OPTIONS` entries are a
   discriminated union (`kind: "choice" | "int"`).
 
+**Triggers re-checked at the end of M1:** softening is still a scenario
+constant (not settable), so `Softening` (item 2) waits for M2's slider;
+mass is still constant per scenario, so item 1 waits for M3; no unit-mixing
+bug yet (item 7).
+
 ## Adopted in M2
 
 - **`Softening<S>`** (item 2 below; trigger: M2's softening slider).
@@ -81,6 +86,88 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   θ = 0 is valid (exact). `BarnesHut::new` became infallible.
   `demo_set_theta` parses at the boundary in `f64` and `cast`s to the
   engine's scalar.
+
+**Triggers re-checked at the end of M2:** item 1 (mass types) still
+waits: masses are still scenario-computed, never user input, and M2 added
+no constraint solver. Item 2's other parameters (compliance, restitution,
+friction) wait for their sliders. Item 4 (`NonZeroU32` substeps) is
+closer: M2 added more `Result` plumbing for errors that can't happen
+(`InvalidSoftening` on positive constants), but substeps are still
+constants, and one enum variant per invariant is cheap. Item 3
+(`UnitVec2`) waits for M3. Barnes–Hut's opening angle θ did get a slider
+(M2.8), so it is now a parameter type, above.
+
+## Adopted in M3
+
+- **`Baumgarte<S>`** (item 2; trigger: the β slider). `new(β) -> Option`
+  for `0 ≤ β ≤ 1` (NaN rejected; above 1 overshoots). Not a field of
+  `Solver::Impulse`, so `Solver` stays a plain non-generic enum, and β
+  survives solver switches.
+
+- **`Mass<S>`** (item 1; trigger: M3's constraint solvers weight every
+  correction by `inv_mass`). `Mass::new(m) -> Option`: `None` for
+  `m ≤ 0`, NaN, ±∞, or an `m` so small that `1 / m` overflows (e.g.
+  `1e-39` in `f32`). `Scalar` has no `is_finite`, so finiteness is read
+  through the lossless `to_f64()` (a fixed-point scalar passes trivially);
+  `1 / m > 0` is also checked, which only fixed point can fail. The
+  inverse is computed once in `new`, the same `1 / m` `add` used to
+  compute, so every golden hash is unchanged. `Particles::add` takes a
+  `Mass`; `add_static` stays the only way to get `inv_mass = 0`. Scene
+  masses go through `Mass::new` once (`ConfigError::InvalidMass`, like
+  `InvalidSoftening`); storage is still a plain `Vec<S>` of inverses.
+- **`ParticleId`** (item 5, plain-index variant): `add` and `add_static`
+  return one; `index()` reads the slot. Only `Particles` creates ids.
+  No generation counter: nothing can be removed, so an id can't go
+  stale. Item 5's trigger for a generational handle still stands.
+
+**Triggers re-checked at the end of M3:** item 3 (`UnitVec2`) is half
+met: `DistanceConstraint::evaluate` is the first `x / |x|` in a constraint
+gradient, and it returns `None` at `|x| = 0`. Its trigger asks for a second
+call site; M4's chains reuse the same constraint, so likely M6 (contact
+normals). Item 2's `Compliance` waits for M5's springs (rods are rigid-only
+until then). Item 4 (`NonZeroU32` substeps) was half adopted in M3
+(`set_substeps`) and finished in the M3/M4 audit (`World::new`). Item 5's generational `ParticleId` waits for removal.
+
+## Adopted in M4
+
+- **`Compliance<S>`** (item 2; trigger: the drag's soft constraint, a
+  milestone before M5's spring slider). `new(α) -> Option`, α ≥ 0, NaN
+  rejected; `RIGID` is 0. Shares `checked_param!` with the other interval
+  types.
+
+**Triggers re-checked at the end of M4:** `Compliance` adopted (above),
+a milestone early. `UnitVec2` (item 3) still has one call site: the drag
+reuses `DistanceConstraint`'s gradient, so M6's contact normals remain the
+likely second. Mass types are in; the generational `ParticleId` still
+waits for general removal (M4's drag only pops the latest add). No new
+runtime-settable parameter is unchecked: order, start, and the drag's
+compliance are enums or constants.
+
+## Adopted in M5
+
+**Triggers re-checked at the end of M5:** `Stiffness` and `Damping`
+adopted (item 2, trigger: the stiffness and damping sliders); both reject
+NaN and infinity, and rigid lives only in `Compliance` (α = 0), since a
+force spring has no rigid form. **Item 3's trigger is now met:**
+`SpringForce::accumulate` is the second `d / |d|` call site after
+`DistanceConstraint::evaluate`, both skipping `|d| = 0` by hand. Not
+adopted in M5 (a cross-cutting change); up for decision before M6, whose
+contact normals would make three. Item 5's generational `ParticleId` still
+waits for general removal.
+
+## Adopted before M6
+
+- **`UnitVec2<S>`** (item 3; trigger met in M5: `SpringForce` became the
+  second `d / |d|`, after `DistanceConstraint`). In `math`, a private
+  field; made only by `Vec2::normalized` or `Vec2::length_and_direction`,
+  `None` unless `|x| > 0` (so NaN too). `Constraint::evaluate` returns
+  `Option<UnitVec2>`, so the solvers can't receive an unnormalized
+  gradient; scaling returns a plain `Vec2`. Still `x / |x|` per
+  component, so every golden hash is unchanged (native and wasm). Adopted
+  now so M6's contact normals start with it rather than adding a third
+  hand-written check.
+
+## The acoustic track, and the audit after A3
 
 **Triggers re-checked at the end of A1:** the acoustic crate's runtime
 settings (`T₆₀`, triangle peak, gain, MIDI key) arrive as `f64`/`u32` at
@@ -122,89 +209,6 @@ if A2–A3 passed parameters around. A3 does, in two cases:
 dispersion design reads `B ≤ 0` or NaN as "no stiffness", which is right
 for the toggle and can't be reached from outside. Item 2 is otherwise
 unchanged; `UnitVec2` and the rest too.
-
-**Triggers re-checked at the end of M5:** `Stiffness` and `Damping`
-adopted (item 2, trigger: the stiffness and damping sliders); both reject
-NaN and infinity, and rigid lives only in `Compliance` (α = 0), since a
-force spring has no rigid form. **Item 3's trigger is now met:**
-`SpringForce::accumulate` is the second `d / |d|` call site after
-`DistanceConstraint::evaluate`, both skipping `|d| = 0` by hand. Not
-adopted in M5 (a cross-cutting change); up for decision before M6, whose
-contact normals would make three. Item 5's generational `ParticleId` still
-waits for general removal.
-
-**Triggers re-checked at the end of M4:** `Compliance` adopted (above),
-a milestone early. `UnitVec2` (item 3) still has one call site: the drag
-reuses `DistanceConstraint`'s gradient, so M6's contact normals remain the
-likely second. Mass types are in; the generational `ParticleId` still
-waits for general removal (M4's drag only pops the latest add). No new
-runtime-settable parameter is unchecked: order, start, and the drag's
-compliance are enums or constants.
-
-**Triggers re-checked at the end of M3:** item 3 (`UnitVec2`) is half
-met: `DistanceConstraint::evaluate` is the first `x / |x|` in a constraint
-gradient, and it returns `None` at `|x| = 0`. Its trigger asks for a second
-call site; M4's chains reuse the same constraint, so likely M6 (contact
-normals). Item 2's `Compliance` waits for M5's springs (rods are rigid-only
-until then). Item 4 (`NonZeroU32` substeps) was half adopted in M3
-(`set_substeps`) and finished in the M3/M4 audit (`World::new`). Item 5's generational `ParticleId` waits for removal.
-
-**Triggers re-checked at the end of M2:** item 1 (mass types) still
-waits: masses are still scenario-computed, never user input, and M2 added
-no constraint solver. Item 2's other parameters (compliance, restitution,
-friction) wait for their sliders. Item 4 (`NonZeroU32` substeps) is
-closer: M2 added more `Result` plumbing for errors that can't happen
-(`InvalidSoftening` on positive constants), but substeps are still
-constants, and one enum variant per invariant is cheap. Item 3
-(`UnitVec2`) waits for M3. Barnes–Hut's opening angle θ did get a slider
-(M2.8), so it is now a parameter type, below.
-
-**Triggers re-checked at the end of M1:** softening is still a scenario
-constant (not settable), so `Softening` (item 2) waits for M2's slider;
-mass is still constant per scenario, so item 1 waits for M3; no unit-mixing
-bug yet (item 7).
-
-## Adopted before M6
-
-- **`UnitVec2<S>`** (item 3; trigger met in M5: `SpringForce` became the
-  second `d / |d|`, after `DistanceConstraint`). In `math`, a private
-  field; made only by `Vec2::normalized` or `Vec2::length_and_direction`,
-  `None` unless `|x| > 0` (so NaN too). `Constraint::evaluate` returns
-  `Option<UnitVec2>`, so the solvers can't receive an unnormalized
-  gradient; scaling returns a plain `Vec2`. Still `x / |x|` per
-  component, so every golden hash is unchanged (native and wasm). Adopted
-  now so M6's contact normals start with it rather than adding a third
-  hand-written check.
-
-## Adopted in M4
-
-- **`Compliance<S>`** (item 2; trigger: the drag's soft constraint, a
-  milestone before M5's spring slider). `new(α) -> Option`, α ≥ 0, NaN
-  rejected; `RIGID` is 0. Shares `checked_param!` with the other interval
-  types.
-
-## Adopted in M3
-
-- **`Baumgarte<S>`** (item 2; trigger: the β slider). `new(β) -> Option`
-  for `0 ≤ β ≤ 1` (NaN rejected; above 1 overshoots). Not a field of
-  `Solver::Impulse`, so `Solver` stays a plain non-generic enum, and β
-  survives solver switches.
-
-- **`Mass<S>`** (item 1; trigger: M3's constraint solvers weight every
-  correction by `inv_mass`). `Mass::new(m) -> Option`: `None` for
-  `m ≤ 0`, NaN, ±∞, or an `m` so small that `1 / m` overflows (e.g.
-  `1e-39` in `f32`). `Scalar` has no `is_finite`, so finiteness is read
-  through the lossless `to_f64()` (a fixed-point scalar passes trivially);
-  `1 / m > 0` is also checked, which only fixed point can fail. The
-  inverse is computed once in `new`, the same `1 / m` `add` used to
-  compute, so every golden hash is unchanged. `Particles::add` takes a
-  `Mass`; `add_static` stays the only way to get `inv_mass = 0`. Scene
-  masses go through `Mass::new` once (`ConfigError::InvalidMass`, like
-  `InvalidSoftening`); storage is still a plain `Vec<S>` of inverses.
-- **`ParticleId`** (item 5, plain-index variant): `add` and `add_static`
-  return one; `index()` reads the slot. Only `Particles` creates ids.
-  No generation counter: nothing can be removed, so an id can't go
-  stale. Item 5's trigger for a generational handle still stands.
 
 ## Considered and not adopted
 

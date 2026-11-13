@@ -948,86 +948,32 @@ learned those seeds, and the doc will say so.
 
 ## References
 
-Papers (DOIs checked on Crossref):
+Full entries, DOIs and what was read in `references.md` ("Swarms").
 
-- Reynolds, C. W. (1987), *Flocks, herds and schools: a distributed
-  behavioral model*, SIGGRAPH Computer Graphics 21(4), 25–34.
-  doi:10.1145/37402.37406
-- Couzin, I. D., Krause, J., James, R., Ruxton, G. D. & Franks, N. R.
-  (2002), *Collective memory and spatial sorting in animal groups*,
-  J. Theor. Biol. 218(1), 1–11. doi:10.1006/jtbi.2002.3065
-- Vicsek, T., Czirók, A., Ben-Jacob, E., Cohen, I. & Shochet, O. (1995),
-  *Novel type of phase transition in a system of self-driven
-  particles*, Phys. Rev. Lett. 75(6), 1226–1229.
-  doi:10.1103/PhysRevLett.75.1226
-- Allen, M. P. & Tildesley, D. J. (2017), *Computer Simulation of
-  Liquids*, 2nd ed., Oxford University Press.
-  doi:10.1093/oso/9780198803195.001.0001
-- Hockney, R. W. & Eastwood, J. W., *Computer Simulation Using
-  Particles* (1981; CRC Press reprint 2021). doi:10.1201/9780367806934
-
-S2 (read 2026-11-11):
-
-- Grégoire, G. & Chaté, H. (2004), *Onset of collective and cohesive
-  motion*, Phys. Rev. Lett. 92(2), 025702.
-  doi:10.1103/PhysRevLett.92.025702
-- Chaté, H., Ginelli, F., Grégoire, G. & Raynaud, F. (2008), *Collective
-  motion of self-propelled particles interacting without cohesion*,
-  Phys. Rev. E 77(4), 046113. doi:10.1103/PhysRevE.77.046113
-- Chen, M. Z. Q. & Zhang, H.-T. (2007), *Comment on "Novel type of
-  phase transition in a system of self-driven particles"*, arXiv
-  preprint cond-mat/0703532. doi:10.48550/arXiv.cond-mat/0703532
-- Baglietto, G. & Albano, E. V. (2008), *Finite-size scaling analysis
-  and dynamic study of the critical behavior of a model for the
-  collective displacement of self-driven individuals*, Phys. Rev. E
-  78(2), 021125. doi:10.1103/PhysRevE.78.021125 (cited, not yet read).
-
-S3 (DOIs checked on Crossref 2026-11-11; read status as above):
-
-- Goss, S., Aron, S., Deneubourg, J.-L. & Pasteels, J. M. (1989),
-  *Self-organized shortcuts in the Argentine ant*, Naturwissenschaften
-  76(12), 579–581. doi:10.1007/BF00462870 (not read)
-- Deneubourg, J.-L., Aron, S., Goss, S. & Pasteels, J. M. (1990), *The
-  self-organizing exploratory pattern of the Argentine ant*, J. Insect
-  Behav. 3(2), 159–168. doi:10.1007/BF01417909 (not read)
-- Beckers, R., Deneubourg, J.-L. & Goss, S. (1992), *Trails and U-turns
-  in the selection of a path by the ant Lasius niger*, J. Theor. Biol.
-  159(4), 397–415. doi:10.1016/S0022-5193(05)80686-1 (not read)
-- Dorigo, M., Maniezzo, V. & Colorni, A. (1996), *Ant system:
-  optimization by a colony of cooperating agents*, IEEE Trans. Syst.
-  Man Cybern. B 26(1), 29–41. doi:10.1109/3477.484436 (not read;
-  context)
-- Jones, J. (2010), *Characteristics of pattern formation and evolution
-  in approximations of Physarum transport networks*, Artificial Life
-  16(2). doi:10.1162/artl.2010.16.2.16202 (abstract read)
-
-S4:
-
-- Jones, J. (2011; online 2010), *Influences on the formation and
-  evolution of Physarum polycephalum inspired emergent transport
-  networks*, Natural Computing 10(4), 1345–1369.
-  doi:10.1007/s11047-010-9223-z (not read)
-- Jenson, S., *physarum*, https://cargocollective.com/sagejenson/physarum
-  (secondary; read 2026-11-11: structure, no values).
-
-S5 (DOIs checked on Crossref, 2026-11-12; none read):
-
-- Eiben, A. E. & Smith, J. E. (2015), *Introduction to Evolutionary
-  Computing*, 2nd ed., Springer. doi:10.1007/978-3-662-44874-8
-- Hansen, N. & Ostermeier, A. (2001), *Completely derandomized
-  self-adaptation in evolution strategies*, Evol. Comput. 9(2), 159–195.
-  doi:10.1162/106365601750190398
-- Werfel, J., Petersen, K. & Nagpal, R. (2014), *Designing collective
-  behavior in a termite-inspired robot construction team*, Science
-  343(6172), 754–758. doi:10.1126/science.1245842
-
-Secondary (values and practice, not claims):
-
-- Adams, V. H., *Boids algorithm*, ECE 4760, Cornell:
-  https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html
-  (the parameter values and update order; read 2026-11-11).
-- Reynolds, C. W. (1999), *Steering behaviors for autonomous
-  characters*, GDC: http://www.red3d.com/cwr/steer/gdc99/ (flee: the
-  page's predator).
-- Le Grand, S. (2007), *Broad-phase collision detection with CUDA*,
-  GPU Gems 3, ch. 32 (grids by sorting on the GPU; S4).
+- Reynolds (1987), *Flocks, herds and schools*: the three rules; (1999),
+  *Steering behaviors for autonomous characters*: flee, the page's
+  predator.
+- Couzin et al. (2002), *Collective memory and spatial sorting in animal
+  groups*: zones, and group polarization.
+- Adams, *Boids algorithm* (ECE 4760, Cornell): S1's parameter values
+  and update order.
+- Allen & Tildesley (2017), *Computer Simulation of Liquids*; Hockney &
+  Eastwood, *Computer Simulation Using Particles*: cell lists.
+- Vicsek et al. (1995), *Novel type of phase transition in a system of
+  self-driven particles*: S2's model and Fig. 2a.
+- Grégoire & Chaté (2004); Chaté et al. (2008): the transition as
+  discontinuous, at larger sizes.
+- Chen & Zhang (2007), *Comment on "Novel type of phase transition…"*:
+  the 0/0 case.
+- Baglietto & Albano (2008): finite-size scaling (cited, not read).
+- Goss et al. (1989); Deneubourg et al. (1990); Beckers et al. (1992);
+  Dorigo et al. (1996): the ant results S3 cites (none read).
+- Jones (2010), *Characteristics of pattern formation and evolution in
+  approximations of Physarum transport networks* (abstract read);
+  Jones (2011), networks between nutrient sources (not read); Jenson,
+  *physarum* (secondary: the step's structure, no values).
+- Eiben & Smith (2015), *Introduction to Evolutionary Computing*;
+  Hansen & Ostermeier (2001), CMA-ES; Werfel et al. (2014), collective
+  construction: S5's vocabulary and what it leaves out (none read).
+- Le Grand (2007), *Broad-phase collision detection with CUDA*, GPU
+  Gems 3: grids by sorting on the GPU.

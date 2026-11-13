@@ -360,18 +360,14 @@ game rules beyond potting and re-spotting the cue ball.
 
 ## References
 
-- WPA, *Recommended Equipment Specifications* (effective November 2001).
-  https://wpapool.com/wp-content/uploads/2024/01/RECOMMENDED-EQUIPMENT-SPECIFICATIONS.pdf
-- Mathavan, Jackson & Parkin (2009), "Application of high-speed imaging
-  to determine the dynamics of billiards", *Am. J. Phys.* 77(9),
-  788–794. doi:10.1119/1.3157159
-- Mathavan, Jackson & Parkin (2010), "A theoretical analysis of billiard
-  ball dynamics under cushion impacts", *Proc. IMechE C* 224(9),
-  1863–1873. doi:10.1243/09544062JMES1964
-- Alciatore, D., *Pool and Billiards Physics Resources* (Colorado State
-  University), typical physical properties.
-  https://billiards.colostate.edu/faq/physics/physical-properties/
-- Kiefl, E., *pooltool* (ball parameter defaults, citing Alciatore).
-  https://pooltool.readthedocs.io/
-- Smith, Kaufman, Vouga, Tamstorf & Grinspun (2012), "Reflections on
-  simultaneous impact", *ACM TOG* 31(4). doi:10.1145/2185520.2185602
+Full entries in `references.md` ("Billiards").
+
+- WPA, *Recommended Equipment Specifications*: the table, balls,
+  pockets and cushions.
+- Mathavan, Jackson & Parkin (2009), high-speed imaging of billiards;
+  (2010), cushion impacts.
+- Alciatore, *Pool and Billiards Physics Resources*: typical physical
+  properties (secondary; to confirm by hand).
+- Kiefl, *pooltool*: ball parameter defaults, citing Alciatore.
+- Smith, Kaufman, Vouga, Tamstorf & Grinspun (2012), *Reflections on
+  Simultaneous Impact*: Generalized Reflections.
