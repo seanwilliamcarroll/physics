@@ -1,6 +1,6 @@
 # Nightly CI
 
-Status: **In progress** (C1 and C2 done, 2026-11-13; C2's two checks on `main` still to make).
+Status: **In progress** (C1–C3 done, 2026-11-13; C4 next).
 
 ## The idea
 
@@ -59,7 +59,7 @@ Two jobs, in parallel, both on `ubuntu-24.04`:
 | Job | Runs | About |
 |---|---|---|
 | `hooks` | `.githooks/pre-commit`, then `.githooks/pre-push`: the scripts themselves | 10 min 15 s cold (measured, C2); cached not yet measured |
-| `slow` | `cargo xtask slow`: every test with property tests at 10 000 cases, then the `slow_*` long runs | 25 min on Apple silicon; unknown on a runner (to be measured: C3) |
+| `slow` | `cargo xtask slow`: every test with property tests at 10 000 cases, then the `slow_*` long runs | 25 min on Apple silicon; 54 min on a runner (measured, C3) |
 
 **The hooks, not a copy of them.** Today's `ci.yml` lists the hooks'
 commands again, and has drifted. Against the hooks as they are now, it
@@ -156,6 +156,14 @@ benchmarks (a shared runner's timings mean nothing).
   after). The run's duration goes in this document.
 
 ### C3. The slow tier job
+
+**Done** (2026-11-13). The trial run (a temporary `pull_request`
+trigger) was green: the first stage, 833 tests with property tests at
+10 000 cases, took 50 min 46 s; the second, the seven `slow_*` long
+runs, 47 s. **That is the first time the second stage has completed
+under nextest.** With setup, the job took 53 min 32 s, so the full
+case count stays: no `--cases 2000` fallback. The job's timeout is two
+hours.
 
 - **Touches:** `.github/workflows/nightly.yml`, `.config/nextest.toml`
   if the runner needs longer than the `slow` profile's hour for one

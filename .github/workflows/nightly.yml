@@ -11,9 +11,6 @@ on:
     - cron: "17 7 * * *"
   # A manual run always runs everything.
   workflow_dispatch:
-  # TEMPORARY, for trying this workflow's changes before they are on main:
-  # removed before the pull request merges.
-  pull_request:
 
 # One at a time; a run in progress is left to finish.
 concurrency:
@@ -95,7 +92,8 @@ jobs:
     needs: changed
     if: needs.changed.outputs.run == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    # Measured: 54 min (C3's trial). Twice that, for a slower runner.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
