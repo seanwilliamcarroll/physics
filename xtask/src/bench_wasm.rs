@@ -143,7 +143,7 @@ fn modules(root: &Path, budget_ms: u32) -> Result<(), String> {
 }
 
 /// Nanoseconds as a readable duration.
-fn format_ns(ns: f64) -> String {
+pub(crate) fn format_ns(ns: f64) -> String {
     if ns < 1e3 {
         format!("{ns:.0} ns")
     } else if ns < 1e6 {
