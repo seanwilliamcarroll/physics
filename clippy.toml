@@ -1,5 +1,5 @@
-# Test code may panic, index, and print. Note: helpers in tests/common/ are
-# only exempt when declared `#[cfg(test)] mod common;`.
+# Test code may panic, index, and print. Integration tests start with
+# `#![cfg(test)]` so their generic helpers are exempt too (docs/lint-policy.md).
 allow-panic-in-tests = true
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true

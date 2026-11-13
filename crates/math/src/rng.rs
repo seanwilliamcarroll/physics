@@ -1,5 +1,5 @@
 //! [`SplitMix64`]: a tiny seeded PRNG, shared by the engine (scenario
-//! setup) and the acoustic track (excitation noise). In-house per the
+//! setup), the acoustic track (excitation noise), sand and the swarms. In-house per the
 //! dependency policy (`docs/00-scope.md`); not for cryptography or
 //! statistics.
 

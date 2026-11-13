@@ -3,8 +3,10 @@
 //! in ECE 4760's form, a map from one step to the next (Δt = 1, pixels
 //! per step), double-buffered so the result doesn't depend on the order
 //! boids are stored in. S2 is the Vicsek model ([`Vicsek`]): constant
-//! speed, align with the neighbourhood, add noise, in a periodic box.
-//! `f32` throughout.
+//! speed, align with the neighbourhood, add noise, in a periodic box. S3
+//! is ant foraging on two pheromone fields ([`Colony`]), S4 Physarum
+//! ([`Slime`]), S5 an evolutionary algorithm over S3's constants
+//! ([`evolve()`]). `f32` throughout.
 
 mod ants;
 mod evolve;

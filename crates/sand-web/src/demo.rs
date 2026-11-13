@@ -97,7 +97,7 @@ impl SandDemo {
 
     /// Fills the RGBA buffer from the grid and returns it.
     /// A lookup per cell: in wasm at 1920 × 1080, 0.47 ms, against 8.6 ms
-    /// decoding each cell through `Grid::get` and `shade_at`.
+    /// decoding each cell through `Grid::get` and a shade lookup (since removed).
     pub fn render(&mut self) -> &[u32] {
         for (p, &c) in self.pixels.iter_mut().zip(self.grid.cells()) {
             *p = self.palette.get(usize::from(c)).copied().unwrap_or(0);

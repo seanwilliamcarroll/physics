@@ -33,7 +33,7 @@ pub enum Integrator {
     ///
     /// Two force evaluations per substep, and the second is **not cached**
     /// for the next substep's first (they're at the same positions): beyond
-    /// simplicity (`TASKS.md` M1 decision 2), it would be wrong, since
+    /// simplicity, it would be wrong, since
     /// positions change between substeps (the ground clamp runs after every
     /// one, and a drag moves its anchor between steps), and the next
     /// substep's velocities differ from the predicted ones.

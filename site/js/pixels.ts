@@ -2,8 +2,8 @@
 // buffer"): Rust writes one RGBA u32 per cell into wasm memory; JS wraps
 // those bytes in an ImageData (no copy) and puts it on a canvas exactly the
 // grid's size, which CSS scales up with `image-rendering: pixelated` so a
-// cell stays a crisp square. M9's sand; later A4's height map and the
-// swarm track's trail maps.
+// cell stays a crisp square. M9's sand and the swarm pages; later A4's
+// height map.
 
 /** RGBA: bytes per pixel. */
 const BYTES_PER_PIXEL = 4;

@@ -1,4 +1,4 @@
-//! What every `*-web` crate (`engine-web`, `acoustic-web`, M9's `sand-web`)
+//! What every `*-web` crate (engine, acoustic, sand, swarm)
 //! shares around its simulation, and nothing about any simulation: the
 //! common part of the wasm shell (`docs/03-wasm-shell.md`). Scope is kept
 //! to that; anything simulation-specific belongs in its own `*-web` crate.

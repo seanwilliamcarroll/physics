@@ -1,5 +1,5 @@
-//! `01-solvers.md`'s measured table as regression tests (`TASKS.md` M3
-//! decision 8): one test per row, f64.
+//! `01-solvers.md`'s measured table as regression tests,
+//! one test per row, f64.
 //!
 //! Each expected value is **our** measurement (M3.4), with a 2% band:
 //! results are deterministic, so the band only absorbs harmless rounding

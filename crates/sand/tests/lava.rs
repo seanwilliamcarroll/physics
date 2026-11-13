@@ -1,4 +1,4 @@
-//! Lava and steam (M9 section 4, `docs/11-falling-sand.md`): the reaction,
+//! Lava and steam (M9.4, `docs/11-falling-sand.md`): the reaction,
 //! its accounting, and the two materials' motion.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]

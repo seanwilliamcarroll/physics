@@ -65,8 +65,8 @@ pub enum Model {
     Piano,
 }
 
-/// One string and what it's playing. Both models are allocated up front,
-/// so a note can use either without allocating; `model` says which one
+/// One string and what it's playing. All three models are allocated up front,
+/// so a note can use any without allocating; `model` says which one
 /// this note plays.
 #[derive(Clone, Debug)]
 struct Voice<S> {

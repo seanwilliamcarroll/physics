@@ -9,7 +9,7 @@ description = "Wasm shell for the acoustic track: a synth behind raw C-ABI expor
 
 [lib]
 # cdylib: a standalone .wasm module with C-ABI exports, separate from the
-# engine's (docs/12-acoustic-foundations.md; TASKS A1 decision 1).
+# engine's (docs/12-acoustic-foundations.md, "The module").
 crate-type = ["cdylib"]
 
 [dependencies]

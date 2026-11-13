@@ -1,6 +1,6 @@
 //! The C-ABI surface of the Vicsek page (S2), over [`VicsekDemo`]: every
-//! argument parsed here; null handles refused. This file and
-//! `exports.rs` hold all of this crate's `unsafe`.
+//! argument parsed here; null handles refused. The four exports
+//! files hold all of this crate's `unsafe`.
 
 use core::ptr;
 

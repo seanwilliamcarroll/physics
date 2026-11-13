@@ -201,7 +201,7 @@ export function drawSegment(
 const INDICES_PER_LINK = 2;
 
 /** One line per link between particles: `links` is `[a0, b0, a1, b1, …]`
- *  (as `demo_links_ptr/len` will expose) into interleaved positions `pos`.
+ *  (as `demo_links_ptr/len` expose) into interleaved positions `pos`.
  *  One path and one stroke for all links. Links naming a particle past the
  *  end of `pos` are skipped (a stale index buffer mustn't draw to NaN or
  *  throw), as is a dangling last index. Assumes `view.apply(ctx)` was

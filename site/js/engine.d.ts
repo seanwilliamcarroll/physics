@@ -1,10 +1,10 @@
 // Types for engine.wasm's exports and imports: the contract implemented in
-// crates/engine-web/src/exports.rs and imports.rs. Integer codes live in abi.js
+// crates/engine-web/src/exports.rs and web-common's panic hook. Integer codes live in abi.ts
 // (mirrored from abi.rs and checked by a Rust test). `cargo xtask site`
 // checks EngineExports against the .wasm's export table (names, parameter
 // and result counts, bigint for i64): one signature per line.
 //
-// Types only: browsers never load this file. It lets `tsc --checkJs` catch
+// Types only: browsers never load this file. It lets `tsc` catch
 // wrong argument order, a handle passed where a count belongs, and similar
 // mistakes at the boundary, where every value is a bare number.
 
@@ -27,7 +27,7 @@ export type Status = 0 | 1;
 export interface EngineExports {
   readonly memory: WebAssembly.Memory;
 
-  /** Codes: abi.js DEMO_*, SCALAR_*. `n` (≤ abi.ts MAX_PARTICLES, MAX_GRAVITY_BODIES for gravity) and `seed` apply to the fountain and the M2 scenes. */
+  /** Codes: abi.ts DEMO_*, SCALAR_*. `n` (≤ abi.ts MAX_PARTICLES, MAX_GRAVITY_BODIES for gravity) and `seed` apply to the fountain and the M2 scenes. */
   demo_new(kind: number, scalar: number, n: number, seed: number): DemoHandle;
   demo_free(demo: DemoHandle): void;
   /** Adds real elapsed seconds; returns fixed physics steps taken. */
@@ -36,7 +36,7 @@ export interface EngineExports {
   demo_positions_ptr(demo: DemoHandle): Ptr;
   /** Number of f32s at demo_positions_ptr. */
   demo_positions_len(demo: DemoHandle): number;
-  /** Code: abi.js INTEGRATOR_*. */
+  /** Code: abi.ts INTEGRATOR_*. */
   demo_set_integrator(demo: DemoHandle, code: number): Status;
   /** Physics steps per second; 0 or above abi.ts MAX_RATE_HZ is rejected. */
   demo_set_rate(demo: DemoHandle, hz: number): Status;

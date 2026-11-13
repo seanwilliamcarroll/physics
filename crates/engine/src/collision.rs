@@ -1,5 +1,5 @@
-//! Collision (`docs/08-collision.md`): walls, the broadphase, and
-//! contact generation. One file per piece, re-exported
+//! Collision (`docs/08-collision.md`): walls and segments, the broadphase,
+//! contact generation, pockets and the tunnel count. One file per piece, re-exported
 //! here.
 
 mod broadphase;

@@ -9,9 +9,9 @@ pub enum Material {
     Water = 2,
     /// Static: never moves.
     Stone = 3,
-    /// A slow liquid; with water it makes stone and steam (section 4).
+    /// A slow liquid; with water it makes stone and steam (M9.4).
     Lava = 4,
-    /// Rises; condenses back to water when it can't (section 4).
+    /// Rises; condenses back to water when it can't (M9.4).
     Steam = 5,
 }
 

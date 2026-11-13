@@ -13,13 +13,13 @@ license = "MIT"
 
 # Third-party crates, one pinned version for the whole workspace; crates
 # opt in with `name.workspace = true`. Each needs a justification
-# (docs/00-scope.md, dependency policy). Dev-only so far.
+# (docs/00-scope.md, dependency policy).
 [workspace.dependencies]
 # Default features include `fork`/`timeout` (each case in a subprocess),
 # which WASI doesn't have; the engine tests also run on wasm32-wasip1.
 proptest = { version = "1.12.0", default-features = false, features = ["std"] }
 # Benchmarks. Text output only: no plotters (HTML charts) or rayon, and
-# their dependency trees; results are recorded in docs/04-testing.md.
+# their dependency trees; results are recorded in docs/benchmarks.md.
 # Pinned: `cargo xtask bench` compares with records of criterion's saved
 # files (docs/bench/), whose format isn't a public API. Before bumping it,
 # check a record still compares (docs/benchmarks.md, "Upgrading criterion").
@@ -27,7 +27,8 @@ criterion = { version = "=0.8.2", default-features = false, features = ["cargo_b
 # CLI parsing for xtask (dev tooling only; never in the engine or wasm).
 clap = { version = "4.6.7", features = ["derive"] }
 # Transcendental functions (sin, cos, atan, log10, exp10) for the acoustic
-# crate's note-on coefficients. std's call each platform's math library
+# crate's note-on coefficients and, since S2, the swarm crate's noise and
+# rotations. std's call each platform's math library
 # (Apple's natively, musl's on wasm), which may differ in the last bit; a
 # pure-Rust port computes the same bits everywhere, so rendered audio's
 # golden hash holds native and on wasm. Maintained by the Rust project
@@ -79,7 +80,7 @@ panic = "abort"
 # Lint policy: see docs/lint-policy.md. Every crate opts in with
 # `[lints] workspace = true`. Test code is exempted via clippy.toml.
 [workspace.lints.rust]
-unsafe_code = "deny"            # web's export module opts out locally
+unsafe_code = "deny"            # the *-web crates' exports and web-common's panic hook opt out locally
 unreachable_pub = "warn"        # `pub` only for what the crate exports, so dead_code sees the rest
 
 [workspace.lints.clippy]

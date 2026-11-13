@@ -27,7 +27,7 @@ const OPTIONS: {
 } = {
   tip: { kind: "choice", values: TIP_VALUES, default: "0", help: "cue tip height in radii: 0 stun, 0.4 natural roll, + follow, − draw" },
   solver: { kind: "choice", values: ["impulse", "xpbd"], default: "impulse", help: "contact solver" },
-  // 10: crates/web demo/pool.rs (tests/billiards.rs measured the break there).
+  // 10: crates/engine-web demo/pool.rs (tests/billiards.rs measured the break there).
   substeps: { kind: "int", min: 1, max: MAX_SUBSTEPS, default: 10, help: "substeps per physics step" },
   speculative: { kind: "choice", values: ["on", "off"], default: "on", help: "speculative contacts (off: fast balls tunnel at low substeps)" },
   break: { kind: "int", min: 0, max: MAX_POOL_SPEED, default: 0, help: "break at load at this speed, m/s (0: wait for the cue)" },

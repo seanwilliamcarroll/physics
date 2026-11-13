@@ -1,4 +1,4 @@
-//! The ground (`TASKS.md` M5 decision 6; `docs/06-constraints.md`,
+//! The ground (`docs/06-constraints.md`,
 //! "Ground"): a half-plane clamp after every substep, under every stepper.
 //! Dropped bodies land and rest on it, it only ever removes energy, static
 //! particles ignore it, and with no ground (the default) nothing changes.

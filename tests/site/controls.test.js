@@ -1,4 +1,4 @@
-// Unit tests for the pure part of site/js/controls.js.
+// Unit tests for the pure part of site/js/controls.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decimalsOf } from "../../site/js/controls.ts";

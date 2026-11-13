@@ -50,7 +50,7 @@ const OPTIONS: {
   damping: { kind: "choice", values: DAMPING_VALUES, default: "0.5", help: "spring damping c, N·s/m" },
   // 8: engine::scenarios::JELLY_COLS / JELLY_ROWS.
   grid: { kind: "int", min: 2, max: MAX_JELLY_SIDE, default: 8, help: "particles per side (the jelly's mass stays 1 kg)" },
-  // 10: the web demo's starting substeps (crates/web demo/jelly.rs).
+  // 10: the web demo's starting substeps (crates/engine-web demo/jelly.rs).
   substeps: { kind: "int", min: 1, max: 50, default: 10, help: "substeps per physics step" },
   rate: RATE_OPTION,
   fps: FPS_OPTION,

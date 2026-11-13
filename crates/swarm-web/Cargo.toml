@@ -9,7 +9,7 @@ description = "Wasm shell for the swarm track: a flock behind raw C-ABI exports 
 
 [lib]
 # cdylib: a standalone .wasm module (swarm.wasm), beside the engine's,
-# the synth's and the sand's (TASKS S1 decision 1).
+# the synth's and the sand's (docs/repo-layout.md, "One `.wasm` per track").
 crate-type = ["cdylib"]
 
 [dependencies]

@@ -61,7 +61,7 @@ struct Cli {
 
 #[derive(Subcommand, Clone, Debug, PartialEq, Eq)]
 enum Command {
-    /// Compile the site TypeScript and build crates/engine-web and crates/acoustic-web for wasm32 into site/pkg/{engine,acoustic}.wasm
+    /// Compile the site TypeScript and build every *-web crate for wasm32 into site/pkg/{engine,acoustic,sand,swarm}.wasm
     Site,
     /// Build the physics-engine npm package for the website into
     /// target/package/ (engine.wasm, its types, the loader), and check the
@@ -85,7 +85,7 @@ enum Command {
     },
     /// Build the site, load the demos in headless Chrome, and check they draw
     Smoke,
-    /// Run the math and engine tests as wasm32-wasip1 under wasmtime
+    /// Run the library crates' tests (math, engine, acoustic, sand, swarm) as wasm32-wasip1 under wasmtime
     TestWasm,
     /// Run the criterion benchmarks (all, or those matching FILTER),
     /// compared with this machine's committed record (docs/bench/), and
@@ -109,13 +109,14 @@ enum Command {
         compare_local: bool,
         /// Run only benchmarks whose names contain this (criterion's filter)
         filter: Option<String>,
-        /// Also record the table as `docs/bench/<machine>.md` (replacing
-        /// that machine's last record), in a pull request if gh is logged in
+        /// Also update this machine's record (`docs/bench/<machine>/` and its
+        /// table, `docs/bench/<machine>.md`), in a pull request if gh is logged in
         #[arg(long)]
         record: bool,
     },
-    /// Time the cluster through engine.wasm in Node and compare with the
-    /// native criterion results (run cargo bench -p engine --bench step first)
+    /// Time the modules in Node: the engine's cluster, compared with the
+    /// native criterion results (run cargo bench -p engine --bench step first),
+    /// then sand and swarm through their exports
     BenchWasm {
         /// Measuring time per case, in milliseconds (at least 10)
         #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(u32).range(10..))]

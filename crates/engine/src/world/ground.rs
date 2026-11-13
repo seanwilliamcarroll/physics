@@ -1,4 +1,4 @@
-//! The ground (`TASKS.md` M5 decision 6; `docs/06-constraints.md`,
+//! The ground (`docs/06-constraints.md`,
 //! "Ground"): a half-plane clamp, not contacts. After every substep, a
 //! dynamic particle at or below the ground's height moves up to it and
 //! loses its downward velocity: inelastic, no friction.

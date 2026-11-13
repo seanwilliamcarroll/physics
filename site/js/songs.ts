@@ -1,4 +1,4 @@
-// Preset songs for the A1 page: traditional tunes as data, turned into
+// Preset songs for the acoustic pages: traditional tunes as data, turned into
 // timed note events the worklet schedules sample-accurately. Pure, so
 // node --test covers them.
 

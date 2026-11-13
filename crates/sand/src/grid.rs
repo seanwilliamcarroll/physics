@@ -28,7 +28,7 @@ pub struct Grid {
     pub(crate) visited: usize,
 }
 
-/// Chunk side, cells: 32 × 32 (TASKS decision 6).
+/// Chunk side, cells: 32 × 32 (`docs/11-falling-sand.md`, "Chunks").
 pub const CHUNK: usize = 32;
 
 /// Which chunks a step updates: `now` (this step; a move wakes its

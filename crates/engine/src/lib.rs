@@ -1,4 +1,5 @@
-//! 2D particle physics: storage, forces, integration, and diagnostics.
+//! 2D particle physics: storage, forces, integration, constraints and their
+//! solvers, collision, and diagnostics.
 //!
 //! Generic over [`Scalar`]; std only, no rendering or browser code.
 //! Design: `docs/02-core-types.md`. Units are SI (m, kg, s).

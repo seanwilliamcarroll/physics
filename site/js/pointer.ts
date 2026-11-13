@@ -1,7 +1,7 @@
-// Pointer input → world coordinates (TASKS.md M4 decision 10). Pointer
+// Pointer input → world coordinates (M4). Pointer
 // events cover mouse, pen, and touch alike; pointer capture keeps a drag
 // alive when the pointer leaves the canvas. Picking itself is in Rust
-// (decision 4): pages pass the world point to `demo_grab`.
+// (docs/06-constraints.md, "Dragging"): pages pass the world point to `demo_grab`.
 
 import type { View } from "./canvas.ts";
 

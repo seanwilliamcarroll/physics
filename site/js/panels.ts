@@ -1,5 +1,5 @@
 // Side-by-side demo panels: one titled canvas plus a readout per config,
-// built the same way on every multi-panel page (M1–M5), and the checks on
+// built the same way on every multi-panel page, and the checks on
 // the demos they hold.
 
 import { setupCanvas, cssColor } from "./canvas.ts";

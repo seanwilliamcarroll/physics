@@ -1,4 +1,4 @@
-// Unit tests for site/js/swarm-cost.js.
+// Unit tests for site/js/swarm-cost.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_N, WORLD, costHtml, nsPerBoid, worldFor } from "../../site/js/swarm-cost.ts";

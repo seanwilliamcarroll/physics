@@ -39,7 +39,7 @@ const OPTIONS: {
   // 20: engine::scenarios::BOX_BALLS.
   balls: { kind: "int", min: 1, max: MAX_BOX_BALLS, default: 20, help: "balls in the box" },
   gap_mm: { kind: "int", min: 0, max: MAX_BREAK_GAP * MM_PER_M, default: 0, help: "the rack's gap, mm (0: touching)" },
-  // 10: the setting tests/impacts.rs measured (crates/web demo/collisions.rs).
+  // 10: the setting tests/impacts.rs measured (crates/engine-web demo/collisions.rs).
   substeps: { kind: "int", min: 1, max: 50, default: 10, help: "substeps per physics step" },
   overlay: { kind: "choice", values: ["off", "on"], default: "off", help: "draw the broadphase grid and its candidate pairs" },
   rate: RATE_OPTION,
