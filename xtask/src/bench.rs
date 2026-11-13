@@ -86,7 +86,7 @@ fn changes(criterion: &Path) -> Vec<Change> {
     out
 }
 
-/// Runs every bench (`cargo bench --workspace --benches`, or those matching
+/// Runs every bench (`cargo bench --workspace --bench '*'`, or those matching
 /// `filter`), compared as `mode` says; prints the table and what moved
 /// past `threshold_pct`; with `record`, updates this machine's record.
 /// Fails on a regression only with `--baseline NAME`.
@@ -228,7 +228,7 @@ fn write_record(
     record::record(root, &ctx, &files)
 }
 
-/// `cargo bench --workspace --benches -- [FLAG NAME] [FILTER]`.
+/// `cargo bench --workspace --bench '*' -- [FLAG NAME] [FILTER]`.
 fn run_criterion(
     root: &Path,
     cargo: &OsString,
@@ -236,8 +236,11 @@ fn run_criterion(
     filter: Option<&str>,
 ) -> Result<(), String> {
     let mut cmd = process::Command::new(cargo);
+    // `--bench '*'`: the benches/ targets only. `--benches` also runs each
+    // library's own tests in bench mode, whose harness rejects criterion's
+    // options (`--save-baseline` and `--baseline` never worked with it).
     cmd.current_dir(root)
-        .args(["bench", "--workspace", "--benches", "--"]);
+        .args(["bench", "--workspace", "--bench", "*", "--"]);
     if let Some((flag, name)) = flag {
         cmd.args([flag, name]);
     }
