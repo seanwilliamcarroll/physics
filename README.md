@@ -15,7 +15,7 @@ more than feature breadth.
 cargo-nextest, the optional tools, and a check that it all works).
 
 In short: `rustup` (the toolchain and wasm targets are pinned in
-`rust-toolchain.toml`), Node 22.18+ via `nvm install` (`.nvmrc`), Python
+`rust-toolchain.toml`), Node 24 via `nvm install` (`.nvmrc`), Python
 3, Chrome or Chromium, `wasmtime-cli` and `cargo-nextest`. Then, once
 per clone:
 

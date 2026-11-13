@@ -1,3 +1,4 @@
-# Node 22, latest 22.x (22.18+: `node --test` loads our .ts files by
-# stripping their types, on by default from 22.18). docs/setup.md.
-22
+# Node 24, latest 24.x: its npm (11.16+) is what .npmrc's guards need
+# (docs/setup.md); `node --test` loads our .ts files by stripping their
+# types.
+24
