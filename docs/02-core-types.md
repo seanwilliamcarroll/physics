@@ -1,6 +1,7 @@
 # 02 — Core Types
 
-Status: **Draft**
+Status: **Adopted** (M0), with "as built" and "revised" notes where later
+milestones changed it; the current types, one line each, are in `types.md`
 Depends on: `00-scope.md`, `01-solvers.md`
 Target: everything needed for the first demo (N-body gravity, phase 1)
 
@@ -130,8 +131,8 @@ impl<S: Scalar> Particles<S> {
 **Decision (M0): two constructors, not one.** `add_static` exists so that
 `inv_mass = 0` never comes from `1 / 0`: that would be infinity on floats
 and has no representation on fixed point.
-`add` still trusts `mass > 0`; `type-invariants.md` records why that's
-not a type yet and when it should become one (M3).
+`add` trusted `mass > 0` until M3, when `Mass` became a checked type
+(`type-invariants.md`).
 
 **Decision (M0): the acceleration scratch buffer lives in `World`, not
 `Particles`.** `Force::accumulate(&self, p: &Particles<S>, acc: &mut [..])`
@@ -266,8 +267,9 @@ scalar × force-set combination becomes a distinct type, multiplying
 Alternative kept in reserve: `enum ForceKind<S>` (static dispatch, no heap,
 closed set). Revisit if the `criterion` benchmark shows measurable dispatch cost.
 
-Phase 2 adds constraints and the `Solver` trait from `01-solvers.md`.
-`step` will become: accumulate forces → solver steps → done.
+Constraints and the solvers came in M3: `step` accumulates forces, then
+the integrator or a solver takes the substep (`06-constraints.md`, "Who
+steps").
 
 ---
 

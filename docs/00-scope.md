@@ -1,6 +1,6 @@
 # 00 — Scope
 
-Status: **Draft**
+Status: **Adopted** (M0); decisions made since are noted where they apply
 Dimension: **2D only** (committed)
 
 ## Purpose
@@ -23,9 +23,13 @@ more than feature breadth.
 | Struck string (piano) | 1D field / delay line | Waveguide or finite-difference string, hammer excitation | **Acoustic track** — audio-rate, fixed grid |
 | Drum | 2D field | Finite-difference wave equation on a mesh | **Acoustic track** — audio-rate, fixed grid |
 
+Added since: the **swarm track** (boids, Vicsek, ants, Physarum:
+`15-swarm.md`), agents that follow rules rather than feel forces, in
+its own crate as falling sand is.
+
 ## Unifying model
 
-Every demo except falling sand reduces to:
+Every demo except falling sand and the swarms reduces to:
 
 - **Bodies** — position, velocity, inverse mass, and (for colliders) a shape.
   Initial shapes: point, circle. Static geometry: segment, half-plane.
@@ -80,8 +84,10 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   default features: its `fork`/`timeout` need subprocesses, which WASI
   lacks.
 - `libm` 0.2.16 (A1.3; Rust project, `rust-lang/compiler-builtins`, MIT,
-  no dependencies), **`acoustic` only**: `sin`, `cos`, `atan2`, `exp10`
-  for a string's note-on coefficients. Necessary for determinism, not
+  no dependencies), **`acoustic` and (since S2) `swarm` only**: `sin`,
+  `cos`, `atan2`, `exp10` for a string's note-on coefficients; Vicsek's
+  noise, Physarum's rotations and the evolution's normal deviates
+  (`15-swarm.md`). Necessary for determinism, not
   convenience: std's versions call each platform's math library (Apple's
   natively, musl's on wasm), which may differ in the last bit, and that
   would break the golden hash of rendered audio between native and wasm.
@@ -92,9 +98,10 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   suggestions, range-checked options, generated help). Never in the
   engine or the shipped wasm. Measured cost: a clean `xtask` build goes
   from 0.38 s to 2.35 s (18 crates); incremental rebuilds 0.16 s.
-- `typescript` (npm, dev-only, M1): type-checks `site/`'s plain `.js`
-  through JSDoc annotations and `site/js/engine.d.ts` (`tsc --noEmit`).
-  Nothing it produces ships to browsers. Microsoft-maintained, very widely
+- `typescript` (npm, dev-only, M1): type-checks `site/` against the
+  hand-written `.d.ts` files for the wasm exports and, since the `.ts`
+  conversion after M1, emits the `.js` browsers load (types erased, one
+  file per source file, no bundler). Microsoft-maintained, very widely
   used; pinned exactly in `package.json` / `package-lock.json`. See
   `type-invariants.md` (item 8).
 - *Considered, not adopted:* `thiserror`. The engine validates at the
@@ -188,13 +195,15 @@ References (full entries and links in `references.md`):
 ## Open questions
 
 - ~~**Solver family**~~ — decided: both, see `01-solvers.md`.
-- **Restitution:** how is it handled in the chosen solver (velocity pass)?
-- **Simultaneous collisions:** do we care that a sequential solver gets
-  Newton's cradle "wrong"? Is it a test case?
+- ~~**Restitution**~~ and ~~**simultaneous collisions**~~ — decided
+  (M6): an impact stage (Generalized Reflections) in both solvers, and
+  the cradle is a test: one ball swings out. See `08-collision.md`.
 - ~~**Billiards spin**~~ — decided (M7): carry the horizontal spin
   (topspin, backspin) and model the slip on the cloth; sidespin deferred
   with contact friction. See `09-billiards.md`.
 - ~~**Units**~~ — decided (M0): SI throughout (meters, kg, seconds);
   the renderer applies a pixels-per-meter scale.
-- ~~**Scalar type**~~ — decided: generic. See "Scalar policy" below.
-- **Body handles:** indices, generational arenas, or something else?
+- ~~**Scalar type**~~ — decided: generic. See "Scalar policy" above.
+- ~~**Body handles**~~ — decided (M3): `ParticleId`, a plain index; a
+  generational handle waits for general removal (`type-invariants.md`,
+  item 5).

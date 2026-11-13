@@ -1,7 +1,6 @@
 # Barnes–Hut Gravity
 
-Status: **Draft** (M2 stretch, section 8: engine half; the θ-slider
-panel waits for the M2 page)
+Status: **Adopted** (M2.8; the M2 page has its panel and θ slider)
 Depends on: `02-core-types.md` (`Force<S>`, `PairwiseGravity`),
 `04-testing.md`, `lint-policy.md`
 Reference: Barnes, J., Hut, P. (1986). *A hierarchical O(N log N)

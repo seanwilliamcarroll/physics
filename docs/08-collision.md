@@ -17,7 +17,7 @@ Collisions exchange momentum between bodies, so **total momentum is
 conserved only when nothing outside pushes**: no gravity and no walls.
 A box's walls push the balls back, so a box of balls' momentum is *not*
 flat, and isn't supposed to be. (The roadmap's first "done when" said it
-was; corrected in `TASKS.md`, decision 1.) So:
+was; corrected there.) So:
 
 - **Momentum** is checked in a wall-free, gravity-free scene: a cue ball
   fired into a cluster. Contact impulses are equal and opposite, so it's
@@ -32,7 +32,8 @@ was; corrected in `TASKS.md`, decision 1.) So:
 column (SoA, like `inv_mass`); `0` means a point that never collides, so
 every existing scene, and its golden hash, is unchanged. No rotation: a
 frictionless circle's contact force passes through its center, so it can't
-spin. (M7's friction decides whether balls need angular state.)
+spin. (M7's cloth gives balls spin about horizontal axes, kept on a
+`Table`, not here: `09-billiards.md`.)
 
 **Walls are static half-planes**, `{ normal: UnitVec2, offset }`: the
 solid side is `n · x < offset`, and a circle touches it when
@@ -395,8 +396,8 @@ The known failure (one ball hitting two) is gone from
 
 A new parameter type, `Restitution<S>`, `e ∈ [0, 1]` (`checked_param!`):
 0 is perfectly inelastic, 1 elastic. NaN and values outside are rejected
-(above 1 a collision would add energy). One per world in M6; M7 may make
-it per pair.
+(above 1 a collision would add energy). One per world in M6; since M7 a
+segment carries its own (`09-billiards.md`, "Restitution per contact").
 
 ## Newton's cradle
 
@@ -472,8 +473,8 @@ cradle in both solvers (`tests/determinism.rs`, same on wasm32).
 
 ## Out of scope
 
-Friction, cushions (segments), pockets, the cue (M7); tunneling
-measurement (M7: M6's speeds stay well under a radius per substep);
+Cushions (segments), pockets, the cue, tunneling measurement (M7: M6's
+speeds stay well under a radius per substep); contact friction (M10);
 rotation, polygons, continuous collision detection (deferred).
 
 ## References

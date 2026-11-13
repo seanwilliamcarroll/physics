@@ -47,7 +47,7 @@ fastest decides stability: `ω_max = √(λ_max(M⁻¹ K))`. For a chain of
 equal masses and springs, `λ_max → 4k/m`, so `ω_max = 2ω` and the chain
 explodes at a quarter of one spring's `k_crit`. The jelly's grid, with
 shear and bend springs adding stiffness per particle, goes lower still;
-its threshold is measured (section 5) and shown on the page.
+its threshold is measured (M5.5, below) and shown on the page.
 
 **Compliant constraints don't have a threshold.** XPBD's update
 `Δλ = (−C − α̃λ) / (w + α̃)` divides by `w + α̃`, which stays positive and
@@ -90,7 +90,7 @@ explosion is the integrator's, exactly as derived above.
 
 An undamped jelly wobbles forever, and a damped force spring against
 undamped constraints would compare damping, not stability. So every
-stepper gets the same physical damper `c` (`TASKS.md` M5 decision 4):
+stepper gets the same physical damper `c`:
 
 - **Force:** the `c (v_b − v_a) · n` term above.
 - **XPBD** (Macklin et al. 2016, eq. 26): with `β̃ = h² β` and

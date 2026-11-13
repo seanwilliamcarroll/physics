@@ -1,7 +1,7 @@
 # Repository Layout
 
 Status: **Adopted** (M0). `02-core-types.md` and `03-wasm-shell.md` follow it.
-Unnumbered on purpose: `05-roadmap.md` reserves `06-constraints.md` for M3.
+The trees below are a map, not a listing: they name what's worth finding.
 
 ## Tree
 
@@ -10,28 +10,32 @@ physics/
 ├── Cargo.toml              # [workspace]: crates/*, xtask
 ├── Cargo.lock
 ├── rust-toolchain.toml     # pin toolchain + targets (wasm32-unknown-unknown, wasm32-wasip1)
-├── .nvmrc                  # Node 22 (nvm install / nvm use; docs/setup.md)
+├── .nvmrc                  # Node 24 (nvm install / nvm use; docs/setup.md)
 ├── .cargo/config.toml      # [target.wasm32-wasip1] runner = "wasmtime"
 ├── .gitignore              # target/, site/pkg/, dist/
 ├── .githooks/              # pre-commit (lint), pre-push (tests, smoke)
-├── .github/workflows/ci.yml  # the same checks on every PR (04-testing.md, "CI")
+├── .github/workflows/nightly.yml  # the hooks and the slow tier, nightly if main moved (17-nightly-ci.md)
 │
 ├── docs/
-│   ├── 00-scope.md … 09-billiards.md, 11-falling-sand.md … 14-piano.md, 15-swarm.md
+│   ├── 00-scope.md … 09-billiards.md, 11-falling-sand.md … 15-swarm.md  # design docs, by milestone
+│   ├── 16-site-demos.md    # demos on the personal site, from a package built here (in progress)
+│   ├── 17-nightly-ci.md    # CI once a night, only if main moved: the hooks and the slow tier (done)
 │   ├── setup.md            # a fresh machine, step by step (nvm for Node)
-│   ├── 16-site-demos.md    # plan: demos on the personal site, from a package built here (proposed)
-│   ├── 17-nightly-ci.md    # plan: CI once a night, only if main moved; the hooks and the slow tier (proposed)
-│   ├── benchmarks.md       # running and comparing benchmarks; the current numbers
-│   ├── profiling.md        # finding where the time goes: cargo xtask profile, the hot paths found
 │   ├── repo-layout.md      # this file
 │   ├── types.md            # key types, one line each, with links
-│   ├── hosting.md          # future work
-│   ├── workers.md          # design note: step budget, Web Workers, wasm threads
+│   ├── type-invariants.md  # what types enforce, and what was considered and left out
+│   ├── lint-policy.md      # why the lints are what they are
+│   ├── barnes-hut.md       # the O(n log n) gravity: design and measurements
+│   ├── benchmarks.md       # running and comparing benchmarks; the current numbers
+│   ├── profiling.md        # finding where the time goes: cargo xtask profile, the hot paths found
+│   ├── workers.md          # design note: step budget (built), Web Workers, wasm threads
+│   ├── hosting.md          # what wasm needs from a server (MIME type, caching, CSP, isolation)
 │   ├── api/                # each library crate's public API, generated (cargo xtask api)
-│   ├── api-audit.md        # each crate's public surface, and what to narrow
+│   ├── api-audit.md        # the audit after M7 that narrowed the public surfaces: a short record
+│   ├── bench/              # each machine's recorded benchmark results (benchmarks.md, "Records")
+│   ├── numerical-testing-checklist.md  # a generic test plan; 04-testing.md maps this repo onto it
 │   ├── swarm-resources.md  # swarm track: reading list (05-roadmap, "Swarm track")
-│   ├── swarm-rust-implementation.md  # swarm track: implementation notes
-│   └── references.md
+│   └── references.md       # the bibliography for every design doc
 │
 ├── crates/
 │   ├── math/               # shared by engine, acoustic, sand, swarm
@@ -40,15 +44,19 @@ physics/
 │   │       ├── scalar.rs   # Scalar trait, f32/f64 impls
 │   │       ├── vec2.rs
 │   │       ├── unit_vec2.rs # UnitVec2: a direction, length 1 by construction
-│   │       └── fixed.rs    # M8
+│   │       ├── convert.rs  # checked numeric conversions (lint-policy.md)
+│   │       ├── rng.rs      # SplitMix64, the seeded PRNG
+│   │       └── hash.rs     # Fnv1a, the goldens' hash
 │   │
 │   ├── engine/
 │   │   ├── src/
 │   │   │   ├── lib.rs
 │   │   │   ├── particles.rs
 │   │   │   ├── force.rs
-│   │   │   ├── barnes_hut.rs       # M2 stretch: docs/barnes-hut.md
+│   │   │   ├── barnes_hut.rs       # docs/barnes-hut.md
 │   │   │   ├── integrate.rs
+│   │   │   ├── constraint.rs, solver.rs   # docs/06-constraints.md
+│   │   │   ├── collision.rs, table.rs     # docs/08-collision.md, 09-billiards.md
 │   │   │   ├── world.rs
 │   │   │   ├── diagnostics.rs
 │   │   │   ├── params.rs           # checked parameters (Mass, Softening, θ, β), one file each in params/
@@ -78,13 +86,12 @@ physics/
 │   │
 │   ├── sand/               # M9: the falling-sand automaton (grid, rules; integers only)
 │   ├── sand-web/           # cdylib → sand.wasm (the sand page's C ABI, on web-common)
-│   ├── swarm/              # S1: boids (double-buffered SoA, f32; the counting-sort grid)
-│   ├── swarm-web/          # cdylib → swarm.wasm (simd128; the boids page's C ABI)
-│   └── acoustic/           # A1+
+│   ├── swarm/              # S1–S5: boids, Vicsek, ants, Physarum, evolution (f32; the counting-sort grid)
+│   └── swarm-web/          # cdylib → swarm.wasm (simd128; the swarm pages' C ABI)
 │
 ├── package/                # the physics-engine npm package's README and tsconfig (cargo xtask package)
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)
-│   ├── src/main.rs
+│   ├── src/main.rs         # the commands; one module each for the larger ones (bench, api, mutants, …)
 │   ├── serve.py            # dev and smoke server: http.server + no-store + a deep backlog
 │   ├── smoke_page.mjs      # one smoke load: Chrome over DevTools, waits for SMOKE
 │   ├── bench_wasm.mjs      # Node side of `cargo xtask bench-wasm` (bench_modules.mjs: the other modules)
@@ -154,15 +161,15 @@ physics/
 
 ### `math` is its own crate
 
-`00-scope.md` says the acoustic track shares math types with the engine;
-`02-core-types.md` puts `Scalar` and `Vec2` inside `engine`. If they stay
-there, `acoustic` must depend on the whole physics engine to get `Fixed`.
-Splitting now is free; splitting after M8 touches every import.
+`00-scope.md` says the acoustic track shares math types with the engine.
+Inside `engine`, `acoustic` would have had to depend on the whole physics
+engine to get them. Splitting at M0 was free; later it would have touched
+every import.
 
 Dependency direction: `math` ← `engine` ← `engine-web`; `math` ←
-`acoustic` ← `acoustic-web`; `math` ← `sand` ← `sand-web` (M9); every
-`*-web` crate ← `web-common`, which depends on nothing. Nothing depends
-on a `*-web` crate.
+`acoustic` ← `acoustic-web`; `math` ← `sand` ← `sand-web`; `math` ←
+`swarm` ← `swarm-web`; every `*-web` crate ← `web-common`, which depends
+on nothing. Nothing depends on a `*-web` crate.
 
 ### `scenarios.rs` lives in `engine`
 
@@ -170,32 +177,34 @@ The orbit you test is the orbit you demo. Same reasoning as `diagnostics`.
 
 ### `engine-web` splits exports from logic
 
-All `unsafe` lives in one-line wrappers in `lib.rs`. Everything with
-behavior is in `demo.rs` and runs under native `cargo test`.
+All `unsafe` lives in one-line wrappers in `exports.rs`. Everything with
+behavior is in `demo.rs` and runs under native `cargo test`. Every `*-web`
+crate is built the same way.
 
 ### `xtask` for builds
 
-The standard Rust pattern: a std-only binary in the workspace, run as
-`cargo xtask <cmd>`. Cross-platform, no Makefile, no dependencies.
+The standard Rust pattern: a binary in the workspace, run as
+`cargo xtask <cmd>`. Cross-platform, no Makefile; its one dependency is
+`clap` (`00-scope.md`, dependency policy).
 
-Commands (`cargo xtask help` lists what exists):
+Commands (`cargo xtask help` is the authority):
 
 | Command | Status | Does |
 |---|---|---|
-| `cargo xtask site` | M0 | Build `engine-web` and `acoustic-web` for `wasm32-unknown-unknown` (release), copy to `site/pkg/engine.wasm` |
+| `cargo xtask site` | M0 | Compile the TypeScript, build every `*-web` crate for `wasm32-unknown-unknown` (release), copy each to `site/pkg/<name>.wasm`, and check the `.d.ts` files against the export tables |
 | `cargo xtask install-hooks` | M0 | `git config core.hooksPath .githooks` |
 | `cargo xtask serve` | M2 | `site`, then serve `site/` with `tsc --watch` alongside (default port 8000) |
-| `cargo xtask smoke` | M0 | `site`, then load the demo in headless Chrome and check it draws (pre-push; `docs/04-testing.md`) |
-| `cargo xtask bench-wasm` | M2 | time the cluster through `engine.wasm` in Node; compare with criterion's native results |
-| `cargo xtask bench` | health | every criterion bench, saved as a baseline (`--save NAME`) or compared with one (`--baseline NAME`; fails on regressions) (`docs/benchmarks.md`) |
+| `cargo xtask smoke` | M0 | `site`, then load every demo in headless Chrome and check it draws (pre-push; `docs/04-testing.md`) |
+| `cargo xtask bench-wasm` | M2 | time the modules through their exports in Node; the engine's cluster against criterion's native results |
+| `cargo xtask bench` | health | the criterion benches and a table of the results; baselines and records (`docs/benchmarks.md`) |
 | `cargo xtask profile` | health | one example or bench under `samply`, built with debug info; prints the hottest functions and source lines (`docs/profiling.md`) |
 | `cargo xtask package` | site demos | the `physics-engine` npm package (engine.wasm, its types, the loader) as a tarball in `target/package/`, checked by using it (`docs/16-site-demos.md`) |
 | `cargo xtask release` | site demos | everything about releasing the package except publishing: checks the repo is ready, builds, drafts notes, prints the `gh release create` command (never runs it) |
-| `cargo xtask test-wasm` | M1 | `cargo test -p engine -p math --target wasm32-wasip1` under wasmtime (pre-push) |
+| `cargo xtask test-wasm` | M1 | the `math`, `engine`, `acoustic`, `sand` and `swarm` tests for `wasm32-wasip1` under wasmtime (pre-push) |
 | `cargo xtask coverage` | M2 | Rust coverage via `cargo-llvm-cov` (per-crate summary, HTML in `target/llvm-cov/html`) and site JS via `node --test --experimental-test-coverage`; report only (`docs/04-testing.md`) |
-| `cargo xtask dist` | planned | `site` + produce a deployable `dist/` (see `hosting.md`) |
-
-Local serving: `cargo xtask serve`.
+| `cargo xtask api` | health | each library crate's public API to `docs/api/`; `--check` in pre-push (`docs/api/README.md`) |
+| `cargo xtask mutants` | health | `cargo mutants` for full runs (`docs/04-testing.md`, "Mutation testing") |
+| `cargo xtask slow` | health | the slow tier: property tests at 10 000 cases, then the `slow_*` runs (`docs/04-testing.md`, "Running strategy") |
 
 ### Site structure
 
@@ -203,12 +212,10 @@ Local serving: `cargo xtask serve`.
 - **Native ES modules, no bundler.** `<script type="module">` and `import`
   work in every current browser. The shared library is TypeScript
   (adopted after M1, `type-invariants.md` item 8): `tsc` deletes the types
-  (`erasableSyntaxOnly`) and emits one `.js` per `.ts`, unbundled. New
-  pages are `.ts`; the M0/M1 demo pages are JSDoc-checked `.js` until next
-  touched.
+  (`erasableSyntaxOnly`) and emits one `.js` per `.ts`, unbundled. Every
+  page is `.ts`.
 - **Relative URLs everywhere.** `./js/wasm.js`, `../../pkg/engine.wasm`.
-  Never `/js/...`. This is what lets the site later be served from a
-  sub-path of another domain (`hosting.md`) without changes.
+  Never `/js/...`, so the site works from any path.
 - **`site/js/` mirrors M1's "shared demo infrastructure."** It grows
   alongside the roadmap, not ahead of it.
 
@@ -217,19 +224,9 @@ Local serving: `cargo xtask serve`.
 Design decisions are versioned alongside what they describe. A PR that
 changes behavior updates the doc in the same commit.
 
-## Bootstrapping order (M0)
+### One `.wasm` per track
 
-1. Workspace `Cargo.toml`, `rust-toolchain.toml`, `.gitignore`
-2. `crates/math` with tests (M0 test-first step 1)
-3. `crates/engine` skeleton, then the phase 1 test-first order from `04-testing.md`
-4. `crates/web` + `xtask site`
-5. `site/demos/m0-hello`
-
-Create `sand/` and `acoustic/` when their milestones begin, not before.
-
-## Open questions
-
-- ~~Workspace dependency inheritance~~: adopted in M2 (`[workspace.dependencies]`).
-- One `engine.wasm` for all demos, or one per crate (`engine.wasm`,
-  `sand.wasm`, `acoustic.wasm`)? Likely per crate: demos shouldn't
-  download code they don't use. Revisit at M9.
+`engine.wasm`, `acoustic.wasm`, `sand.wasm`, `swarm.wasm`: a page
+downloads only the code it uses (decided as each track began; sizes in
+`03-wasm-shell.md`). Shared dependency versions live once, in the root
+`Cargo.toml` (`[workspace.dependencies]`, since M2).

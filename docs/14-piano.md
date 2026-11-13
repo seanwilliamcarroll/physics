@@ -116,8 +116,8 @@ that fits and refines again. With fewer than two partials below 0.4 `fs`
 
 **Cost:** designing takes 2–14 ms a key natively (about 200 ms for all
 88), far beyond a note on's budget (a render quantum is 2.7 ms), so the
-piano designs each key once, when it starts (section 5, measured on
-wasm). Running it costs a biquad (5 multiplies) per section per sample.
+piano designs each key once, when it starts (A3.5, measured on wasm:
+"Cost"). Running it costs a biquad (5 multiplies) per section per sample.
 
 A toggle turns stiffness off (`B = 0`: A2's waveguide).
 

@@ -27,7 +27,7 @@ nvm use && npm ci             # Node from .nvmrc; the pinned TypeScript
 | Hook | Runs |
 |---|---|
 | `pre-commit` | JS syntax and type checks (`tsc`), `cargo fmt --check`, `cargo clippy -D warnings` (native and wasm32) |
-| `pre-push` | `cargo test`, `node --test`, `cargo xtask test-wasm`, `cargo check --target wasm32-unknown-unknown`, `cargo xtask smoke` |
+| `pre-push` | the tests (`cargo nextest run`, or `cargo test` without it), `cargo machete`, `cargo xtask api --check`, `cargo doc` (links), `node --test`, `cargo xtask package`, `cargo xtask test-wasm`, `cargo check --target wasm32-unknown-unknown`, `cargo xtask smoke` |
 
 The hooks check the working tree, not just what's staged.
 

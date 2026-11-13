@@ -54,8 +54,8 @@ velocity. Of its three components, the two about **horizontal** axes,
 `ω = (ω_x, ω_y)`, are topspin and backspin: they set how the ball's
 bottom moves over the cloth. The third, about the vertical axis (`ω_z`,
 sidespin or "english"), only acts at cushions and in ball–ball throw,
-through contact friction. M7 has neither (decision 3), so **`ω_z` is left
-out**. `00-scope.md`'s open question, answered: carry the horizontal
+through contact friction. M7 has neither (contact friction moved to
+M10), so **`ω_z` is left out**. `00-scope.md`'s open question, answered: carry the horizontal
 spin; the 2D view loses nothing it needs.
 
 The moment of inertia of a solid sphere is `I = (2/5) m R²`.
@@ -102,7 +102,7 @@ s      = v₀ t_s − ½ μ_s g t_s² = 12 v₀² / (49 μ_s g)
 ```
 
 At 3 m/s on `μ_s = 0.2`: it rolls after 0.44 s and 1.12 m, at 2.14 m/s.
-These three numbers are section 3's analytic tests.
+These three numbers are M7.3's analytic tests.
 
 In general, from any `(v₀, ω₀)`, the ball rolls off at `v = (5 v₀ + 2 R
 (ω₀,y, −ω₀,x)) / 7`, the rolling velocity a frictionless push can't change
@@ -174,7 +174,7 @@ and the cue ball keeps its spin:
 
 The object ball leaves with velocity and no spin: it slides, then rolls
 at 5/7 of its speed. All of this falls out of the model, with no
-special cases, and section 3 tests each shot.
+special cases, and M7.3 tests each shot.
 
 ## Cushions
 
@@ -187,7 +187,7 @@ cut angles. Speculative like walls (`08-collision.md`).
 **Not modelled:** the cushion nose sits at 63.5% of the ball's diameter,
 above the centre, so a real cushion pushes slightly down and imparts spin
 (Mathavan et al. 2010 analyse it). Our cushions push through the centre.
-Cushion friction is left out with all contact friction (decision 3).
+Cushion friction is left out with all contact friction (M10).
 
 ## Restitution per contact
 
@@ -257,7 +257,7 @@ So the page shows *why* speculative contacts exist instead:
   Balls against cushions are counted the same way.
 
 Off, a hard break tunnels at low substeps, and raising them brings the
-count to zero at a threshold section 4 measures. On, nothing tunnels at
+count to zero at a threshold M7.4 measures (below). On, nothing tunnels at
 any substeps.
 
 **As built (M7.4, `tests/tunneling.rs`).** Off is the narrowphase given
@@ -360,18 +360,14 @@ game rules beyond potting and re-spotting the cue ball.
 
 ## References
 
-- WPA, *Recommended Equipment Specifications* (effective November 2001).
-  https://wpapool.com/wp-content/uploads/2024/01/RECOMMENDED-EQUIPMENT-SPECIFICATIONS.pdf
-- Mathavan, Jackson & Parkin (2009), "Application of high-speed imaging
-  to determine the dynamics of billiards", *Am. J. Phys.* 77(9),
-  788–794. doi:10.1119/1.3157159
-- Mathavan, Jackson & Parkin (2010), "A theoretical analysis of billiard
-  ball dynamics under cushion impacts", *Proc. IMechE C* 224(9),
-  1863–1873. doi:10.1243/09544062JMES1964
-- Alciatore, D., *Pool and Billiards Physics Resources* (Colorado State
-  University), typical physical properties.
-  https://billiards.colostate.edu/faq/physics/physical-properties/
-- Kiefl, E., *pooltool* (ball parameter defaults, citing Alciatore).
-  https://pooltool.readthedocs.io/
-- Smith, Kaufman, Vouga, Tamstorf & Grinspun (2012), "Reflections on
-  simultaneous impact", *ACM TOG* 31(4). doi:10.1145/2185520.2185602
+Full entries in `references.md` ("Billiards").
+
+- WPA, *Recommended Equipment Specifications*: the table, balls,
+  pockets and cushions.
+- Mathavan, Jackson & Parkin (2009), high-speed imaging of billiards;
+  (2010), cushion impacts.
+- Alciatore, *Pool and Billiards Physics Resources*: typical physical
+  properties (secondary; to confirm by hand).
+- Kiefl, *pooltool*: ball parameter defaults, citing Alciatore.
+- Smith, Kaufman, Vouga, Tamstorf & Grinspun (2012), *Reflections on
+  Simultaneous Impact*: Generalized Reflections.
