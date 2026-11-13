@@ -1,4 +1,4 @@
-use super::{Context, changes, document, json_string, path, tree_entry};
+use super::{Context, changes, document, path};
 use crate::bench::store::Files;
 use crate::bench::table::{Row, Throughput};
 
@@ -46,16 +46,6 @@ fn one_record_per_machine() {
 }
 
 #[test]
-fn json_strings_escape_what_json_needs() {
-    assert_eq!(json_string("plain"), "\"plain\"");
-    assert_eq!(
-        json_string("a \"b\" \\ c\nd\te\u{1}"),
-        "\"a \\\"b\\\" \\\\ c\\nd\\te\\u0001\""
-    );
-    assert_eq!(json_string("± µs"), "\"± µs\"", "non-ASCII as is");
-}
-
-#[test]
 fn the_record_s_files_are_the_table_the_meta_the_data_and_removals() {
     let ctx = context();
     let old = Files::from([
@@ -78,16 +68,4 @@ fn the_record_s_files_are_the_table_the_meta_the_data_and_removals() {
         ]
     );
     assert_eq!(files[2].1.as_deref(), Some("new a"));
-}
-
-#[test]
-fn a_tree_entry_writes_content_or_removes() {
-    assert_eq!(
-        tree_entry("docs/x.md", Some("hi")),
-        r#"{"path":"docs/x.md","mode":"100644","type":"blob","content":"hi"}"#
-    );
-    assert_eq!(
-        tree_entry("docs/x.md", None),
-        r#"{"path":"docs/x.md","mode":"100644","type":"blob","sha":null}"#
-    );
 }
