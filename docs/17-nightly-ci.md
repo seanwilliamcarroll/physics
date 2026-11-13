@@ -1,6 +1,7 @@
 # Nightly CI
 
-Status: **In progress** (C1–C3 done, C4 built, 2026-11-13; C4's rehearsal after merging).
+Status: **Done** (C1–C4, 2026-11-13). Still to see: the first scheduled
+runs (one that runs, then one on an unchanged `main` that skips).
 
 ## The idea
 
@@ -182,12 +183,15 @@ hours.
 
 ### C4. A failure that can't be missed
 
-**Built** (2026-11-13): a final job, `report`, runs
+**Done** (2026-11-13): a final job, `report`, runs
 `.github/scripts/nightly-report.sh`, and a manual run takes a `fail`
 input that fails `hooks` at once (and skips `slow`) to rehearse a red
-night. The script was dry-run against four outcomes; the real issue
-opening and closing is tried after merging (it needs the workflow on
-`main` for a manual run).
+night.
+
+- **Rehearsed on `main`:** a manual run with `fail` opened
+  [#247](https://github.com/seanwilliamcarroll/physics/issues/247),
+  "Nightly CI failed", naming `hooks`; the next full manual run, green
+  in every job, closed it with a link to itself.
 
 - **Touches:** `.github/workflows/nightly.yml`.
 - GitHub emails the person who last edited a scheduled workflow when
