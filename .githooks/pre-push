@@ -4,7 +4,22 @@ set -eu
 cd "$(git rev-parse --show-toplevel)"
 # What's being pushed: git gives "<local ref> <local sha> <remote ref>
 # <remote sha>" per ref on stdin; kept for the mutation report (last).
-pushed=$(cat)
+# Run by hand from a terminal there is no push to describe (and `cat`
+# would wait for typing); with nothing on stdin (CI: `</dev/null`) it's
+# empty too. Either way every check runs and the report finds no diff.
+if [ -t 0 ]; then pushed=""; else pushed=$(cat); fi
+
+# HOOKS_STRICT=1 (nightly CI: docs/17-nightly-ci.md): a check whose tool
+# isn't installed fails, where locally it is skipped with a note (or, for
+# nextest, falls back). A check that silently doesn't run must not pass
+# in CI. `cargo xtask api --check` reads the same variable.
+missing_tool() {
+  if [ "${HOOKS_STRICT:-0}" = "1" ]; then
+    echo "pre-push: $1 (HOOKS_STRICT=1: a missing tool is a failure)" >&2
+    exit 1
+  fi
+  echo "pre-push: $1"
+}
 
 # Tests: nextest when installed (every test in its own process, all
 # binaries' tests in one pool: ~15 s here against cargo test's ~90 s),
@@ -16,7 +31,7 @@ if cargo nextest --version >/dev/null 2>&1; then
   echo "pre-push: cargo test --doc"
   cargo test --workspace --doc --quiet
 else
-  echo "pre-push: cargo test (cargo-nextest not installed: cargo install --locked cargo-nextest)"
+  missing_tool "cargo test (cargo-nextest not installed: cargo install --locked cargo-nextest)"
   cargo test --workspace --quiet
 fi
 
@@ -28,7 +43,7 @@ if cargo machete --version >/dev/null 2>&1; then
   echo "pre-push: cargo machete (unused dependencies)"
   cargo machete
 else
-  echo "pre-push: cargo machete skipped (cargo install --locked cargo-machete)"
+  missing_tool "cargo machete skipped (cargo install --locked cargo-machete)"
 fi
 
 # Site JS unit tests (pure modules only; node's built-in runner, no deps).
@@ -39,7 +54,7 @@ fi
 # Each library's public API against its snapshot in docs/api/ (xtask
 # api.rs): a widened or changed surface must be recorded, so it shows in
 # the PR's diff. Skips with a message without cargo-public-api or its
-# pinned nightly. ~1 s.
+# pinned nightly (a failure under HOOKS_STRICT=1). ~1 s.
 echo "pre-push: cargo xtask api --check"
 cargo xtask api --check
 

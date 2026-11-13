@@ -620,7 +620,9 @@ Three tiers (the checklist's §3):
 
 - **Every push (the pre-push hook, ~60 s warm):** every test at its
   default size (nextest), with property tests at 64 cases; unused
-  dependencies (`cargo machete`, when installed); the public API
+  dependencies (`cargo machete`, when installed; with `HOOKS_STRICT=1`,
+  as CI sets, a missing tool fails the hook: `docs/17-nightly-ci.md`);
+  the public API
   snapshots; doc links; wasm tests (built at `opt-level = 1`: 88 s became
   15 s); smoke. The mutation report on the push's own lines is **opt-in**
   (`MUTANTS=1`): otherwise the hook prints how many there are and the
