@@ -1,9 +1,9 @@
 # 15 — Swarms
 
-Status: **Adopted** (S1.1; as built: the crate S1.2, the grid S1.3,
-sorted lanes and SIMD S1.4, `swarm.wasm` S1.5, the page S1.6; each has
-an "as built" section below). Depends on `math` and `web-common`;
-nothing in the engine.
+Status: **Adopted**, S1 to S5, each with its own status line and "as
+built" sections (S1: the crate S1.2, the grid S1.3, sorted lanes and
+SIMD S1.4, `swarm.wasm` S1.5, the page S1.6). Depends on `math` and
+`web-common`; nothing in the engine.
 
 The swarm track simulates **agents that follow rules**, not bodies that
 feel forces. A boid steers by what it sees within a radius; nothing is
@@ -16,8 +16,8 @@ parameter says how much. The cost story is the other half: every boid
 looks at its neighbours, which is O(n²) done naively and O(n) with a
 grid, and the crossover is the first result.
 
-S1 is boids. S2 (Vicsek), S3 (ants) and S4 (Physarum) follow
-(`05-roadmap.md`, "Swarm track").
+S1 is boids. S2 (Vicsek), S3 (ants), S4 (Physarum) and S5 (evolving
+S3's constants) follow (`05-roadmap.md`, "Swarm track").
 
 ## S1: Boids
 
@@ -220,7 +220,7 @@ flock, the grid by default.
   force's 0.73 ns per pair**, which streams through the arrays in order.
   The grid's candidates are scattered, fetched through an index list.
   10k boids at 13.6 ms natively doesn't leave room for 60 Hz in wasm.
-  That is section 4's question: reordering by cell.
+  That is S1.4's question: reordering by cell.
 
 ### Sorted, lanes and SIMD as built (S1.4)
 
@@ -470,6 +470,7 @@ Mean `v_a` (± s.d. over seeds where it matters):
   steps): low noise alike (0.93–0.97), `v_a` falling with η, larger
   systems less ordered past the drop, the crossing moving down with N.
 - 0/0: none in any of these runs.
+
 ### In the browser (S2.5–6)
 
 `vicsek_*` exports in `swarm.wasm` (now
@@ -964,7 +965,9 @@ S3 (DOIs checked on Crossref 2026-11-11; read status as above):
   optimization by a colony of cooperating agents*, IEEE Trans. Syst.
   Man Cybern. B 26(1), 29–41. doi:10.1109/3477.484436 (not read;
   context)
-- Jones, J. (2010), see S1's list above (abstract read).
+- Jones, J. (2010), *Characteristics of pattern formation and evolution
+  in approximations of Physarum transport networks*, Artificial Life
+  16(2). doi:10.1162/artl.2010.16.2.16202 (abstract read)
 
 S4:
 

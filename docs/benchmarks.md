@@ -13,7 +13,7 @@ the index and the current state.
 | `cargo xtask bench --baseline main` | Runs them again and compares: lists every benchmark whose mean moved more than 10% (`--threshold N` changes it), faster or slower, and **fails if anything got slower**. |
 | `cargo xtask bench --record` | Any of the above, and the table kept as `docs/bench/<machine>.md`, proposed in a pull request (below). |
 | `cargo xtask profile …` | Where the time goes in one example or bench (`profiling.md`). |
-| `cargo xtask bench-wasm` | Builds the site, then times the modules in Node 22: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`). |
+| `cargo xtask bench-wasm` | Builds the site, then times the modules in Node: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`). |
 
 Benchmarks are noisy on a laptop (a few percent run to run, more with
 other work going on): **save and compare on the same machine, idle**,
@@ -49,8 +49,9 @@ above) also writes the table as `docs/bench/<machine>.md`, with the
 date, the commit, the machine and the toolchain, and opens a pull request
 changing just that file. One file per machine, replaced each time:
 numbers from different machines don't compare, and git's history keeps
-the earlier ones (`git log -p docs/bench/llm.md`). It makes the branch and commit through GitHub's
-API (`gh api`), so nothing in the checkout changes and no hooks run;
+the earlier ones (`git log -p docs/bench/<machine>.md`). It makes the
+branch and commit through GitHub's API (`gh api`), so nothing in the
+checkout changes and no hooks run;
 without a `gh` login it writes the file into `docs/bench/` to commit by
 hand. It never merges. Record on one quiet machine (the compute node,
 idle), so records compare; GitHub's shared runners are too noisy.

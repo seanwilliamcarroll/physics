@@ -17,7 +17,7 @@ which makes it a memory and cache problem rather than a numerical one.
 
 A `width × height` grid, row-major, **row 0 at the top** (screen order),
 one byte per cell. Outside the grid is solid: a closed box. Fixed size at
-creation (TASKS decision 7).
+creation.
 
 A cell's byte:
 
@@ -28,13 +28,13 @@ A cell's byte:
 ```
 
 - **material** (3 bits, 8 values): empty, sand, water, stone; lava and
-  steam in section 4; two spare.
+  steam in M9.4; two spare.
 - **shade** (4 bits): a per-grain variation in colour, chosen when the
   cell is painted and moving with it, so sand reads as grains and a
   moving pile shows its motion. Rendering only; the rules ignore it.
 
 No floats anywhere in the rules, so a step is bit-identical on every
-platform by construction (TASKS decision 2): goldens are hashes of the
+platform by construction: goldens are hashes of the
 grid bytes, native and wasm.
 
 ## The rules
@@ -70,9 +70,9 @@ matters, three ways:
    neighbour always moves first and takes the contested cell: piles lean,
    and water drifts one way. The direction alternates **each row and each
    step** (row `y` of step `s` runs left-to-right when `(y + s)` is even).
-   Measured in section 2: a pour at the centre piles symmetrically.
+   Measured in M9.2: a pour at the centre piles symmetrically.
 3. **A moved-here mark.** A grain that moves sideways *in* the scan
-   direction, or up (steam, section 4), lands where the scan hasn't been
+   direction, or up (steam, M9.4), lands where the scan hasn't been
    yet, and would be moved again. A bit per cell, **set where something
    moves to**, and checked before updating a cell, stops that. It's a
    separate bitset, cleared each step (1 bit a cell: 29 KB at 640 × 360).
@@ -109,7 +109,7 @@ step in which none of its cells moved. A cell that didn't move had no
 legal move *for any random choice* (the rules try both sides), so with
 its neighbourhood unchanged it still has none. Anything that changes a
 neighbourhood wakes the chunk first. So skipping sleeping chunks changes
-nothing, and the test (section 3) is that it's **bit-identical** to
+nothing, and the test (M9.3) is that it's **bit-identical** to
 updating every cell, over random grids and random paint.
 
 Noita's chunks are 64 × 64 with a dirty rectangle each, and its threads
@@ -122,7 +122,7 @@ the chunk layout leaves that door open.
 Movement is swaps, so **every material's count is constant** while
 nothing is painted: the core test, over long random runs. Painting
 changes counts by construction (the brush reports what it wrote).
-Section 4's reactions break per-material conservation on purpose
+M9.4's reactions break per-material conservation on purpose
 (lava + water → stone + steam; steam ↔ water): they're tested by their
 own accounting, each reaction changing counts by exactly its recipe.
 
@@ -184,8 +184,8 @@ with; only awake chunks need it, if the cost shows.
   Busy grids are all awake, so chunks cost nothing and save nothing;
   settled, they cut a step about 175×. The default 640 × 360 fits a 60 Hz
   frame busy with room to spare; 1920 × 1080 busy is near the budget, and
-  the step budget slows it rather than freezing it. Wasm in the page
-  (section 6).
+  the step budget slows it rather than freezing it. Wasm: "The page as
+  built", below.
 
 ## Lava and steam as built (M9.4)
 

@@ -113,9 +113,8 @@ math uses `libm` (`00-scope.md`, dependency policy), so the coefficients,
 and the rendered audio, are bit-identical native and on wasm. As `Δ → 0`, `C → 1`,
 which puts the allpass's pole (at `z = −C`) next to the unit circle, where
 it rings at high frequencies (Jaffe & Smith); so we keep `Δ ≥ 0.1`:
-`N = ⌊P − ½ − 0.1⌋`, giving `Δ ∈ [0.1, 1.1)` and `C ∈ (−0.05, 0.82]`. The allpass delay is exact only as frequency → 0; at
-the fundamental of the top notes it's a few percent off, so the tests
-measure the result rather than trust the formula.
+`N = ⌊P − ½ − 0.1⌋`, giving `Δ ∈ [0.1, 1.1)` and `C ∈ (−0.05, 0.82]`.
+The tests still measure the result rather than trust the formula.
 
 ### Decay: loss and stretching
 
@@ -196,9 +195,10 @@ What fills the delay line at note on:
 
 ## Voices
 
-A fixed pool of 8 voices (16 since A1.9), each a string. Note on takes a free voice, or
-steals the oldest. All are summed into one output, times a master gain;
-with 8 noise-plucked strings at full level the sum can exceed 1, so the
+A fixed pool of 16 voices (8 until A1.9), each a string. Note on takes a
+free voice, or steals the oldest. All are summed into one output, times
+a master gain; with several noise-plucked strings at full level the sum
+can exceed 1, so the
 gain defaults to ¼ and the output is clamped to ±1 (and clamping is
 counted in tests, which keep it at 0 for a chord at the default gain).
 
@@ -221,7 +221,8 @@ Every MIDI key from A0 up is playable at 44.1 and 48 kHz (G9's loop is
 into `site/pkg/acoustic.wasm`: **50,890 B (21,473 B gzip -9)** at A1.5
 (53,121 B at A1.9, with `synth_latest_cents`), against the engine's
 192,680 B. One import, `env.console_error` (the panic hook);
-twelve exports:
+twelve exports at A1.5 (A2 and A3 added more: `13-waveguide.md`,
+`14-piano.md`; the current list is `site/js/acoustic.d.ts`):
 
 | Export | Does |
 |---|---|
@@ -240,8 +241,9 @@ Node against the real module: one second of A4 peaks at 0.23, with the
 
 ## The page (A1.6)
 
-`site/demos/a1-string/`: `worklet.ts` is the processor, `main.ts` the
-page.
+`site/demos/a1-string/main.ts` is the page; the processor is
+`site/js/synth-worklet.ts` (beside the page as `worklet.ts` until A2
+shared it).
 
 - **The module goes in `processorOptions`.** The page compiles
   `acoustic.wasm` and passes the `WebAssembly.Module` when it creates the

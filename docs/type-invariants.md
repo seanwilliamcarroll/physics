@@ -59,7 +59,7 @@ the hardest to diagnose in a browser tab, and the fix cost nothing.
   0 is rejected with status 0.
 - **JS side** (with `tsc --checkJs`, item 8): branded `DemoHandle` and
   `Ptr` in `site/js/engine.d.ts`, so a handle can't be passed where a count
-  or a pointer belongs (verified with swapped arguments); `dom.js`'s
+  or a pointer belongs (verified with swapped arguments); `dom.ts`'s
   `byId(id, Type)` turns "maybe null, maybe the wrong element" into a
   checked, typed element or a clear error; `OPTIONS` entries are a
   discriminated union (`kind: "choice" | "int"`).
@@ -210,7 +210,7 @@ bug yet (item 7).
 
 | Where | Invariant | Decision | Why |
 |---|---|---|---|
-| `World::step(dt)` | `dt ≥ 0`? | No type | A negative `dt` is meaningful: it steps backward in time (velocity Verlet is time-reversible in exact arithmetic; symplectic Euler isn't time-symmetric, so it only approximately retraces). Zero is a tested no-op. NaN only comes from a caller bug and `Scalar` makes no NaN promises. No loop depends on the sign, so nothing hangs. |
+| `World::step(dt)` | `dt ≥ 0`? | No type at M0; **reversed in the audit after A3** (`TimeStep`, above) | The M0 reasoning: a negative `dt` steps backward in time, zero is a no-op, and no loop depends on the sign, so nothing hangs. It stopped holding with the solvers: XPBD's velocity is `Δx / h`, so zero and NaN are no longer harmless. |
 | `demo_advance(elapsed_s)` | finite, `≥ 0` | Sanitize, no type | It arrives from JS across the C ABI as a raw `f64`; a type can't be imposed on the caller. `FixedStep::advance` is the parse step: NaN and negatives become 0, long frames are clamped. |
 | `SplitMix64::range(lo, hi)`, `FOUNTAIN_VX/VY` | `lo < hi` | Doc + tests | Only called with constants, and tests assert generated values fall in range. |
 | Units (s, m, kg) | No mixing | No types | No unit-mixing bug so far, and unit types multiply operator impls (`Meters / Seconds = MetersPerSecond`, ...). Crates that do this well (`uom`) fail the dependency bar for one benefit. |
@@ -240,7 +240,7 @@ adopt it in that milestone's PR and move the row up.
 3. **`UnitVec2<S>` (normalized direction).** Constraint gradients
    (`n = x / |x|`, `docs/01-solvers.md`) assume unit length, and normalizing
    a zero vector divides by zero. `Vec2::normalized() -> Option<UnitVec2>`
-   forces handling the degenerate case. ✅ *Adopted before M6* (below).
+   forces handling the degenerate case. ✅ *Adopted before M6* (above).
    *Adopt when* M3 adds a second call
    site that normalizes, or a bug traces to an unnormalized or zero-length
    direction. It matters more on fixed point (**M8**), where `x / |x|` near
@@ -289,8 +289,7 @@ adopt it in that milestone's PR and move the row up.
 
    Either typed option needs `typescript` (an npm dev tool, Microsoft-
    maintained, very widely used: meets the dependency bar) pinned in a
-   `package.json`, which is a dependency-policy entry. Decision tracked in
-   `TASKS.md` (before M1 section 6).
+   `package.json`, which is a dependency-policy entry (`00-scope.md`).
 
    **`.ts` experiment (after M1), measured on the 11 shared modules in
    `site/js/`, with the demos left as JSDoc `.js` importing them:**

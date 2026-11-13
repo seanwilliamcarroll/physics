@@ -174,6 +174,12 @@ optimization by a colony of cooperating agents.* IEEE Trans. SMC-B
 graphs (context for S3). Not yet read.
 - DOI: https://doi.org/10.1109/3477.484436
 
+**Jones, J. (2010).** *Characteristics of pattern formation and
+evolution in approximations of Physarum transport networks.* Artificial
+Life 16(2). The model behind S4: agents sensing and depositing on a
+diffusing trail map. Abstract read.
+- DOI: https://doi.org/10.1162/artl.2010.16.2.16202
+
 **Jones, J. (2011; online 2010).** *Influences on the formation and
 evolution of Physarum polycephalum inspired emergent transport
 networks.* Natural Computing 10(4), 1345–1369. Networks between nutrient

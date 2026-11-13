@@ -1,8 +1,11 @@
 # Demos on the personal site
 
-Status: **Proposed** (2026-11-12). Nothing here is built. This replaces
-`hosting.md`, which was about publishing this repo's pages: that isn't
-going to happen.
+Status: **In progress** (planned 2026-11-12). Done: the checks V1–V4,
+this repo's steps P1–P3 and the first release (`v0.1.0`, 2026-11-13),
+and the site's S1–S6 (Hello Particles is in the site as a draft post).
+Left: S7 (the post, published) and S8 (a check of the live site). This
+replaces `hosting.md`, which was about publishing this repo's pages:
+that isn't going to happen.
 
 ## The idea
 
@@ -168,7 +171,8 @@ doesn't print it otherwise.
   image's default (`nvm`'s `default -> 22`), with 20 and 24 also
   installed.
 - Astro 7 needs `>=22.12.0`, so 22 is also the lowest that works.
-- **For S1:** `.nvmrc` says `22` (as this repo's does), CI reads it,
+- **For S1:** `.nvmrc` says `22` (as this repo's did; both moved to 24
+  on 2026-11-13, #248 here and #13 there), CI reads it,
   and `amplify.yml` gains `nvm use` so Amplify follows the file
   instead of its image's default, which can change under us.
 - Also seen: the app's stored build settings are a leftover **Hugo**
@@ -293,9 +297,9 @@ built and checked the package, wrote "The first release." as the
 notes, and printed the `gh release create v0.1.0 …` command. It did
 not run it; nothing does.
 
-- **Cutting the first release is a separate, explicit step** (it's
-  public), done on request: on `main`, `cargo xtask release`, then the
-  command it prints.
+- **Cutting a release is a separate, explicit step** (it's public),
+  done on request: on `main`, `cargo xtask release`, then the command it
+  prints. The first, `v0.1.0`, was cut on 2026-11-13.
 
 **Later, not scheduled:**
 
@@ -454,7 +458,8 @@ required check (a ruleset change, after the merge).
 
 #### S6. Hello Particles, as a draft
 
-*(needs P2, the first release, V1, V2)*
+**Done** (2026-11-13, personal_site #9). *(Needed P2, the first release,
+V1, V2.)*
 
 - **Touches:** `package.json` and `package-lock.json` (the release's
   tarball URL; the lock pins its hash),
