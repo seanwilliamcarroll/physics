@@ -38,3 +38,13 @@ fn parses_the_node_scripts_lines() {
     );
     assert!(parse_cases("step_f32 x 1.0").is_err());
 }
+
+#[test]
+fn durations_change_unit_at_a_thousand_and_a_million_nanoseconds() {
+    use super::format_ns;
+    assert_eq!(format_ns(999.0), "999 ns");
+    assert_eq!(format_ns(1e3), "1.0 µs");
+    assert_eq!(format_ns(316_100.0), "316.1 µs");
+    assert_eq!(format_ns(1e6), "1.00 ms");
+    assert_eq!(format_ns(2_306_635.5), "2.31 ms");
+}

@@ -125,3 +125,16 @@ fn a_stretched_partial_must_be_stretched() {
     assert!(judge_audio(&line("ok audio_peak=0.06 samples=33600 stretch_db=30.0")).is_ok());
     assert!(judge_audio(&line("ok audio_peak=0.06 samples=33600 stretch_db=3.0")).is_err());
 }
+
+/// Each threshold is met by a value exactly on it: one sample, an onset
+/// the whole tolerance late, a harmonic or a partial exactly at its
+/// minimum.
+#[test]
+fn audio_values_exactly_on_a_threshold_pass() {
+    let line = |msg: &str| console(&format!("SMOKE {msg}"));
+    assert!(judge_audio(&line("ok audio_peak=0.2 samples=1")).is_ok());
+    let song = "ok audio_peak=0.2 samples=120000 song_notes=3 onsets=3 onset_worst_ms=10.0";
+    assert!(judge_audio(&line(song)).is_ok());
+    assert!(judge_audio(&line("ok audio_peak=0.2 samples=24000 missing_db=20.0")).is_ok());
+    assert!(judge_audio(&line("ok audio_peak=0.2 samples=33600 stretch_db=10.0")).is_ok());
+}
