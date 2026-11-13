@@ -1,6 +1,8 @@
-//! `cargo xtask bench --record`: this run's table as a dated Markdown file,
-//! `docs/bench/<date>-<machine>.md` (with the commit, the machine and the
-//! toolchain), proposed as a pull request.
+//! `cargo xtask bench --record`: this run's table as
+//! `docs/bench/<machine>.md` (with the date, the commit, the machine and
+//! the toolchain), replacing that machine's last record, proposed as a
+//! pull request. One file per machine: numbers from different machines
+//! don't compare. Git's history keeps the earlier records.
 //!
 //! The pull request is made through GitHub's API (`gh api`): a tree with
 //! the one file on top of `main`, a commit, a branch, then `gh pr create`.
@@ -20,6 +22,8 @@ use super::table::{self, Row};
 /// What the record says about where and how it was measured.
 pub(crate) struct Context {
     pub date: String,
+    /// `HHMMSS`, for a branch name no other record has.
+    pub time: String,
     pub machine: String,
     pub system: String,
     pub cpus: usize,
@@ -69,15 +73,9 @@ pub(crate) fn document(ctx: &Context, rows: &mut [Row]) -> String {
     out
 }
 
-/// `docs/bench/<date>-<machine>.md`, or `…-<n>.md` for the `n`th that
-/// day (from 2).
-pub(crate) fn path(date: &str, machine: &str, n: u32) -> String {
-    let suffix = if n > 1 {
-        format!("-{n}")
-    } else {
-        String::new()
-    };
-    format!("docs/bench/{date}-{machine}{suffix}.md")
+/// `docs/bench/<machine>.md`.
+pub(crate) fn path(machine: &str) -> String {
+    format!("docs/bench/{machine}.md")
 }
 
 /// `s` as a JSON string, quotes included.
@@ -151,6 +149,7 @@ pub(crate) fn context(root: &Path, filter: Option<&str>, against: &str) -> Conte
     let run = |p: &str, a: &[&str]| output(root, p, a).unwrap_or_else(|| "?".to_owned());
     Context {
         date: run("date", &["+%Y-%m-%d"]),
+        time: run("date", &["+%H%M%S"]),
         machine: run("hostname", &["-s"]).to_lowercase(),
         system: run("uname", &["-sm"]),
         cpus: std::thread::available_parallelism().map_or(0, std::num::NonZero::get),
@@ -183,12 +182,8 @@ pub(crate) fn record(root: &Path, rows: &mut [Row], ctx: &Context) -> Result<(),
         ],
     )
     .ok_or("gh: couldn't read main")?;
-    let rel = free_path(root, ctx)?;
-    let branch = format!(
-        "bench/{}",
-        rel.trim_start_matches("docs/bench/")
-            .trim_end_matches(".md")
-    );
+    let rel = path(&ctx.machine);
+    let branch = format!("bench/{}-{}-{}", ctx.machine, ctx.date, ctx.time);
     let title = format!("bench: results of {} on {}", ctx.date, ctx.machine);
     push_branch(root, &main, &rel, &text, &title, &branch)?;
     let body = format!(
@@ -201,7 +196,7 @@ pub(crate) fn record(root: &Path, rows: &mut [Row], ctx: &Context) -> Result<(),
 
 /// Without `gh`: the record in this checkout's `docs/bench/`.
 fn write_locally(root: &Path, ctx: &Context, text: &str) -> Result<(), String> {
-    let rel = path(&ctx.date, &ctx.machine, 1);
+    let rel = path(&ctx.machine);
     let file = root.join(&rel);
     if let Some(dir) = file.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -211,23 +206,8 @@ fn write_locally(root: &Path, ctx: &Context, text: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// The first name not on `main`: a second record the same day on the same
-/// machine gets `-2`, and so on.
-fn free_path(root: &Path, ctx: &Context) -> Result<String, String> {
-    (1..=20)
-        .map(|n| path(&ctx.date, &ctx.machine, n))
-        .find(|p| {
-            output(
-                root,
-                "gh",
-                &["api", &format!("{REPO}/contents/{p}?ref=main"), "--silent"],
-            )
-            .is_none()
-        })
-        .ok_or_else(|| "bench: twenty records today already".to_owned())
-}
-
-/// A branch `branch` on GitHub: `main` plus the file `rel` holding `text`,
+/// A branch `branch` on GitHub: `main` with the file `rel` holding `text`
+/// (added, or replacing the last record),
 /// in one commit, made through the API (nothing local changes).
 fn push_branch(
     root: &Path,

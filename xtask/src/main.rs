@@ -102,8 +102,8 @@ enum Command {
         threshold: u32,
         /// Run only benchmarks whose names contain this (criterion's filter)
         filter: Option<String>,
-        /// Also record the table as `docs/bench/<date>-<machine>.md`, in a
-        /// pull request if gh is logged in
+        /// Also record the table as `docs/bench/<machine>.md` (replacing
+        /// that machine's last record), in a pull request if gh is logged in
         #[arg(long)]
         record: bool,
     },

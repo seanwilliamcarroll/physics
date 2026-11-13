@@ -4,6 +4,7 @@ use crate::bench::table::{Row, Throughput};
 fn context() -> Context {
     Context {
         date: "2026-11-13".to_owned(),
+        time: "151500".to_owned(),
         machine: "llm".to_owned(),
         system: "Linux x86_64".to_owned(),
         cpus: 16,
@@ -39,12 +40,8 @@ fn the_record_says_where_when_and_what_then_the_table() {
 }
 
 #[test]
-fn a_second_record_the_same_day_gets_a_number() {
-    assert_eq!(path("2026-11-13", "llm", 1), "docs/bench/2026-11-13-llm.md");
-    assert_eq!(
-        path("2026-11-13", "llm", 2),
-        "docs/bench/2026-11-13-llm-2.md"
-    );
+fn one_record_per_machine() {
+    assert_eq!(path("llm"), "docs/bench/llm.md");
 }
 
 #[test]
