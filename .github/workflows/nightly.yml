@@ -115,11 +115,27 @@ jobs:
       - name: cargo xtask slow
         run: cargo xtask slow
 
+  # Coverage against the committed record (docs/coverage.md): where it
+  # fell is reported in the job's summary, never failed. A failure here is
+  # the tests failing under instrumentation.
+  coverage:
+    needs: changed
+    if: needs.changed.outputs.run == 'true' && !inputs.fail
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup
+
+      - name: cargo xtask coverage
+        run: cargo xtask coverage
+
   # A failure that can't be missed: an issue, opened on a failed night
   # and closed by the next green one (.github/scripts/nightly-report.sh).
   # GitHub's own email goes only to whoever last edited this file.
   report:
-    needs: [changed, hooks, slow]
+    needs: [changed, hooks, slow, coverage]
     # Runs whatever the others did. A cancelled run reports nothing.
     if: always() && !cancelled()
     runs-on: ubuntu-24.04
@@ -137,5 +153,5 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HEAD: ${{ github.sha }}
-          RESULTS: changed=${{ needs.changed.result }} hooks=${{ needs.hooks.result }} slow=${{ needs.slow.result }}
+          RESULTS: changed=${{ needs.changed.result }} hooks=${{ needs.hooks.result }} slow=${{ needs.slow.result }} coverage=${{ needs.coverage.result }}
         run: sh .github/scripts/nightly-report.sh

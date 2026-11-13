@@ -512,6 +512,26 @@ cargo xtask coverage          # needs: cargo install cargo-llvm-cov
 - **Report only, no thresholds.** Both halves run every time (the JS
   half takes well under a second). Warm run: ~2.5 s; after
   `cargo llvm-cov clean --workspace`: ~4 s.
+- **The record, `docs/coverage.md`:** lines and functions covered per
+  crate and per file, as of a commit. Every run compares the Rust half
+  with it and prints (and under GitHub Actions, adds to the job summary)
+  the totals and every file with **more lines or functions missed** than
+  the record, plus new files that aren't fully covered. It counts missed
+  lines, not percentages, so adding code that's fully covered never reads
+  as a drop. It reports; it never fails. One record for every machine:
+  coverage depends on the code and the tests, not the machine.
+- **`cargo xtask coverage --record`** replaces the record with this run's,
+  in a pull request made through GitHub's API (as bench records are,
+  `benchmarks.md`): from a commit (it refuses uncommitted changes), after
+  a change that moves coverage on purpose.
+- **The property tests' seed is fixed in a coverage run**
+  (`PROPTEST_RNG_SEED`): proptest draws a new random seed every run, and
+  a branch only odd inputs reach (`voices.rs`'s `note_on` refusals) was
+  covered on some runs and not others, which the comparison would have
+  reported as a change. Seeded, two runs give identical per-file
+  reports. Ordinary test runs keep their random seeds.
+- **Nightly:** CI's `coverage` job runs it every night `main` moved
+  (`17-nightly-ci.md`); the comparison is in that job's summary.
 
 Only the native `cargo test` run counts. The wasm run (`test-wasm`) and
 the browser smoke test execute code too, but aren't measured.

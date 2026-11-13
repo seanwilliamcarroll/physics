@@ -60,6 +60,7 @@ Two jobs, in parallel, both on `ubuntu-24.04`:
 | Job | Runs | About |
 |---|---|---|
 | `hooks` | `.githooks/pre-commit`, then `.githooks/pre-push`: the scripts themselves | 10 min 15 s cold (measured, C2); cached not yet measured |
+| `coverage` | `cargo xtask coverage`, compared with `docs/coverage.md`: where coverage fell is in the job's summary, never a failure (`04-testing.md`, Coverage) | a few minutes (not yet measured) |
 | `slow` | `cargo xtask slow`: every test with property tests at 10 000 cases, then the `slow_*` long runs | 25 min on Apple silicon; 54 min on a runner (measured, C3) |
 
 **The hooks, not a copy of them.** Today's `ci.yml` lists the hooks'
