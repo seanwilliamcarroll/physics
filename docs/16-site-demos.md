@@ -355,6 +355,10 @@ checks it has seen run).
 
 #### S3. MDX
 
+**Done** (2026-11-12), as two pull requests: Astro 7.0 → 7.4 first
+(personal_site #5; `@astrojs/mdx` needed the newer Astro), then MDX
+(#6).
+
 - **Touches:** `package.json` (`@astrojs/mdx`), `astro.config.ts` (the
   integration), `src/content.config.ts` (the blog glob takes
   `**/[^_]*.{md,mdx}`), the pre-commit hook's file pattern (so `.mdx`
@@ -372,8 +376,18 @@ The lifecycle every demo needs, proven with a plain canvas animation.
   processed `<script>`, so TypeScript), `src/components/demo/lifecycle.ts`
   (the logic, importable by tests), `src/components/demo/Bounce.astro`
   (the dummy: a ball bouncing, no wasm), a draft post using it.
-- **A demo is a function** `(canvas, signal) => dispose`: the wrapper
-  knows nothing about wasm.
+- **Done** (2026-11-12, personal_site #7).
+- **A demo is a factory** `canvas => { frame(elapsedSeconds, info),
+  dispose? }` (it may be async), registered by name with
+  `registerDemo`. The wrapper owns the animation loop and calls
+  `frame`, so pausing, the frame count and the cap on a long frame
+  live in one place; it knows nothing about wasm. (The plan first said
+  a bare function `(canvas, signal) => dispose`, which would have left
+  every demo to write its own loop.)
+- **Drafts need a switch:** the site never builds drafts, so the
+  draft post couldn't be looked at. They are built only with
+  `PUBLIC_SHOW_DRAFTS=true` in the environment
+  (`src/utils/drafts.ts`); Amplify never sets it.
 - **Starts** when scrolled into view (so nothing is fetched for readers
   who never reach it); **pauses** off-screen and when the tab is
   hidden.
@@ -395,33 +409,48 @@ The lifecycle every demo needs, proven with a plain canvas animation.
 
 #### S5. A browser test for demos
 
-- **Touches:** `package.json` (`@playwright/test`, a `test:demos`
-  script), `playwright.config.ts`, `tests/demos.spec.ts`,
-  `tests/demo-pages.ts` (the list of pages), `.github/workflows/ci.yml`
-  (a second job), `.gitignore`.
-- **Runner: Playwright.** `npm run test:demos` builds, serves `dist/`
-  with `astro preview`, and runs the checks in headless Chromium. The
-  browser download stays on developers' machines and CI; Amplify never
-  installs it (it's a dev dependency the build doesn't use).
-- **In CI:** a second job, `demos`, after `check`: installs Chromium
-  (cached), runs `npm run test:demos`, uploads the failure traces. It
-  becomes a second required check (the same settings change as S2).
+**Done** (2026-11-12, personal_site #8), but for `demos` becoming a
+required check (a ruleset change, after the merge).
+
+- **Touches:** `package.json` (`@playwright/test`; `build:demos`,
+  `test:demos`), `playwright.config.ts`, `tests/` (`demo-pages.ts`,
+  `fixtures.ts`, `demos.spec.ts`, `wrapper.spec.ts`),
+  `.github/workflows/ci.yml`, `.gitignore`; a second draft post and a
+  `Broken` demo, for the failure message; the analytics tag (below).
+- **Runner: Playwright,** with the Chromium it pins, as two projects:
+  a desktop and a phone (narrow, touch). The browser download stays on
+  developers' machines and CI; Amplify never installs it.
+- **Its own build.** `npm run test:demos` builds with drafts into
+  `dist-demos/` and serves that with `astro preview`: the ordinary
+  build in `dist/` is left alone.
+- **Nothing leaves the machine.** A request to any other site is
+  refused and fails the test, and so does a console error.
+- **Analytics only in the published build.** Loading a page fired the
+  Google Analytics tag, so a test run (and `npm run dev`) counted as a
+  visit. The tag is now included only in a production build without
+  drafts (`src/utils/analytics.ts`); the `check` job fails if the
+  ordinary build loses the tag or gains a draft page. Blocking the
+  request in the tests alone would have left the tag in the tested
+  build and depended on every test remembering to block it.
+- **In CI:** a second job, `demos`: installs Chromium, runs
+  `npm run test:demos`, and uploads the report (with a trace) of a
+  failure. No retries: a test that passes on a second try is flaky,
+  and should be seen.
 - **Locally:** on demand. No hook: per-PR CI is the gate.
-- **The checks,** run against every page in the list (S4's draft post
-  to begin with; drafts are built for the test with a flag):
-  1. *It draws:* scrolled into view, the state reaches `running`,
-     frames advance, the canvas isn't one colour, and the page logged
-     no errors.
-  2. *It doesn't load early:* before scrolling, the state is `idle`
-     and nothing was fetched for it.
-  3. *It cleans up:* following a link leaves zero live demos; coming
-     back starts exactly one.
-  4. *It pauses:* a hidden tab stops the frame count.
-  5. *Themes:* toggling the theme changes the canvas's colours.
-  6. *Reduced motion:* emulated, the demo starts `paused`.
-- **Done when:** green in CI, and each check is shown to fail when the
-  behaviour it guards is broken on purpose (the PR lists the six
-  breakages tried).
+- **The checks.** For every page in `tests/demo-pages.ts`, each demo:
+  starts when scrolled to, draws more than one colour, and keeps
+  moving; pauses and resumes with its button; is disposed on leaving
+  the page and mounted once on return. For the wrapper, on its draft
+  posts: idle until scrolled to; paused off screen; paused in a hidden
+  tab; redrawn in the new colours on a theme change; paused at first
+  under "reduce motion"; a message in place of the canvas when a demo
+  can't start.
+- **Shown to fail:** with the tag put into the test build (all 18
+  tests), with the dispose-on-navigation listener removed (2), and
+  with the theme's colours not re-read (2). The other checks' breakages
+  weren't tried one by one.
+- **Not checked:** "nothing was fetched before scrolling" (the dummy
+  demo fetches nothing; S6's can check it).
 
 #### S6. Hello Particles, as a draft
 
@@ -435,7 +464,8 @@ The lifecycle every demo needs, proven with a plain canvas animation.
   scene; `demo_advance(elapsed)` each frame (the fixed 60 Hz clock is
   inside the wasm); the positions buffer drawn as points, in the
   theme's colours. On dispose: `demo_free`.
-- **Two more checks,** which only a real demo can have:
+- **Three more checks,** which only a real demo can have:
+  - nothing is fetched for the demo before it's scrolled to;
   - the `.wasm` arrives as `application/wasm` from the preview;
   - **physics is happening:** the particles' pixels differ between two
     frames a second apart. A frozen canvas fails.
