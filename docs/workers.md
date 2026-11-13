@@ -1,9 +1,9 @@
 # Running physics off the main thread
 
-Status: **design note, not a plan.** Written 2026-11-10, after M6. Nothing
-here is built. It records three options for heavy pages, from cheapest to
-most invasive, and what each would change, so the decision is ready when
-a milestone needs it.
+Status: **design note, not a plan.** Written 2026-11-10, after M6. It
+records three options for heavy pages, from cheapest to most invasive,
+and what each would change, so the decision is ready when a milestone
+needs it. Option 1 has since been built; the other two haven't.
 
 The trigger is the M2 page at N = 4096 (TASKS, "Known gaps"). Its three
 panels need about 55 ms of physics per display frame in the browser,
@@ -42,20 +42,12 @@ the steps that fit **10 ms** for all of them together (at least 1, at
 most `MAX_RATE_HZ`). Pages that keep up never reach the cap (every smoke
 case still takes its 30 steps); the HUD says "slow motion" when one does.
 
-
-
-Cap the physics at a wall-clock budget per frame, say 8 ms. Steps that
-don't fit are dropped rather than owed, so simulated time runs slower
-than real time instead of the display freezing.
-
-- **Where:** `FixedStep` (Rust) or `runLoop` (TypeScript). One knob
-  shared by every page, plus a HUD note ("running at 0.2× real time").
 - **What it gives:** the display and controls stay responsive on any
-  page. The simulation runs in slow motion. M2 at 4096 would run at
-  roughly a fifth of real time (an estimate, from 8 ms of a ~55 ms step).
+  page; simulated time runs slower than real time instead of the display
+  freezing. M2 at 4096 should run at roughly a fifth of real time (an
+  estimate, from 10 ms of a ~55 ms step; to check by hand).
 - **What it doesn't:** no parallelism. Three panels still share one core.
-- **Cost:** small, one PR. It's needed inside workers too (below), so
-  it's not throwaway work.
+- It's needed inside workers too (below).
 
 ## Option 2: one Web Worker per panel
 
@@ -131,10 +123,9 @@ today as messages, and a snapshot type.
 
 Small pages (the pendulum, the cradle, billiards) step in well under a
 millisecond and gain nothing from workers. Making the worker mode opt-in
-keeps them synchronous and simple. M2 would pilot it, then the sand pages
-(M9, M10), which are thousands of circles side by side, the same
-multi-panel shape. The price is two ways to run a demo, behind one
-interface.
+keeps them synchronous and simple. M2 would pilot it, then M10's sand
+panels (thousands of circles beside the automaton), the same multi-panel
+shape. The price is two ways to run a demo, behind one interface.
 
 ## Option 3: wasm threads (parallelism inside one simulation)
 
@@ -265,11 +256,11 @@ Keep it in the roadmap's "Deferred / stretch", which lists it already.
 
 ## Recommendation
 
-1. **A step budget when convenient.** It's small, it ends the freeze on
-   every page, and the worker design needs it too.
+1. **A step budget: built** (option 1). It ends the freeze on every
+   page, and the worker design needs it too.
 2. **Workers when a milestone needs them,** as an opt-in `remote-demo`
-   module piloted on M2, then used by M9 and M10. Use `postMessage`, so
-   there are no hosting headers. Rust is untouched.
+   module piloted on M2, then used by M10. Use `postMessage`, so there
+   are no hosting headers. Rust is untouched.
 3. **Wasm threads deferred,** unless one simulation outgrows a core. If
    that happens: Rayon on a worker pool, a fixed split of the work, a
    nightly `build-std`, COOP/COEP.

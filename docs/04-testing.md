@@ -1,6 +1,7 @@
 # 04 — Testing
 
-Status: **Draft**
+Status: **Adopted** (M0), kept current: each section says how its part is
+tested and run today
 Depends on: `02-core-types.md`, `03-wasm-shell.md`
 
 ## Philosophy
@@ -20,7 +21,7 @@ Depends on: `02-core-types.md`, `03-wasm-shell.md`
 
 | Crate | Purpose | Justification |
 |---|---|---|
-| `proptest` | Property-based testing with shrinking | Most widely used property-testing crate; maintained under the `proptest-rs` org; 1.11 released March 2026 |
+| `proptest` | Property-based testing with shrinking | Most widely used property-testing crate; maintained under the `proptest-rs` org; pinned at 1.12.0 (`00-scope.md`) |
 | `criterion` | Native benchmarks with statistics | Long-standing standard; active releases (0.8.2, Feb 2026) |
 
 Re-check both before each phase. Nothing else without a doc entry.
@@ -152,8 +153,7 @@ These guarantee the demos remain demonstrations.
 Name them for what they demonstrate, e.g.
 `explicit_euler_gains_energy_on_orbit`.
 
-Still to come from `01-solvers.md`: force-based stiff spring diverges
-(M5). The whole `01` table is also a regression suite
+The whole `01-solvers.md` table is also a regression suite
 (`tests/solver_table.rs`, one test per row).
 
 ## Determinism
@@ -275,9 +275,11 @@ runner = "wasmtime"
 ```
 
 ```sh
-rustup target add wasm32-wasip1
-cargo test -p engine --target wasm32-wasip1
+cargo test -p engine --target wasm32-wasip1    # the target comes with rust-toolchain.toml
 ```
+
+`cargo xtask test-wasm` runs `math`, `engine`, `acoustic`, `sand` and
+`swarm` this way.
 
 Verified (M2.2): proptest's default `fork`/`timeout` features run cases in
 subprocesses, which WASI doesn't have, so the workspace uses
@@ -318,7 +320,8 @@ release, aarch64-apple-darwin, Rust 1.99.1), mean per call, the
   **2 ns per pair** in both scalars. A step is essentially its force: the
   integrators are noise next to the pair loop.
 - **Velocity Verlet costs exactly 2.0×** symplectic Euler (two force
-  passes). M1 decision 2 (no cached acceleration) stands: M2's few hundred
+  passes). M1's decision (no cached acceleration: `02-core-types.md`,
+  "Integrators") stands: M2's few hundred
   bodies need ~90 µs (Verlet ~180 µs) of a 16.7 ms frame, so caching would
   trade a staleness bug class for time that isn't scarce.
 - **The per-call body allocation is negligible:** 8% of the force at
@@ -388,36 +391,28 @@ cases through `engine.wasm` in Node 22, vs criterion's native means):
 
 ## Browser smoke test
 
-`cargo xtask smoke` (also in pre-push) builds the site and loads the demo
-in headless Chrome, one fresh profile per case, driven over the DevTools
-protocol by `xtask/smoke_page.mjs` (it waits for the page's `SMOKE` line,
-up to 10 s, then screenshots; audio muted): M0 (default, f64, 500k,
-panic) and M1 (orbits in f64 and f32; every panel must step, draw its
-planet, and report finite energy; the reported pixels are the minimum
-across panels, so one blank panel fails), and M2 (the default disk, the
-unsoftened collapse, and the cluster at N = 1024, both scalar panels),
-M3 (both solver panels: the default, and f32 at 100 substeps), and M4
-(the chain's two solver panels; the double pendulum in both comparison
-modes), and M5
-(the jelly's three panels at the default k, and at rigid on a 4 × 4 grid,
-where the force panel keeps its finite default), and M6 (the full box
-with the broadphase overlay, the break with 5 mm gaps, the cradle at its
-defaults and at one substep with eight balls, three pulled), and M7 (a
-12 m/s break, and the tunneling preset: no speculation, one substep,
-where the cue ball passes through the rack), and A1 (the start of a
-song rendered by an `OfflineAudioContext` through the real worklet and
-`acoustic.wasm`; `Check::Sounds` wants finite samples with an audible,
-unclipped peak, and, for a song, an onset found for every scheduled note
-within 10 ms: `SMOKE ok audio_peak=… samples=… song_notes=… onsets=…
-onset_worst_ms=…`), and A2 (A4 on the waveguide plucked at ½: the 2nd
-harmonic, measured in the rendered audio, must sit at least 20 dB under
-its neighbors: `missing_db=…`), and A3 (a stiff C4 at mf: its 10th
-partial must be at least 10 dB louder at its stretched frequency than at
-the harmonic one, `stretch_db=…`; measured 69.9).
-The
-page's `?smoke` mode (`site/js/smoke.js`) advances 30 frames
-synchronously, draws once, counts particle-colored pixels, and logs
-`SMOKE ok steps=N particle_px=N`.
+`cargo xtask smoke` (also in pre-push) builds the site and loads every
+demo in headless Chrome, one fresh profile per case, driven over the
+DevTools protocol by `xtask/smoke_page.mjs` (it waits for the page's
+`SMOKE` line, up to 10 s, then screenshots; audio muted). A page's
+`?smoke` mode (`site/js/smoke.ts`) advances 30 frames synchronously,
+draws once, counts particle-colored pixels, and logs
+`SMOKE ok steps=N particle_px=N`. The cases (the list itself is in
+`xtask/src/smoke/cases.rs`; M9's and the swarm pages' are in their docs):
+
+| Page | Cases |
+|---|---|
+| M0 | default, f64, 500k, panic |
+| M1 | orbits in f64 and f32: every panel must step, draw its planet, and report finite energy; the reported pixels are the minimum across panels, so one blank panel fails |
+| M2 | the default disk, the unsoftened collapse, the cluster at N = 1024, both scalar panels |
+| M3 | both solver panels: the default, and f32 at 100 substeps |
+| M4 | the chain's two solver panels; the double pendulum in both comparison modes |
+| M5 | the jelly's three panels at the default k, and at rigid on a 4 × 4 grid, where the force panel keeps its finite default |
+| M6 | the full box with the broadphase overlay; the break with 5 mm gaps; the cradle at its defaults, and at one substep with eight balls, three pulled |
+| M7 | a 12 m/s break; the tunneling preset (no speculation, one substep), where the cue ball passes through the rack |
+| A1 | the start of a song rendered by an `OfflineAudioContext` through the real worklet and `acoustic.wasm`: `Check::Sounds` wants finite samples with an audible, unclipped peak, and an onset found for every scheduled note within 10 ms (`SMOKE ok audio_peak=… samples=… song_notes=… onsets=… onset_worst_ms=…`) |
+| A2 | A4 on the waveguide plucked at ½: the 2nd harmonic, measured in the rendered audio, at least 20 dB under its neighbors (`missing_db=…`) |
+| A3 | a stiff C4 at mf: its 10th partial at least 10 dB louder at its stretched frequency than at the harmonic one (`stretch_db=…`; measured 69.9) |
 
 Lessons that shaped it:
 
@@ -458,11 +453,12 @@ syntax errors in `.js` files).
 ## Site JS unit tests
 
 `tests/site/*.test.js`, run by Node's built-in runner (`node --test`, no
-dependency) in pre-push: the pure modules (`options.js`, `ring.js`, the
-scale math in `plot.js`, the fade bands in `trail.js`, `RateMeter` and
-`Smoothed`, and since M2 `divergence.ts` and `perf.ts`'s cost table).
-DOM-touching code is covered by the browser smoke test
-instead. The tests live outside `site/`, so they're never served. Note:
+dependency) in pre-push, importing the `.ts` modules directly (Node
+strips the types): the pure modules and the pure halves of the rest
+(`options.ts`, `ring.ts`, the scale math in `plot.ts`, the fade bands in
+`trail.ts`, `RateMeter` and `Smoothed`, `divergence.ts`, `perf.ts`'s
+cost table, and each later page's scenes and helpers). DOM-touching code
+is covered by the browser smoke test instead. The tests live outside `site/`, so they're never served. Note:
 `node --test` needs a glob; a directory argument is treated as a module.
 
 ## CI
@@ -473,7 +469,8 @@ does anything if `main` has moved since its last successful run.
 
 - **What it runs:** the hook scripts themselves, `.githooks/pre-commit`
   then `.githooks/pre-push`, on `ubuntu-24.04`. Not a copy of their
-  commands: a check added to a hook is in CI the same day.
+  commands: a check added to a hook is in CI the same day. A second job
+  runs the slow tier, `cargo xtask slow` ("Running strategy").
 - **Strict:** `HOOKS_STRICT=1`, so a check whose tool is missing fails
   where locally it is skipped.
 - **Same toolchain:** `rustup toolchain install` reads
@@ -562,12 +559,12 @@ code came with its tests, and those tests covered two earlier gaps.)
 **Gate: not recommended yet.** The Rust misses are all explained above,
 so a number like 97% adds little that reading the HTML doesn't. A "can't
 drop" ratchet would trip on harmless changes (a new `Default` impl, an
-accessor, a generic instantiated differently), and there's no CI to
-hold a baseline; a local hook would need a committed number that every
-PR edits. The JS percentage is mostly a statement about how much of the
-site is DOM code, so gating it would push tests toward the wrong layer.
-Revisit if CI arrives, or if a review ever finds a real bug in code the
-report showed as unexecuted.
+accessor, a generic instantiated differently), and CI is nightly, not a
+gate ("CI"), so nothing would hold a baseline; a local hook would need a
+committed number that every PR edits. The JS percentage is mostly a
+statement about how much of the site is DOM code, so gating it would
+push tests toward the wrong layer. Revisit if per-PR CI arrives, or if a
+review ever finds a real bug in code the report showed as unexecuted.
 
 ## Against the checklist
 
@@ -588,7 +585,7 @@ health audit, then filled in):
   | Integrators | Free fall per integrator (`invariants.rs`); orbits' energy behavior (`invariants.rs`, `known_failures.rs`); convergence order per integrator, position and velocity (`convergence.rs`) |
   | Broadphase | Unit cases; brute-force superset over uniform, clustered and mixed scenes far from the origin, insertion order (`broadphase_properties.rs`) |
   | Narrowphase | Unit cases; swap, translation, well-formed contacts (`collision/narrowphase/properties.rs`, a unit test so the narrowphase stays crate-private) |
-  | Contact solver | Analytic head-on, momentum, energy, stacks, a bullet, fast circles, 1:1e6 (`contacts.rs`); the energy gain with simultaneous contacts is a known failure until Generalized Reflections |
+  | Contact solver | Analytic head-on, momentum, energy, stacks, a bullet, fast circles, 1:1e6 (`contacts.rs`); simultaneous contacts, the break and the cradle (`impacts.rs`); goldens of the box, the break and the cradle |
   | Joints and constraints | Rod error bounds, chains, compliant and rigid pendulum periods, soft rods at several passes |
   | World and API | The ABI property tests (`exports/tests/sequences.rs`, every wasm crate); goldens of every demo scene, native and wasm |
 
@@ -596,9 +593,8 @@ health audit, then filled in):
   circles), polygon narrowphase, friction, sleeping, angular momentum.
 - **Outside the checklist:** the acoustic crate, tested in the same styles
   (analytic tuning and decay, FFT against a naive DFT, the bit-exact
-  loop-and-waveguide equivalence, energy accounting, goldens).
-- **Deferred to M6:** contact goldens, the cradle and rack scenes,
-  contact-order properties.
+  loop-and-waveguide equivalence, energy accounting, goldens); `sand`
+  and `swarm`, in theirs (`11-falling-sand.md`, `15-swarm.md`).
 
 ## Test runner: nextest
 
@@ -634,8 +630,9 @@ Three tiers (the checklist's §3):
   command. It was the unbounded part, and git holds the connection to
   GitHub open, idle, for the whole hook: a stack push of 3–6 minutes was
   dropped by GitHub ("Connection closed by remote host").
-- **The slow tier, `cargo xtask slow`:** not in any hook. Run it before a
-  release, or nightly (on the compute node, next to the mutation runs).
+- **The slow tier, `cargo xtask slow`:** not in any hook. Nightly CI runs
+  it when `main` has moved (54 min on a runner: `17-nightly-ci.md`); by
+  hand, before a release.
   - **Every test with each property test at 10 000 cases**
     (`--cases N` to change it).
   - **The long runs:** tests named `slow_*` and marked

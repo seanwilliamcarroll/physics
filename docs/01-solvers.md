@@ -1,6 +1,7 @@
 # 01 — Solver Families: Impulse-Based vs XPBD
 
-Status: **Draft — tutorial + decision record**
+Status: **Adopted** — tutorial + decision record; both families built in
+M3 (`06-constraints.md`)
 Depends on: `00-scope.md`
 
 ## The shared problem
@@ -142,9 +143,15 @@ That's what the side-by-side demos are for.
 
 ---
 
-## Side-by-side demos (planned)
+## Side-by-side demos
 
-Same scene, same `dt`, two solvers, rendered next to each other with live plots.
+Same scene, same `dt`, two solvers, rendered next to each other with live
+plots. The plan, as written before M3; the pages built from it are under
+`site/demos/` (M3–M7). Three rows came out differently: the 1:100 chain's
+"rubberiness" was classic Baumgarte blowing up (`06-constraints.md`,
+"Stabilization"), the cradle swings one ball out in both solvers
+(`08-collision.md`), and a break doesn't tunnel with speculative contacts
+(`09-billiards.md`).
 
 | Demo | What it reveals | Plot |
 |---|---|---|
@@ -166,7 +173,8 @@ To run both, the solver must be pluggable over a shared world:
 - **Per-solver:** the stepping loop and per-constraint state (impulse solver
   keeps accumulated λ for warm starting and clamping; XPBD keeps λ per substep).
 
-Sketch of the seam (to refine in `02-core-types.md`):
+Sketch of the seam (as built, an enum like `Integrator`, not a trait:
+`06-constraints.md`):
 
 ```rust
 pub trait Solver {

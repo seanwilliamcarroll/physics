@@ -1,6 +1,6 @@
 # 03 — Wasm Shell and Rendering
 
-Status: **Draft**
+Status: **Adopted** (M0), with as-built notes and the size record since
 Depends on: `02-core-types.md`
 
 ## Goal
@@ -19,7 +19,7 @@ physics/
   crates/
     math/             // Scalar, Vec2 (02-core-types.md)
     engine/           // std-only library (02-core-types.md)
-    web/              // cdylib: exports + demo glue, depends on engine
+    engine-web/       // cdylib: exports + demo glue, depends on engine (named `web` until #161)
   xtask/              // build helper: `cargo xtask site`
   site/
     index.html
@@ -65,7 +65,7 @@ M3 page with a pre-M3 engine (`demo_new` returned null for the new kind).
 
 ```sh
 cargo build --release --target wasm32-unknown-unknown -p engine-web
-cp target/wasm32-unknown-unknown/release/web.wasm site/pkg/engine.wasm
+cp target/wasm32-unknown-unknown/release/engine_web.wasm site/pkg/engine.wasm
 ```
 
 Targets are installed automatically by `rust-toolchain.toml`.
@@ -130,8 +130,8 @@ One `match` per call. Each variant monomorphizes a full engine copy into the
 | M6.6 | `F32`, `F64` | 192,680 B | 60,661 B | + collision: broadphase, narrowphase, contacts in both solvers (no M6 page or exports yet; measured at A1.5). **+65 KB over M5.6** (below) |
 | M6.7 | `F32`, `F64` | 197,543 B | 62,605 B | + the impact stage (Generalized Reflections), both solvers |
 | M6.9 | `F32`, `F64` | 215,612 B | 66,591 B | + the box, break and cradle constructors, restitution, radius, momentum and broadphase-pairs exports (+18.1 KB: three scene builders ×2 scalars) |
-| M7.7 | `F32`, `F64` | 226,888 B | 73,452 B | + segments, moment-of-impact contacts, the cloth, tunnels, pockets, the pool table and its exports: **+47.1 KB** (below) |
 | M6.11 | `F32`, `F64` | 179,755 B | 55,435 B | one sort key for every sort (below): **−35.9 KB**; sorting code 39.1 → 6.9 KB |
+| M7.7 | `F32`, `F64` | 226,888 B | 73,452 B | + segments, moment-of-impact contacts, the cloth, tunnels, pockets, the pool table and its exports: **+47.1 KB** over M6.11 (below) |
 
 **Where M6's +65 KB went** (A1.7; per-function sizes from the module's
 `name` section, M5.8 against M6.6; the code section grew 59.7 KB):
@@ -178,8 +178,9 @@ not taken.
 The acoustic track ships its own module, `acoustic.wasm`
 (`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`. M9's
 falling sand ships `sand.wasm` (`crates/sand-web`, 37.6 KB): sizes in
-`11-falling-sand.md`. The swarm track's `swarm.wasm` (`crates/swarm-web`,
-48.5 KB) is the one module built with `simd128` (`15-swarm.md`, S1.4–5).
+`11-falling-sand.md`. The swarm track's `swarm.wasm` (`crates/swarm-web`;
+48.5 KB at S1, 103.8 KB with all four models) is the one module built
+with `simd128` (`15-swarm.md`, S1.4–5).
 
 ### The render buffer
 
@@ -266,10 +267,10 @@ GPU only if a demo outgrows Canvas.
 
 The M1 page runs three `Demo` handles from one wasm instance, one per
 canvas, each stepped with the same elapsed time. Shared site modules:
-`plot.js` (`LinePlot`: several series from `Ring` buffers, linear or log
-`|v|` scale floored at 1e-16), `trail.js` (fading per-particle history,
-drawn in 8 opacity bands), `controls.js` (slider/select/checkbox/button),
-`options.js` (URL options and the generated options table).
+`plot.ts` (`LinePlot`: several series from `Ring` buffers, linear or log
+`|v|` scale floored at 1e-16), `trail.ts` (fading per-particle history,
+drawn in 8 opacity bands), `controls.ts` (slider/select/checkbox/button),
+`options.ts` (URL options and the generated options table).
 
 Two Canvas facts learned the hard way: assigning `canvas.width`/`height`
 clears the canvas even to the same value, so `setupCanvas` only assigns
@@ -321,20 +322,23 @@ Rust exposes metric values per step the same way as positions.
 - **wasm-bindgen:** status verified November 2026. It moved to a new
   `wasm-bindgen` GitHub org with new maintainers after the rustwasm org was
   archived (September 2025), so it meets the dependency bar. Not needed until
-  we want strings, callbacks, or browser APIs from Rust. Likely first need:
-  the `AudioWorklet` acoustic track. If adopted, use the `wasm-bindgen` CLI
-  directly; wasm-pack moved to an individual maintainer and adds little here.
+  we want strings, callbacks, or browser APIs from Rust. The acoustic
+  track, once the likely first need, did without it: the worklet loads a
+  raw module too (`12-acoustic-foundations.md`). If adopted, use the
+  `wasm-bindgen` CLI directly; wasm-pack moved to an individual maintainer
+  and adds little here.
 - **Threads / SharedArrayBuffer:** require cross-origin isolation headers on
   the website host. Revisit for large-N benchmarks. Workers, a step budget
   and wasm threads compared: `workers.md`.
-- **SIMD:** `-C target-feature=+simd128` with `core::arch::wasm32`.
-  Benchmark against scalar once phase 1 works.
+- **SIMD:** adopted for `swarm.wasm` alone (S1.4, `15-swarm.md`):
+  `-C target-feature=+simd128` and loops written in lanes, no
+  `core::arch::wasm32` intrinsics. The other modules build without it.
 
-## Milestone: "hello particles"
+## Milestone: "hello particles" (M0, done)
 
 1. `engine`: `Scalar` (f32, f64), `Vec2`, `Particles`, `UniformGravity`,
    symplectic Euler, `World::step`.
-2. `web`: `demo_new`/`advance`/`positions` exports, one demo kind.
+2. `engine-web`: `demo_new`/`advance`/`positions` exports, one demo kind.
 3. `site`: canvas + loop; particles fall off screen.
 4. Swap in `PairwiseGravity` with a two-body orbit, then a small cluster → N-body demo.
 5. Add an energy plot and an integrator dropdown → first side-by-side.
