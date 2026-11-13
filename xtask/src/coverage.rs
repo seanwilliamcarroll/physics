@@ -1,19 +1,29 @@
 //! `cargo xtask coverage`: line and function coverage of the Rust tests
 //! (cargo-llvm-cov) and the site JS unit tests (Node's built-in coverage).
-//! Report only, no thresholds (`docs/04-testing.md`, Coverage).
+//! The Rust half is compared with the committed record (`docs/coverage.md`,
+//! `record.rs`): where coverage fell is reported, never failed.
+//! `--record` replaces the record (`docs/04-testing.md`, Coverage).
 
 use std::env;
 use std::ffi::OsString;
+use std::fmt::Write as _;
 use std::path::Path;
 use std::process::{self, Stdio};
 
+use crate::github;
 use crate::target_dir;
+
+mod record;
 
 /// Files left out of the Rust report: `crates/test-support` and math's
 /// `#[cfg(test)]` macros are test tooling, not code under test. (xtask
 /// is excluded from the run itself.) cargo-llvm-cov's default filter
 /// already drops `tests/` directories and the `foo/tests.rs` unit tests.
 const IGNORE_FILES: &str = r"crates/test-support/|/test_util\.rs$";
+
+/// The property tests' seed in a coverage run (any fixed value: it only
+/// has to be the same every time).
+const PROPTEST_SEED: &str = "20261113";
 
 /// Columns of the `llvm-cov report` table, 0-based after splitting on
 /// whitespace: `Filename`, then Regions / Missed / Cover, Functions /
@@ -88,6 +98,27 @@ pub(crate) fn per_crate(table: &str) -> (Vec<Counts>, Counts) {
     (crates, total)
 }
 
+/// One entry per file in an `llvm-cov report` text table (header, rules
+/// and `TOTAL` skipped), named by its path as the report prints it.
+pub(crate) fn per_file(table: &str) -> Vec<Counts> {
+    table
+        .lines()
+        .filter_map(|row| {
+            let cols: Vec<&str> = row.split_whitespace().collect();
+            let num = |i: usize| cols.get(i).and_then(|c| c.parse::<u32>().ok());
+            let file = cols.first()?;
+            crate_of(file)?;
+            Some(Counts {
+                name: (*file).to_owned(),
+                lines: num(COL_LINES)?,
+                missed_lines: num(COL_MISSED_LINES)?,
+                functions: num(COL_FUNCTIONS)?,
+                missed_functions: num(COL_MISSED_FUNCTIONS)?,
+            })
+        })
+        .collect()
+}
+
 /// The crate a source path belongs to: the component before `src`.
 fn crate_of(file: &str) -> Option<&str> {
     let parts: Vec<&str> = file.split(['/', '\\']).collect();
@@ -105,7 +136,7 @@ pub(crate) fn ratio(total: u32, missed: u32) -> String {
     format!("{pct:6.2}% ({covered}/{total})")
 }
 
-pub(crate) fn coverage(root: &Path) -> Result<(), String> {
+pub(crate) fn coverage(root: &Path, record: bool) -> Result<(), String> {
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     // Fail with an install hint, not cargo's "no such command: llvm-cov".
     let found = process::Command::new(&cargo)
@@ -120,13 +151,92 @@ pub(crate) fn coverage(root: &Path) -> Result<(), String> {
             .to_owned());
     }
 
-    rust(root, &cargo)?;
+    if record {
+        github::preflight(root, "coverage")?;
+    }
+    let table = rust(root, &cargo)?;
+    let files = per_file(&table);
+    compare(root, &files);
+    if record {
+        let (crates, total) = per_crate(&table);
+        write_record(root, &crates, &total, &files)?;
+    }
     js(root)
 }
 
-/// Runs the workspace tests instrumented, writes the HTML report, and
-/// prints a line per crate.
-fn rust(root: &Path, cargo: &OsString) -> Result<(), String> {
+/// Prints (and, under GitHub Actions, adds to the job's summary) where
+/// this run's coverage fell short of the record. Never fails.
+fn compare(root: &Path, files: &[Counts]) {
+    let Ok(text) = std::fs::read_to_string(root.join(record::PATH)) else {
+        println!("coverage: no record ({}) to compare with", record::PATH);
+        return;
+    };
+    let was = record::parse(&text);
+    let fell = record::fell(&was, files);
+    let rose = record::rose(&was, files);
+    let missed = |f: &dyn Fn(&record::Kept) -> u32| was.values().map(f).sum::<u32>();
+    let (was_lines, was_functions) = (missed(&|k| k.missed_lines), missed(&|k| k.missed_functions));
+    let now_lines: u32 = files.iter().map(|f| f.missed_lines).sum();
+    let now_functions: u32 = files.iter().map(|f| f.missed_functions).sum();
+    let mut summary = format!(
+        "coverage, against {}: lines missed {was_lines} -> {now_lines}, functions missed {was_functions} -> {now_functions}; {} file(s) better\n",
+        record::PATH,
+        rose
+    );
+    if fell.is_empty() {
+        summary.push_str("coverage: no file has more missed than the record\n");
+    } else {
+        let _ = writeln!(
+            summary,
+            "coverage: {} file(s) with more missed than the record:",
+            fell.len()
+        );
+        for f in &fell {
+            let _ = writeln!(summary, "  {f}");
+        }
+    }
+    print!("\n{summary}");
+    if let Some(path) = env::var_os("GITHUB_STEP_SUMMARY") {
+        let md = format!("## Coverage\n\n```\n{summary}```\n");
+        let _ = std::fs::OpenOptions::new()
+            .append(true)
+            .open(path)
+            .and_then(|mut f| std::io::Write::write_all(&mut f, md.as_bytes()));
+    }
+}
+
+/// `--record`: `docs/coverage.md` replaced by this run's, in a pull request.
+fn write_record(
+    root: &Path,
+    crates: &[Counts],
+    total: &Counts,
+    files: &[Counts],
+) -> Result<(), String> {
+    let run = |p: &str, a: &[&str]| github::output(root, p, a).unwrap_or_else(|| "?".to_owned());
+    let meta = record::Meta {
+        date: run("date", &["+%Y-%m-%d"]),
+        commit: run("git", &["rev-parse", "--short", "HEAD"]),
+        subject: run("git", &["log", "-1", "--format=%s"]),
+        rustc: run("rustc", &["--version"]),
+    };
+    let text = record::document(&meta, crates, total, files);
+    let branch = format!("coverage/{}-{}", meta.date, run("date", &["+%H%M%S"]));
+    let title = format!("coverage: record of {}", meta.date);
+    let body = format!(
+        "{text}\nThe coverage record, which every later `cargo xtask coverage` compares with. Opened by `cargo xtask coverage --record`; not merged by it.\n"
+    );
+    github::propose(
+        root,
+        &[(record::PATH.to_owned(), Some(text))],
+        &branch,
+        &title,
+        &body,
+    )
+}
+
+/// Runs the workspace tests instrumented, writes the HTML report, prints
+/// a line per crate, and returns llvm-cov's per-file table.
+fn rust(root: &Path, cargo: &OsString) -> Result<String, String> {
     let llvm_cov = |args: &[&str]| {
         let mut cmd = process::Command::new(cargo);
         cmd.current_dir(root).arg("llvm-cov").args(args);
@@ -149,6 +259,12 @@ fn rust(root: &Path, cargo: &OsString) -> Result<(), String> {
         ]
         .concat(),
     )
+    // The property tests' inputs fixed: proptest draws a new random seed
+    // every run, so a branch only odd inputs reach (voices.rs's `note_on`
+    // refusals) came and went between runs of the same code, and the
+    // comparison with the record would report noise. Ordinary test runs
+    // keep their random seeds, to explore.
+    .env("PROPTEST_RNG_SEED", PROPTEST_SEED)
     .status()
     .map_err(|e| format!("failed to run cargo llvm-cov: {e}"))?;
     if !status.success() {
@@ -180,7 +296,8 @@ fn rust(root: &Path, cargo: &OsString) -> Result<(), String> {
     if !table.status.success() {
         return Err(format!("coverage summary failed ({})", table.status));
     }
-    let (crates, total) = per_crate(&String::from_utf8_lossy(&table.stdout));
+    let table = String::from_utf8_lossy(&table.stdout).into_owned();
+    let (crates, total) = per_crate(&table);
 
     println!("\nRust coverage (native cargo test; per crate):");
     for c in crates.iter().chain(std::iter::once(&total)) {
@@ -195,7 +312,7 @@ fn rust(root: &Path, cargo: &OsString) -> Result<(), String> {
         "  HTML report: {}",
         out_dir.join("html").join("index.html").display()
     );
-    Ok(())
+    Ok(table)
 }
 
 /// Runs the site JS unit tests with Node's built-in coverage; Node prints

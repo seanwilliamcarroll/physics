@@ -143,11 +143,16 @@ fn wrap_position_is_rem_euclid_bit_for_bit() {
         for v in wrap_cases(l) {
             let r = v.rem_euclid(l);
             let general = if r >= l { 0.0 } else { r };
-            assert_eq!(
-                wrap_position(v, l).to_bits(),
-                general.to_bits(),
-                "v = {v:e}, l = {l}"
-            );
+            let got = wrap_position(v, l);
+            // A NaN's sign and payload aren't specified (Rust's float
+            // semantics): the same expression can give either, depending on
+            // how it was compiled. The coverage build gave −∞'s NaN the
+            // other sign. NaN for NaN; the same bits for everything else.
+            if general.is_nan() {
+                assert!(got.is_nan(), "v = {v:e}, l = {l}: {got}");
+            } else {
+                assert_eq!(got.to_bits(), general.to_bits(), "v = {v:e}, l = {l}");
+            }
         }
     }
 }

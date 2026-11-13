@@ -1,4 +1,4 @@
-use super::{Counts, crate_of, per_crate, ratio};
+use super::{Counts, crate_of, per_crate, per_file, ratio};
 
 /// Trimmed real output of `cargo llvm-cov report` (M2.7).
 const TABLE: &str = "\
@@ -63,4 +63,17 @@ fn crate_is_the_component_before_src() {
 fn ratio_formats_covered_over_total() {
     assert_eq!(ratio(4, 1), " 75.00% (3/4)");
     assert_eq!(ratio(0, 0), "-");
+}
+
+#[test]
+fn per_file_keeps_each_source_row() {
+    let files = per_file(TABLE);
+    assert_eq!(
+        files,
+        vec![
+            counts("engine/src/particles.rs", 39, 3, 11, 1),
+            counts("engine/src/world.rs", 43, 7, 8, 2),
+            counts("math/src/vec2.rs", 41, 0, 13, 0),
+        ]
+    );
 }

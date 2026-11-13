@@ -102,7 +102,7 @@ pub(crate) fn bench(
         .map_or_else(|| root.join("target"), |d| root.join(d))
         .join("criterion");
     if record {
-        record::preflight(root)?;
+        crate::github::preflight(root, "bench")?;
     }
     let machine = record::machine(root);
     let record_dir = root.join(store::data_dir(&machine));

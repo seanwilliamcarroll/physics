@@ -56,13 +56,14 @@ A manual run (`gh workflow run Nightly`) always runs everything.
 
 ## What it runs
 
-`.github/workflows/nightly.yml`: two jobs in parallel on `ubuntu-24.04`,
+`.github/workflows/nightly.yml`: three jobs in parallel on `ubuntu-24.04`,
 then a report.
 
 | Job | Runs | Takes |
 |---|---|---|
 | `hooks` | `.githooks/pre-commit`, then `.githooks/pre-push </dev/null`: the scripts themselves, with `HOOKS_STRICT=1` | 10 min 15 s cold (setup 1 min 44 s, `pre-commit` 19 s, `pre-push` 8 min; nextest's 833 tests 80 s, against 20 s on Apple silicon) |
 | `slow` | `cargo xtask slow`: every test with property tests at 10 000 cases, then the `slow_*` long runs | 54 min (the first stage 50 min 46 s, the second 47 s); 25 min on Apple silicon. Timeout: two hours |
+| `coverage` | `cargo xtask coverage`, compared with `docs/coverage.md`: where coverage fell is in the job's summary, never a failure (`04-testing.md`, Coverage) | a few minutes (not yet measured) |
 | `report` | `.github/scripts/nightly-report.sh` | seconds |
 
 - **The hooks, not a copy of them.** The old per-PR workflow listed the

@@ -19,6 +19,7 @@ mod api;
 mod bench;
 mod bench_wasm;
 mod coverage;
+mod github;
 mod mutants;
 mod package;
 mod profile;
@@ -155,8 +156,14 @@ enum Command {
     /// writes an HTML report to target/llvm-cov/html, and prints a line per crate
     /// (test-support is left out of the report). Site JS: node --test with
     /// --experimental-test-coverage over tests/site. Needs cargo-llvm-cov:
-    /// cargo install cargo-llvm-cov
-    Coverage,
+    /// cargo install cargo-llvm-cov. The Rust half is compared with the record
+    /// (docs/coverage.md): where coverage fell is reported, never failed.
+    Coverage {
+        /// Replace the record (`docs/coverage.md`) with this run's, in a pull
+        /// request if gh is logged in
+        #[arg(long)]
+        record: bool,
+    },
     /// Point git at the tracked hooks in .githooks/
     InstallHooks,
     /// Write each library crate's public API to docs/api/CRATE.txt (cargo
@@ -244,7 +251,7 @@ fn run(cmd: Command) -> Result<(), String> {
             };
             profile::profile(&root, &package, &target, seconds, top, &args)
         }
-        Command::Coverage => coverage::coverage(&root),
+        Command::Coverage { record } => coverage::coverage(&root, record),
         Command::InstallHooks => install_hooks(&root),
         Command::Slow { cases } => slow::slow(&root, cases),
         Command::Api { check } => api::api(&root, check),
