@@ -242,6 +242,21 @@ fn a_strike_lands_on_the_junction_nearest_its_point() {
             "aimed at junction {c}"
         );
     }
+    // Near the edges of a junction's catchment, 0.4 of a cell either
+    // side: still that junction (the aim exactly at it leaves half a cell
+    // of slack, enough to hide a shift by `first`; found by the full
+    // mutation run of 2026-11-12).
+    for c in [3, m / 2] {
+        for off in [-0.4, 0.4] {
+            let s = (math::convert::usize_to_f64(c) + 0.5 + off + g.first) / g.length;
+            assert!(g.strike(hammer(), s));
+            assert_eq!(
+                g.hammer.as_ref().map(|(_, at)| *at),
+                Some(c),
+                "junction {c}, {off:+}"
+            );
+        }
+    }
     // Past the ends: the outer junctions.
     for (s, c) in [(0.0, 0), (1.0, m - 2)] {
         assert!(g.strike(hammer(), s));
@@ -270,4 +285,25 @@ fn a_two_cell_rail_takes_a_strike_and_one_cell_doesnt() {
     let mut one = guide(12_000.0);
     assert_eq!(one.right.len(), 1);
     assert!(!one.strike(hammer(), 0.125));
+}
+
+/// From the full mutation run of 2026-11-12: the pickup was checked only
+/// near a peak, to 2%. On a straight-line shape, reading linearly between
+/// cells gives the line itself, exactly.
+#[test]
+fn the_pickup_reads_a_straight_line_exactly_between_cells() {
+    let lossless = Voicing {
+        tuned: false,
+        decay: Decay::Loss(1.0),
+        inharmonicity: 0.0,
+    };
+    let mut wg = Waveguide::<f64>::new(FS, 400.0, lossless).unwrap();
+    wg.pluck(|s| s);
+    let (lo, hi) = (wg.position(0), wg.position(59));
+    for k in 0..=20 {
+        let at = lo + (hi - lo) * f64::from(k) / 20.0;
+        wg.set_pickup(at);
+        let got = wg.displacement();
+        assert!((got - at).abs() < 1e-12, "pickup at {at}: {got}");
+    }
 }

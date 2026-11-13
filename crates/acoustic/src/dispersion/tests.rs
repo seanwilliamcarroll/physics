@@ -70,7 +70,15 @@ fn a_short_loop_gets_a_smaller_filter() {
     let full = design(FS, 1046.5, 2.85e-3, 0.5, 1e9).unwrap();
     let w1 = TAU * 1046.5 / FS;
     let room = full.delay(w1) / 2.0;
-    if let Some(small) = design(FS, 1046.5, 2.85e-3, 0.5, room) {
-        assert!(small.delay(w1) <= room, "{} > {room}", small.delay(w1));
-    }
+    // Found by the full mutation run of 2026-11-12: this was an `if let`,
+    // so a design that gave up passed too.
+    let small = design(FS, 1046.5, 2.85e-3, 0.5, room).expect("a smaller filter fits");
+    assert!(small.delay(w1) <= room, "{} > {room}", small.delay(w1));
+    assert!(
+        small.count < full.count,
+        "{} biquads, not fewer than {}",
+        small.count,
+        full.count
+    );
+    assert_eq!(small.partials, full.partials, "the same targets");
 }
