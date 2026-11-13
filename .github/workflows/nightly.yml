@@ -11,9 +11,6 @@ on:
     - cron: "17 7 * * *"
   # A manual run always runs everything.
   workflow_dispatch:
-  # TEMPORARY, for trying this workflow before it is on main: removed
-  # before the pull request merges.
-  pull_request:
 
 # One at a time; a run in progress is left to finish.
 concurrency:
