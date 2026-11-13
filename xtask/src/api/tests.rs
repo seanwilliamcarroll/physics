@@ -1,7 +1,18 @@
 use std::fs;
 use std::path::Path;
 
-use super::CRATES;
+use super::{CRATES, skips_when_missing};
+
+/// A missing tool is skipped only by a check outside strict mode: writing
+/// the snapshots needs the tool, and CI (`HOOKS_STRICT=1`) must not pass
+/// by not checking.
+#[test]
+fn a_missing_tool_is_skipped_only_by_a_lenient_check() {
+    assert!(skips_when_missing(true, false));
+    assert!(!skips_when_missing(true, true));
+    assert!(!skips_when_missing(false, false));
+    assert!(!skips_when_missing(false, true));
+}
 
 /// Every library crate in `crates/` is snapshotted: the `cdylib`s (their
 /// surface is the C ABI, checked against the `.d.ts`) and test support

@@ -1,6 +1,6 @@
 # Nightly CI
 
-Status: **Proposed** (2026-11-12). Nothing here is built.
+Status: **In progress** (C1 done, 2026-11-13).
 
 ## The idea
 
@@ -82,7 +82,19 @@ benchmarks (a shared runner's timings mean nothing).
 
 ### C1. The hooks, runnable by CI
 
-No change to how they behave locally.
+**Done** (2026-11-13). No change to how they behave locally.
+
+- `pre-commit` needed nothing: it has no check that skips itself.
+- `pre-push` fails under `HOOKS_STRICT=1` when nextest or
+  `cargo machete` is missing; `cargo xtask api --check` reads the same
+  variable.
+- With nothing on stdin, `pre-push` already ran every check and
+  skipped the mutation report. Run from a terminal it used to wait for
+  typing; it no longer reads stdin there.
+- **Shown:** both hooks pass in strict mode with every tool present;
+  with nextest, machete and `cargo-public-api` hidden in turn, each
+  strict run exits 1 naming the tool; without strict mode a hidden
+  machete is still skipped with a note.
 
 - **Touches:** `.githooks/pre-commit`, `.githooks/pre-push`,
   `docs/04-testing.md`.

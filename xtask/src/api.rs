@@ -22,10 +22,13 @@ pub(crate) const CRATES: [&str; 6] = ["math", "engine", "acoustic", "sand", "swa
 
 /// Writes every snapshot, or with `check`, compares them and fails on any
 /// that's stale. Without the tool or the pinned nightly, writing fails
-/// (with how to install them) and checking skips with a message.
+/// (with how to install them) and checking skips with a message: unless
+/// `HOOKS_STRICT=1` is set (CI: `docs/17-nightly-ci.md`), where a check
+/// that can't run is a failure.
 pub(crate) fn api(root: &Path, check: bool) -> Result<(), String> {
     if let Err(missing) = tools_present() {
-        if check {
+        let strict = std::env::var("HOOKS_STRICT").is_ok_and(|v| v == "1");
+        if skips_when_missing(check, strict) {
             println!("api: skipped ({missing})");
             return Ok(());
         }
@@ -58,6 +61,12 @@ pub(crate) fn api(root: &Path, check: bool) -> Result<(), String> {
             stale.join(", ")
         ))
     }
+}
+
+/// Whether a missing tool is skipped over (with a message) and not an
+/// error: only when checking, and not in strict mode.
+const fn skips_when_missing(check: bool, strict: bool) -> bool {
+    check && !strict
 }
 
 /// `cargo public-api` and the pinned nightly, or what's missing.
