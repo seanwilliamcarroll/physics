@@ -168,3 +168,77 @@ fn a_node_deposits_at_most_the_cap() {
     assert_eq!(s.nodes().len(), 1);
     assert!(!s.add_node(64, 3, 1.0) && !s.add_node(3, 64, 1.0));
 }
+
+// Found by the full mutation run of 2026-11-12: nothing read the
+// accessors, `set_params`, or which way an unsensing agent turns.
+
+#[test]
+fn the_accessors_report_the_system() {
+    let mut s = Slime::new(64, 500, SlimeParams::DEFAULT, 1).unwrap();
+    assert_eq!(
+        (s.side(), s.len(), s.is_empty(), s.steps()),
+        (64, 500, false, 0)
+    );
+    let at: Vec<(f32, f32)> = s.positions().collect();
+    assert_eq!(at.len(), 500);
+    assert_eq!(at[7], (s.x[7], s.y[7]));
+    s.step();
+    s.step();
+    assert_eq!(s.steps(), 2);
+}
+
+#[test]
+fn params_are_replaced_only_by_usable_ones_that_fit_the_world() {
+    let d = SlimeParams::DEFAULT;
+    let mut s = Slime::new(16, 10, d, 1).unwrap();
+    let slower = SlimeParams { step: 0.5, ..d };
+    assert!(s.set_params(slower));
+    assert_eq!(s.params(), slower);
+    assert!(!s.set_params(SlimeParams { decay: 2.0, ..d }));
+    assert_eq!(s.params(), slower, "a refusal changes nothing");
+    // A step of half the world (8 cells) is refused; just under is taken.
+    assert!(!s.set_params(SlimeParams { step: 8.0, ..d }));
+    assert!(s.set_params(SlimeParams { step: 7.9, ..d }));
+}
+
+/// The way each agent turned in one step: −1, 0 or +1 (by the turn
+/// angle), from its heading before and after.
+fn turns(before: &Slime, after: &Slime) -> [usize; 3] {
+    let mut counts = [0; 3];
+    for i in 0..before.len() {
+        let (c, s) = (before.cos[i], before.sin[i]);
+        let (nc, ns) = (after.cos[i], after.sin[i]);
+        let cross = c * ns - s * nc;
+        let k = if cross.abs() < 1e-4 {
+            1
+        } else if cross < 0.0 {
+            0
+        } else {
+            2
+        };
+        counts[k] += 1;
+    }
+    counts
+}
+
+#[test]
+fn on_an_empty_field_a_sensing_agent_goes_straight() {
+    // Left, front and right all read 0: no side is stronger.
+    let before = Slime::new(64, 300, SlimeParams::DEFAULT, 3).unwrap();
+    let mut after = before.clone();
+    after.step();
+    assert_eq!(turns(&before, &after), [0, 300, 0]);
+}
+
+#[test]
+fn without_sensing_left_straight_and_right_are_equally_likely() {
+    let mut before = Slime::new(64, 3000, SlimeParams::DEFAULT, 5).unwrap();
+    before.set_sensing(false);
+    let mut after = before.clone();
+    after.step();
+    let [left, straight, right] = turns(&before, &after);
+    // 1000 each expected; σ = √(3000 · ⅓ · ⅔) ≈ 26, so ±130 is 5σ.
+    for (what, n) in [("left", left), ("straight", straight), ("right", right)] {
+        assert!((870..=1130).contains(&n), "{what}: {n} of 3000");
+    }
+}

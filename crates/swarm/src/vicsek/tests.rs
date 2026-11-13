@@ -148,3 +148,64 @@ fn given_particles_are_wrapped_into_the_box() {
         .unwrap();
     assert_eq!(v.particle(0), Some(p(1.0, L - 2.0, 1.0, 0.0)));
 }
+
+// Found by the full mutation run of 2026-11-12: nothing read the
+// accessors or `set_params`, checked the particle count's limits, or used
+// a radius other than 1 (where r² = r).
+
+#[test]
+fn the_accessors_report_the_system() {
+    let mut v = Vicsek::new(40, L, VicsekParams::paper(1.0), 1).unwrap();
+    assert_eq!(
+        (v.len(), v.is_empty(), v.side(), v.steps()),
+        (40, false, L, 0)
+    );
+    v.step();
+    v.step();
+    assert_eq!(v.steps(), 2);
+}
+
+#[test]
+fn params_are_replaced_only_by_usable_ones() {
+    let mut v = Vicsek::new(10, L, VicsekParams::paper(1.0), 1).unwrap();
+    assert!(v.set_params(VicsekParams::paper(2.0)));
+    assert_eq!(v.params(), VicsekParams::paper(2.0));
+    let still = VicsekParams {
+        speed: 0.0,
+        ..VicsekParams::paper(3.0)
+    };
+    assert!(!v.set_params(still), "a speed of 0 is refused");
+    assert_eq!(v.params(), VicsekParams::paper(2.0));
+}
+
+#[test]
+fn given_particles_number_one_to_the_maximum() {
+    use super::MAX_PARTICLES;
+    let one = p(1.0, 1.0, 1.0, 0.0);
+    let given = |n: usize| {
+        Vicsek::with_particles(L, VicsekParams::paper(1.0), core::iter::repeat_n(one, n), 1)
+    };
+    assert!(given(0).is_none());
+    assert_eq!(given(MAX_PARTICLES).map(|v| v.len()), Some(MAX_PARTICLES));
+    assert!(given(MAX_PARTICLES + 1).is_none());
+}
+
+#[test]
+fn the_neighbourhood_is_the_radius_not_one() {
+    // Radius 2, a neighbour 1.5 away heading +y: the mean of the two
+    // headings is the diagonal.
+    let params = VicsekParams {
+        radius: 2.0,
+        ..VicsekParams::paper(0.0)
+    };
+    let mut v =
+        Vicsek::with_particles(L, params, [p(5.0, 5.0, 1.0, 0.0), p(6.5, 5.0, 0.0, 1.0)], 1)
+            .unwrap();
+    v.step();
+    let a = v.particle(0).unwrap();
+    let half = core::f32::consts::FRAC_1_SQRT_2;
+    assert!(
+        (a.cos - half).abs() < 1e-6 && (a.sin - half).abs() < 1e-6,
+        "{a:?}"
+    );
+}

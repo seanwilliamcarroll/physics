@@ -122,3 +122,59 @@ fn a_boid_flees_a_predator_in_range_only() {
         boid(504.0, 500.0, 4.0, 0.0)
     );
 }
+
+// Found by the full mutation run of 2026-11-12: each limit's own value
+// (the margin, the predator's range, a boid on the same spot), the flee
+// with a velocity across it, and the zero-speed rescue off an axis.
+
+#[test]
+fn exactly_at_the_margin_a_boid_does_not_turn() {
+    let m = P.margin;
+    for at in [boid(m, m, 4.0, 0.0), boid(1000.0 - m, 1000.0 - m, 4.0, 0.0)] {
+        let b = steer(&P, arena(), None, at, core::iter::empty());
+        assert_eq!((b.vx, b.vy), (4.0, 0.0), "{at:?}");
+    }
+}
+
+#[test]
+fn a_predator_exactly_at_its_range_or_on_the_boid_is_ignored() {
+    let at_range = Some((500.0 - PREDATOR_RANGE, 500.0));
+    assert_eq!(
+        steer(&P, arena(), at_range, ME, core::iter::empty()),
+        boid(504.0, 500.0, 4.0, 0.0)
+    );
+    // No direction to flee in (and no division by zero).
+    assert_eq!(
+        steer(&P, arena(), Some((500.0, 500.0)), ME, core::iter::empty()),
+        boid(504.0, 500.0, 4.0, 0.0)
+    );
+}
+
+#[test]
+fn fleeing_steers_both_components_toward_away_at_top_speed() {
+    // Heading (3, 4) with the predator 50 to +y: "away at top speed" is
+    // (0, −6), approached by FLEE of the difference.
+    let me = boid(500.0, 500.0, 3.0, 4.0);
+    let b = steer(&P, arena(), Some((500.0, 550.0)), me, core::iter::empty());
+    let (vx, vy) = (3.0 + (0.0 - 3.0) * FLEE, 4.0 + (-6.0 - 4.0) * FLEE);
+    assert!(
+        (b.vx - vx).abs() < 1e-6 && (b.vy - vy).abs() < 1e-6,
+        "{b:?}"
+    );
+}
+
+#[test]
+fn a_boid_on_the_same_spot_is_not_a_neighbour() {
+    // Inside the protected range it pushes (by nothing: dx = dy = 0); it
+    // is not counted for centering or matching.
+    let twin = boid(500.0, 500.0, 0.0, 5.0);
+    let b = steer(&P, arena(), None, ME, [twin].into_iter());
+    assert_eq!(b, boid(504.0, 500.0, 4.0, 0.0));
+}
+
+#[test]
+fn at_zero_speed_an_off_axis_heading_is_kept() {
+    // (3, 4) is speed 5: min speed 3 along it.
+    let (x, y) = clamp_speed(&P, (0.0, 0.0), (3.0, 4.0));
+    assert!((x - 1.8).abs() < 1e-6 && (y - 2.4).abs() < 1e-6, "{x} {y}");
+}
