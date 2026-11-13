@@ -183,3 +183,20 @@ fn potential_is_half_k_stretch_squared_summed() {
         force.potential(&p)
     );
 }
+
+/// From the full mutation run of 2026-11-12: the potential was only
+/// measured with one end at the origin, where `xb − xa` and `xb + xa`
+/// agree.
+#[test]
+fn potential_is_the_same_away_from_the_origin() {
+    let mut p = Particles::new();
+    let _ = p.add(Vec2::new(5.0, 3.0), Vec2::ZERO, kg(1.0));
+    let _ = p.add(Vec2::new(6.0, 3.0), Vec2::ZERO, kg(1.0));
+    let ids = (crate::ParticleId(0), crate::ParticleId(1));
+    let f = SpringForce::new(vec![
+        Spring::between(&p, ids.0, ids.1, k(4.0), Damping::NONE).unwrap(),
+    ]);
+    assert_eq!(f.potential(&p), 0.0, "at rest");
+    p.pos[1] = Vec2::new(7.0, 3.0);
+    assert!((f.potential(&p) - 2.0).abs() < 1e-12, "½ · 4 · 1²");
+}

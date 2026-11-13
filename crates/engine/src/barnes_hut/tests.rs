@@ -234,3 +234,18 @@ fn a_target_just_outside_a_lopsided_cell_is_accurate() {
 /// worse. Measured (audit after A3): 25.5% with the classic test, 0.03%
 /// with δ (the cell is opened).
 const LOPSIDED_TOL: f64 = 0.053;
+
+/// From the full mutation run of 2026-11-12: bodies at the same point
+/// share a bucket, whose mass is their sum; seen from far enough to
+/// accept the bucket whole (θ = 1), it pulls like the two together.
+#[test]
+fn coincident_bodies_pull_as_their_total_mass() {
+    let mut p = Particles::<f64>::new();
+    p.add(Vec2::from_f64(0.0, 0.0), Vec2::ZERO, kg(1e10));
+    p.add(Vec2::from_f64(0.0, 0.0), Vec2::ZERO, kg(2e10));
+    p.add(Vec2::from_f64(100.0, 0.0), Vec2::ZERO, kg(1.0));
+    let direct = accel(&p, &PairwiseGravity::new(G, eps(EPS)));
+    let tree = accel(&p, &bh::<f64>(EPS, 1.0));
+    let (d, t) = (direct[2], tree[2]);
+    assert!((t - d).length() / d.length() < 1e-12, "{t:?} vs {d:?}");
+}
