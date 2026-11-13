@@ -1,0 +1,89 @@
+# Nightly CI (docs/17-nightly-ci.md): once a night, and only if `main`
+# moved, run what the git hooks run, on a clean Linux machine. The hooks
+# are the first line; this is the check that can't be skipped with
+# --no-verify or be missing on a new machine.
+name: Nightly
+
+on:
+  # 07:17 UTC: just after 2 am Eastern in winter, 3 am in summer (GitHub's
+  # cron is UTC). Not on the hour, when scheduled runs queue longest.
+  schedule:
+    - cron: "17 7 * * *"
+  # A manual run always runs everything.
+  workflow_dispatch:
+  # TEMPORARY, for trying this workflow before it is on main: removed
+  # before the pull request merges.
+  pull_request:
+
+# One at a time; a run in progress is left to finish.
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Decides whether there is anything to do: a scheduled run on a `main`
+  # that the last successful run already tested does nothing more.
+  # Comparing with the last *successful* run means a red `main` is tested
+  # again every night until it is fixed.
+  changed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          HEAD: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" != "schedule" ]; then
+            echo "Not a scheduled run ($EVENT): everything runs."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow nightly.yml \
+            --branch main --status success --limit 1 \
+            --json headSha --jq '.[0].headSha // ""')
+          echo "main is at $HEAD; the last successful run tested ${last:-nothing}."
+          if [ "$last" = "$HEAD" ]; then
+            echo "Nothing new: the other jobs are skipped."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The hook scripts themselves, not a copy of their commands: a check
+  # added to a hook is in CI the same day.
+  hooks:
+    needs: changed
+    if: needs.changed.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      # A check whose tool is missing fails; locally it is skipped.
+      HOOKS_STRICT: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup
+
+      - name: pre-commit
+        run: sh .githooks/pre-commit
+
+      # No push to describe: nothing on stdin.
+      - name: pre-push
+        run: sh .githooks/pre-push </dev/null
+
+      - name: Smoke screenshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: smoke-screenshots
+          path: target/smoke/
+          retention-days: 7
