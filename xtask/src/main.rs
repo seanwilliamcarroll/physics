@@ -22,6 +22,7 @@ mod coverage;
 mod mutants;
 mod package;
 mod profile;
+mod release;
 mod serve;
 mod slow;
 mod smoke;
@@ -65,6 +66,15 @@ enum Command {
     /// target/package/ (engine.wasm, its types, the loader), and check the
     /// tarball by using it (docs/16-site-demos.md)
     Package,
+    /// Everything about releasing the physics-engine package except
+    /// publishing it: checks the repository is ready (main, clean, at
+    /// origin, a new tag), builds and checks the package, drafts notes,
+    /// and prints the gh command that publishes. Never runs it
+    Release {
+        /// Rehearse: report what isn't ready and carry on
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Build the site, then serve it with tsc --watch alongside; Ctrl-C stops both
     Serve {
         /// Port to serve on (1-65535)
@@ -181,6 +191,7 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Serve { port } => serve::serve(&root, port),
         Command::Smoke => smoke::smoke(&root),
         Command::Package => package::package(&root),
+        Command::Release { dry_run } => release::release(&root, dry_run),
         Command::TestWasm => test_wasm(&root),
         Command::Bench {
             save,

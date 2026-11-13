@@ -190,6 +190,7 @@ Commands (`cargo xtask help` lists what exists):
 | `cargo xtask bench` | health | every criterion bench, saved as a baseline (`--save NAME`) or compared with one (`--baseline NAME`; fails on regressions) (`docs/benchmarks.md`) |
 | `cargo xtask profile` | health | one example or bench under `samply`, built with debug info; prints the hottest functions and source lines (`docs/profiling.md`) |
 | `cargo xtask package` | site demos | the `physics-engine` npm package (engine.wasm, its types, the loader) as a tarball in `target/package/`, checked by using it (`docs/16-site-demos.md`) |
+| `cargo xtask release` | site demos | everything about releasing the package except publishing: checks the repo is ready, builds, drafts notes, prints the `gh release create` command (never runs it) |
 | `cargo xtask test-wasm` | M1 | `cargo test -p engine -p math --target wasm32-wasip1` under wasmtime (pre-push) |
 | `cargo xtask coverage` | M2 | Rust coverage via `cargo-llvm-cov` (per-crate summary, HTML in `target/llvm-cov/html`) and site JS via `node --test --experimental-test-coverage`; report only (`docs/04-testing.md`) |
 | `cargo xtask dist` | planned | `site` + produce a deployable `dist/` (see `hosting.md`) |

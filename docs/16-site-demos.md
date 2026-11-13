@@ -286,17 +286,16 @@ Refactor only: every lab page behaves as before.
 
 #### P3. Releasing, written down and scripted
 
-- **Touches:** this document's "Releases" section (the procedure,
-  final); `xtask/src/package.rs` (a `--release-notes` helper printing
-  the ABI's changes since the last tag, from `docs/api/` and
-  `engine.d.ts`'s diff); `TASKS.md`.
-- **What a version means:** the ABI is the contract. Before 1.0, a
-  change to an existing export bumps the minor version, an addition
-  the patch.
-- **Done when:** the procedure is followed once, as a dry run, up to
-  but not including `gh release create`.
+**Done** (2026-11-12): `cargo xtask release` and the procedure in
+"Releases" below. Rehearsed with `--dry-run` on its own branch: it
+named the two things not ready (not `main`, uncommitted changes),
+built and checked the package, wrote "The first release." as the
+notes, and printed the `gh release create v0.1.0 …` command. It did
+not run it; nothing does.
+
 - **Cutting the first release is a separate, explicit step** (it's
-  public), done on request after P3 merges: tag `v0.1.0`.
+  public), done on request: on `main`, `cargo xtask release`, then the
+  command it prints.
 
 **Later, not scheduled:**
 
@@ -507,15 +506,37 @@ would go:
 that URL and **refuses the file if its hash differs**. So the lock file
 pins the exact bytes, not only the name.
 
-**Cutting one** (by hand; P3 writes this down and may script it):
+**Cutting one:**
 
-1. A PR here bumps the workspace version; merged.
-2. On `main`: `cargo xtask package` (builds the wasm, packs the tarball,
-   runs it from Node).
-3. `gh release create v0.1.0 target/package/physics-engine-0.1.0.tgz`
-   with notes saying what changed in the ABI.
-4. A PR in the site changes the URL and runs `npm install` (the lock
-   file's hash changes with it); CI runs the demo tests on it.
+1. **A PR here bumps `version`** under `[workspace.package]` in
+   `Cargo.toml`; merged. (What the number means is below.)
+2. **On `main`, pulled: `cargo xtask release`.** It publishes nothing.
+   It:
+   - refuses unless the branch is `main`, the tree is clean, `HEAD` is
+     `origin/main`, and the tag `v<version>` doesn't exist yet;
+   - builds and checks the package (`cargo xtask package`);
+   - writes draft notes to `target/package/release-notes-v<version>.md`:
+     the ABI's changes since the last release, as the lines added and
+     removed in `engine.d.ts` and `abi.ts`;
+   - prints the command for step 3.
+3. **Read the notes, edit them, and run the printed command:**
+   `gh release create v<version> <tarball> --title … --notes-file …`.
+   This is the public step, and a person runs it.
+4. **A PR in the site** changes the tarball URL in `package.json` and
+   runs `npm install` (the lock file's hash changes with it); CI runs
+   the demo tests on it.
+
+`cargo xtask release --dry-run` rehearses steps 2's build and notes
+from any branch, reporting what isn't ready instead of stopping.
+
+**What a version means.** The ABI is the contract: the exports'
+signatures and the integer codes. Before 1.0:
+
+- a change to or removal of an existing export or code: bump the
+  **minor** version (`0.1.x` to `0.2.0`). The site's build will fail on
+  a changed signature (the types say so), which is the signal to read
+  the notes;
+- an addition, or a fix that leaves the ABI alone: bump the **patch**.
 
 **Rules that follow from the hash:**
 
