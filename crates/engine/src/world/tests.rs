@@ -158,3 +158,18 @@ fn a_world_collides_once_it_has_a_wall_or_a_circle() {
     w.set_restitution(Restitution::ELASTIC);
     assert_eq!(w.restitution().get(), 1.0);
 }
+
+/// From the full mutation run of 2026-11-12: nothing wrote through
+/// `vel_mut` or read `speculative`.
+#[test]
+fn velocities_written_in_place_reach_the_particles() {
+    let mut w = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    let _ = w
+        .particles
+        .add(crate::Vec2::ZERO, crate::Vec2::ZERO, crate::params::kg(1.0));
+    w.vel_mut()[0] = crate::Vec2::new(1.0, 2.0);
+    assert_eq!(w.particles().vel()[0], crate::Vec2::new(1.0, 2.0));
+    let on = w.speculative();
+    w.set_speculative(!on);
+    assert_eq!(w.speculative(), !on);
+}

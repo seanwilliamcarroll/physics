@@ -107,3 +107,13 @@ fn nearest_dynamic_breaks_a_tie_by_the_first_added() {
     let _ = p.add(Vec2::new(-1.0, 0.0), Vec2::ZERO, kg(1.0));
     assert_eq!(p.nearest_dynamic(Vec2::ZERO, 2.0), Some(first));
 }
+
+/// From the full mutation run of 2026-11-12: re-forming a slot with a
+/// larger radius raises the largest radius (the broadphase's cell).
+#[test]
+fn a_larger_body_raises_the_largest_radius() {
+    let mut p = Particles::<f64>::new();
+    let _ = p.add_circle(Vec2::ZERO, Vec2::ZERO, kg(1.0), Radius::new(0.1).unwrap());
+    assert!(p.set_body(0, Vec2::ZERO, 1.0, 0.3));
+    assert_eq!(p.max_radius(), 0.3);
+}

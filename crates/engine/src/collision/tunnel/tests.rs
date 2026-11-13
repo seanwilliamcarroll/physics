@@ -180,3 +180,19 @@ fn statics_and_points_never_tunnel() {
         0
     );
 }
+
+/// From the full mutation run of 2026-11-12: the cell grows with twice
+/// the furthest move. A jump of 2 m hid a cell of `2 / moved` (also 1 at
+/// moved = 2); 10 m doesn't.
+#[test]
+fn a_ten_metre_jump_through_a_circle_is_found() {
+    assert_eq!(
+        count(
+            &[(-5.0, 0.0), (0.0, 0.0)],
+            &[(5.0, 0.0), (0.0, 0.0)],
+            &[],
+            &[]
+        ),
+        1
+    );
+}

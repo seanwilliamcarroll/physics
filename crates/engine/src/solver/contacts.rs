@@ -326,3 +326,6 @@ pub(crate) fn push_apart<S: Scalar>(
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
