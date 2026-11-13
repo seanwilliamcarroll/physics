@@ -43,9 +43,9 @@ side with the evolution's history drawn.
 - Hooks gate every commit and push: JS syntax, `tsc`, fmt, clippy (native
   and wasm32); tests, `node --test`, `test-wasm`, wasm32 check, browser
   smoke test.
-- CI (`.github/workflows/ci.yml`) exists but is **disabled** (your call,
-  after #73): the hooks are the only gate. `gh workflow enable CI` turns
-  it back on.
+- CI is nightly (`.github/workflows/nightly.yml`,
+  `docs/17-nightly-ci.md`): it runs the hook scripts on a clean Linux
+  machine, only if `main` moved. Not a gate on a PR: the hooks are.
 - When a section is done, collapse it here to a one-paragraph summary,
   then list the headings to check nothing else moved.
 
@@ -287,8 +287,9 @@ testing"); `docs/setup.md`, Node through nvm. Open:
   identical) for the same file set: `-j 8` with cargo test (today's
   default), `-j 8 --test-tool nextest`, and fewer jobs with nextest (`-j
   4`, `-j 2`). Make the winner `xtask mutants`' default.
-- **CI stays off** (your call: it fights loading a stack and merging it
-  piece by piece).
+- **Per-PR CI stays off** (your call: it fights loading a stack and
+  merging it piece by piece); nightly CI replaced it
+  (`docs/17-nightly-ci.md`).
 - **Mutation, still to do:** `test-support` and `xtask` under
   `--test-workspace=true` (their misses are mostly artifacts).
 - **TODO: why the piano model is slow in debug builds.** Selecting it
@@ -377,8 +378,9 @@ step per panel: 6.6 ms at 4096 in the browser) runs 4 times a second,
 not every frame; the gap is the steps alone (~55 ms a frame for the
 three panels in the page), still well over a 60 Hz frame.
 
-**CI is disabled:** `.github/workflows/ci.yml` (added in #73, green on
-its runs) is turned off with `gh workflow disable CI`, so nothing on
-GitHub's side checks a PR: it's only as clean as the hooks on the machine
-that pushed it, and `--no-verify` skips them. `gh workflow enable CI` to
-restore it.
+**CI is nightly, not per PR:** the per-PR workflow from #73 was turned
+off and is replaced by `.github/workflows/nightly.yml`
+(`docs/17-nightly-ci.md`). Nothing on GitHub's side checks a PR before it
+merges: it's only as clean as the hooks on the machine that pushed it,
+and `--no-verify` skips them. The nightly run finds that the morning
+after.

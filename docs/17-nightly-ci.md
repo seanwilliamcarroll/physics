@@ -1,6 +1,6 @@
 # Nightly CI
 
-Status: **In progress** (C1 done, 2026-11-13).
+Status: **In progress** (C1 and C2 done, 2026-11-13; C2's two checks on `main` still to make).
 
 ## The idea
 
@@ -58,7 +58,7 @@ Two jobs, in parallel, both on `ubuntu-24.04`:
 
 | Job | Runs | About |
 |---|---|---|
-| `hooks` | `.githooks/pre-commit`, then `.githooks/pre-push`: the scripts themselves | 10 min cold, less cached (to be measured: C2) |
+| `hooks` | `.githooks/pre-commit`, then `.githooks/pre-push`: the scripts themselves | 10 min 15 s cold (measured, C2); cached not yet measured |
 | `slow` | `cargo xtask slow`: every test with property tests at 10 000 cases, then the `slow_*` long runs | 25 min on Apple silicon; unknown on a runner (to be measured: C3) |
 
 **The hooks, not a copy of them.** Today's `ci.yml` lists the hooks'
@@ -111,6 +111,23 @@ benchmarks (a shared runner's timings mean nothing).
   fails with a tool taken off `PATH`.
 
 ### C2. The workflow: nightly, the hooks job
+
+**Done** (2026-11-13), tried before merging through a temporary
+`pull_request` trigger (a manual run needs the workflow on `main`).
+
+- **The run was green first time, in 10 min 15 s** with nothing cached:
+  setup 1 min 44 s, `pre-commit` 19 s, `pre-push` 8 min (nextest's 833
+  tests took 80 s, against 20 s on Apple silicon). Every check in both
+  hooks ran, including the goldens on wasm and the browser smoke test
+  (40 cases).
+- **The setup is a composite action**
+  (`.github/actions/setup/action.yml`), ready for C3 to share. The
+  tools come as prebuilt binaries at pinned versions; the pinned
+  nightly's name is read from `xtask/src/api.rs`, not repeated.
+- **Not yet seen, because they need the workflow on `main`:** a manual
+  run there, and a scheduled run. The scheduled path of `changed` (ask
+  for the last successful run, compare commits) has only been read,
+  not run.
 
 - **Touches:** `.github/workflows/nightly.yml` (new),
   `.github/workflows/ci.yml` (deleted), `docs/04-testing.md` ("CI"),

@@ -467,24 +467,29 @@ instead. The tests live outside `site/`, so they're never served. Note:
 
 ## CI
 
-**Disabled** (after #73: `gh workflow disable CI`; `gh workflow enable
-CI` restores it). The workflow stays in the repo, as written. When
-enabled, `.github/workflows/ci.yml` runs every check the hooks run (pre-commit's
-`tsc`, fmt and both clippy passes, then pre-push's tests, doc links,
-`node --test`, `test-wasm`, the wasm32 check and the browser smoke test)
-on every PR and every push to `main`, on `ubuntu-24.04`. Why both: the
-hooks give fast feedback before a push, while CI is the check nobody can
-skip with `--no-verify` or forget to install on a new machine, and it's
-the only thing branch protection can *require*.
+Nightly, not per pull request (`docs/17-nightly-ci.md` has the
+reasoning): `.github/workflows/nightly.yml` runs at 07:17 UTC, and only
+does anything if `main` has moved since its last successful run.
 
+- **What it runs:** the hook scripts themselves, `.githooks/pre-commit`
+  then `.githooks/pre-push`, on `ubuntu-24.04`. Not a copy of their
+  commands: a check added to a hook is in CI the same day.
+- **Strict:** `HOOKS_STRICT=1`, so a check whose tool is missing fails
+  where locally it is skipped.
 - **Same toolchain:** `rustup toolchain install` reads
-  `rust-toolchain.toml`, so CI uses the pinned 1.99.1 and the goldens
-  are checked against the same compiler. wasmtime is pinned too (50.0.1).
-- **Determinism across machines:** CI is a Linux x86-64 runner, while
-  local runs are on macOS arm64, so the golden hashes now get checked on
-  a second CPU architecture and OS on every PR.
+  `rust-toolchain.toml`, so CI uses the pinned compiler and the goldens
+  are checked against it. The tools are pinned too
+  (`.github/actions/setup/action.yml`): nextest, machete,
+  cargo-public-api, wasmtime.
+- **Determinism across machines:** the runner is Linux x86-64, while
+  local runs are macOS arm64, so the golden hashes are checked on a
+  second CPU architecture and OS every night `main` moves.
 - **Screenshots on failure:** the smoke test's `target/smoke/` is
   uploaded as an artifact when a step fails.
+- **By hand:** `gh workflow run Nightly` runs everything, whether or
+  not `main` moved.
+- **What it isn't:** a gate on a pull request. A failure is found after
+  the merge and fixed by the next PR; the hooks stay the first line.
 
 ## Coverage
 

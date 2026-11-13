@@ -1,0 +1,42 @@
+# What every nightly job needs before it can run the hooks or the tests:
+# the toolchains, the build cache, Node, and the tools the hooks call.
+# One place, so the jobs can't drift apart (docs/17-nightly-ci.md).
+# The repository must already be checked out.
+name: Set up
+description: Toolchains, caches and tools for the nightly jobs.
+
+runs:
+  using: composite
+  steps:
+    # The exact toolchain, components and targets in rust-toolchain.toml.
+    - name: Rust toolchain
+      shell: bash
+      run: rustup toolchain install
+
+    # The nightly `cargo xtask api` reads rustdoc JSON with. Its name is
+    # read from the source, so there is one place to bump it.
+    - name: The nightly for cargo public-api
+      shell: bash
+      run: |
+        nightly=$(grep -o 'nightly-[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' xtask/src/api.rs | head -n 1)
+        test -n "$nightly"
+        rustup toolchain install "$nightly" --profile minimal
+
+    # Actions are pinned by commit: a tag can be moved.
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+    # The Node in .nvmrc, as local development uses.
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+
+    - name: npm ci
+      shell: bash
+      run: npm ci
+
+    # The tools the hooks call, at fixed versions (prebuilt binaries).
+    # wasmtime runs the wasm32-wasip1 tests (.cargo/config.toml).
+    - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+      with:
+        tool: cargo-nextest@0.9.151,cargo-machete@0.9.2,cargo-public-api@0.52.0,wasmtime@50.0.1
