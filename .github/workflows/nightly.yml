@@ -11,6 +11,11 @@ on:
     - cron: "17 7 * * *"
   # A manual run always runs everything.
   workflow_dispatch:
+    inputs:
+      fail:
+        description: "Fail on purpose, to try the failure issue (the checks themselves are skipped)"
+        type: boolean
+        default: false
 
 # One at a time; a run in progress is left to finish.
 concurrency:
@@ -66,6 +71,13 @@ jobs:
       # A check whose tool is missing fails; locally it is skipped.
       HOOKS_STRICT: "1"
     steps:
+      # A rehearsal of a failed night (the `fail` input): fails at once.
+      - name: Fail on purpose
+        if: inputs.fail
+        run: |
+          echo "Failing on purpose (the 'fail' input)."
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: ./.github/actions/setup
@@ -90,7 +102,8 @@ jobs:
   # Nothing else runs it automatically.
   slow:
     needs: changed
-    if: needs.changed.outputs.run == 'true'
+    # Not in a rehearsal of a failure: `hooks` fails for it at once.
+    if: needs.changed.outputs.run == 'true' && !inputs.fail
     runs-on: ubuntu-24.04
     # Measured: 54 min (C3's trial). Twice that, for a slower runner.
     timeout-minutes: 120
@@ -101,3 +114,28 @@ jobs:
 
       - name: cargo xtask slow
         run: cargo xtask slow
+
+  # A failure that can't be missed: an issue, opened on a failed night
+  # and closed by the next green one (.github/scripts/nightly-report.sh).
+  # GitHub's own email goes only to whoever last edited this file.
+  report:
+    needs: [changed, hooks, slow]
+    # Runs whatever the others did. A cancelled run reports nothing.
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD: ${{ github.sha }}
+          RESULTS: changed=${{ needs.changed.result }} hooks=${{ needs.hooks.result }} slow=${{ needs.slow.result }}
+        run: sh .github/scripts/nightly-report.sh
