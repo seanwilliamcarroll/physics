@@ -378,8 +378,7 @@ Baumgarte.)
 
 ## Ground (M5.4)
 
-A half-plane clamp, not a contact (`TASKS.md` M5 decision 6; real
-contacts are M6). `World::set_ground(Option<S>)` sets a height `y` (m),
+A half-plane clamp, not a contact (real contacts are M6). `World::set_ground(Option<S>)` sets a height `y` (m),
 default `None`. After **every substep**, in `World::substep` after
 whichever stepper ran, each dynamic particle at or below `y` moves to it
 and loses its downward velocity (inelastic, no friction); static
@@ -399,16 +398,13 @@ in f32 and f64. A dropped tilted rod rests exactly on the ground; XPBD's
 slides at 2.4e-12 m/s in f64 and 1.9 mm/s in f32 (the derived-velocity
 noise above; nothing frictional stops it).
 
-## Extending (not M4)
+## Extended since
 
-- **M5 springs:** compliant `DistanceConstraint`s exist since M4; M5 adds
-  the force-based `SpringForce` baseline and decides on damping.
-- **M6 contacts:** inequality constraints, generated each step from
-  collision detection rather than stored by the user. They get their own
-  storage and λ (cleared when a contact disappears), and both solvers
-  clamp the *accumulated* λ to `≥ 0`. The trait gains a kind (equality or
-  inequality) or contacts get their own type; decide with the contact
-  solver.
+- **M5 springs:** the force-based `SpringForce` baseline, and damping in
+  both solvers (`07-soft-bodies.md`).
+- **M6 contacts:** inequality constraints, generated each substep from
+  collision detection, with their own type and storage; both solvers
+  clamp the *accumulated* λ to `≥ 0` (`08-collision.md`).
 
 ## References
 

@@ -14,7 +14,7 @@ the index and the current state.
 | `cargo xtask bench --baseline main` | Compared with that local baseline instead, and **fails if anything got slower** by more than the threshold. |
 | `cargo xtask bench --record` | Any of the above, then this machine's record updated from the run and proposed in a pull request (below). |
 | `cargo xtask profile …` | Where the time goes in one example or bench (`profiling.md`). |
-| `cargo xtask bench-wasm` | Builds the site, then times the modules in Node 22: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`). |
+| `cargo xtask bench-wasm` | Builds the site, then times the modules in Node: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`). |
 
 Benchmarks are noisy on a laptop (a few percent run to run, more with
 other work going on): **compare on the same machine, idle**, ideally the

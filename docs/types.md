@@ -17,6 +17,7 @@ local tuples) are left out.
 | [`UnitVec2<S>`](../crates/math/src/unit_vec2.rs) | A direction of length 1, only from `Vec2::normalized`/`length_and_direction` (`None` at zero or NaN), so every `x / \|x\|` handles the degenerate case: constraint gradients, spring axes, M6's contact normals. |
 | [`convert`](../crates/math/src/convert.rs) (functions) | Checked count ↔ measure conversions, each justified once instead of an `as` with a lint exemption at every site: exact where they say so, `None` or a named clamp where `as` would saturate silently (`docs/lint-policy.md`). |
 | [`Fnv1a`](../crates/math/src/hash.rs) | The fixed, published hash behind every golden: in `math` so the engine's tests and the acoustic track's share one. |
+| [`SplitMix64`](../crates/math/src/rng.rs) | A tiny in-house seeded PRNG: integer-only, so scenes, noise and random choices are bit-identical on every platform (`00-scope.md`, dependency policy). In `math` since A1.4, shared by every track. |
 
 ## `engine` — storage and identity
 
@@ -28,7 +29,7 @@ local tuples) are left out.
 | [`World<S>`](../crates/engine/src/world.rs) | The simulation: particles, forces, constraints, and how a step is taken (integrator, or solver when constraints exist). |
 | [`Constraints<S>`](../crates/engine/src/world/constraints.rs) | A world's constraints, one λ each, and the solver settings in one field, so `lambda` can't fall out of step with the list and a solver switch always resets it. |
 | [`Grab`](../crates/engine/src/world/drag.rs) | A drag in progress; `release` consumes it (or hands it back if something newer was added), so a grab can't be released twice or leave a stale anchor. |
-| [`ConfigError`](../crates/engine/src/world/config_error.rs) | One typed error for every invalid configuration (substeps, softening, mass, unknown particle, β), so scenes return `Result` instead of panicking. |
+| [`ConfigError`](../crates/engine/src/world/config_error.rs) | One typed error for every invalid configuration (softening, mass, stiffness, damping, radius, an unknown particle, a table, a shot), so scenes return `Result` instead of panicking. |
 
 ## `engine` — checked parameters (parse, don't validate)
 
@@ -81,7 +82,6 @@ made XPBD compute `∞ · 0 = NaN`.
 |---|---|
 | [`Fountain`](../crates/engine/src/scenarios/fountain.rs) | The one scene with state between steps (respawning), so it owns its PRNG and the run is deterministic per seed. |
 | [`DoublePendulumStart`](../crates/engine/src/scenarios/double_pendulum.rs) | Fixed release positions (horizontal, raised) rather than an angle: arbitrary angles need `sin`/`cos`, whose last bits differ by platform, and the goldens must match on wasm. |
-| [`SplitMix64`](../crates/engine/src/rng.rs) | A tiny in-house seeded PRNG: integer-only, so scenes are bit-identical on every platform (`00-scope.md`, dependency policy). |
 
 Scenes without state are functions, not types, one file each under
 [`scenarios/`](../crates/engine/src/scenarios/) (`cluster`, `disk`,
@@ -132,7 +132,7 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`SandExports`, `SandHandle`](../site/js/sand.d.ts) | Types for `sand.wasm`'s exports; the handle is branded, like `DemoHandle`. |
 | [`Paint`, `SCENES`](../site/js/sand-scenes.ts) | The page's scenes as functions of the grid's size that only call the brush: no scene code in Rust, and unit-testable against an array. |
 
-## `swarm` — boids (S1)
+## `swarm` — boids, Vicsek, ants, Physarum, evolution (S1–S5)
 
 | Type | Why it exists |
 |---|---|
@@ -156,11 +156,10 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`Slime`](../crates/swarm/src/physarum.rs) | One periodic field and its agents (sense, turn, move, deposit), nutrient nodes, sensing on or off; `Field::diffuse_periodic` is its mean filter. |
 | [`SlimeDemo`](../crates/swarm-web/src/slime_demo.rs), [`SlimeHandle`](../site/js/swarm.d.ts) | A Physarum system behind the `slime_*` exports, its field drawn through a colour ramp, and its branded handle. |
 
-## `acoustic` — the plucked string (A1)
+## `acoustic` — the plucked string and the waveguide (A1–A2)
 
 | Type | Why it exists |
 |---|---|
-| [`SplitMix64`](../crates/math/src/rng.rs) | The seeded PRNG, in `math` since A1.4 so the engine (scenes) and the acoustic track (noise) share one deterministic generator. |
 | [`DelayLine<S>`](../crates/acoustic/src/delay_line.rs) | A ring buffer of samples; `with_capacity` + `reset` re-length it without allocating, which the audio thread requires. |
 | [`KsString<S>`](../crates/acoustic/src/string.rs) | The Karplus–Strong loop: delay line, lowpass with the loss folded in, optional allpass. `restring` re-voices it in place. |
 | [`Voicing`, `Decay`](../crates/acoustic/src/voicing.rs) | A note's tuning (allpass or integer loop), decay (`Loss(ρ)` or a target `T60`) and stiffness (`B`, A3), turned into coefficients once at note on, with `libm` so they're bit-identical on wasm. |
@@ -192,5 +191,5 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`Tol`](../crates/test-support/src/tol.rs) | Per-scalar tolerances (`EPSILON`, …), so one generic test runs for f32 and f64 with the right bounds. |
 | [`BodySpec`](../crates/test-support/src/worlds.rs) | proptest's generated body, shrinkable to a minimal failing world. |
 | [`PendulumRun`](../crates/test-support/src/pendulum.rs) | What `01-solvers.md`'s table reports for one run (rod error, energy lost). |
-| [`Fnv1a`](../crates/test-support/src/hash.rs) | Stable state hash for golden-hash determinism tests (native and wasm must match). |
+| [`state_hash`](../crates/test-support/src/hash.rs) (function) | The particle state through `math`'s `Fnv1a`, for the golden-hash determinism tests (native and wasm must match). |
 | [`Command`](../xtask/src/main.rs) | `cargo xtask` subcommands (clap derive), so `--help`, typos, and ranges are checked. |

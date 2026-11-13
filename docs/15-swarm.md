@@ -1,9 +1,9 @@
 # 15 — Swarms
 
-Status: **Adopted** (S1.1; as built: the crate S1.2, the grid S1.3,
-sorted lanes and SIMD S1.4, `swarm.wasm` S1.5, the page S1.6; each has
-an "as built" section below). Depends on `math` and `web-common`;
-nothing in the engine.
+Status: **Adopted**, S1 to S5, each with its own status line and "as
+built" sections (S1: the crate S1.2, the grid S1.3, sorted lanes and
+SIMD S1.4, `swarm.wasm` S1.5, the page S1.6). Depends on `math` and
+`web-common`; nothing in the engine.
 
 The swarm track simulates **agents that follow rules**, not bodies that
 feel forces. A boid steers by what it sees within a radius; nothing is
@@ -16,8 +16,8 @@ parameter says how much. The cost story is the other half: every boid
 looks at its neighbours, which is O(n²) done naively and O(n) with a
 grid, and the crossover is the first result.
 
-S1 is boids. S2 (Vicsek), S3 (ants) and S4 (Physarum) follow
-(`05-roadmap.md`, "Swarm track").
+S1 is boids. S2 (Vicsek), S3 (ants), S4 (Physarum) and S5 (evolving
+S3's constants) follow (`05-roadmap.md`, "Swarm track").
 
 ## S1: Boids
 
@@ -220,7 +220,7 @@ flock, the grid by default.
   force's 0.73 ns per pair**, which streams through the arrays in order.
   The grid's candidates are scattered, fetched through an index list.
   10k boids at 13.6 ms natively doesn't leave room for 60 Hz in wasm.
-  That is section 4's question: reordering by cell.
+  That is S1.4's question: reordering by cell.
 
 ### Sorted, lanes and SIMD as built (S1.4)
 
@@ -470,6 +470,7 @@ Mean `v_a` (± s.d. over seeds where it matters):
   steps): low noise alike (0.93–0.97), `v_a` falling with η, larger
   systems less ordered past the drop, the crossing moving down with N.
 - 0/0: none in any of these runs.
+
 ### In the browser (S2.5–6)
 
 `vicsek_*` exports in `swarm.wasm` (now
@@ -788,6 +789,38 @@ contention S3 named, needing atomic adds there, and `wgpu` would be the
 repo's first large runtime dependency, WebGPU-only. Not built: the CPU
 path covers the page, and the question stays open with its numbers.
 
+**If the GPU tier is built** (from the track's first notes, 2026-11-02;
+not re-checked since, so verify the browser facts before acting):
+
+- **`wgpu`**, in a `swarm-gpu` crate beside `swarm`: one codebase for
+  native and the browser (through WebGPU), compute shaders in WGSL,
+  well maintained (Firefox's own WebGPU implementation uses it).
+- **WebGPU doesn't reach every browser.** As of September 2026: Chrome
+  and Edge, Safari 26 on every Apple platform, Firefox only on Windows
+  and Apple-silicon Macs (not Linux). `wgpu` can fall back to WebGL2,
+  but WebGL2 has no compute shaders, so the GPU path is WebGPU-only and
+  the CPU path stays as the fallback.
+- **The shape**, following `wgpu`'s `boids` example: two storage
+  buffers ping-ponged (the CPU's double buffer); one compute pass a
+  step; for Physarum a deposit pass, then diffuse and decay on a storage
+  texture; a render pass drawing instanced agents or a full-screen quad
+  sampling the trail texture.
+- **Deposits** need atomic adds, and WGSL's atomics are integers only:
+  a `u32` fixed-point field.
+- **A grid on the GPU** is the counting sort again: an atomic
+  histogram, a prefix-sum pass, a scatter pass (Le Grand, GPU Gems 3,
+  ch. 32, has the parallel version).
+- **Develop natively first** (shader errors and GPU timing are far
+  easier to inspect), then build for `wasm32-unknown-unknown`.
+- **It would bring `wasm-bindgen`** (`wgpu` on the web is built on it),
+  which this repo doesn't use (`03-wasm-shell.md`, "Not now"): a second
+  loader beside the hand-written C ABI.
+- **Crates weighed and passed over:** `macroquad` (easy, but its own JS
+  loader and no compute), `bevy` (a whole engine: long builds, a
+  multi-megabyte wasm, many dependencies), `nannou` (mid-rework),
+  `egui`/`eframe` (an option for sliders and plots if HTML inputs wear
+  thin).
+
 ### The page as built (S4.5, `site/demos/s4-physarum`)
 
 The 512² field one pixel a cell (100k agents), a slider per constant
@@ -915,84 +948,32 @@ learned those seeds, and the doc will say so.
 
 ## References
 
-Papers (DOIs checked on Crossref):
+Full entries, DOIs and what was read in `references.md` ("Swarms").
 
-- Reynolds, C. W. (1987), *Flocks, herds and schools: a distributed
-  behavioral model*, SIGGRAPH Computer Graphics 21(4), 25–34.
-  doi:10.1145/37402.37406
-- Couzin, I. D., Krause, J., James, R., Ruxton, G. D. & Franks, N. R.
-  (2002), *Collective memory and spatial sorting in animal groups*,
-  J. Theor. Biol. 218(1), 1–11. doi:10.1006/jtbi.2002.3065
-- Vicsek, T., Czirók, A., Ben-Jacob, E., Cohen, I. & Shochet, O. (1995),
-  *Novel type of phase transition in a system of self-driven
-  particles*, Phys. Rev. Lett. 75(6), 1226–1229.
-  doi:10.1103/PhysRevLett.75.1226
-- Allen, M. P. & Tildesley, D. J. (2017), *Computer Simulation of
-  Liquids*, 2nd ed., Oxford University Press.
-  doi:10.1093/oso/9780198803195.001.0001
-- Hockney, R. W. & Eastwood, J. W., *Computer Simulation Using
-  Particles* (1981; CRC Press reprint 2021). doi:10.1201/9780367806934
-
-S2 (read 2026-11-11):
-
-- Grégoire, G. & Chaté, H. (2004), *Onset of collective and cohesive
-  motion*, Phys. Rev. Lett. 92(2), 025702.
-  doi:10.1103/PhysRevLett.92.025702
-- Chaté, H., Ginelli, F., Grégoire, G. & Raynaud, F. (2008), *Collective
-  motion of self-propelled particles interacting without cohesion*,
-  Phys. Rev. E 77(4), 046113. doi:10.1103/PhysRevE.77.046113
-- Chen, M. Z. Q. & Zhang, H.-T. (2007), *Comment on "Novel type of
-  phase transition in a system of self-driven particles"*, arXiv
-  preprint cond-mat/0703532. doi:10.48550/arXiv.cond-mat/0703532
-- Baglietto, G. & Albano, E. V. (2008), *Finite-size scaling analysis
-  and dynamic study of the critical behavior of a model for the
-  collective displacement of self-driven individuals*, Phys. Rev. E
-  78(2), 021125. doi:10.1103/PhysRevE.78.021125 (cited, not yet read).
-
-S3 (DOIs checked on Crossref 2026-11-11; read status as above):
-
-- Goss, S., Aron, S., Deneubourg, J.-L. & Pasteels, J. M. (1989),
-  *Self-organized shortcuts in the Argentine ant*, Naturwissenschaften
-  76(12), 579–581. doi:10.1007/BF00462870 (not read)
-- Deneubourg, J.-L., Aron, S., Goss, S. & Pasteels, J. M. (1990), *The
-  self-organizing exploratory pattern of the Argentine ant*, J. Insect
-  Behav. 3(2), 159–168. doi:10.1007/BF01417909 (not read)
-- Beckers, R., Deneubourg, J.-L. & Goss, S. (1992), *Trails and U-turns
-  in the selection of a path by the ant Lasius niger*, J. Theor. Biol.
-  159(4), 397–415. doi:10.1016/S0022-5193(05)80686-1 (not read)
-- Dorigo, M., Maniezzo, V. & Colorni, A. (1996), *Ant system:
-  optimization by a colony of cooperating agents*, IEEE Trans. Syst.
-  Man Cybern. B 26(1), 29–41. doi:10.1109/3477.484436 (not read;
-  context)
-- Jones, J. (2010), see S1's list above (abstract read).
-
-S4:
-
-- Jones, J. (2011; online 2010), *Influences on the formation and
-  evolution of Physarum polycephalum inspired emergent transport
-  networks*, Natural Computing 10(4), 1345–1369.
-  doi:10.1007/s11047-010-9223-z (not read)
-- Jenson, S., *physarum*, https://cargocollective.com/sagejenson/physarum
-  (secondary; read 2026-11-11: structure, no values).
-
-S5 (DOIs checked on Crossref, 2026-11-12; none read):
-
-- Eiben, A. E. & Smith, J. E. (2015), *Introduction to Evolutionary
-  Computing*, 2nd ed., Springer. doi:10.1007/978-3-662-44874-8
-- Hansen, N. & Ostermeier, A. (2001), *Completely derandomized
-  self-adaptation in evolution strategies*, Evol. Comput. 9(2), 159–195.
-  doi:10.1162/106365601750190398
-- Werfel, J., Petersen, K. & Nagpal, R. (2014), *Designing collective
-  behavior in a termite-inspired robot construction team*, Science
-  343(6172), 754–758. doi:10.1126/science.1245842
-
-Secondary (values and practice, not claims):
-
-- Adams, V. H., *Boids algorithm*, ECE 4760, Cornell:
-  https://vanhunteradams.com/Pico/Animal_Movement/Boids-algorithm.html
-  (the parameter values and update order; read 2026-11-11).
-- Reynolds, C. W. (1999), *Steering behaviors for autonomous
-  characters*, GDC: http://www.red3d.com/cwr/steer/gdc99/ (flee: the
-  page's predator).
-- Le Grand, S. (2007), *Broad-phase collision detection with CUDA*,
-  GPU Gems 3, ch. 32 (grids by sorting on the GPU; S4).
+- Reynolds (1987), *Flocks, herds and schools*: the three rules; (1999),
+  *Steering behaviors for autonomous characters*: flee, the page's
+  predator.
+- Couzin et al. (2002), *Collective memory and spatial sorting in animal
+  groups*: zones, and group polarization.
+- Adams, *Boids algorithm* (ECE 4760, Cornell): S1's parameter values
+  and update order.
+- Allen & Tildesley (2017), *Computer Simulation of Liquids*; Hockney &
+  Eastwood, *Computer Simulation Using Particles*: cell lists.
+- Vicsek et al. (1995), *Novel type of phase transition in a system of
+  self-driven particles*: S2's model and Fig. 2a.
+- Grégoire & Chaté (2004); Chaté et al. (2008): the transition as
+  discontinuous, at larger sizes.
+- Chen & Zhang (2007), *Comment on "Novel type of phase transition…"*:
+  the 0/0 case.
+- Baglietto & Albano (2008): finite-size scaling (cited, not read).
+- Goss et al. (1989); Deneubourg et al. (1990); Beckers et al. (1992);
+  Dorigo et al. (1996): the ant results S3 cites (none read).
+- Jones (2010), *Characteristics of pattern formation and evolution in
+  approximations of Physarum transport networks* (abstract read);
+  Jones (2011), networks between nutrient sources (not read); Jenson,
+  *physarum* (secondary: the step's structure, no values).
+- Eiben & Smith (2015), *Introduction to Evolutionary Computing*;
+  Hansen & Ostermeier (2001), CMA-ES; Werfel et al. (2014), collective
+  construction: S5's vocabulary and what it leaves out (none read).
+- Le Grand (2007), *Broad-phase collision detection with CUDA*, GPU
+  Gems 3: grids by sorting on the GPU.

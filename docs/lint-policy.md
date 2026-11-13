@@ -23,8 +23,9 @@ per crate.
 ## Why not per-crate attributes
 
 A per-crate `#![cfg_attr(not(test), ...)]` block would repeat in every
-crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` attributes (tested), and the
-`clippy.toml` test exemptions remove the need to repeat a block in each crate.
+crate, and a macro can't stamp it out: a macro can't emit crate-level
+`#![...]` attributes (tested). The `clippy.toml` test exemptions remove
+the need for one.
 
 ## Rules that come with it
 
@@ -45,11 +46,12 @@ crate, and a macro can't stamp it out: a macro can't emit crate-level `#![...]` 
   with `clap`'s derive API its doc comments are the `--help` text, where
   backticks would print literally. Cargo can't mix `workspace = true` with per-crate
   overrides, so the override goes in source.
-- **`engine-web`:** `#[expect(unsafe_code, reason = "...")]` on exactly two modules,
-  the FFI boundary in each direction: `exports` (JS calls in) and `imports`
-  (Rust calls out; wasm-only, so its expectation is
-  `cfg_attr(target_arch = "wasm32", ...)`). Wasm-only code is linted by a
-  second clippy run with `--target wasm32-unknown-unknown` in pre-commit.
+- **The `*-web` crates:** `#[expect(unsafe_code, reason = "...")]` only on
+  the FFI boundary, in each direction: each crate's `exports` modules (JS
+  calls in), and `web-common`'s `panic_hook` (Rust calls out; wasm-only,
+  so its expectation is `cfg_attr(target_arch = "wasm32", ...)`).
+  Wasm-only code is linted by a second clippy run with
+  `--target wasm32-unknown-unknown` in pre-commit.
 - **`#[must_use]` on value types** (`Vec2`, later `Fixed`, `ParticleId`).
   Discarding one is then a rustc warning at the call site (`v.perp();`), and
   clippy stops asking for `#[must_use]` on each method that returns one.
@@ -86,7 +88,7 @@ PR template (`.github/pull_request_template.md`) asks about it on every PR.
   `1.0_f64.to_bits()`, not `0x3ff0_0000_0000_0000`;
   `u64::BITS - (f64::MANTISSA_DIGITS - 1)`, not `12`.
 - **Cross-language values have one owner plus a checked mirror.** The wasm
-  ABI lives in `crates/engine-web/src/abi.rs`; `site/js/abi.js` mirrors it, and a
+  ABI lives in `crates/engine-web/src/abi.rs`; `site/js/abi.ts` mirrors it, and a
   Rust test fails if they disagree. Colors live once, in CSS custom
   properties.
 - **Exempt:** `0`, `1`, `2` as in "half" or "pair", array indices, and test

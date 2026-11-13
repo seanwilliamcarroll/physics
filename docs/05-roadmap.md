@@ -1,6 +1,9 @@
 # 05 — Roadmap
 
-Status: **Draft**
+Status: **Living plan.** Built so far: M0–M7, M9, A1–A3, S1–S5 (one
+paragraph each in `TASKS.md`). Not yet: M8, M10, A4–A5, the controls
+track. A milestone's entry here is its plan; what was built, and where
+it differed, is in its design doc.
 Depends on: `00-scope.md` (what and why), `01`–`04` (how)
 References: `references.md` (all papers and course pages, with links)
 
@@ -117,7 +120,7 @@ over time.
 permutation, determinism); `unsoftened_close_pass_spikes`.
 
 **Stretch:** Barnes–Hut quadtree (O(n log n); [Barnes & Hut 1986](https://doi.org/10.1038/324446a0)) as a third side-by-side
-panel with an accuracy parameter θ. Needs its own doc.
+panel with an accuracy parameter θ. Built: `barnes-hut.md`.
 
 **Done when:** a few hundred bodies run at 60 Hz; f32/f64 panels visibly
 diverge; the overlay reports cost growth with N.
@@ -175,7 +178,7 @@ a bounded-difference property and document why.
 
 *(M4 found the "stretchy" panel was classic Baumgarte blowing up; with
 split impulses both solvers hold the chain. See `06-constraints.md`,
-"Stabilization", and `TASKS.md` M4.)*
+"Stabilization".)*
 
 **Done when:** dragging a chain feels solid in one panel and stretchy in
 the other at the same cost; the double pendulum divergence is visible.
@@ -462,12 +465,16 @@ on a platform, with disturbances from mouse pokes.
 tilt is the actuator. A 2D extension of C1's 1D model would also work if
 contacts aren't the point.
 
-## Swarm track (proposed)
+## Swarm track
+
+**Built, S1–S5: `15-swarm.md`** has each model as built and measured.
+What follows is the plan it started from.
 
 Source: `swarm-resources.md` (papers, explainers, performance reading) and
-`swarm-rust-implementation.md` (implementation notes), both 2026-11-02.
-Not yet scheduled. This section adapts those notes to the repo as it
-stands; read them for the models and the reading list.
+a set of implementation notes, both 2026-11-02. This section adapted
+those notes to the repo; the notes themselves are gone, their GPU and
+`wasm-bindgen` ideas kept in `15-swarm.md` ("If the GPU tier is built")
+and `03-wasm-shell.md` ("Not now").
 
 **What's different from the physics.** Agents follow *rules* (steer,
 align, sense a field), not forces, so there's no energy or momentum to
@@ -589,9 +596,8 @@ runtime dependencies unless noted.
 
 **Testing and tooling**
 - **JS unit tests with `node --test`** (built into Node, no dependency):
-  `RateMeter`, `Smoothed`, option parsing, and M1's `plot.js` ring buffer
-  are pure logic. *When:* section 6 of M1 adds `plot.js` and
-  `controls.js`, the first JS with real logic worth pinning down.
+  `RateMeter`, `Smoothed`, option parsing, and M1's plot ring buffer
+  are pure logic. **Done** in M1 (`04-testing.md`, "Site JS unit tests").
 - **Stricter `tsc` flags**, e.g. `noUncheckedIndexedAccess` (TS's analog
   of clippy's `indexing_slicing`). *When:* after the `.ts` experiment, so
   the strictness decision is made once for the final source format.
@@ -609,8 +615,8 @@ runtime dependencies unless noted.
   M7 cue shots).
 - **Shareable links**: every control mirrored into the URL, so a
   configuration can be bookmarked or sent. *When:* M1 controls land; small.
-- **Touch and pointer input**, so demos work on phones. *When:* M4
-  (dragging particles).
+- **Touch and pointer input**, so demos work on phones. **Done** in M4
+  (`site/js/pointer.ts`).
 
 **Visualization**
 - **WebGL2 points** straight from the wasm position buffer. *When:* a demo
@@ -620,8 +626,8 @@ runtime dependencies unless noted.
   and force arrows, energy split into kinetic and potential. *When:* M1's
   plot module exists; mostly reuse.
 - **Explainer pages**: the math next to the live demo, using native
-  MathML (built into browsers, no KaTeX/MathJax dependency). *When:* any
-  demo is ready to publish (`hosting.md`).
+  MathML (built into browsers, no KaTeX/MathJax dependency). *When:* a
+  demo is published: on the personal site, as a post (`16-site-demos.md`).
 
 **Performance**
 - **Physics in a Web Worker**, keeping the page responsive when a step is

@@ -1,38 +1,13 @@
-# TASKS — S5: Evolving the rules (done; next milestone to plan)
+# TASKS — between milestones (S5 done; the next to plan)
 
-Source: `docs/05-roadmap.md` ("Swarm track", S5: "evolve rules, build");
-`docs/15-swarm.md` (S3's ants, whose constants this evolves).
-
-**Sources** (DOIs checked on Crossref, 2026-11-12):
-- Eiben & Smith (2015), *Introduction to Evolutionary Computing*, 2nd
-  ed., Springer. doi:10.1007/978-3-662-44874-8 — the standard textbook
-  for the terms used (tournament selection, Gaussian mutation, elitism);
-  **not read** here, cited for vocabulary, not results.
-- Hansen & Ostermeier (2001), *Completely derandomized self-adaptation
-  in evolution strategies*, Evolutionary Computation 9(2), 159–195.
-  doi:10.1162/106365601750190398 — CMA-ES, the stronger method; noted,
-  not built; not read.
-- Werfel, Petersen & Nagpal (2014), *Designing collective behavior in a
-  termite-inspired robot construction team*, Science 343(6172), 754–758.
-  doi:10.1126/science.1245842 — collective construction, S5's other
-  half, **deferred**; not read.
-
-**Goal:** search S3's ant constants with an evolutionary algorithm, the
-fitness a headless native run (food delivered), and ask the question
-that matters: does the evolved setting beat S3's hand-scanned defaults
-**on seeds and a scene it never saw**, or did it learn its training
-seeds?
-
-**Done when:** the algorithm is tested on a toy problem; the ants are
-evolved natively (in parallel, the result independent of the thread
-count); the best is measured against the defaults on held-out seeds and
-on the barriers scene; and the page runs defaults and evolved side by
-side with the evolution's history drawn.
+Source: `docs/05-roadmap.md`. The last milestone, S5, is summarized
+below; its sources, goal and results are in `docs/15-swarm.md`, S5.
 
 ## Workflow
 
-- Each numbered section gets its own branch (`s5/<n>-<name>`) and one PR
-  into `main`, merged in order. Each branches from an up-to-date `main`.
+- Each numbered section gets its own branch (`<milestone>/<n>-<name>`)
+  and one PR into `main`, merged in order. Each branches from an
+  up-to-date `main`.
 - `main` is protected (ruleset `protect-main`): PR required, squash merge
   only, no force pushes, no bypass.
 - Merges are done by hand on the GitHub site, never by tooling
@@ -194,7 +169,6 @@ a brush, scenes drawn with it, cells/s in the HUD (your check: "looks
 good"). Wasm busy 640 × 360: 1.84 ms a step (125 M cells/s); render 8.6
 → 0.47 ms at 1920 × 1080 with a palette.
 
-
 ## ✅ S1: Boids (done, PRs #176–#184)
 
 `docs/15-swarm.md`, papers checked on Crossref. A `swarm` crate:
@@ -266,6 +240,7 @@ barriers scene it never saw, 3,978 against 404**; ~80% of a
 straight-shuttle ceiling; short, wide sensors the hand scan couldn't
 have found; two genes at their ranges' edges. `AntParams::EVOLVED`; the
 `s5-evolve` page, side by side (your check: "looks good").
+
 ---
 
 ## Health (after M7)
@@ -277,19 +252,8 @@ mutation run (#144); the second full run (16cea2a, M9's crates
 included) triaged, its real gaps tested (`04-testing.md`, "Mutation
 testing"); `docs/setup.md`, Node through nvm. Open:
 
-- **Your check:** `m2-cluster?n=4096` in slow motion, not frozen.
-- **The compute node:** `cargo install --locked cargo-nextest`.
-- **To measure, on the node: nextest under `cargo xtask mutants`.**
-  cargo-mutants can run each mutant's tests with nextest (`--test-tool
-  nextest`), which runs that mutant's tests in parallel; `-j 8` already
-  runs 8 mutants at once, so the two may oversubscribe the cores rather
-  than add up. Compare wall time (and that the caught/missed lists are
-  identical) for the same file set: `-j 8` with cargo test (today's
-  default), `-j 8 --test-tool nextest`, and fewer jobs with nextest (`-j
-  4`, `-j 2`). Make the winner `xtask mutants`' default.
-- **Per-PR CI stays off** (your call: it fights loading a stack and
-  merging it piece by piece); nightly CI replaced it
-  (`docs/17-nightly-ci.md`).
+- **Your check:** `m2-cluster?n=4096` in slow motion, not frozen
+  ("Known gaps").
 - **Mutation, still to do:** `test-support` and `xtask` under
   `--test-workspace=true` (their misses are mostly artifacts).
 - **TODO: why the piano model is slow in debug builds.** Selecting it
@@ -341,8 +305,8 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 
 ## Out of scope for M7 (carried forward)
 
-- Sidespin (english), throw, cushion-induced spin (decisions 1, 3).
-- Contact friction in the solvers (M10, decision 3).
+- Sidespin (english), throw, cushion-induced spin.
+- Contact friction in the solvers (M10).
 - Jump and massé shots; cushion height (a cushion strikes above the
   ball's centre on a real table).
 - Continuous collision detection (`00-scope.md`: substeps and speculative
@@ -360,26 +324,17 @@ C8's waveguide is five cells. Options: shorter treble contact targets,
 a higher internal rate for the top octaves, or accept (real top-octave
 tones are nearly pure too).
 
-**M2 page at N = 4096 (found in review):** about 1 fps. **A step budget
+**M2 page at N = 4096 (found in review):** the three panels' steps cost
+~55 ms a display frame in the browser, against 16.7 ms at 60 Hz, and the
+page ran at about 1 fps (2048 keeps up, ~7 ms a step). **A step budget
 is in** (`docs/workers.md`, option 1): the page should now run in slow
-motion with a responsive display, to check by hand (`?n=4096`). The
-rest of this note is the history. One step of all
-three panels costs ~27 ms (f32 and f64 direct, plus Barnes–Hut), so 60 Hz
-needs ~1.6 s of compute per second. Every frame then runs the 15 steps
-`FixedStep`'s 0.25 s clamp allows (~400 ms). 2048 keeps up (~7 ms per
-step). Options: a per-frame step budget, so the sim runs in slow motion
-instead of freezing the display; fewer panels at large N; or Web Workers,
-one per panel (the panels are independent, so that's real parallelism) and
-the main thread only draws. Leaning toward workers; revisit after M2.
-Options written up in `docs/workers.md` (a step budget first; workers
-opt-in, piloted here).
-Since the health audit the exact energy readout (about half a pairwise
-step per panel: 6.6 ms at 4096 in the browser) runs 4 times a second,
-not every frame; the gap is the steps alone (~55 ms a frame for the
-three panels in the page), still well over a 60 Hz frame.
+motion with a responsive display, to check by hand (`?n=4096`). If slow
+motion isn't enough, the next option is a Web Worker per panel
+(`docs/workers.md`, option 2). The exact energy readout (6.6 ms at 4096)
+runs 4 times a second, not every frame.
 
-**CI is nightly, not per PR:** the per-PR workflow from #73 was turned
-off and is replaced by `.github/workflows/nightly.yml`
+**CI is nightly, not per PR** (your call: per-PR checks fight loading a
+stack and merging it piece by piece): `.github/workflows/nightly.yml`
 (`docs/17-nightly-ci.md`). Nothing on GitHub's side checks a PR before it
 merges: it's only as clean as the hooks on the machine that pushed it,
 and `--no-verify` skips them. The nightly run finds that the morning
