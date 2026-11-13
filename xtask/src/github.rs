@@ -143,9 +143,7 @@ fn write_locally(root: &Path, files: &[(String, Option<String>)]) -> Result<(), 
             }
         }
     }
-    println!(
-        "bench: recorded in docs/bench/ (gh isn't logged in: commit it in a pull request by hand)"
-    );
+    println!("recorded in this checkout (gh isn't logged in: commit it in a pull request by hand)");
     Ok(())
 }
 

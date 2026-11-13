@@ -21,6 +21,10 @@ mod record;
 /// already drops `tests/` directories and the `foo/tests.rs` unit tests.
 const IGNORE_FILES: &str = r"crates/test-support/|/test_util\.rs$";
 
+/// The property tests' seed in a coverage run (any fixed value: it only
+/// has to be the same every time).
+const PROPTEST_SEED: &str = "20261113";
+
 /// Columns of the `llvm-cov report` table, 0-based after splitting on
 /// whitespace: `Filename`, then Regions / Missed / Cover, Functions /
 /// Missed / Executed, Lines / Missed / Cover, Branches / Missed / Cover.
@@ -255,6 +259,12 @@ fn rust(root: &Path, cargo: &OsString) -> Result<String, String> {
         ]
         .concat(),
     )
+    // The property tests' inputs fixed: proptest draws a new random seed
+    // every run, so a branch only odd inputs reach (voices.rs's `note_on`
+    // refusals) came and went between runs of the same code, and the
+    // comparison with the record would report noise. Ordinary test runs
+    // keep their random seeds, to explore.
+    .env("PROPTEST_RNG_SEED", PROPTEST_SEED)
     .status()
     .map_err(|e| format!("failed to run cargo llvm-cov: {e}"))?;
     if !status.success() {
