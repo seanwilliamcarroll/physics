@@ -1,4 +1,4 @@
-use super::{Row, Throughput, format, rate, row};
+use super::{Row, Throughput, format, markdown, rate, row};
 
 /// Abridged from a real run (sand's busy step, 2026-11-13).
 const BENCHMARK: &str = r#"{"group_id":"sand_step","function_id":"busy","value_str":"640x360_chunks","throughput":{"Elements":230400},"full_id":"sand_step/busy/640x360_chunks","directory_name":"sand_step/busy/640x360_chunks","title":"sand_step/busy/640x360_chunks"}"#;
@@ -70,4 +70,22 @@ fn the_table_has_a_line_per_benchmark_sorted_by_id() {
     for want in ["1.52 ms", "0.1%", "152.0 Melem/s", "+12.5%"] {
         assert!(lines[3].contains(want), "{want} in {}", lines[3]);
     }
+}
+
+#[test]
+fn the_markdown_table_has_a_header_and_a_row_per_benchmark() {
+    let mut rows = vec![Row {
+        id: "sand_step/busy".to_owned(),
+        mean_ns: 1_515_489.0,
+        spread: 0.0013,
+        throughput: Some(Throughput::Elements(230_400.0)),
+        change: None,
+    }];
+    let md = markdown(&mut rows);
+    let lines: Vec<&str> = md.lines().collect();
+    assert_eq!(lines[0], "| Benchmark | Time | ± | Throughput | Change |");
+    assert_eq!(
+        lines[2],
+        "| `sand_step/busy` | 1.52 ms | 0.1% | 152.0 Melem/s |  |"
+    );
 }

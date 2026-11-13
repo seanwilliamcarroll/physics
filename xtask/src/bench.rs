@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::time::SystemTime;
 
+mod record;
 mod table;
 
 use crate::bench_wasm::mean_point_estimate;
@@ -89,6 +90,7 @@ pub(crate) fn bench(
     mode: &Mode<'_>,
     filter: Option<&str>,
     threshold_pct: f64,
+    record: bool,
 ) -> Result<(), String> {
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     let criterion: PathBuf = env::var_os("CARGO_TARGET_DIR")
@@ -108,10 +110,7 @@ pub(crate) fn bench(
     }
     let mut cmd = process::Command::new(cargo);
     cmd.current_dir(root)
-        .args(["bench", "--workspace", "--benches", "--"])
-        // Criterion's results only, not its progress lines: the table
-        // below gathers them.
-        .arg("--quiet");
+        .args(["bench", "--workspace", "--benches", "--"]);
     if let Some((flag, name)) = baseline {
         cmd.args([flag, name]);
     }
@@ -135,6 +134,9 @@ pub(crate) fn bench(
     println!(
         "Time: the mean per iteration; ±: half its 95% confidence interval; Change: from {against}."
     );
+    if record {
+        record::record(root, &mut rows, &record::context(root, filter, &against))?;
+    }
     let name = match mode {
         Mode::Run => return Ok(()),
         Mode::Save(name) => {
