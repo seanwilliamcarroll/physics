@@ -471,9 +471,10 @@ contacts aren't the point.
 What follows is the plan it started from.
 
 Source: `swarm-resources.md` (papers, explainers, performance reading) and
-`swarm-rust-implementation.md` (implementation notes), both 2026-11-02.
-This section adapted those notes to the repo; read them for the reading
-list.
+a set of implementation notes, both 2026-11-02. This section adapted
+those notes to the repo; the notes themselves are gone, their GPU and
+`wasm-bindgen` ideas kept in `15-swarm.md` ("If the GPU tier is built")
+and `03-wasm-shell.md` ("Not now").
 
 **What's different from the physics.** Agents follow *rules* (steer,
 align, sense a field), not forces, so there's no energy or momentum to

@@ -29,12 +29,12 @@ physics/
 │   ├── benchmarks.md       # running and comparing benchmarks; the current numbers
 │   ├── profiling.md        # finding where the time goes: cargo xtask profile, the hot paths found
 │   ├── workers.md          # design note: step budget (built), Web Workers, wasm threads
-│   ├── hosting.md          # not planned (16-site-demos.md replaced it); what wasm needs from a server
+│   ├── hosting.md          # what wasm needs from a server (MIME type, caching, CSP, isolation)
 │   ├── api/                # each library crate's public API, generated (cargo xtask api)
-│   ├── api-audit.md        # the audit after M7 that narrowed the public surfaces (done)
+│   ├── api-audit.md        # the audit after M7 that narrowed the public surfaces: a short record
+│   ├── bench/              # each machine's recorded benchmark results (benchmarks.md, "Records")
 │   ├── numerical-testing-checklist.md  # a generic test plan; 04-testing.md maps this repo onto it
 │   ├── swarm-resources.md  # swarm track: reading list (05-roadmap, "Swarm track")
-│   ├── swarm-rust-implementation.md  # swarm track: the notes it started from
 │   └── references.md       # the bibliography for every design doc
 │
 ├── crates/

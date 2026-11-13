@@ -789,6 +789,38 @@ contention S3 named, needing atomic adds there, and `wgpu` would be the
 repo's first large runtime dependency, WebGPU-only. Not built: the CPU
 path covers the page, and the question stays open with its numbers.
 
+**If the GPU tier is built** (from the track's first notes, 2026-11-02;
+not re-checked since, so verify the browser facts before acting):
+
+- **`wgpu`**, in a `swarm-gpu` crate beside `swarm`: one codebase for
+  native and the browser (through WebGPU), compute shaders in WGSL,
+  well maintained (Firefox's own WebGPU implementation uses it).
+- **WebGPU doesn't reach every browser.** As of September 2026: Chrome
+  and Edge, Safari 26 on every Apple platform, Firefox only on Windows
+  and Apple-silicon Macs (not Linux). `wgpu` can fall back to WebGL2,
+  but WebGL2 has no compute shaders, so the GPU path is WebGPU-only and
+  the CPU path stays as the fallback.
+- **The shape**, following `wgpu`'s `boids` example: two storage
+  buffers ping-ponged (the CPU's double buffer); one compute pass a
+  step; for Physarum a deposit pass, then diffuse and decay on a storage
+  texture; a render pass drawing instanced agents or a full-screen quad
+  sampling the trail texture.
+- **Deposits** need atomic adds, and WGSL's atomics are integers only:
+  a `u32` fixed-point field.
+- **A grid on the GPU** is the counting sort again: an atomic
+  histogram, a prefix-sum pass, a scatter pass (Le Grand, GPU Gems 3,
+  ch. 32, has the parallel version).
+- **Develop natively first** (shader errors and GPU timing are far
+  easier to inspect), then build for `wasm32-unknown-unknown`.
+- **It would bring `wasm-bindgen`** (`wgpu` on the web is built on it),
+  which this repo doesn't use (`03-wasm-shell.md`, "Not now"): a second
+  loader beside the hand-written C ABI.
+- **Crates weighed and passed over:** `macroquad` (easy, but its own JS
+  loader and no compute), `bevy` (a whole engine: long builds, a
+  multi-megabyte wasm, many dependencies), `nannou` (mid-rework),
+  `egui`/`eframe` (an option for sliders and plots if HTML inputs wear
+  thin).
+
 ### The page as built (S4.5, `site/demos/s4-physarum`)
 
 The 512² field one pixel a cell (100k agents), a slider per constant

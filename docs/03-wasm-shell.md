@@ -324,7 +324,11 @@ Rust exposes metric values per step the same way as positions.
   archived (September 2025), so it meets the dependency bar. Not needed until
   we want strings, callbacks, or browser APIs from Rust. The acoustic
   track, once the likely first need, did without it: the worklet loads a
-  raw module too (`12-acoustic-foundations.md`). If adopted, use the
+  raw module too (`12-acoustic-foundations.md`). The swarm track's first
+  notes proposed `wasm-bindgen` with `web-sys` for a Canvas 2D front
+  end; the hand-written C ABI and `pixels.ts` did that job instead. The
+  likeliest need now is a GPU tier: `wgpu` on the web is built on it
+  (`15-swarm.md`, "If the GPU tier is built"). If adopted, use the
   `wasm-bindgen` CLI directly; wasm-pack moved to an individual maintainer
   and adds little here.
 - **Threads / SharedArrayBuffer:** require cross-origin isolation headers on

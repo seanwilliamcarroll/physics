@@ -88,7 +88,7 @@ draws:
 |---|---|---|
 | How | The worker sends a snapshot after its steps | Both threads read one buffer |
 | Cost at 4096 | 4096 × 2 × 4 B = 32 KB per panel per frame: negligible | none |
-| Host | nothing | COOP/COEP headers (`hosting.md`, "Cross-origin isolation"), on `cargo xtask serve` and CloudFront |
+| Host | nothing | COOP/COEP headers (`hosting.md`, "Cross-origin isolation"), on `cargo xtask serve` and the site's host |
 | Code | messages | synchronization (atomics, a seqlock flag) |
 
 `postMessage` is the clear choice. It's the same decision A1 made for
