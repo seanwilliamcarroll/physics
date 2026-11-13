@@ -11,6 +11,9 @@ on:
     - cron: "17 7 * * *"
   # A manual run always runs everything.
   workflow_dispatch:
+  # TEMPORARY, for trying this workflow's changes before they are on main:
+  # removed before the pull request merges.
+  pull_request:
 
 # One at a time; a run in progress is left to finish.
 concurrency:
@@ -84,3 +87,19 @@ jobs:
           name: smoke-screenshots
           path: target/smoke/
           retention-days: 7
+
+  # The slow tier (docs/04-testing.md, "Running strategy"): every test
+  # with property tests at 10 000 cases, then the long `slow_*` runs.
+  # Nothing else runs it automatically.
+  slow:
+    needs: changed
+    if: needs.changed.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup
+
+      - name: cargo xtask slow
+        run: cargo xtask slow
