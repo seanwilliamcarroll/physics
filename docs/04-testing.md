@@ -823,6 +823,39 @@ still passed.
     was tested as it was written, but not mutated: the next full run
     covers it.
 
+- **The fourth full run (2026-11-12, at f687282, on the compute node,
+  nextest, 74 minutes):** 475 of 6,947 missed (32 timeouts, 764
+  unviable). This time every crate was gone through mutant by mutant,
+  and each crate's real gaps were tested in that crate (the per-crate
+  run tests a mutant only with its own crate's tests: swarm-web's tests
+  don't count for swarm's code):
+
+  | Crate | Missed | Real gaps, tested in | Left after a re-run on those functions |
+  |---|---|---|---|
+  | `xtask` | 91 | #244 (24 in pure logic; the other 67 wrap commands the hooks run) | 1, equivalent |
+  | `swarm` | 121 | #249 | 0 |
+  | `swarm-web` | 85 | #250 | 12, equivalent |
+  | `acoustic` | 76 | #251 | equivalent only |
+  | `engine` | 72 | #252 | 2, equivalent |
+  | `math`, `sand`, `sand-web`, `engine-web`, `web-common` | 30 | none: all equivalent | |
+
+  - **Some gaps the earlier passes had called equivalent:** the hammer's
+    mean-force slope (Newton converges with a wrong one, so whole blows
+    passed; tested directly now), the waveguide's pickup (checked to 2%
+    near a peak; now exactly, on a straight line), and tests that sat
+    where a wrong formula gives the right answer (one end at the origin,
+    a radius of 1, a jump of 2 m where `2 · 2 = 2 + 2`).
+  - **A test that couldn't fail:** the short-loop dispersion test was an
+    `if let`, so a design that gave up passed it.
+  - **New equivalent classes:** for circles on straight paths the
+    speculative contact test covers every case the swept one would
+    (distance is convex in time), so mutating the swept test changes
+    nothing; least-squares sums with the mean subtracted, where a wrong
+    mean cancels; the FFT's bit-reversal swap (once per pair, from either
+    end); `* DETUNE_CENTS` while it is 1; `math::convert`'s exact-limit
+    test, which differs only on 32-bit targets, which mutants don't run
+    on; the panic hook, which only the browser smoke test sees.
+
 ## Phase 1 test-first order
 
 1. `Vec2` and `Scalar` unit tests.
