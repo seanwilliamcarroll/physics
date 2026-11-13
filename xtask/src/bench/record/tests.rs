@@ -1,4 +1,5 @@
-use super::{Context, document, json_string, path};
+use super::{Context, changes, document, json_string, path, tree_entry};
+use crate::bench::store::Files;
 use crate::bench::table::{Row, Throughput};
 
 fn context() -> Context {
@@ -52,4 +53,41 @@ fn json_strings_escape_what_json_needs() {
         "\"a \\\"b\\\" \\\\ c\\nd\\te\\u0001\""
     );
     assert_eq!(json_string("± µs"), "\"± µs\"", "non-ASCII as is");
+}
+
+#[test]
+fn the_record_s_files_are_the_table_the_meta_the_data_and_removals() {
+    let ctx = context();
+    let old = Files::from([
+        ("a/estimates.json".to_owned(), "old a".to_owned()),
+        ("gone/estimates.json".to_owned(), "old gone".to_owned()),
+    ]);
+    let new = Files::from([("a/estimates.json".to_owned(), "new a".to_owned())]);
+    let files = changes(&ctx, &old, &new, "rustc=x\n", &mut []);
+    let paths: Vec<(&str, bool)> = files
+        .iter()
+        .map(|(p, t)| (p.as_str(), t.is_some()))
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            ("docs/bench/llm.md", true),
+            ("docs/bench/llm/record.txt", true),
+            ("docs/bench/llm/a/estimates.json", true),
+            ("docs/bench/llm/gone/estimates.json", false),
+        ]
+    );
+    assert_eq!(files[2].1.as_deref(), Some("new a"));
+}
+
+#[test]
+fn a_tree_entry_writes_content_or_removes() {
+    assert_eq!(
+        tree_entry("docs/x.md", Some("hi")),
+        r#"{"path":"docs/x.md","mode":"100644","type":"blob","content":"hi"}"#
+    );
+    assert_eq!(
+        tree_entry("docs/x.md", None),
+        r#"{"path":"docs/x.md","mode":"100644","type":"blob","sha":null}"#
+    );
 }

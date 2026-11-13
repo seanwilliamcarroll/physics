@@ -1,15 +1,16 @@
-//! `cargo xtask bench --record`: this run's table as
-//! `docs/bench/<machine>.md` (with the date, the commit, the machine and
-//! the toolchain), replacing that machine's last record, proposed as a
-//! pull request. One file per machine: numbers from different machines
-//! don't compare. Git's history keeps the earlier records.
+//! `cargo xtask bench --record`: this machine's record, updated from this
+//! run and proposed as a pull request. The record is criterion's data
+//! (`docs/bench/<machine>/`, `store.rs`: what later runs compare with) and
+//! its table (`docs/bench/<machine>.md`, with the date, the commit, the
+//! machine and the toolchain). One per machine: numbers from different
+//! machines don't compare. Git's history keeps the earlier records.
 //!
 //! The pull request is made through GitHub's API (`gh api`): a tree with
-//! the one file on top of `main`, a commit, a branch, then `gh pr create`.
-//! Nothing local changes (no checkout, no commit, so no hooks: the
-//! pre-push hook would run the whole suite for one docs file). It's never
-//! merged here. Without a working `gh` login, the file is written into
-//! `docs/bench/` instead, to commit by hand.
+//! the record's files on top of `main`, a commit, a branch, then `gh pr
+//! create`. Nothing local changes (no checkout, no commit, so no hooks:
+//! the pre-push hook would run the whole suite for a docs change). It's
+//! never merged here. Without a working `gh` login, the files are written
+//! into `docs/bench/` instead, to commit by hand.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -17,6 +18,7 @@ use std::io::Write as _;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+use super::store::{self, Files};
 use super::table::{self, Row};
 
 /// What the record says about where and how it was measured.
@@ -144,13 +146,36 @@ fn gh_api(
     }
 }
 
+/// This machine's name for its record: `hostname -s`, lower case.
+pub(crate) fn machine(root: &Path) -> String {
+    output(root, "hostname", &["-s"]).map_or_else(|| "unknown".to_owned(), |h| h.to_lowercase())
+}
+
+/// Refuses a record from a checkout with uncommitted changes (a record
+/// describes a commit); warns if it isn't `origin/main`'s (records
+/// normally describe `main`).
+pub(crate) fn preflight(root: &Path) -> Result<(), String> {
+    if output(root, "git", &["status", "--porcelain"]).is_some_and(|s| !s.is_empty()) {
+        return Err(
+            "bench --record: commit or stash your changes first (a record describes a commit)"
+                .to_owned(),
+        );
+    }
+    let head = output(root, "git", &["rev-parse", "HEAD"]);
+    let main = output(root, "git", &["rev-parse", "origin/main"]);
+    if head != main {
+        println!("bench: warning: recording a commit that isn't origin/main");
+    }
+    Ok(())
+}
+
 /// Where and how this run was measured.
 pub(crate) fn context(root: &Path, filter: Option<&str>, against: &str) -> Context {
     let run = |p: &str, a: &[&str]| output(root, p, a).unwrap_or_else(|| "?".to_owned());
     Context {
         date: run("date", &["+%Y-%m-%d"]),
         time: run("date", &["+%H%M%S"]),
-        machine: run("hostname", &["-s"]).to_lowercase(),
+        machine: machine(root),
         system: run("uname", &["-sm"]),
         cpus: std::thread::available_parallelism().map_or(0, std::num::NonZero::get),
         rustc: run("rustc", &["--version"]),
@@ -164,12 +189,40 @@ pub(crate) fn context(root: &Path, filter: Option<&str>, against: &str) -> Conte
 
 const REPO: &str = "repos/{owner}/{repo}";
 
-/// Records `rows`: as a pull request if `gh` is logged in, else as a file
-/// in `docs/bench/`.
-pub(crate) fn record(root: &Path, rows: &mut [Row], ctx: &Context) -> Result<(), String> {
-    let text = document(ctx, rows);
+/// The record's files after this run, by path in the repository: the
+/// table, the data, [`store::META`]; `None` for a file the run removes (a
+/// benchmark a full run no longer has).
+pub(crate) fn changes(
+    ctx: &Context,
+    old: &Files,
+    new: &Files,
+    meta: &str,
+    rows: &mut [Row],
+) -> Vec<(String, Option<String>)> {
+    let dir = store::data_dir(&ctx.machine);
+    let mut out = vec![(path(&ctx.machine), Some(document(ctx, rows)))];
+    out.push((format!("{dir}/{}", store::META), Some(meta.to_owned())));
+    out.extend(
+        new.iter()
+            .map(|(k, v)| (format!("{dir}/{k}"), Some(v.clone()))),
+    );
+    out.extend(
+        old.keys()
+            .filter(|k| !new.contains_key(*k))
+            .map(|k| (format!("{dir}/{k}"), None)),
+    );
+    out
+}
+
+/// Records the run: the files from [`changes`], as a pull request if `gh`
+/// is logged in, else written into this checkout.
+pub(crate) fn record(
+    root: &Path,
+    ctx: &Context,
+    files: &[(String, Option<String>)],
+) -> Result<(), String> {
     if output(root, "gh", &["auth", "status"]).is_none() {
-        return write_locally(root, ctx, &text);
+        return write_locally(root, files);
     }
     let main = output(
         root,
@@ -182,38 +235,63 @@ pub(crate) fn record(root: &Path, rows: &mut [Row], ctx: &Context) -> Result<(),
         ],
     )
     .ok_or("gh: couldn't read main")?;
-    let rel = path(&ctx.machine);
     let branch = format!("bench/{}-{}-{}", ctx.machine, ctx.date, ctx.time);
     let title = format!("bench: results of {} on {}", ctx.date, ctx.machine);
-    push_branch(root, &main, &rel, &text, &title, &branch)?;
+    push_branch(root, &main, files, &title, &branch)?;
+    let table = files
+        .first()
+        .and_then(|(_, t)| t.as_deref())
+        .unwrap_or_default();
     let body = format!(
-        "{text}\nOne file, `{rel}`. Opened by `cargo xtask bench --record`; not merged by it.\n"
+        "{table}\nThe record for `{}`: its table and criterion's data (`{}/`), which later runs on this machine compare with. Opened by `cargo xtask bench --record`; not merged by it.\n",
+        ctx.machine,
+        store::data_dir(&ctx.machine)
     );
     open_pr(root, &branch, &title, &body)?;
-    println!("bench: recorded as {rel}, in a pull request from {branch}");
+    println!("bench: recorded in a pull request from {branch}");
     Ok(())
 }
 
-/// Without `gh`: the record in this checkout's `docs/bench/`.
-fn write_locally(root: &Path, ctx: &Context, text: &str) -> Result<(), String> {
-    let rel = path(&ctx.machine);
-    let file = root.join(&rel);
-    if let Some(dir) = file.parent() {
-        fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+/// Without `gh`: the record written into this checkout.
+fn write_locally(root: &Path, files: &[(String, Option<String>)]) -> Result<(), String> {
+    for (rel, text) in files {
+        let file = root.join(rel);
+        match text {
+            Some(text) => {
+                if let Some(dir) = file.parent() {
+                    fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+                }
+                fs::write(&file, text).map_err(|e| format!("{}: {e}", file.display()))?;
+            }
+            None => {
+                let _ = fs::remove_file(&file);
+            }
+        }
     }
-    fs::write(&file, text).map_err(|e| format!("{}: {e}", file.display()))?;
-    println!("bench: recorded in {rel} (gh isn't logged in: commit it in a pull request by hand)");
+    println!(
+        "bench: recorded in docs/bench/ (gh isn't logged in: commit it in a pull request by hand)"
+    );
     Ok(())
 }
 
-/// A branch `branch` on GitHub: `main` with the file `rel` holding `text`
-/// (added, or replacing the last record),
+/// One entry of a tree request: a file's content, or its removal.
+pub(crate) fn tree_entry(path: &str, text: Option<&str>) -> String {
+    let content = text.map_or_else(
+        || "\"sha\":null".to_owned(),
+        |t| format!("\"content\":{}", json_string(t)),
+    );
+    format!(
+        "{{\"path\":{},\"mode\":\"100644\",\"type\":\"blob\",{content}}}",
+        json_string(path)
+    )
+}
+
+/// A branch `branch` on GitHub: `main` with `files` written (or removed),
 /// in one commit, made through the API (nothing local changes).
 fn push_branch(
     root: &Path,
     main: &str,
-    rel: &str,
-    text: &str,
+    files: &[(String, Option<String>)],
     title: &str,
     branch: &str,
 ) -> Result<(), String> {
@@ -228,15 +306,18 @@ fn push_branch(
         ],
     )
     .ok_or("gh: couldn't read main's tree")?;
+    let entries: Vec<String> = files
+        .iter()
+        .map(|(p, t)| tree_entry(p, t.as_deref()))
+        .collect();
     let tree = gh_api(
         root,
         "POST",
         &format!("{REPO}/git/trees"),
         &format!(
-            "{{\"base_tree\":{},\"tree\":[{{\"path\":{},\"mode\":\"100644\",\"type\":\"blob\",\"content\":{}}}]}}",
+            "{{\"base_tree\":{},\"tree\":[{}]}}",
             json_string(&base_tree),
-            json_string(rel),
-            json_string(text)
+            entries.join(",")
         ),
         ".sha",
     )?;

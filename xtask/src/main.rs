@@ -86,10 +86,12 @@ enum Command {
     Smoke,
     /// Run the math and engine tests as wasm32-wasip1 under wasmtime
     TestWasm,
-    /// Run the criterion benchmarks (all, or those matching FILTER) and
-    /// print a table of the results; with --save, keep them as a named
-    /// baseline; with --baseline, compare with one: lists what moved past
-    /// the threshold and fails on regressions (docs/benchmarks.md)
+    /// Run the criterion benchmarks (all, or those matching FILTER),
+    /// compared with this machine's committed record (docs/bench/), and
+    /// print a table and what moved past the threshold. --compare-local
+    /// compares with the previous run here instead; --save / --baseline
+    /// keep or compare a named local baseline (only --baseline fails on a
+    /// regression). --record updates the record (docs/benchmarks.md)
     Bench {
         /// Save this run as baseline NAME
         #[arg(long, value_name = "NAME", conflicts_with = "baseline")]
@@ -100,6 +102,10 @@ enum Command {
         /// The change in a mean that counts, whole percent
         #[arg(long, default_value_t = 10)]
         threshold: u32,
+        /// Compare with each benchmark's previous run here, not this
+        /// machine's record (`docs/bench/<machine>/`)
+        #[arg(long, conflicts_with_all = ["save", "baseline"])]
+        compare_local: bool,
         /// Run only benchmarks whose names contain this (criterion's filter)
         filter: Option<String>,
         /// Also record the table as `docs/bench/<machine>.md` (replacing
@@ -204,13 +210,15 @@ fn run(cmd: Command) -> Result<(), String> {
             save,
             baseline,
             threshold,
+            compare_local,
             filter,
             record,
         } => {
             let mode = match (save.as_deref(), baseline.as_deref()) {
                 (Some(n), _) => bench::Mode::Save(n),
                 (None, Some(n)) => bench::Mode::Compare(n),
-                (None, None) => bench::Mode::Run,
+                (None, None) if compare_local => bench::Mode::Local,
+                (None, None) => bench::Mode::Default,
             };
             bench::bench(
                 &root,
