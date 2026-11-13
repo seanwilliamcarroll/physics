@@ -48,15 +48,28 @@ manager: the repo pins the version in `.nvmrc`, and nvm reads it.
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh | bash
 # open a new shell (the installer adds nvm to your shell profile), then,
 # in the repo:
-nvm install                            # reads .nvmrc: the latest Node 22
+nvm install                            # reads .nvmrc: the latest Node 24
 ```
 
-**Node 22.18 or later.** `node --test` imports the site's `.ts` modules
-directly, which needs Node's built-in type stripping, on by default
-from 22.18. `nvm install` gets the newest 22.x, which is enough.
+**Node 24.** `node --test` imports the site's `.ts` modules directly,
+which needs Node's built-in type stripping (on by default since 22.18);
+and npm's guards below need npm 11.16+, which Node 24 bundles (Node 22
+bundles npm 10). `package.json`'s `engines` refuses anything older.
 
 In a new shell, `nvm use` (in the repo) picks the pinned version again,
-or make it the default once: `nvm alias default 22`.
+or make it the default once: `nvm alias default 24`.
+
+**npm's guards** (`.npmrc`). Installing a package runs its code, so:
+
+- `min-release-age=7`: only versions published at least a week ago are
+  installed (hijacked releases are usually pulled within days). A
+  security fix that's newer can be let through with
+  `min-release-age-exclude` in `.npmrc`.
+- `strict-allow-scripts=true`: a dependency's install script fails the
+  install until `allowScripts` in `package.json` approves or denies it.
+  Today nothing here has one (TypeScript 7 is prebuilt binaries).
+- `engine-strict=true`, with `engines`: npm 10 would ignore the two
+  settings above without a word, so it is refused.
 
 ## 4. wasmtime and cargo-nextest
 

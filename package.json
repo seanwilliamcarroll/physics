@@ -3,6 +3,10 @@
   "private": true,
   "description": "Dev tooling for site/: TypeScript compiles site/**/*.ts to .js (plus source maps). Nothing here ships to browsers.",
   "type": "module",
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11.16"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json",
