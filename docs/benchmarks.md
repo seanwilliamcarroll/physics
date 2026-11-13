@@ -8,7 +8,8 @@ the index and the current state.
 
 | Command | What it does |
 |---|---|
-| `cargo xtask bench --save main` | Every criterion bench (`cargo bench --workspace --benches`), saved as baseline `main`. |
+| `cargo xtask bench [FILTER]` | Every criterion bench (`cargo bench --workspace --benches`), or those whose names contain FILTER (e.g. `sand_step`), then a table of the results. |
+| `cargo xtask bench --save main` | The same, saved as baseline `main`. |
 | `cargo xtask bench --baseline main` | Runs them again and compares: lists every benchmark whose mean moved more than 10% (`--threshold N` changes it), faster or slower, and **fails if anything got slower**. |
 | `cargo xtask profile …` | Where the time goes in one example or bench (`profiling.md`). |
 | `cargo xtask bench-wasm` | Builds the site, then times the modules in Node 22: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`). |
@@ -19,6 +20,28 @@ ideally the compute node. The usual pattern: `--save main` on `main`,
 switch to the branch, `--baseline main`.
 
 Neither runs in a hook: a full criterion run takes minutes.
+
+**The table** (after every run; `xtask/src/bench/table.rs` reads it back
+from criterion's files under `target/criterion/`):
+
+```
+Benchmark                                 Time       ±        Throughput   Change
+---------------------------------------------------------------------------------
+sand_step/busy/640x360_chunks          1.53 ms    0.1%     151.1 Melem/s    +0.6%
+sand_step/settled/640x360_chunks        3.3 µs    0.1%      70.4 Gelem/s    +0.2%
+```
+
+- **Time:** the mean time per iteration (criterion's estimate from 100
+  samples after a 3 s warm-up).
+- **±:** half the mean's 95% confidence interval, as a share of it.
+- **Throughput:** what the bench says one iteration processes (cells,
+  bodies, samples), per second; blank if it doesn't say.
+- **Change:** the mean's change from the compared baseline, or on a
+  plain run from that benchmark's previous run (criterion keeps one).
+  Within a few percent is noise.
+
+Criterion's own lines (one block per benchmark, `--quiet`) still print
+above it as each finishes.
 
 ## The suites
 

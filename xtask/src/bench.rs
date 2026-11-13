@@ -1,19 +1,26 @@
-//! `cargo xtask bench`: every criterion benchmark in the workspace, saved
-//! as a named baseline or compared with one (`docs/benchmarks.md`). The
-//! comparison reads criterion's own `change/estimates.json` files and
-//! lists every benchmark whose mean moved past a threshold: regressions
-//! fail the command, improvements are reported.
+//! `cargo xtask bench`: every criterion benchmark in the workspace (or
+//! those matching a filter), run, saved as a named baseline, or compared
+//! with one (`docs/benchmarks.md`); then a table of the results
+//! (`table.rs`). A comparison also reads criterion's own
+//! `change/estimates.json` files and lists every benchmark whose mean
+//! moved past a threshold: regressions fail the command, improvements are
+//! reported.
 
 use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
+use std::time::SystemTime;
+
+mod table;
 
 use crate::bench_wasm::mean_point_estimate;
 
 /// What to do with the baseline.
 pub(crate) enum Mode<'a> {
+    /// Neither: just run (criterion still keeps the results as `base`).
+    Run,
     /// `--save-baseline NAME`: record.
     Save(&'a str),
     /// `--baseline NAME`: compare.
@@ -77,14 +84,20 @@ fn changes(criterion: &Path) -> Vec<Change> {
 /// Runs every bench (`cargo bench --workspace --benches`), saving or
 /// comparing a baseline; for a comparison, lists what moved past
 /// `threshold_pct` and fails on any regression.
-pub(crate) fn bench(root: &Path, mode: &Mode<'_>, threshold_pct: f64) -> Result<(), String> {
+pub(crate) fn bench(
+    root: &Path,
+    mode: &Mode<'_>,
+    filter: Option<&str>,
+    threshold_pct: f64,
+) -> Result<(), String> {
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
     let criterion: PathBuf = env::var_os("CARGO_TARGET_DIR")
         .map_or_else(|| root.join("target"), |d| root.join(d))
         .join("criterion");
-    let (flag, name) = match mode {
-        Mode::Save(n) => ("--save-baseline", *n),
-        Mode::Compare(n) => ("--baseline", *n),
+    let baseline = match mode {
+        Mode::Run => None,
+        Mode::Save(n) => Some(("--save-baseline", *n)),
+        Mode::Compare(n) => Some(("--baseline", *n)),
     };
     if let Mode::Compare(_) = mode {
         // Stale change files from an earlier comparison would be read as
@@ -93,20 +106,45 @@ pub(crate) fn bench(root: &Path, mode: &Mode<'_>, threshold_pct: f64) -> Result<
             let _ = fs::remove_dir_all(criterion.join(&c.name).join("change"));
         }
     }
-    let status = process::Command::new(cargo)
-        .current_dir(root)
-        .args(["bench", "--workspace", "--benches", "--", flag, name])
+    let mut cmd = process::Command::new(cargo);
+    cmd.current_dir(root)
+        .args(["bench", "--workspace", "--benches", "--"])
+        // Criterion's results only, not its progress lines: the table
+        // below gathers them.
+        .arg("--quiet");
+    if let Some((flag, name)) = baseline {
+        cmd.args([flag, name]);
+    }
+    if let Some(f) = filter {
+        cmd.arg(f);
+    }
+    let started = SystemTime::now();
+    let status = cmd
         .status()
         .map_err(|e| format!("failed to run cargo bench: {e}"))?;
     if !status.success() {
         return Err(format!("cargo bench failed ({status})"));
     }
-    let Mode::Compare(_) = mode else {
-        println!(
-            "bench: saved baseline `{name}` under {}",
-            criterion.display()
-        );
-        return Ok(());
+    let mut rows = table::collect(&criterion, started);
+    println!("\n{}", table::format(&mut rows));
+    // What criterion compared each mean with.
+    let against = match mode {
+        Mode::Compare(name) => format!("baseline `{name}`"),
+        Mode::Run | Mode::Save(_) => "each benchmark's previous run".to_owned(),
+    };
+    println!(
+        "Time: the mean per iteration; ±: half its 95% confidence interval; Change: from {against}."
+    );
+    let name = match mode {
+        Mode::Run => return Ok(()),
+        Mode::Save(name) => {
+            println!(
+                "bench: saved baseline `{name}` under {}",
+                criterion.display()
+            );
+            return Ok(());
+        }
+        Mode::Compare(name) => name,
     };
     let (worse, better) = classify(changes(&criterion), threshold_pct / 100.0);
     for c in &better {

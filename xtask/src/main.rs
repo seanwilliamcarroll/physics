@@ -86,9 +86,10 @@ enum Command {
     Smoke,
     /// Run the math and engine tests as wasm32-wasip1 under wasmtime
     TestWasm,
-    /// Run every criterion benchmark, saving a named baseline (--save) or
-    /// comparing with one (--baseline): lists what moved past the
-    /// threshold and fails on regressions (docs/benchmarks.md)
+    /// Run the criterion benchmarks (all, or those matching FILTER) and
+    /// print a table of the results; with --save, keep them as a named
+    /// baseline; with --baseline, compare with one: lists what moved past
+    /// the threshold and fails on regressions (docs/benchmarks.md)
     Bench {
         /// Save this run as baseline NAME
         #[arg(long, value_name = "NAME", conflicts_with = "baseline")]
@@ -99,6 +100,8 @@ enum Command {
         /// The change in a mean that counts, whole percent
         #[arg(long, default_value_t = 10)]
         threshold: u32,
+        /// Run only benchmarks whose names contain this (criterion's filter)
+        filter: Option<String>,
     },
     /// Time the cluster through engine.wasm in Node and compare with the
     /// native criterion results (run cargo bench -p engine --bench step first)
@@ -197,11 +200,15 @@ fn run(cmd: Command) -> Result<(), String> {
             save,
             baseline,
             threshold,
-        } => match (save.as_deref(), baseline.as_deref()) {
-            (Some(n), _) => bench::bench(&root, &bench::Mode::Save(n), f64::from(threshold)),
-            (None, Some(n)) => bench::bench(&root, &bench::Mode::Compare(n), f64::from(threshold)),
-            (None, None) => Err("give --save NAME or --baseline NAME".to_owned()),
-        },
+            filter,
+        } => {
+            let mode = match (save.as_deref(), baseline.as_deref()) {
+                (Some(n), _) => bench::Mode::Save(n),
+                (None, Some(n)) => bench::Mode::Compare(n),
+                (None, None) => bench::Mode::Run,
+            };
+            bench::bench(&root, &mode, filter.as_deref(), f64::from(threshold))
+        }
         Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
         Command::Profile {
             package,
