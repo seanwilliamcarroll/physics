@@ -20,7 +20,10 @@ license = "MIT"
 proptest = { version = "1.12.0", default-features = false, features = ["std"] }
 # Benchmarks. Text output only: no plotters (HTML charts) or rayon, and
 # their dependency trees; results are recorded in docs/04-testing.md.
-criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+# Pinned: `cargo xtask bench` compares with records of criterion's saved
+# files (docs/bench/), whose format isn't a public API. Before bumping it,
+# check a record still compares (docs/benchmarks.md, "Upgrading criterion").
+criterion = { version = "=0.8.2", default-features = false, features = ["cargo_bench_support"] }
 # CLI parsing for xtask (dev tooling only; never in the engine or wasm).
 clap = { version = "4.6.7", features = ["derive"] }
 # Transcendental functions (sin, cos, atan, log10, exp10) for the acoustic

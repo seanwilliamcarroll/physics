@@ -1,10 +1,10 @@
 //! `cargo xtask bench`: every criterion benchmark in the workspace (or
-//! those matching a filter), run, saved as a named baseline, or compared
-//! with one (`docs/benchmarks.md`); then a table of the results
-//! (`table.rs`). A comparison also reads criterion's own
-//! `change/estimates.json` files and lists every benchmark whose mean
-//! moved past a threshold: regressions fail the command, improvements are
-//! reported.
+//! those matching a filter), run and compared (`docs/benchmarks.md`):
+//! by default with this machine's committed record (`store.rs`), else
+//! with the previous local run, or with a named local baseline. Then a
+//! table of the results (`table.rs`), and the benchmarks whose mean moved
+//! past a threshold. Only `--baseline NAME` fails on a regression; the
+//! others report. `--record` updates the record (`record.rs`).
 
 use std::env;
 use std::ffi::OsString;
@@ -14,14 +14,18 @@ use std::process;
 use std::time::SystemTime;
 
 mod record;
+mod store;
 mod table;
 
 use crate::bench_wasm::mean_point_estimate;
 
-/// What to do with the baseline.
+/// What to compare with.
 pub(crate) enum Mode<'a> {
-    /// Neither: just run (criterion still keeps the results as `base`).
-    Run,
+    /// This machine's committed record if there is one, else as `Local`.
+    Default,
+    /// `--compare-local`: each benchmark's previous run here (criterion
+    /// keeps it as `base`).
+    Local,
     /// `--save-baseline NAME`: record.
     Save(&'a str),
     /// `--baseline NAME`: compare.
@@ -82,9 +86,10 @@ fn changes(criterion: &Path) -> Vec<Change> {
     out
 }
 
-/// Runs every bench (`cargo bench --workspace --benches`), saving or
-/// comparing a baseline; for a comparison, lists what moved past
-/// `threshold_pct` and fails on any regression.
+/// Runs every bench (`cargo bench --workspace --benches`, or those matching
+/// `filter`), compared as `mode` says; prints the table and what moved
+/// past `threshold_pct`; with `record`, updates this machine's record.
+/// Fails on a regression only with `--baseline NAME`.
 pub(crate) fn bench(
     root: &Path,
     mode: &Mode<'_>,
@@ -96,11 +101,24 @@ pub(crate) fn bench(
     let criterion: PathBuf = env::var_os("CARGO_TARGET_DIR")
         .map_or_else(|| root.join("target"), |d| root.join(d))
         .join("criterion");
-    let baseline = match mode {
-        Mode::Run => None,
-        Mode::Save(n) => Some(("--save-baseline", *n)),
-        Mode::Compare(n) => Some(("--baseline", *n)),
-    };
+    if record {
+        record::preflight(root)?;
+    }
+    let machine = record::machine(root);
+    let record_dir = root.join(store::data_dir(&machine));
+    let recorded = store::read_record(&record_dir);
+    let use_record = matches!(mode, Mode::Default) && !recorded.is_empty();
+    if matches!(mode, Mode::Default) && !use_record {
+        println!(
+            "bench: no record for `{machine}` ({}/): comparing with each benchmark's previous run",
+            store::data_dir(&machine)
+        );
+    }
+    if use_record {
+        let n = store::load(&record_dir, &criterion)?;
+        println!("bench: comparing with the record for `{machine}` ({n} benchmarks)");
+        warn_if_toolchain_differs(root, &record_dir);
+    }
     if let Mode::Compare(_) = mode {
         // Stale change files from an earlier comparison would be read as
         // this one's: remove them first.
@@ -108,47 +126,65 @@ pub(crate) fn bench(
             let _ = fs::remove_dir_all(criterion.join(&c.name).join("change"));
         }
     }
-    let mut cmd = process::Command::new(cargo);
-    cmd.current_dir(root)
-        .args(["bench", "--workspace", "--benches", "--"]);
-    if let Some((flag, name)) = baseline {
-        cmd.args([flag, name]);
-    }
-    if let Some(f) = filter {
-        cmd.arg(f);
-    }
+    let flag = match mode {
+        Mode::Save(n) => Some(("--save-baseline", *n)),
+        Mode::Compare(n) => Some(("--baseline", *n)),
+        // Lenient: a benchmark the record doesn't have runs uncompared.
+        Mode::Default if use_record => Some(("--baseline-lenient", store::BASELINE)),
+        Mode::Default | Mode::Local => None,
+    };
     let started = SystemTime::now();
-    let status = cmd
-        .status()
-        .map_err(|e| format!("failed to run cargo bench: {e}"))?;
-    if !status.success() {
-        return Err(format!("cargo bench failed ({status})"));
-    }
+    run_criterion(root, &cargo, flag, filter)?;
     let mut rows = table::collect(&criterion, started);
     println!("\n{}", table::format(&mut rows));
-    // What criterion compared each mean with.
     let against = match mode {
         Mode::Compare(name) => format!("baseline `{name}`"),
-        Mode::Run | Mode::Save(_) => "each benchmark's previous run".to_owned(),
+        Mode::Default if use_record => format!("the record for `{machine}`"),
+        _ => "each benchmark's previous run".to_owned(),
     };
     println!(
         "Time: the mean per iteration; ±: half its 95% confidence interval; Change: from {against}."
     );
-    if record {
-        record::record(root, &mut rows, &record::context(root, filter, &against))?;
+    if use_record {
+        warn_if_not_compared(&rows, &store::ids(&recorded));
     }
-    let name = match mode {
-        Mode::Run => return Ok(()),
-        Mode::Save(name) => {
-            println!(
-                "bench: saved baseline `{name}` under {}",
-                criterion.display()
-            );
-            return Ok(());
-        }
-        Mode::Compare(name) => name,
-    };
-    let (worse, better) = classify(changes(&criterion), threshold_pct / 100.0);
+    if record {
+        write_record(
+            root, &criterion, started, filter, &against, &recorded, &rows,
+        )?;
+    }
+    if let Mode::Save(name) = mode {
+        println!(
+            "bench: saved baseline `{name}` under {}",
+            criterion.display()
+        );
+    }
+    let compared = matches!(mode, Mode::Compare(_)) || use_record;
+    if !compared {
+        return Ok(());
+    }
+    let slower = report(&rows, threshold_pct, &against);
+    match mode {
+        Mode::Compare(_) if slower > 0 => Err(format!(
+            "{slower} benchmark(s) slower than {against} by more than {threshold_pct}%"
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// Lists what moved past `threshold_pct`, faster and slower; returns how
+/// many got slower.
+fn report(rows: &[table::Row], threshold_pct: f64, against: &str) -> usize {
+    let moved = rows
+        .iter()
+        .filter_map(|r| {
+            r.change.map(|change| Change {
+                name: r.id.clone(),
+                change,
+            })
+        })
+        .collect();
+    let (worse, better) = classify(moved, threshold_pct / 100.0);
     for c in &better {
         println!("bench: faster  {:+6.1}%  {}", c.change * 100.0, c.name);
     }
@@ -156,13 +192,111 @@ pub(crate) fn bench(
         println!("bench: SLOWER  {:+6.1}%  {}", c.change * 100.0, c.name);
     }
     if worse.is_empty() {
-        println!("bench: nothing slower than `{name}` by more than {threshold_pct}%");
+        println!("bench: nothing slower than {against} by more than {threshold_pct}%");
+    }
+    worse.len()
+}
+
+/// `--record`: this run merged into the machine's record (all of it
+/// replaced after a full run, the measured benchmarks after a filtered
+/// one), its table rebuilt from the merged data, and the whole proposed.
+fn write_record(
+    root: &Path,
+    criterion: &Path,
+    started: SystemTime,
+    filter: Option<&str>,
+    against: &str,
+    recorded: &store::Files,
+    rows: &[table::Row],
+) -> Result<(), String> {
+    let ctx = record::context(root, filter, against);
+    let measured = store::measured(criterion, started);
+    let next = store::merge(recorded, &measured, filter.is_none());
+    let by_id = rows
+        .iter()
+        .filter_map(|r| r.change.map(|c| (r.id.clone(), c)))
+        .collect();
+    let mut record_rows = store::rows(&next, &by_id);
+    let lock = fs::read_to_string(root.join("Cargo.lock")).unwrap_or_default();
+    let meta = store::meta(
+        &ctx.rustc,
+        store::criterion_version(&lock).unwrap_or("?"),
+        &ctx.commit,
+        &ctx.date,
+    );
+    let files = record::changes(&ctx, recorded, &next, &meta, &mut record_rows);
+    record::record(root, &ctx, &files)
+}
+
+/// `cargo bench --workspace --benches -- [FLAG NAME] [FILTER]`.
+fn run_criterion(
+    root: &Path,
+    cargo: &OsString,
+    flag: Option<(&str, &str)>,
+    filter: Option<&str>,
+) -> Result<(), String> {
+    let mut cmd = process::Command::new(cargo);
+    cmd.current_dir(root)
+        .args(["bench", "--workspace", "--benches", "--"]);
+    if let Some((flag, name)) = flag {
+        cmd.args([flag, name]);
+    }
+    if let Some(f) = filter {
+        cmd.arg(f);
+    }
+    let status = cmd
+        .status()
+        .map_err(|e| format!("failed to run cargo bench: {e}"))?;
+    if status.success() {
         Ok(())
     } else {
-        Err(format!(
-            "{} benchmark(s) slower than `{name}` by more than {threshold_pct}%",
-            worse.len()
-        ))
+        Err(format!("cargo bench failed ({status})"))
+    }
+}
+
+/// A record measured with another compiler or criterion doesn't compare
+/// like for like: say so.
+fn warn_if_toolchain_differs(root: &Path, record_dir: &Path) {
+    let meta = fs::read_to_string(record_dir.join(store::META)).unwrap_or_default();
+    let rustc = process::Command::new("rustc")
+        .arg("--version")
+        .current_dir(root)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_default();
+    if let Some(was) = store::meta_value(&meta, "rustc")
+        && was != rustc
+    {
+        println!("bench: warning: the record was measured with {was}, this run with {rustc}");
+    }
+    let lock = fs::read_to_string(root.join("Cargo.lock")).unwrap_or_default();
+    if let (Some(was), Some(now)) = (
+        store::meta_value(&meta, "criterion"),
+        store::criterion_version(&lock),
+    ) && was != now
+    {
+        println!(
+            "bench: warning: the record was saved by criterion {was}, this run uses {now}: check it still compares (docs/benchmarks.md)"
+        );
+    }
+}
+
+/// Criterion skips a baseline it can't read (lenient mode) without a
+/// word: a measured benchmark the record has, but with no change, means
+/// the record wasn't used, most likely because a criterion upgrade
+/// changed its files.
+fn warn_if_not_compared(rows: &[table::Row], recorded: &std::collections::BTreeSet<String>) {
+    let missed: Vec<&str> = rows
+        .iter()
+        .filter(|r| r.change.is_none() && recorded.contains(&r.id))
+        .map(|r| r.id.as_str())
+        .collect();
+    if !missed.is_empty() {
+        println!(
+            "bench: warning: {} benchmark(s) in the record weren't compared with it (e.g. {}): has criterion's file format changed? (docs/benchmarks.md, \"Upgrading criterion\")",
+            missed.len(),
+            missed.first().copied().unwrap_or_default()
+        );
     }
 }
 
