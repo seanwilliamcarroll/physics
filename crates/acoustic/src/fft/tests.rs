@@ -148,3 +148,12 @@ fn the_spectrum_reads_a_sine_in_db_and_silence_at_the_floor() {
         db[32]
     );
 }
+
+/// From the full mutation run of 2026-11-12: a bin with nothing in it is
+/// the floor, not log(0).
+#[test]
+fn silence_is_the_floor_in_every_bin() {
+    let mut sp = Spectrum::<f64>::new(256).unwrap();
+    let db = sp.analyze(&[0.0; 256]).unwrap();
+    assert!(db.iter().all(|&d| d == super::FLOOR_DB), "{:?}", &db[..4]);
+}

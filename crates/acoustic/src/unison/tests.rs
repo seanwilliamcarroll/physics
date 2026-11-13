@@ -160,3 +160,17 @@ fn a_struck_group_reads_back_its_strings() {
         assert!(u.energy() > 0.0, "key {key}: struck strings carry energy");
     }
 }
+
+/// From the full mutation run of 2026-11-12: the outer strings sit a
+/// whole `DETUNE_CENTS` from the note.
+#[test]
+fn three_strings_sit_one_detune_apart() {
+    assert_eq!(
+        [offset(0, 3), offset(1, 3), offset(2, 3)],
+        [-DETUNE_CENTS, 0.0, DETUNE_CENTS]
+    );
+    assert_eq!(
+        [offset(0, 2), offset(1, 2)],
+        [-DETUNE_CENTS / 2.0, DETUNE_CENTS / 2.0]
+    );
+}

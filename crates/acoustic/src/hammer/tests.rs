@@ -2,7 +2,7 @@ use super::fit::{fit, smooth};
 use super::keys::key_coordinate;
 use super::{
     FITTED_AT, FORTISSIMO, Felt, Hammer, PIANISSIMO, SPREAD, contact_target, contact_time, felt,
-    impedance, mezzo_forte,
+    impedance, mean_force, mean_force_slope, mezzo_forte, spring,
 };
 
 #[test]
@@ -155,4 +155,41 @@ fn mezzo_forte_is_the_geometric_mean_of_pp_and_ff() {
         (PIANISSIMO * FORTISSIMO).sqrt().to_bits()
     );
     assert!((mezzo_forte() - 1.581).abs() < 1e-3);
+}
+
+// From the full mutation run of 2026-11-12: the mean force's two branches
+// (the potential's difference quotient, and the spring at the midpoint
+// when the ends are too close for the quotient) were only exercised
+// through whole blows, where Newton's iteration hides a wrong slope.
+
+const FELT: Felt = Felt {
+    mass: 0.01,
+    stiffness: 4e9,
+    exponent: 2.5,
+};
+
+#[test]
+fn with_no_change_the_mean_force_is_the_spring_and_its_slope_half_the_spring_s() {
+    let c = 2e-4;
+    assert_eq!(mean_force(c, c, FELT), spring(c, FELT));
+    let half_v2 = 0.5 * FELT.stiffness * FELT.exponent * c.powf(FELT.exponent - 1.0);
+    let slope = mean_force_slope(c, c, FELT);
+    assert!(
+        (slope / half_v2 - 1.0).abs() < 1e-12,
+        "{slope} vs {half_v2}"
+    );
+}
+
+#[test]
+fn the_slope_is_the_mean_force_s_derivative() {
+    // Far apart (the quotient branch) and close (the midpoint branch).
+    for (c1, c0) in [(3e-4, 1e-4), (2e-4 * (1.0 + 1e-9), 2e-4)] {
+        let h = c1 * 1e-6;
+        let numeric = (mean_force(c1 + h, c0, FELT) - mean_force(c1 - h, c0, FELT)) / (2.0 * h);
+        let slope = mean_force_slope(c1, c0, FELT);
+        assert!(
+            (slope / numeric - 1.0).abs() < 1e-4,
+            "({c1}, {c0}): {slope} vs {numeric}"
+        );
+    }
 }
