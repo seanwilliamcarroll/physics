@@ -2,8 +2,8 @@
 
 Lines and functions the native Rust tests run (`cargo xtask coverage`, `docs/04-testing.md`, "Coverage"). Recorded by `cargo xtask coverage --record`; every later run compares with it.
 
-- **Commit:** `43de4a7` (comments: stale names, dangling references and outdated scope in doc strings (#262))
-- **Date:** 2026-11-13
+- **Commit:** `dd5bd46` (nightly CI: record coverage on the runner (record_coverage), since coverage differs by machine (#271))
+- **Date:** 2026-11-14
 - **Toolchain:** rustc 1.99.1 (58cf8f9c3 2026-10-13)
 
 ## By crate
@@ -13,14 +13,14 @@ Lines and functions the native Rust tests run (`cargo xtask coverage`, `docs/04-
 | `acoustic-web` | 98.82% (251/254) | 100.00% (64/64) |
 | `acoustic` | 92.98% (1575/1694) | 94.02% (236/251) |
 | `engine-web` | 98.08% (971/990) | 98.52% (200/203) |
-| `engine` | 97.34% (2820/2897) | 98.13% (367/374) |
+| `engine` | 97.35% (2828/2905) | 98.13% (368/375) |
 | `math` | 98.17% (161/164) | 97.78% (44/45) |
 | `sand-web` | 100.00% (150/150) | 100.00% (38/38) |
 | `sand` | 100.00% (359/359) | 100.00% (66/66) |
 | `swarm-web` | 99.88% (805/806) | 100.00% (181/181) |
-| `swarm` | 98.93% (1664/1682) | 99.09% (217/219) |
+| `swarm` | 98.63% (1659/1682) | 98.63% (216/219) |
 | `web-common` | 100.00% (69/69) | 100.00% (15/15) |
-| **total** | 97.35% (8825/9065) | 98.08% (1428/1456) |
+| **total** | 97.30% (8828/9073) | 98.01% (1428/1457) |
 
 ## By file
 
@@ -67,7 +67,7 @@ Lines and functions the native Rust tests run (`cargo xtask coverage`, `docs/04-
 | `engine-web/src/exports/settings.rs` | 100.00% (75/75) | 100.00% (19/19) |
 | `engine/src/barnes_hut.rs` | 100.00% (96/96) | 100.00% (10/10) |
 | `engine/src/barnes_hut/tree.rs` | 98.98% (97/98) | 100.00% (10/10) |
-| `engine/src/collision/broadphase.rs` | 100.00% (92/92) | 100.00% (17/17) |
+| `engine/src/collision/broadphase.rs` | 100.00% (100/100) | 100.00% (18/18) |
 | `engine/src/collision/narrowphase.rs` | 99.26% (134/135) | 100.00% (11/11) |
 | `engine/src/collision/narrowphase/properties.rs` | 100.00% (36/36) | 100.00% (5/5) |
 | `engine/src/collision/pocket.rs` | 100.00% (12/12) | 100.00% (4/4) |
@@ -142,7 +142,7 @@ Lines and functions the native Rust tests run (`cargo xtask coverage`, `docs/04-
 | `swarm/src/params.rs` | 100.00% (30/30) | 100.00% (6/6) |
 | `swarm/src/physarum.rs` | 99.50% (200/201) | 100.00% (23/23) |
 | `swarm/src/rules.rs` | 100.00% (160/160) | 100.00% (9/9) |
-| `swarm/src/vicsek.rs` | 99.57% (232/233) | 100.00% (31/31) |
+| `swarm/src/vicsek.rs` | 97.42% (227/233) | 96.77% (30/31) |
 | `web-common/src/boundary.rs` | 100.00% (6/6) | 100.00% (1/1) |
 | `web-common/src/fixed_step.rs` | 100.00% (62/62) | 100.00% (13/13) |
 | `web-common/src/panic_hook.rs` | 100.00% (1/1) | 100.00% (1/1) |
