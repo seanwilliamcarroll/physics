@@ -111,7 +111,7 @@ Native, Apple silicon, 4 s each at 1 kHz. Self time by source line.
 One thing this settled that wasn't about speed: the ants' own logic is
 3% of a colony step (the fields are the cost, so more ants are nearly
 free). And one it sharpened: the broadphase's pair sort, which M6 left
-as an open question (drop it?), was 19% of the broadphase before the fix
+as an open question (drop it?; kept, 2026-11-14: `TASKS.md`), was 19% of the broadphase before the fix
 below and is over half of what remains after it. `sort_pairs` showed as
 2% under "self": the sorting it calls is charged to the sort routine,
 and only "total" adds them up.

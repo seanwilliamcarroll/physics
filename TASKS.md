@@ -260,8 +260,15 @@ testing"); `docs/setup.md`, Node through nvm. Open:
   designs 88 keys' dispersion filters: 1.8 s unoptimized at 48 kHz,
   0.2 s with `acoustic`, `libm` and `math` at `opt-level = 3` (now set
   for dev builds).
-- **Undecided (M6.11):** dropping the broadphase's final pair sort:
-  smaller and faster, but every collision golden changes.
+- **Decided (2026-11-14): the broadphase keeps its final pair sort.**
+  Dropping it would roughly halve the broadphase (358 µs at 4,096
+  circles on the compute node, more than half of it the sort), but the
+  collision scenes have at most about 60 balls, where that's
+  microseconds a frame. Against it: every collision golden would change,
+  and the solver would take contacts in spatial order, which shifts as
+  particles move, with an effect on stacking and settling nobody has
+  measured. Revisit only for a demo with thousands of colliding
+  particles (a granular one).
 
 ---
 

@@ -111,7 +111,9 @@ M6.11 sorts through the engine's one key type to save `.wasm` size
 (`03-wasm-shell.md`), at 13.8, 175 and 908 µs. Profiling then found
 over half of that in the binary searches for neighbor cells; cursors
 that follow the visiting order replaced them (`profiling.md`, "Fixed"):
-6.2, 65 and 303 µs, of which the final pair sort is now over half. Once
+6.2, 65 and 303 µs, of which the final pair sort is now over half
+(kept on purpose, 2026-11-14: it fixes the contacts' order by particle
+index, and the scenes are small; `TASKS.md`). Once
 per substep, so a few hundred balls at 10 substeps stay well under a
 millisecond a frame. It allocates its key list per call; reusing a buffer
 is the first optimization if it ever shows up in a profile.
