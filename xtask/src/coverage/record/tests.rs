@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{Kept, Meta, document, fell, parse, rose};
+use super::{Kept, Meta, badge, document, fell, parse, rose};
 use crate::coverage::Counts;
 
 fn counts(
@@ -111,4 +111,17 @@ fn a_fall_is_more_missed_or_a_new_file_short_of_full() {
     );
     assert_eq!(rose(&record, &now), 0);
     assert_eq!(rose(&record, &[counts("b.rs", 10, 0, 2, 0)]), 1);
+}
+
+#[test]
+fn the_badge_shows_the_share_of_lines_covered_and_its_colour() {
+    assert_eq!(
+        badge(&counts("total", 9065, 240, 1456, 28)),
+        "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"97.4%\",\"color\":\"brightgreen\"}\n"
+    );
+    assert!(badge(&counts("total", 100, 15, 1, 0)).contains("\"85.0%\",\"color\":\"yellow\""));
+    assert!(
+        badge(&counts("total", 0, 0, 0, 0)).contains("\"0.0%\""),
+        "nothing to cover"
+    );
 }

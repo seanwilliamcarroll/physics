@@ -1,5 +1,9 @@
 # physics
 
+[![Nightly](https://github.com/seanwilliamcarroll/physics/actions/workflows/nightly.yml/badge.svg?branch=main)](https://github.com/seanwilliamcarroll/physics/actions/workflows/nightly.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fseanwilliamcarroll%2Fphysics%2Fmain%2Fdocs%2Fcoverage-badge.json)](docs/coverage.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A 2D physics engine in Rust, compiled to WebAssembly, driving interactive
 demos. A learning project first: clarity and correctness of the core matter
 more than feature breadth.

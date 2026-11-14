@@ -227,7 +227,10 @@ fn write_record(
     );
     github::propose(
         root,
-        &[(record::PATH.to_owned(), Some(text))],
+        &[
+            (record::PATH.to_owned(), Some(text)),
+            (record::BADGE.to_owned(), Some(record::badge(total))),
+        ],
         &branch,
         &title,
         &body,
