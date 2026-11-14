@@ -39,8 +39,15 @@ pub(crate) fn propose(
     )
     .ok_or("gh: couldn't read main")?;
     push_branch(root, &main, files, title, branch)?;
-    open_pr(root, branch, title, body)?;
-    println!("recorded in a pull request from {branch}");
+    // The branch is on GitHub either way. A refused pull request (GitHub
+    // Actions may not open one unless the repository allows it) leaves it
+    // there for one command to open, rather than failing the record.
+    match open_pr(root, branch, title, body) {
+        Ok(()) => println!("recorded in a pull request from {branch}"),
+        Err(e) => println!(
+            "recorded on the branch {branch}, but no pull request was opened ({e}); open one with:\n  gh pr create --base main --head {branch} --fill"
+        ),
+    }
     Ok(())
 }
 
