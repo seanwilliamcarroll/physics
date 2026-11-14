@@ -9,6 +9,7 @@ them on another machine, at several CPU levels, and keeps the assembly.
 | File | What |
 |---|---|
 | `run.py` | runs everything (stdlib Python 3) |
+| `wasi-node.mjs` | runs the wasm bench in Node, for the `v8` levels |
 | `patches/b-select.patch` | B: the `d_sq == 0` branch as a select |
 | `patches/c-lanes.patch` | C: two passes; body i's sum in 4 lanes, `pass_one` not inlined |
 | `patches/d-soa.patch` | D2: separate arrays throughout, blocks of 4 as whole-array steps (`sweep`) |
@@ -32,6 +33,7 @@ level:
 | `native` | `-C target-cpu=native` | this CPU; AVX-512 if it has it: 8 f64 / 16 f32 |
 | `wasm` | none, `--target wasm32-wasip1` | none: wasm without simd128 is scalar |
 | `wasm-simd128` | `-C target-feature=+simd128`, wasm | 128-bit: 2 f64 / 4 f32 |
+| `v8`, `v8-simd128` | the same two wasm builds, run in Node | as above |
 
 A plain `cargo build` targets `default`, which is why it's the level that
 matters for shipped code; the others show what wider vectors would buy.
@@ -41,16 +43,29 @@ compiles the wasm to this machine's code as it loads it, with its own
 code generator (Cranelift) rather than LLVM's. That's close to what a
 browser does (V8 has its own too), and it's what the demos run. Their
 asm is wasm text (`f64x2.sqrt`, …), not the machine code wasmtime makes
-from it.
+from it. The `v8` levels, added when `node` is installed, run the same
+`.wasm` files in Node (`node:wasi`), whose V8 is Chrome's engine: the
+same wasm, compiled by a third code generator (TurboFan). Node warns
+that WASI is experimental; that's expected.
 
-On the compute node, in tmux:
+On the compute node, in tmux (an interactive shell, so nvm's `node` is
+found):
 
 ```sh
-tmux new -s gv 'cd ~/physics && git fetch && git checkout experiments-gravity-package && experiments/gravity-vectorize/run.py --perf 2>&1 | tee ~/gv.log; exec bash'
+tmux new -s gv 'cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && experiments/gravity-vectorize/run.py --perf 2>&1 | tee ~/gv.log; exec bash'
 ```
 
-About an hour (4 experiments × 3 levels; each level's first build is
-from scratch). `--quick`, `--levels`, `--experiments` and `--filter`
+On a Mac, with `caffeinate` keeping it awake for as long as the run
+lasts (`-i`: no idle sleep; `-s`: no system sleep on mains power; closing
+the lid still sleeps it). Leave the machine alone meanwhile: anything
+else running shows up in the times.
+
+```sh
+cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && caffeinate -is experiments/gravity-vectorize/run.py --out experiments/gravity-vectorize/results/m4 2>&1 | tee ~/gv-m4.log
+```
+
+Each takes about an hour: 4 experiments × up to 7 levels, each build's
+first compile from scratch. `--quick`, `--levels`, `--experiments` and `--filter`
 narrow it (`run.py --help`).
 
 `--perf` (Linux) adds hardware counters for `pairwise_f64/1024` and
@@ -63,8 +78,8 @@ allows it until the next reboot. perf skips the wasm levels: it can't
 name the code wasmtime generates.
 
 Each run replaces its `--out` folder, so to add levels to an earlier
-run, give the new one its own: e.g. `--levels wasm,wasm-simd128 --out
-experiments/gravity-vectorize/results/llm-wasm`.
+run, give the new one its own: e.g. `--levels v8,v8-simd128 --out
+experiments/gravity-vectorize/results/llm-v8`.
 
 ## Results
 

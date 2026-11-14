@@ -46,6 +46,8 @@ ACCUMULATE = ("accumulate",
 #
 # The wasm levels build for wasm32-wasip1 and run under wasmtime, which
 # compiles the wasm to this machine's code when it loads it (Cranelift).
+# The v8 levels run the same .wasm in Node, whose V8 compiles it with its
+# own optimizing compiler (TurboFan), as Chrome does for the demos.
 # wasm has one vector width, 128 bits (2 f64 / 4 f32), and only with
 # simd128 enabled; without it, everything is scalar.
 LEVELS = {
@@ -54,12 +56,24 @@ LEVELS = {
     "native": "-C target-cpu=native",
     "wasm": "",
     "wasm-simd128": "-C target-feature=+simd128",
+    "v8": "",
+    "v8-simd128": "-C target-feature=+simd128",
 }
 WASM_TARGET = "wasm32-wasip1"
 
 
 def is_wasm(level):
-    return level.startswith("wasm")
+    return level.startswith(("wasm", "v8"))
+
+
+def is_v8(level):
+    """The same .wasm as the wasm levels, run by Node (V8) instead of wasmtime."""
+    return level.startswith("v8")
+
+
+def build_dir(work, level):
+    """One target dir per build: the v8 levels share the wasm levels'."""
+    return work / ("target-" + level.replace("v8", "wasm"))
 
 
 def target_args(level):
@@ -97,8 +111,12 @@ def bench(tree, env, level, out, args):
     if is_wasm(level):
         # wasm sees only the directories and variables it's given.
         exe = bench_exe(tree, env, level)
-        run(["wasmtime", "run", "--dir", f"{crit}::/criterion",
-             "--env", "CRITERION_HOME=/criterion", exe, "--bench"] + flags, env=env)
+        if is_v8(level):
+            run(["node", str(HERE / "wasi-node.mjs"), exe, str(crit), "--bench"] + flags,
+                env=env)
+        else:
+            run(["wasmtime", "run", "--dir", f"{crit}::/criterion",
+                 "--env", "CRITERION_HOME=/criterion", exe, "--bench"] + flags, env=env)
     else:
         run(["cargo", "bench", "-p", "engine", "--bench", "step", "--"] + flags,
             cwd=tree, env=dict(env, CRITERION_HOME=str(crit)))
@@ -242,6 +260,10 @@ def machine_info():
     else:
         cpu = run(["sysctl", "-n", "machdep.cpu.brand_string"], capture=True, check=False)
         lines.append(f"cpu: {cpu.stdout.strip()}")
+    for tool, cmd in (("wasmtime", ["wasmtime", "--version"]),
+                      ("node", ["node", "-p", "`node ${process.version}, V8 ${process.versions.v8}`"])):
+        if shutil.which(tool):
+            lines.append(run(cmd, capture=True, check=False).stdout.strip())
     rustc = run(["rustc", "-vV"], cwd=REPO, capture=True)
     lines.append(rustc.stdout.strip())
     return "\n".join(lines) + "\n"
@@ -345,6 +367,8 @@ def main():
     levels = ["default", "x86-64-v3", "native"] if is_x86 else ["default", "native"]
     if shutil.which("wasmtime"):
         levels += ["wasm", "wasm-simd128"]
+    if shutil.which("node"):
+        levels += ["v8", "v8-simd128"]
     p.add_argument("--levels", default=",".join(levels),
                    help="comma-separated CPU levels: " + ", ".join(LEVELS))
     p.add_argument("--experiments", default=",".join(EXPERIMENTS),
@@ -389,10 +413,11 @@ def main():
                 # dependency, so levels don't share. Experiments do (each
                 # worktree's engine is its own package; deps are reused).
                 env = dict(os.environ, RUSTFLAGS=LEVELS[level],
-                           CARGO_TARGET_DIR=str(work / f"target-{level}"))
+                           CARGO_TARGET_DIR=str(build_dir(work, level)))
                 print(f"\n=== {name} at {level} ===", flush=True)
                 results[(level, name)] = bench(tree, env, level, out / level / name, args)
-                counts.update(dump_asm(tree, env, name, level, out / "asm"))
+                if not is_v8(level):  # same wasm as the wasm level's
+                    counts.update(dump_asm(tree, env, name, level, out / "asm"))
                 # perf can't name wasmtime's generated code, so no wasm.
                 if args.perf and not is_wasm(level):
                     perf[(level, name)] = perf_run(tree, env, name, level, out, args)
