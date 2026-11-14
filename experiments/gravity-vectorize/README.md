@@ -13,6 +13,7 @@ them on another machine, at several CPU levels, and keeps the assembly.
 | `patches/b-select.patch` | B: the `d_sq == 0` branch as a select |
 | `patches/c-lanes.patch` | C: two passes; body i's sum in 4 lanes, `pass_one` not inlined |
 | `patches/d-soa.patch` | D2: separate arrays throughout, blocks of 4 as whole-array steps (`sweep`) |
+| `patches/d-lanes.patch` | D with the block width set at build time (`GRAVITY_LANES`): experiments `d-l2`, `d-l4`, `d-l8`, `d-l16`. `d-l4` gives D2's bits |
 
 `base` is the commit the patches apply to, `ea2169b` (main after #273).
 Experiment A's code was lost; its M4 result is in `docs/experiments.md`.
@@ -67,8 +68,9 @@ else running shows up in the times.
 cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/gravity-vectorize/run.py --out experiments/gravity-vectorize/results/m4 2>&1 | tee ~/gv-m4.log
 ```
 
-Each takes about an hour: 4 experiments × up to 7 levels, each build's
-first compile from scratch. `--quick`, `--levels`, `--experiments` and `--filter`
+A full run is 8 experiments × up to 7 levels: about two hours. Fewer
+with `--experiments`, e.g. only the lane sweep against base and C:
+`--experiments base,c-lanes,d-l2,d-l4,d-l8,d-l16`. `--quick`, `--levels`, `--experiments` and `--filter`
 narrow it (`run.py --help`).
 
 `--perf` (Linux) adds hardware counters for `pairwise_f64/1024` and

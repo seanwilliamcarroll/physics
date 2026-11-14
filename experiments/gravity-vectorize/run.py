@@ -37,6 +37,12 @@ EXPERIMENTS = {
     "c-lanes": ("c-lanes.patch", [("pass_one", "engine::force::pass_one::<{s}>")]),
     "d-soa": ("d-soa.patch", [("sweep", "engine::force::sweep::<{s}>")]),
 }
+# D with LANES set at build time (GRAVITY_LANES): which width suits which
+# machine. d-l4 is d-soa's arithmetic (same bits) with map2 as a loop.
+for _lanes in (2, 4, 8, 16):
+    EXPERIMENTS[f"d-l{_lanes}"] = ("d-lanes.patch", [("sweep", "engine::force::sweep::<{s}>")])
+# Build-time environment per experiment.
+EXPERIMENT_ENV = {f"d-l{n}": {"GRAVITY_LANES": str(n)} for n in (2, 4, 8, 16)}
 ACCUMULATE = ("accumulate",
               "<engine::force::PairwiseGravity<{s}> as engine::force::Force<{s}>>::accumulate")
 
@@ -425,7 +431,8 @@ def main():
                 # dependency, so levels don't share. Experiments do (each
                 # worktree's engine is its own package; deps are reused).
                 env = dict(os.environ, RUSTFLAGS=LEVELS[level],
-                           CARGO_TARGET_DIR=str(build_dir(work, level)))
+                           CARGO_TARGET_DIR=str(build_dir(work, level)),
+                           **EXPERIMENT_ENV.get(name, {}))
                 print(f"\n=== {name} at {level} ===", flush=True)
                 results[(level, name)] = bench(tree, env, level, out / level / name, args)
                 if not is_v8(level):  # same wasm as the wasm level's
