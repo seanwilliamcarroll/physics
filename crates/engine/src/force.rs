@@ -116,6 +116,9 @@ impl<S: Scalar> Force<S> for PairwiseGravity<S> {
             core::mem::take(&mut acc_rest).split_first_mut(),
             body_rest.split_first(),
         ) {
+            // Body i's sum in a local, not through `a_i` in memory: the same
+            // additions in the same order (the bits don't change).
+            let mut sum_i = *a_i;
             for (a_j, &(x_j, m_j, w_j)) in acc_tail.iter_mut().zip(body_tail) {
                 let r = x_j - x_i;
                 let d_sq = r.length_sq() + self.softening_sq;
@@ -127,9 +130,10 @@ impl<S: Scalar> Force<S> for PairwiseGravity<S> {
                 // opposite by construction. Accelerations are F * w, so a
                 // static body (w = 0) isn't moved.
                 let f = r * (self.g_const * m_i * m_j / (d_sq * d_sq.sqrt()));
-                *a_i += f * w_i;
+                sum_i += f * w_i;
                 *a_j -= f * w_j;
             }
+            *a_i = sum_i;
             acc_rest = acc_tail;
             body_rest = body_tail;
         }
