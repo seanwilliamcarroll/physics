@@ -285,12 +285,13 @@ def machine_info():
     return "\n".join(lines) + "\n"
 
 
-def write_summary(out, results, counts, levels, names, perf):
+def write_summary(out, results, counts, levels, names, perf,
+                  statistic="mean"):
     benches = sorted({b for r in results.values() for b in r},
                      key=lambda b: (b.split("/")[0], int(b.split("/")[1])))
     with open(out / "results.csv", "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["level", "experiment", "bench", "mean_ns"])
+        w.writerow(["level", "experiment", "bench", f"{statistic}_ns"])
         for (level, name), times in sorted(results.items()):
             for b, t in sorted(times.items()):
                 w.writerow([level, name, b, f"{t:.1f}"])
@@ -301,8 +302,12 @@ def write_summary(out, results, counts, levels, names, perf):
                 return f"{ns / scale:.3g} {unit}"
         return f"{ns:.3g} ns"
 
-    md = ["# Gravity experiments", "", "```", machine_info().strip(), "```", ""]
-    md += ["Mean time; in brackets, the change against `base` at the same level.", ""]
+    machine = (out / "machine.txt").read_text().strip()
+    md = ["# Gravity experiments", "", "```", machine, "```", ""]
+    md += [{"mean": "Mean time",
+            "estimate": "Time as criterion printed it (its point estimate; rebuilt "
+                        "from the run's log with `--from-log`)"}[statistic]
+           + "; in brackets, the change against `base` at the same level.", ""]
     for level in levels:
         md += [f"## {level} (`RUSTFLAGS={LEVELS[level]!r}`)", ""]
         md += ["| bench | " + " | ".join(names) + " |",
@@ -376,6 +381,35 @@ def write_summary(out, results, counts, levels, names, perf):
     (out / "summary.md").write_text("\n".join(md) + "\n")
 
 
+UNITS = {"ps": 1e-3, "ns": 1.0, "µs": 1e3, "us": 1e3, "ms": 1e6, "s": 1e9}
+HEADER = re.compile(r"^=== (\S+) at (\S+) ===$")
+TIME = re.compile(r"^(pairwise_f(?:32|64)/\d+)\s+time:\s+\[\S+ \S+ (\S+) (\S+) ")
+
+
+def from_log(log, out):
+    """Rebuild out's summary from a run's log: criterion's printed estimate
+    for every bench, the asm counts and perf stats from the files in out."""
+    results, levels, names = {}, [], []
+    key = None
+    for line in log.read_text().splitlines():
+        if m := HEADER.match(line):
+            name, level = m.groups()
+            key = (level, name)
+            levels += [level] if level not in levels else []
+            names += [name] if name not in names else []
+        elif (m := TIME.match(line)) and key:
+            bench, value, unit = m.groups()
+            results.setdefault(key, {})[bench] = float(value) * UNITS[unit]
+    counts = {f.name: count_ops(f.read_text()) for f in sorted((out / "asm").glob("*.s"))}
+    perf = {}
+    for f in sorted((out / "perf").glob("*.stat.csv")) if (out / "perf").exists() else []:
+        level, name, bench = f.name.removesuffix(".stat.csv").split("--")
+        bench = "/".join(bench.rsplit("-", 1))  # pairwise_f64-1024
+        perf.setdefault((level, name), {})[bench] = parse_stat(f.read_text())
+    write_summary(out, results, counts, levels, names, perf, statistic="estimate")
+    print(f"Rebuilt from {log}: {out / 'summary.md'}")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -398,8 +432,13 @@ def main():
                    help="comma-separated bench ids for --perf")
     p.add_argument("--perf-time", type=int, default=5,
                    help="seconds per bench under perf (criterion's --profile-time)")
+    p.add_argument("--from-log", type=Path,
+                   help="rebuild --out's summary from a run's log (its criterion "
+                        "lines), the asm and perf files already in --out")
     p.add_argument("--out", type=Path, default=HERE / "results" / socket.gethostname().split(".")[0])
     args = p.parse_args()
+    if args.from_log:
+        return from_log(args.from_log, args.out.resolve())
     levels, names = args.levels.split(","), args.experiments.split(",")
     for x in levels:
         if x not in LEVELS:
@@ -412,7 +451,9 @@ def main():
         check_node()
     if args.perf and not shutil.which("perf"):
         sys.exit("--perf: perf isn't installed")
-    out = args.out
+    # Absolute: criterion runs from the crate's folder in the worktree, so a
+    # relative path would land there (and be deleted with the worktree).
+    out = args.out.resolve()
     if out.exists():
         shutil.rmtree(out)
     (out / "asm").mkdir(parents=True)

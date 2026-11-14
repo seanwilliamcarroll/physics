@@ -1,0 +1,333 @@
+ Percent |	Source code & Disassembly of step-35121908f1e82308 for cpu/cycles/P (15248 samples, percent: local period)
+--------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000db050 <engine::force::sweep::<f32>>:
+    0.01 :   db050:  push   rbp
+    0.01 :   db051:  push   r15
+    0.01 :   db053:  push   r14
+    0.01 :   db055:  push   r13
+    0.00 :   db057:  push   r12
+    0.00 :   db059:  push   rbx
+    0.01 :   db05a:  sub    rsp,0x38
+    0.00 :   db05e:  mov    r11,QWORD PTR [rsp+0x88]
+    0.01 :   db066:  mov    r10,QWORD PTR [rsp+0x78]
+    0.01 :   db06b:  mov    r14,rcx
+    0.02 :   db06e:  mov    rcx,r9
+    0.07 :   db071:  mov    QWORD PTR [rsp-0x70],r14
+    0.01 :   db076:  shr    rcx,0x4
+    0.00 :   db07a:  shr    r14,0x4
+    0.03 :   db07e:  mov    r15d,r9d
+    0.03 :   db081:  mov    QWORD PTR [rsp-0x68],rdi
+    0.01 :   db086:  mov    QWORD PTR [rsp-0x80],r9
+    0.02 :   db08b:  and    r15d,0xf
+    0.01 :   db08f:  mov    rbx,QWORD PTR [rsp+0x98]
+    0.01 :   db097:  mov    r12,QWORD PTR [rsp+0x90]
+    0.01 :   db09f:  mov    rbp,QWORD PTR [rsp+0x80]
+    0.01 :   db0a7:  vxorps xmm1,xmm1,xmm1
+    0.01 :   db0ab:  vmovups YMMWORD PTR [rsp-0x40],ymm1
+    0.02 :   db0b1:  vmovups YMMWORD PTR [rsp-0x1c],ymm1
+    0.01 :   db0b7:  vmovups YMMWORD PTR [rsp-0x5c],ymm1
+    0.01 :   db0bd:  vmovups YMMWORD PTR [rsp],ymm1
+    0.03 :   db0c2:  mov    QWORD PTR [rsp-0x78],rsi
+    0.01 :   db0c7:  mov    r13d,r10d
+    0.00 :   db0ca:  mov    eax,r11d
+    0.00 :   db0cd:  mov    r9,r11
+    0.01 :   db0d0:  mov    rdi,r10
+    0.01 :   db0d3:  and    r13d,0xf
+    0.00 :   db0d7:  shr    rdi,0x4
+    0.01 :   db0db:  and    eax,0xf
+    0.01 :   db0de:  shr    r9,0x4
+    0.01 :   db0e2:  cmp    rcx,r14
+    0.00 :   db0e5:  mov    r11,QWORD PTR [rsp+0xa8]
+    0.01 :   db0ed:  cmovb  r14,rcx
+    0.00 :   db0f1:  cmp    rdi,r14
+    0.01 :   db0f4:  cmovb  r14,rdi
+    0.01 :   db0f8:  mov    rdi,rbx
+    0.01 :   db0fb:  cmp    r9,r14
+    0.01 :   db0fe:  cmovb  r14,r9
+    0.02 :   db102:  shr    rdi,0x4
+    0.01 :   db106:  shr    r11,0x4
+    0.01 :   db10a:  cmp    r11,rdi
+    0.00 :   db10d:  cmovae r11,rdi
+    0.01 :   db111:  mov    rdi,QWORD PTR [rsp+0x70]
+    0.00 :   db116:  cmp    r11,r14
+    0.02 :   db119:  cmovae r11,r14
+    0.03 :   db11d:  mov    r14,QWORD PTR [rsp+0xa0]
+    0.05 :   db125:  test   r11,r11
+    0.00 :   db128:  je     db4ee <engine::force::sweep::<f32>+0x49e>
+    0.01 :   db12e:  vmovsd xmm7,QWORD PTR [rsi]
+    0.01 :   db132:  vbroadcastss ymm4,DWORD PTR [rsi+0x8]
+    0.02 :   db138:  vpmovsxbd xmm12,DWORD PTR [rip+0xfffffffffff56b37]        # 31c78 <__abi_tag+0x3197c>
+    0.02 :   db141:  vbroadcasti32x4 zmm13,XMMWORD PTR [rip+0xfffffffffff592d5]        # 34420 <__abi_tag+0x34124>
+    0.03 :   db14b:  vmovaps ymm15,YMMWORD PTR [rip+0xfffffffffff5a2ed]        # 35440 <criterion::plot::gnuplot_backend::summary::COMPARISON_COLORS+0xa0>
+    0.01 :   db153:  vmovaps zmm19,ZMMWORD PTR [rip+0xfffffffffff52363]        # 2d4c0 <__abi_tag+0x2d1c4>
+    0.02 :   db15d:  mov    cx,0x8001
+    0.03 :   db161:  vbroadcastss ymm3,xmm0
+    0.00 :   db166:  shl    r11,0x6
+    0.01 :   db16a:  vmovaps XMMWORD PTR [rsp+0x20],xmm0
+    0.00 :   db170:  vxorps xmm9,xmm9,xmm9
+    0.00 :   db175:  xor    r9d,r9d
+    0.01 :   db178:  vxorps xmm20,xmm20,xmm20
+    0.01 :   db17e:  vxorps xmm21,xmm21,xmm21
+    0.01 :   db184:  vxorps xmm22,xmm22,xmm22
+    0.00 :   db18a:  vxorps xmm16,xmm16,xmm16
+    0.03 :   db190:  vxorps xmm17,xmm17,xmm17
+    0.01 :   db196:  vxorps xmm18,xmm18,xmm18
+    0.01 :   db19c:  vxorps xmm14,xmm14,xmm14
+    0.03 :   db1a1:  kmovd  k1,ecx
+    0.02 :   db1a5:  mov    cx,0x8000
+    0.03 :   db1a9:  kmovd  k2,ecx
+    0.00 :   db1ad:  vshufps xmm2,xmm7,xmm7,0x41
+    0.02 :   db1b2:  vshufps xmm5,xmm7,xmm7,0x55
+    0.01 :   db1b7:  vbroadcastss ymm6,xmm7
+    0.01 :   db1bc:  vmovshdup xmm7,xmm7
+    0.02 :   db1c0:  vbroadcastss ymm8,xmm7
+    0.01 :   db1c5:  data16 cs nop WORD PTR [rax+rax*1+0x0]
+    0.94 :   db1d0:  vmovups ymm23,YMMWORD PTR [rdx+r9*1+0x4]
+    0.91 :   db1db:  vmovups ymm24,YMMWORD PTR [r8+r9*1+0x4]
+    0.87 :   db1e6:  vmovups zmm0{k1}{z},ZMMWORD PTR [rdi+r9*1]
+    0.85 :   db1ed:  vsubps ymm26,ymm24,ymm8
+    0.88 :   db1f3:  vsubps ymm23,ymm23,ymm6
+    0.99 :   db1f9:  vmulps ymm24,ymm23,ymm23
+    0.90 :   db1ff:  vmulps ymm25,ymm26,ymm26
+    0.93 :   db205:  vaddps ymm24,ymm24,ymm25
+    0.71 :   db20b:  vmulps ymm25,ymm4,YMMWORD PTR [rdi+r9*1+0x4]
+    0.64 :   db216:  vaddps ymm24,ymm3,ymm24
+    0.68 :   db21c:  vsqrtps ymm27,ymm24
+    0.83 :   db222:  vcmpneqps k3,ymm24,ymm1
+    0.62 :   db229:  vmulps ymm27,ymm24,ymm27
+    1.33 :   db22f:  vmovups xmm24,XMMWORD PTR [rdx+r9*1+0x24]
+    0.60 :   db23a:  vdivps ymm27{k3}{z},ymm25,ymm27
+    0.89 :   db240:  vmovups xmm25,XMMWORD PTR [r8+r9*1+0x24]
+    1.00 :   db24b:  vsubps xmm24,xmm24,xmm6
+    1.05 :   db251:  vsubps xmm28,xmm25,xmm5
+    1.02 :   db257:  vmulps xmm25,xmm24,xmm24
+    1.04 :   db25d:  vmulps xmm29,xmm28,xmm28
+    1.04 :   db263:  vmulps ymm23,ymm23,ymm27
+    1.16 :   db269:  vmulps ymm27,ymm26,ymm27
+    1.17 :   db26f:  vaddps xmm25,xmm25,xmm29
+    0.59 :   db275:  vmulps xmm29,xmm4,XMMWORD PTR [rdi+r9*1+0x24]
+    0.80 :   db280:  vaddps ymm16,ymm27,ymm16
+    0.82 :   db286:  vaddps ymm20,ymm23,ymm20
+    0.73 :   db28c:  vaddps xmm25,xmm3,xmm25
+    0.83 :   db292:  vsqrtps xmm30,xmm25
+    1.40 :   db298:  vcmpneqps k3,xmm25,xmm9
+    0.87 :   db29f:  vmulps xmm30,xmm25,xmm30
+    1.02 :   db2a5:  vmovsd xmm25,QWORD PTR [rdx+r9*1+0x34]
+    0.98 :   db2b0:  vdivps xmm29{k3}{z},xmm29,xmm30
+    0.83 :   db2b6:  vmovsd xmm30,QWORD PTR [r8+r9*1+0x34]
+    0.92 :   db2c1:  vsubps xmm25,xmm25,xmm6
+    0.84 :   db2c7:  vsubps xmm30,xmm30,xmm7
+    0.93 :   db2cd:  vmulps xmm31,xmm25,xmm25
+    0.96 :   db2d3:  vmulps xmm10,xmm30,xmm30
+    0.84 :   db2d9:  vmulps xmm24,xmm24,xmm29
+    0.82 :   db2df:  vmulps xmm28,xmm28,xmm29
+    0.78 :   db2e5:  vaddps xmm10,xmm31,xmm10
+    0.82 :   db2eb:  vaddps xmm17,xmm28,xmm17
+    0.83 :   db2f1:  vaddps xmm21,xmm24,xmm21
+    0.83 :   db2f7:  vaddps xmm10,xmm10,xmm3
+    0.79 :   db2fb:  vsqrtps xmm31,xmm10
+    0.92 :   db301:  vcmpneqps k3,xmm10,xmm9
+    0.88 :   db308:  vmulps xmm31,xmm10,xmm31
+    0.64 :   db30e:  vmovsd xmm10,QWORD PTR [rdi+r9*1+0x34]
+    0.63 :   db315:  vmulps xmm10,xmm10,xmm4
+    0.58 :   db319:  vdivps xmm10{k3}{z},xmm10,xmm31
+    0.62 :   db31f:  vmulps xmm26,xmm30,xmm10
+    0.66 :   db325:  vmulps xmm25,xmm25,xmm10
+    0.90 :   db32b:  vmovss xmm10,DWORD PTR [r8+r9*1+0x3c]
+    0.58 :   db332:  vinsertps xmm10,xmm10,DWORD PTR [rdx+r9*1+0x3c],0x10
+    1.06 :   db33a:  vinsertps xmm10,xmm10,DWORD PTR [rdx+r9*1],0x20
+    1.12 :   db341:  vinsertps xmm10,xmm10,DWORD PTR [r8+r9*1],0x30
+    1.05 :   db348:  vaddps xmm22,xmm25,xmm22
+    0.99 :   db34e:  vaddps xmm18,xmm26,xmm18
+    1.09 :   db354:  vsubps xmm10,xmm10,xmm2
+    1.18 :   db358:  vmulps xmm29,xmm10,xmm10
+    0.95 :   db35e:  vshufps xmm30,xmm29,xmm29,0xe6
+    1.01 :   db365:  vshufps xmm29,xmm29,xmm29,0xe3
+    1.01 :   db36c:  vaddps xmm29,xmm30,xmm29
+    0.88 :   db372:  vextractf64x4 ymm30,zmm0,0x1
+    0.93 :   db379:  vpermpd ymm11,ymm30,0xff
+    0.98 :   db380:  vpmovsxbd xmm30,DWORD PTR [rip+0xfffffffffff57296]        # 32620 <__abi_tag+0x32324>
+    0.84 :   db38a:  vaddps xmm29,xmm3,xmm29
+    0.89 :   db390:  vblendps xmm0,xmm0,xmm11,0x2
+    0.92 :   db396:  vmulps xmm0,xmm0,xmm4
+    0.94 :   db39a:  vsqrtps xmm11,xmm29
+    0.70 :   db3a0:  vcmpneqps k3,xmm29,xmm9
+    0.58 :   db3a7:  vmulps xmm11,xmm29,xmm11
+    0.57 :   db3ad:  vdivps xmm0{k3}{z},xmm0,xmm11
+    0.69 :   db3b3:  vbroadcastsd ymm11,xmm25
+    0.63 :   db3b9:  vshufps xmm0,xmm0,xmm0,0x5
+    1.28 :   db3be:  vmulps xmm29,xmm10,xmm0
+    0.66 :   db3c4:  vshuff64x2 ymm10,ymm23,ymm24,0x1
+    1.18 :   db3cb:  vmovups zmm0,ZMMWORD PTR [r12+r9*1]
+    1.07 :   db3d2:  vshufpd ymm10,ymm10,ymm24,0xd
+    1.10 :   db3d9:  vblendpd ymm10,ymm10,ymm11,0x8
+    1.08 :   db3df:  vpermpd ymm11,ymm23,0x94
+    1.12 :   db3e6:  vaddps xmm14,xmm29,xmm14
+    1.06 :   db3ec:  vinsertf64x4 zmm10,zmm11,ymm10,0x1
+    0.95 :   db3f3:  vmovaps xmm11,xmm29
+    1.16 :   db3f9:  vpermt2ps xmm11,xmm30,xmm23
+    0.90 :   db3ff:  vmovaps zmm30,ZMMWORD PTR [rip+0xfffffffffff52077]        # 2d480 <__abi_tag+0x2d184>
+    0.81 :   db409:  vpermt2ps zmm10,zmm30,zmm11
+    0.82 :   db40f:  vmovups zmm11,ZMMWORD PTR [rbp+r9*1+0x0]
+    0.88 :   db417:  vextractf32x4 xmm30,ymm27,0x1
+    0.90 :   db41e:  vmulps zmm10,zmm10,zmm11
+    0.99 :   db424:  vpermt2ps ymm27,ymm15,ymm11
+    0.96 :   db42a:  vpermt2ps zmm11,zmm19,zmm29
+    1.03 :   db430:  vsubps zmm0,zmm0,zmm10
+    1.30 :   db436:  vmovaps xmm10,xmm28
+    1.20 :   db43c:  vpermt2ps zmm28,zmm13,zmm26
+    1.31 :   db442:  vpermt2ps xmm10,xmm12,xmm30
+    2.75 :   db448:  vmovups ZMMWORD PTR [r12+r9*1],zmm0
+    1.37 :   db44f:  vbroadcastss zmm28{k2},xmm29
+    1.22 :   db455:  vinsertf64x4 zmm0,zmm28,ymm27,0x0
+    1.20 :   db45c:  vinsertf32x4 zmm0,zmm0,xmm10,0x2
+    0.58 :   db463:  vmulps zmm0,zmm0,zmm11
+    0.47 :   db469:  vmovups zmm11,ZMMWORD PTR [r14+r9*1]
+    0.55 :   db470:  vsubps zmm0,zmm11,zmm0
+    1.09 :   db476:  vmovups ZMMWORD PTR [r14+r9*1],zmm0
+    1.07 :   db47d:  add    r9,0x40
+    0.56 :   db481:  cmp    r11,r9
+    0.00 :   db484:  jne    db1d0 <engine::force::sweep::<f32>+0x180>
+    0.04 :   db48a:  vmovaps xmm0,XMMWORD PTR [rsp+0x20]
+    0.06 :   db490:  vshufpd xmm2,xmm14,xmm14,0x1
+    0.04 :   db496:  vshufps xmm1,xmm14,xmm14,0xff
+    0.07 :   db49c:  vmovups YMMWORD PTR [rsp-0x5c],ymm20
+    0.09 :   db4a7:  vmovups XMMWORD PTR [rsp-0x3c],xmm21
+    0.08 :   db4b2:  vmovlps QWORD PTR [rsp-0x2c],xmm22
+    0.01 :   db4bd:  vmovups YMMWORD PTR [rsp-0x1c],ymm16
+    0.01 :   db4c8:  vmovups XMMWORD PTR [rsp+0x4],xmm17
+    0.01 :   db4d3:  vmovlps QWORD PTR [rsp+0x14],xmm18
+    0.02 :   db4de:  vextractps DWORD PTR [rsp-0x24],xmm14,0x1
+    0.02 :   db4e6:  vmovss DWORD PTR [rsp+0x1c],xmm14
+    0.03 :   db4ec:  jmp    db4f6 <engine::force::sweep::<f32>+0x4a6>
+    0.00 :   db4ee:  vxorps xmm1,xmm1,xmm1
+    0.00 :   db4f2:  vxorpd xmm2,xmm2,xmm2
+    0.03 :   db4f6:  mov    r11,QWORD PTR [rsp-0x70]
+    0.01 :   db4fb:  vmovss DWORD PTR [rsp-0x60],xmm2
+    0.03 :   db501:  vmovss DWORD PTR [rsp-0x20],xmm1
+    0.01 :   db507:  mov    ecx,r11d
+    0.00 :   db50a:  and    ecx,0xf
+    0.01 :   db50d:  cmp    r15,rcx
+    0.03 :   db510:  cmovb  rcx,r15
+    0.03 :   db514:  cmp    r13,rcx
+    0.01 :   db517:  cmovb  rcx,r13
+    0.00 :   db51b:  mov    r13,QWORD PTR [rsp+0xa8]
+    0.02 :   db523:  cmp    rax,rcx
+    0.01 :   db526:  cmovb  rcx,rax
+    0.01 :   db52a:  mov    eax,ebx
+    0.00 :   db52c:  and    eax,0xf
+    0.01 :   db52f:  mov    r9d,r13d
+    0.00 :   db532:  and    r9d,0xf
+    0.01 :   db536:  cmp    r9,rax
+    0.01 :   db539:  cmovb  rax,r9
+    0.01 :   db53d:  cmp    rax,rcx
+    0.01 :   db540:  cmovae rax,rcx
+    0.01 :   db544:  test   rax,rax
+    0.00 :   db547:  je     db690 <engine::force::sweep::<f32>+0x640>
+    0.01 :   db54d:  dec    rax
+    0.02 :   db550:  mov    rsi,QWORD PTR [rsp-0x80]
+    0.01 :   db555:  movabs rcx,0x1ffffffffffffff0
+    0.00 :   db55f:  mov    r15,QWORD PTR [rsp+0x88]
+    0.01 :   db567:  vpbroadcastq zmm1,rax
+    0.02 :   db56d:  vpcmpnltuq k0,zmm1,ZMMWORD PTR [rip+0xfffffffffff51f88]        # 2d500 <__abi_tag+0x2d204>
+    0.01 :   db578:  vpcmpnltuq k1,zmm1,ZMMWORD PTR [rip+0xfffffffffff51fbd]        # 2d540 <__abi_tag+0x2d244>
+    0.01 :   db583:  mov    rax,QWORD PTR [rsp-0x78]
+    0.01 :   db588:  and    r11,rcx
+    0.00 :   db58b:  and    r10,rcx
+    0.01 :   db58e:  lea    r9,[rdx+r11*4]
+    0.00 :   db592:  lea    rdi,[rdi+r10*4]
+    0.01 :   db596:  and    rsi,rcx
+    0.00 :   db599:  and    r15,rcx
+    0.01 :   db59c:  movabs rcx,0xffffffffffffff0
+    0.01 :   db5a6:  lea    r8,[r8+rsi*4]
+    0.01 :   db5aa:  lea    r10,[rbp+r15*4+0x0]
+    0.01 :   db5af:  and    rbx,rcx
+    0.01 :   db5b2:  and    r13,rcx
+    0.00 :   db5b5:  lea    rdx,[r12+rbx*4]
+    0.01 :   db5b9:  lea    rcx,[r14+r13*4]
+    0.01 :   db5bd:  kunpckbw k1,k1,k0
+    0.01 :   db5c1:  vmovups zmm1{k1}{z},ZMMWORD PTR [r8]
+    0.02 :   db5c7:  vmovups zmm4{k1}{z},ZMMWORD PTR [r9]
+    0.00 :   db5cd:  vmovups zmm2{k1}{z},ZMMWORD PTR [rdi]
+    0.01 :   db5d3:  vmovups zmm3{k1}{z},ZMMWORD PTR [r10]
+    0.01 :   db5d9:  vsubps zmm7,zmm4,DWORD BCST [rax]
+    0.00 :   db5df:  vsubps zmm1,zmm1,DWORD BCST [rax+0x4]
+    0.01 :   db5e6:  vbroadcastss zmm4,xmm0
+    0.03 :   db5ec:  vmulps zmm2,zmm2,DWORD BCST [rax+0x8]
+    0.01 :   db5f3:  vmulps zmm5,zmm7,zmm7
+    0.03 :   db5f9:  vmulps zmm6,zmm1,zmm1
+    0.01 :   db5ff:  vaddps zmm5,zmm5,zmm6
+    0.01 :   db605:  vxorps xmm6,xmm6,xmm6
+    0.03 :   db609:  vaddps zmm4,zmm4,zmm5
+    0.01 :   db60f:  vsqrtps zmm5,zmm4
+    0.01 :   db615:  vcmpneqps k2,zmm4,zmm6
+    0.00 :   db61c:  vmulps zmm5,zmm4,zmm5
+    0.01 :   db622:  vdivps zmm2{k2}{z},zmm2,zmm5
+    0.01 :   db628:  vmovups zmm5{k1}{z},ZMMWORD PTR [rdx]
+    0.01 :   db62e:  vmulps zmm0,zmm7,zmm2
+    0.01 :   db634:  vmulps zmm1,zmm1,zmm2
+    0.05 :   db63a:  vmulps zmm4,zmm3,zmm0
+    0.01 :   db640:  vmulps zmm2,zmm3,zmm1
+    0.01 :   db646:  vmovups zmm3{k1}{z},ZMMWORD PTR [rcx]
+    0.03 :   db64c:  vaddps zmm0,zmm0,ZMMWORD PTR [rsp-0x60]
+    0.03 :   db657:  vaddps zmm1,zmm1,ZMMWORD PTR [rsp-0x20]
+    0.01 :   db662:  vsubps zmm4,zmm5,zmm4
+    0.03 :   db668:  vmovups ZMMWORD PTR [rdx]{k1},zmm4
+    0.03 :   db66e:  vsubps zmm2,zmm3,zmm2
+    0.03 :   db674:  vmovups ZMMWORD PTR [rsp-0x60]{k1},zmm0
+    0.08 :   db67f:  vmovups ZMMWORD PTR [rsp-0x20]{k1},zmm1
+    0.03 :   db68a:  vmovups ZMMWORD PTR [rcx]{k1},zmm2
+    0.03 :   db690:  vmovups zmm0,ZMMWORD PTR [rsp-0x60]
+    0.01 :   db69b:  vmovups zmm1,ZMMWORD PTR [rsp-0x20]
+    0.03 :   db6a6:  mov    rax,QWORD PTR [rsp-0x68]
+    0.06 :   db6ab:  vmovups ZMMWORD PTR [rax],zmm0
+    0.05 :   db6b1:  vmovups ZMMWORD PTR [rax+0x40],zmm1
+    0.01 :   db6b8:  add    rsp,0x38
+    0.01 :   db6bc:  pop    rbx
+    0.03 :   db6bd:  pop    r12
+    0.00 :   db6bf:  pop    r13
+    0.00 :   db6c1:  pop    r14
+    0.03 :   db6c3:  pop    r15
+    0.03 :   db6c5:  pop    rbp
+    0.02 :   db6c6:  vzeroupper
+    0.01 :   db6c9:  ret
+ Percent |	Source code & Disassembly of step-35121908f1e82308 for cpu/cycles/P (4143 samples, percent: local period)
+-------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000db720 <engine::force::tree_sum::<f32>>:
+   10.83 :   db720:  cmp    rsi,0x1
+    0.00 :   db724:  je     db730 <engine::force::tree_sum::<f32>+0x10>
+    4.31 :   db726:  vxorps xmm0,xmm0,xmm0
+    3.47 :   db72a:  test   rsi,rsi
+    0.00 :   db72d:  jne    db735 <engine::force::tree_sum::<f32>+0x15>
+    0.00 :   db72f:  ret
+    4.63 :   db730:  vmovss xmm0,DWORD PTR [rdi]
+    4.47 :   db734:  ret
+    2.36 :   db735:  push   r14
+    2.26 :   db737:  push   rbx
+    2.29 :   db738:  push   rax
+    2.26 :   db739:  mov    rax,rsi
+    0.00 :   db73c:  shr    rax,1
+    2.29 :   db73f:  sub    rsi,rax
+    2.12 :   db742:  lea    rbx,[rdi+rax*4]
+    1.88 :   db746:  mov    r14,rsi
+    2.21 :   db749:  mov    rsi,rax
+    4.61 :   db74c:  call   db720 <engine::force::tree_sum::<f32>>
+    2.80 :   db751:  vmovss DWORD PTR [rsp+0x4],xmm0
+    4.58 :   db757:  mov    rdi,rbx
+    5.07 :   db75a:  mov    rsi,r14
+    8.53 :   db75d:  call   db720 <engine::force::tree_sum::<f32>>
+   11.01 :   db762:  vaddss xmm0,xmm0,DWORD PTR [rsp+0x4]
+    5.61 :   db768:  add    rsp,0x8
+    5.19 :   db76c:  pop    rbx
+    4.36 :   db76d:  pop    r14
+    2.84 :   db76f:  ret
