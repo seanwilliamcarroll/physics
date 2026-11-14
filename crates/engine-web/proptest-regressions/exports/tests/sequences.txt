@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 4879d32f0928516d07357745aa77eda87ddccf9514e7d8ea7e6ad321ebbbfe24 # shrinks to first = Chain { scalar: 0, links: 1, ratio: 0.1 }, calls = [Grab(0.0, 0.0, 1.268650109117442), Grab(0.0, -2.4766816878668325, 0.0)]
+cc 8825c6b115c3dbca0aff4bb996b4ece28ee7d120b75953d3dbe20ac2cfd12b79 # found by the slow tier (nightly, 2026-11-14): pair [0, 0]

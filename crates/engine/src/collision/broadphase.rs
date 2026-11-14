@@ -71,8 +71,20 @@ pub fn candidate_pairs<S: Scalar>(
             }
             rest = tail;
         }
-        for ((dx, dy), cursor) in HALF_NEIGHBORS.into_iter().zip(&mut cursors) {
+        // At the edge of the `i64` range an offset saturates: it can land
+        // back on this cell (a circle would pair with itself) or on a cell
+        // another offset already reached (pairs twice). Each neighbor once,
+        // and never this cell (found by the exports' call-sequence property
+        // test at the slow tier's 10 000 cases: a runaway particle).
+        let mut seen = [(cx, cy); 4];
+        for (k, ((dx, dy), cursor)) in HALF_NEIGHBORS.into_iter().zip(&mut cursors).enumerate() {
             let there = (cx.saturating_add(dx), cy.saturating_add(dy));
+            if seen.iter().take(k + 1).any(|&c| c == there) {
+                continue;
+            }
+            if let Some(slot) = seen.get_mut(k) {
+                *slot = there;
+            }
             for &(_, _, b) in cell_run(&keys, &runs, cursor, there) {
                 for &(_, _, a) in here {
                     out.push(ordered(a, b));
