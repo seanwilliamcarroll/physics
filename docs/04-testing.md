@@ -682,6 +682,15 @@ Three tiers (the checklist's §3):
     to infinity and the concentration read NaN. Deposits are capped
     (`swarm::MAX_DEPOSIT`, for agents, ants and nodes), with the node's
     shrunk case as a regression test.
+  - **Its first scheduled nightly run found another** (2026-11-14):
+    engine-web's call-sequence test, at 10 000 cases, sent a ball off to
+    `1e300`; the broadphase's cells saturate at the `i64` range, and a
+    neighbor offset from the last column landed back on it, so the ball
+    paired with itself (and pairs at the edge were listed up to seven
+    times). A saturated offset that reaches this cell or one already
+    visited is skipped; the edge test now checks against the definition
+    (brute force), not the old walk, which had the same fault. The
+    seed is in engine-web's `proptest-regressions`.
 - **By hand, when it matters:** `cargo xtask coverage`, full mutation
   runs, `cargo bench`.
 

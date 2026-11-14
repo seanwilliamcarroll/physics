@@ -106,12 +106,39 @@ fn the_cursors_find_what_binary_search_did() {
     }
 }
 
+/// The definition, by brute force: every pair `a < b` of circles
+/// (radius > 0) whose cells are equal or adjacent, once each, sorted.
+/// Unlike a grid walk, nothing here can saturate.
+fn by_definition(pos: &[(f64, f64)], radius: &[f64], cell: f64) -> Vec<(usize, usize)> {
+    let cells: Vec<(i128, i128)> = pos
+        .iter()
+        .map(|&(x, y)| (i128::from(cell_of(x, cell)), i128::from(cell_of(y, cell))))
+        .collect();
+    let mut out = Vec::new();
+    for a in 0..pos.len() {
+        for b in a + 1..pos.len() {
+            let (ca, cb) = (cells[a], cells[b]);
+            if radius[a] > 0.0
+                && radius[b] > 0.0
+                && (ca.0 - cb.0).abs() <= 1
+                && (ca.1 - cb.1).abs() <= 1
+            {
+                out.push((a, b));
+            }
+        }
+    }
+    out
+}
+
 #[test]
-fn the_edge_of_the_cell_range_is_as_it_was() {
+fn the_edge_of_the_cell_range_is_as_defined() {
     // Cells saturate at the i64 range: a neighbor offset from the last
     // column or row lands back on it, and a later cell's neighbor can be
     // an earlier cell (the cursors' fallback). Runaway circles at every
-    // corner and edge, several a cell, among ordinary ones.
+    // corner and edge, several a cell, among ordinary ones. (Until the
+    // slow tier's property test found it, 2026-11-14, this compared with
+    // the old binary-search walk, which had the same fault: circles paired
+    // with themselves, and pairs listed up to seven times.)
     let far = 1e300;
     let mut pos = vec![(0.05, 0.05), (0.15, 0.05), (0.1, 0.15), (-0.05, -0.05)];
     for x in [-far, 0.05, far] {
@@ -121,7 +148,7 @@ fn the_edge_of_the_cell_range_is_as_it_was() {
     }
     let radius = vec![0.05; pos.len()];
     let got = pairs(&pos, &radius, 0.1);
-    assert_eq!(got, by_binary_search(&pos, &radius, 0.1));
+    assert_eq!(got, by_definition(&pos, &radius, 0.1));
     assert!(got.len() > 20, "{}", got.len());
 }
 
@@ -145,4 +172,23 @@ fn a_neighbor_behind_the_cursor_is_still_found() {
     assert_eq!(cell_run(&keys, &runs, &mut cursor, (m, 6)), []);
     assert_eq!(cursor, 3);
     assert_eq!(cell_run(&keys, &runs, &mut 0, (m, 2)), []);
+}
+
+/// At the edge of the `i64` range a neighbor offset saturates: `(+1, 0)`
+/// from column `MAX` is column `MAX` again, and `(0, +1)` and `(+1, +1)`
+/// reach the same cell. Found by engine-web's call-sequence property test
+/// at the slow tier's 10 000 cases (a runaway ball paired with itself):
+/// each pair once, and never a circle with itself.
+#[test]
+fn saturated_cells_pair_each_circle_once_and_never_with_itself() {
+    // Columns past 2^63: both saturate to `i64::MAX`.
+    let far = 1e300;
+    assert_eq!(
+        pairs(&[(far, 0.0), (far, 0.25)], &[0.1, 0.1], 1.0),
+        [(0, 1)]
+    );
+    // One row apart, both in the last column: one pair, not two.
+    assert_eq!(pairs(&[(far, 0.5), (far, 1.5)], &[0.1, 0.1], 1.0), [(0, 1)]);
+    // Alone at the edge: nothing.
+    assert_eq!(pairs(&[(far, far)], &[0.1], 1.0), []);
 }
