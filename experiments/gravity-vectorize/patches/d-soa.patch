@@ -1,0 +1,257 @@
+diff --git a/crates/engine/src/force.rs b/crates/engine/src/force.rs
+index aa87534..7e5716f 100644
+--- a/crates/engine/src/force.rs
++++ b/crates/engine/src/force.rs
+@@ -96,49 +96,214 @@ impl<S: Scalar> PairwiseGravity<S> {
+     }
+ }
+ 
++/// Body i's partial sums in the pair loop: pair j in lane j mod LANES.
++const LANES: usize = 4;
++
+ impl<S: Scalar> Force<S> for PairwiseGravity<S> {
+     fn accumulate(&self, p: &Particles<S>, acc: &mut [Vec2<S>]) {
+-        // Masses once per call: n divisions here instead of n² in the pair
+-        // loop. Static particles get mass 0, so they exert no pull.
+-        let bodies: Vec<(Vec2<S>, S, S)> = p
+-            .pos()
+-            .iter()
+-            .zip(p.inv_mass())
+-            .map(|(&x, &w)| (x, if w == S::ZERO { S::ZERO } else { S::ONE / w }, w))
+-            .collect();
+-
+-        // Each pair once (i < j), without indexing: take the first body,
+-        // pair it with every later one, continue with the rest.
+-        // `mem::take` moves the slice out so its tail can replace it.
+-        let mut acc_rest = acc;
+-        let mut body_rest = bodies.as_slice();
+-        while let (Some((a_i, acc_tail)), Some((&(x_i, m_i, w_i), body_tail))) = (
+-            core::mem::take(&mut acc_rest).split_first_mut(),
+-            body_rest.split_first(),
+-        ) {
+-            // Body i's sum in a local, not through `a_i` in memory: the same
+-            // additions in the same order (the bits don't change).
+-            let mut sum_i = *a_i;
+-            for (a_j, &(x_j, m_j, w_j)) in acc_tail.iter_mut().zip(body_tail) {
+-                let r = x_j - x_i;
+-                let d_sq = r.length_sq() + self.softening_sq;
+-                if d_sq == S::ZERO {
+-                    // Coincident and unsoftened: no direction; skip, not 0/0.
+-                    continue;
+-                }
+-                // One force vector per pair, applied +/-: equal and
+-                // opposite by construction. Accelerations are F * w, so a
+-                // static body (w = 0) isn't moved.
+-                let f = r * (self.g_const * m_i * m_j / (d_sq * d_sq.sqrt()));
+-                sum_i += f * w_i;
+-                *a_j -= f * w_j;
+-            }
+-            *a_i = sum_i;
+-            acc_rest = acc_tail;
+-            body_rest = body_tail;
++        // Everything the pair loop reads or writes, one array per
++        // quantity, copied once per call (masses computed here: n divisions
++        // instead of n² in the loop; static particles get mass 0). The
++        // accelerations are copied in and out: body j's additions keep
++        // their order, so its bits don't change.
++        let n = p.pos().len();
++        let (mut xs, mut ys, mut ms, mut ws) = (
++            Vec::with_capacity(n),
++            Vec::with_capacity(n),
++            Vec::with_capacity(n),
++            Vec::with_capacity(n),
++        );
++        for (&x, &w) in p.pos().iter().zip(p.inv_mass()) {
++            xs.push(x.x);
++            ys.push(x.y);
++            ms.push(if w == S::ZERO { S::ZERO } else { S::ONE / w });
++            ws.push(w);
++        }
++        let mut ax: Vec<S> = acc.iter().map(|a| a.x).collect();
++        let mut ay: Vec<S> = acc.iter().map(|a| a.y).collect();
++
++        let mut rest = Rest {
++            x: &xs,
++            y: &ys,
++            m: &ms,
++            w: &ws,
++            ax: &mut ax,
++            ay: &mut ay,
++        };
++        while let Some((i, later)) = rest.split_first() {
++            let (lx, ly) = sweep(
++                Body {
++                    x: i.x,
++                    y: i.y,
++                    gm: self.g_const * i.m,
++                },
++                self.softening_sq,
++                later.x,
++                later.y,
++                later.m,
++                later.w,
++                &mut *later.ax,
++                &mut *later.ay,
++            );
++            // Body i's lanes, in a fixed order: the order is in the source,
++            // so every target, vector or not, gives the same bits.
++            *i.ax += lane_total(lx) * i.w;
++            *i.ay += lane_total(ly) * i.w;
++            rest = later;
++        }
++        for ((a, &x), &y) in acc.iter_mut().zip(&ax).zip(&ay) {
++            *a = Vec2::new(x, y);
+         }
+     }
+ }
+ 
++/// Body i, as the sweep needs it: its position and `G m_i`.
++#[derive(Clone, Copy)]
++struct Body<S> {
++    x: S,
++    y: S,
++    gm: S,
++}
++
++/// What's left of the arrays: body i and the bodies after it.
++struct Rest<'a, S> {
++    x: &'a [S],
++    y: &'a [S],
++    m: &'a [S],
++    w: &'a [S],
++    ax: &'a mut [S],
++    ay: &'a mut [S],
++}
++
++/// The first body of a [`Rest`]: its values, and its acceleration to add to.
++struct First<'a, S> {
++    x: S,
++    y: S,
++    m: S,
++    w: S,
++    ax: &'a mut S,
++    ay: &'a mut S,
++}
++
++impl<'a, S: Copy> Rest<'a, S> {
++    /// The first body, and the rest after it; `None` when empty.
++    fn split_first(self) -> Option<(First<'a, S>, Self)> {
++        let ((&x, x_rest), (&y, y_rest)) = (self.x.split_first()?, self.y.split_first()?);
++        let ((&m, m_rest), (&w, w_rest)) = (self.m.split_first()?, self.w.split_first()?);
++        let ((ax, ax_rest), (ay, ay_rest)) =
++            (self.ax.split_first_mut()?, self.ay.split_first_mut()?);
++        Some((
++            First { x, y, m, w, ax, ay },
++            Self {
++                x: x_rest,
++                y: y_rest,
++                m: m_rest,
++                w: w_rest,
++                ax: ax_rest,
++                ay: ay_rest,
++            },
++        ))
++    }
++}
++
++/// Lane by lane: `[f(a0, b0), .., f(a3, b3)]`, written out (no loop).
++fn map2<S: Copy>(
++    [a0, a1, a2, a3]: [S; LANES],
++    [b0, b1, b2, b3]: [S; LANES],
++    f: impl Fn(S, S) -> S,
++) -> [S; LANES] {
++    [f(a0, b0), f(a1, b1), f(a2, b2), f(a3, b3)]
++}
++
++/// `(l0 + l1) + (l2 + l3)`.
++fn lane_total<S: Scalar>([l0, l1, l2, l3]: [S; LANES]) -> S {
++    (l0 + l1) + (l2 + l3)
++}
++
++/// Body `i` against every later body: each pair's force, added to body j's
++/// acceleration (`ax`, `ay`, times `w_j`) and to body i's lanes (returned,
++/// to be multiplied by `w_i`). In blocks of LANES pairs, every array
++/// separate and every lane the same straight-line arithmetic, so the
++/// compiler packs a block into vector instructions; the slices are
++/// parameters, so it knows they don't overlap.
++#[inline(never)]
++#[expect(
++    clippy::too_many_arguments,
++    reason = "one slice per array, so they're noalias"
++)]
++fn sweep<S: Scalar>(
++    i: Body<S>,
++    eps_sq: S,
++    xs: &[S],
++    ys: &[S],
++    ms: &[S],
++    ws: &[S],
++    ax: &mut [S],
++    ay: &mut [S],
++) -> ([S; LANES], [S; LANES]) {
++    let (mut lx, mut ly) = ([S::ZERO; LANES], [S::ZERO; LANES]);
++    let (xb, x_rest) = xs.as_chunks::<LANES>();
++    let (yb, y_rest) = ys.as_chunks::<LANES>();
++    let (mb, m_rest) = ms.as_chunks::<LANES>();
++    let (wb, w_rest) = ws.as_chunks::<LANES>();
++    let (axb, ax_rest) = ax.as_chunks_mut::<LANES>();
++    let (ayb, ay_rest) = ay.as_chunks_mut::<LANES>();
++    let blocks = xb
++        .iter()
++        .zip(yb)
++        .zip(mb)
++        .zip(wb)
++        .zip(axb.iter_mut().zip(ayb.iter_mut()));
++    for ((((x4, y4), m4), w4), (ax4, ay4)) in blocks {
++        // Whole-block steps, no loop inside: each line is one vector op.
++        let rx = x4.map(|x| x - i.x);
++        let ry = y4.map(|y| y - i.y);
++        let d_sq = map2(rx, ry, |rx, ry| rx * rx + ry * ry + eps_sq);
++        let s = map2(d_sq, *m4, |d_sq, m| {
++            let s = i.gm * m / (d_sq * d_sq.sqrt());
++            if d_sq == S::ZERO { S::ZERO } else { s }
++        });
++        let fx = map2(rx, s, |r, s| r * s);
++        let fy = map2(ry, s, |r, s| r * s);
++        *ax4 = map2(*ax4, map2(fx, *w4, |f, w| f * w), |a, f| a - f);
++        *ay4 = map2(*ay4, map2(fy, *w4, |f, w| f * w), |a, f| a - f);
++        lx = map2(lx, fx, |l, f| l + f);
++        ly = map2(ly, fy, |l, f| l + f);
++    }
++    // The last few, into the same lanes in the same order.
++    let lanes = lx.iter_mut().zip(ly.iter_mut());
++    let tail = x_rest
++        .iter()
++        .zip(y_rest)
++        .zip(m_rest)
++        .zip(w_rest)
++        .zip(ax_rest.iter_mut().zip(ay_rest.iter_mut()));
++    for ((lx_k, ly_k), ((((&x, &y), &m), &w), (ax_j, ay_j))) in lanes.zip(tail) {
++        pair(i, eps_sq, (x, y, m, w), (ax_j, ay_j), (lx_k, ly_k));
++    }
++    (lx, ly)
++}
++
++/// One pair: body j's share subtracted from its acceleration, body i's
++/// added to its lane.
++fn pair<S: Scalar>(
++    i: Body<S>,
++    eps_sq: S,
++    (x, y, m, w): (S, S, S, S),
++    (ax_j, ay_j): (&mut S, &mut S),
++    (lx, ly): (&mut S, &mut S),
++) {
++    let (rx, ry) = (x - i.x, y - i.y);
++    let d_sq = rx * rx + ry * ry + eps_sq;
++    let s = i.gm * m / (d_sq * d_sq.sqrt());
++    // Coincident and unsoftened: 0/0, selected away (no branch).
++    let s = if d_sq == S::ZERO { S::ZERO } else { s };
++    let (fx, fy) = (rx * s, ry * s);
++    *ax_j -= fx * w;
++    *ay_j -= fy * w;
++    *lx += fx;
++    *ly += fy;
++}
++
+ #[cfg(test)]
+ mod tests;

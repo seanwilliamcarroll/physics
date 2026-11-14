@@ -26,6 +26,10 @@ throwaway probe (element-wise loops the compiler vectorizes):
 The direct method: every pair `i < j` once, about 20 flops a pair, one of
 them a square root and one a division. At 4,096 bodies, 8,386,560 pairs.
 
+The vectorizing experiments (B, C, D) are kept as patches in
+`experiments/gravity-vectorize/`, with a script that reruns them on
+another machine at several CPU levels and dumps their assembly.
+
 **Where it started:** 13.1 ms at 4,096 (`f64`), 1.56 ns a pair, about 6.9
 cycles. The compiled inner loop (`cargo asm -p engine --bench step
 "<engine::force::PairwiseGravity<f64> as engine::force::Force<f64>>::accumulate"`)
