@@ -101,5 +101,6 @@ In `results/<host>/`:
 To bring them back to the Mac:
 
 ```sh
-rsync -a llm:physics/experiments/gravity-vectorize/results/ experiments/gravity-vectorize/results/
+mkdir -p experiments/gravity-vectorize/results
+scp -r llm:physics/experiments/gravity-vectorize/results/llm experiments/gravity-vectorize/results/
 ```
