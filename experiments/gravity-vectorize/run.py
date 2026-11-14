@@ -247,6 +247,16 @@ def parse_stat(text):
     return found
 
 
+def check_node():
+    """The v8 levels use the repo's Node (.nvmrc), so V8 is the one we pin."""
+    pinned = [line.strip() for line in (REPO / ".nvmrc").read_text().splitlines()
+              if line.strip() and not line.startswith("#")][-1]
+    version = run(["node", "--version"], capture=True).stdout.strip()  # e.g. v24.22.3
+    if version.lstrip("v").split(".")[0] != pinned.lstrip("v").split(".")[0]:
+        sys.exit(f"node is {version}, .nvmrc wants {pinned}: run "
+                 "`. ~/.nvm/nvm.sh && nvm install` first (installs it if missing)")
+
+
 def machine_info():
     lines = [f"host: {socket.gethostname()}", f"arch: {platform.machine()}"]
     cpuinfo = Path("/proc/cpuinfo")
@@ -392,6 +402,8 @@ def main():
         if x not in EXPERIMENTS:
             sys.exit(f"unknown experiment {x}")
 
+    if any(is_v8(x) for x in levels):
+        check_node()
     if args.perf and not shutil.which("perf"):
         sys.exit("--perf: perf isn't installed")
     out = args.out

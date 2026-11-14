@@ -48,11 +48,14 @@ from it. The `v8` levels, added when `node` is installed, run the same
 same wasm, compiled by a third code generator (TurboFan). Node warns
 that WASI is experimental; that's expected.
 
-On the compute node, in tmux (an interactive shell, so nvm's `node` is
-found):
+On the compute node, in tmux. The `v8` levels need the repo's Node
+(`.nvmrc`; `run.py` stops if `node` is another version), and a tmux
+command runs in a non-interactive shell where nvm isn't loaded, hence
+`. ~/.nvm/nvm.sh && nvm install` (reads `.nvmrc`, installs it if
+missing, and uses it):
 
 ```sh
-tmux new -s gv 'cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && experiments/gravity-vectorize/run.py --perf 2>&1 | tee ~/gv.log; exec bash'
+tmux new -s gv 'cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && . ~/.nvm/nvm.sh && nvm install && experiments/gravity-vectorize/run.py --perf 2>&1 | tee ~/gv.log; exec bash'
 ```
 
 On a Mac, with `caffeinate` keeping it awake for as long as the run
@@ -61,7 +64,7 @@ the lid still sleeps it). Leave the machine alone meanwhile: anything
 else running shows up in the times.
 
 ```sh
-cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && caffeinate -is experiments/gravity-vectorize/run.py --out experiments/gravity-vectorize/results/m4 2>&1 | tee ~/gv-m4.log
+cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/gravity-vectorize/run.py --out experiments/gravity-vectorize/results/m4 2>&1 | tee ~/gv-m4.log
 ```
 
 Each takes about an hour: 4 experiments × up to 7 levels, each build's
