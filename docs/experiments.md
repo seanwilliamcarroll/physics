@@ -28,7 +28,8 @@ them a square root and one a division. At 4,096 bodies, 8,386,560 pairs.
 
 The vectorizing experiments (B, C, D) are kept as patches in
 `experiments/gravity-vectorize/`, with a script that reruns them on
-another machine at several CPU levels and dumps their assembly.
+another machine at several CPU levels and dumps their assembly. The
+whole line of thought, step by step, is in `gravity-vectorize.md`.
 
 **Where it started:** 13.1 ms at 4,096 (`f64`), 1.56 ns a pair, about 6.9
 cycles. The compiled inner loop (`cargo asm -p engine --bench step

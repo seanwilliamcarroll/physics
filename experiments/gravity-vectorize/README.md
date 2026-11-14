@@ -3,6 +3,7 @@
 `PairwiseGravity::accumulate` rewritten a few ways to vectorize it. The
 results so far (Apple M4) are in `docs/experiments.md`. This directory reruns
 them on another machine, at several CPU levels, and keeps the assembly.
+The story so far, step by step: `docs/gravity-vectorize.md`.
 
 ## What's here
 
