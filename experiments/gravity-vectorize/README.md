@@ -30,10 +30,18 @@ level:
 | `default` | none | SSE2: 2 f64 / 4 f32 |
 | `x86-64-v3` | `-C target-cpu=x86-64-v3` | AVX2: 4 f64 / 8 f32 |
 | `native` | `-C target-cpu=native` | this CPU; AVX-512 if it has it: 8 f64 / 16 f32 |
+| `wasm` | none, `--target wasm32-wasip1` | none: wasm without simd128 is scalar |
+| `wasm-simd128` | `-C target-feature=+simd128`, wasm | 128-bit: 2 f64 / 4 f32 |
 
 A plain `cargo build` targets `default`, which is why it's the level that
 matters for shipped code; the others show what wider vectors would buy.
-On aarch64 the levels are `default` and `native`.
+On aarch64 the levels are `default` and `native`. The wasm levels are
+added when `wasmtime` is installed: criterion runs inside wasmtime, which
+compiles the wasm to this machine's code as it loads it, with its own
+code generator (Cranelift) rather than LLVM's. That's close to what a
+browser does (V8 has its own too), and it's what the demos run. Their
+asm is wasm text (`f64x2.sqrt`, …), not the machine code wasmtime makes
+from it.
 
 On the compute node, in tmux:
 
@@ -41,7 +49,7 @@ On the compute node, in tmux:
 tmux new -s gv 'cd ~/physics && git fetch && git checkout experiments-gravity-package && experiments/gravity-vectorize/run.py --perf 2>&1 | tee ~/gv.log; exec bash'
 ```
 
-About 45 minutes (4 experiments × 3 levels; each level's first build is
+About an hour (4 experiments × 3 levels; each level's first build is
 from scratch). `--quick`, `--levels`, `--experiments` and `--filter`
 narrow it (`run.py --help`).
 
@@ -51,7 +59,12 @@ instructions and branch misses, and `perf record` + `perf annotate` for
 where the cycles go, instruction by instruction. Each bench runs under
 criterion's `--profile-time` (no analysis, just the loop). Ubuntu stops
 users using perf by default; `sudo sysctl kernel.perf_event_paranoid=1`
-allows it until the next reboot.
+allows it until the next reboot. perf skips the wasm levels: it can't
+name the code wasmtime generates.
+
+Each run replaces its `--out` folder, so to add levels to an earlier
+run, give the new one its own: e.g. `--levels wasm,wasm-simd128 --out
+experiments/gravity-vectorize/results/llm-wasm`.
 
 ## Results
 

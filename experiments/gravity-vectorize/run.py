@@ -43,11 +43,27 @@ ACCUMULATE = ("accumulate",
 # CPU level -> RUSTFLAGS. "default" is the target's baseline (x86-64: SSE2,
 # 2 f64 per vector; aarch64: NEON, the same). x86-64-v3 adds AVX2 (4 f64);
 # native here may add AVX-512 (8 f64).
+#
+# The wasm levels build for wasm32-wasip1 and run under wasmtime, which
+# compiles the wasm to this machine's code when it loads it (Cranelift).
+# wasm has one vector width, 128 bits (2 f64 / 4 f32), and only with
+# simd128 enabled; without it, everything is scalar.
 LEVELS = {
     "default": "",
     "x86-64-v3": "-C target-cpu=x86-64-v3",
     "native": "-C target-cpu=native",
+    "wasm": "",
+    "wasm-simd128": "-C target-feature=+simd128",
 }
+WASM_TARGET = "wasm32-wasip1"
+
+
+def is_wasm(level):
+    return level.startswith("wasm")
+
+
+def target_args(level):
+    return ["--target", WASM_TARGET] if is_wasm(level) else []
 
 
 def run(cmd, cwd=None, env=None, capture=False, check=True):
@@ -71,14 +87,21 @@ def worktree(name, work):
     return path
 
 
-def bench(tree, env, out, args):
+def bench(tree, env, level, out, args):
     """Run the pairwise benches; criterion's data goes under out/criterion."""
-    env = dict(env, CRITERION_HOME=str(out / "criterion"))
-    cmd = ["cargo", "bench", "-p", "engine", "--bench", "step", "--",
-           args.filter, "--noplot"]
+    crit = out / "criterion"
+    crit.mkdir(parents=True, exist_ok=True)
+    flags = [args.filter, "--noplot"]
     if args.quick:
-        cmd += ["--warm-up-time", "0.5", "--measurement-time", "1"]
-    run(cmd, cwd=tree, env=env)
+        flags += ["--warm-up-time", "0.5", "--measurement-time", "1"]
+    if is_wasm(level):
+        # wasm sees only the directories and variables it's given.
+        exe = bench_exe(tree, env, level)
+        run(["wasmtime", "run", "--dir", f"{crit}::/criterion",
+             "--env", "CRITERION_HOME=/criterion", exe, "--bench"] + flags, env=env)
+    else:
+        run(["cargo", "bench", "-p", "engine", "--bench", "step", "--"] + flags,
+            cwd=tree, env=dict(env, CRITERION_HOME=str(crit)))
     times = {}
     for est in sorted((out / "criterion").glob("pairwise_*/*/new/estimates.json")):
         group, size = est.parts[-4], est.parts[-3]
@@ -94,8 +117,9 @@ def dump_asm(tree, env, name, level, asm_dir):
         for short, fn in [ACCUMULATE] + EXPERIMENTS[name][1]:
             symbol = fn.format(s=s)
             dest = asm_dir / f"{level}--{name}--{short}-{s}.s"
-            result = run(["cargo", "asm", "-p", "engine", "--bench", "step",
-                          "--intel", symbol], cwd=tree, env=env,
+            style = [] if is_wasm(level) else ["--intel"]
+            result = run(["cargo", "asm", "-p", "engine", "--bench", "step"]
+                         + target_args(level) + style + [symbol], cwd=tree, env=env,
                          capture=True, check=False)
             asm = only(result.stdout, symbol)
             dest.write_text(asm)
@@ -121,6 +145,7 @@ def only(asm, symbol):
 # 128-bit, ymm 256, zmm 512). aarch64 (Apple syntax): fsqrt d0 scalar,
 # fsqrt.2d / fsqrt.4s 128-bit.
 X86_OPS = re.compile(r"^\s*v?(sqrt|div)(sd|ss|pd|ps)\s+([xyz]mm)?", re.M)
+WASM_OPS = re.compile(r"^\s*(f64|f32|f64x2|f32x4)\.(sqrt|div)\b", re.M)
 ARM_OPS = re.compile(r"^\s*f(sqrt|div)(\.2d|\.4s)?\s+([ds])?", re.M)
 
 
@@ -129,6 +154,9 @@ def count_ops(asm):
     found = {}
     for op, kind, reg in X86_OPS.findall(asm):
         key = f"{op}{kind}" + (f" {reg}" if kind in ("pd", "ps") else "")
+        found[key] = found.get(key, 0) + 1
+    for kind, op in WASM_OPS.findall(asm):
+        key = f"{kind}.{op}"
         found[key] = found.get(key, 0) + 1
     for op, lanes, reg in ARM_OPS.findall(asm):
         key = f"f{op}{lanes}" if lanes else f"f{op} {reg}"
@@ -142,10 +170,11 @@ PERF_EVENTS = ["task-clock", "cycles", "instructions", "branches", "branch-misse
                "stalled-cycles-frontend", "stalled-cycles-backend"]
 
 
-def bench_exe(tree, env):
-    """The built bench binary's path (cargo prints it as JSON)."""
+def bench_exe(tree, env, level):
+    """The built bench binary's path (cargo prints it as JSON); a .wasm for wasm."""
     built = run(["cargo", "bench", "-p", "engine", "--bench", "step", "--no-run",
-                 "--message-format=json"], cwd=tree, env=env, capture=True)
+                 "--message-format=json"] + target_args(level),
+                cwd=tree, env=env, capture=True)
     for line in built.stdout.splitlines():
         if line.startswith("{"):
             msg = json.loads(line)
@@ -162,7 +191,7 @@ def perf_run(tree, env, name, level, out, args):
     iterations it ran. So counters come out as ratios here (IPC, per-cent
     stalls), and per-pair numbers are made from them with criterion's time.
     """
-    exe = bench_exe(tree, env)
+    exe = bench_exe(tree, env, level)
     env = dict(env, CRITERION_HOME=str(out / level / name / "criterion-profile"))
     stats = {}
     for b in args.perf_benches.split(","):
@@ -300,6 +329,7 @@ def write_summary(out, results, counts, levels, names, perf):
     md += ["## sqrt and div in the dumped functions", "",
            "x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.",
            "aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.",
+           "wasm: `f64.sqrt` scalar; `f64x2.sqrt`/`f32x4.sqrt` 128-bit.",
            "Each file is in asm/.", ""]
     for name, c in sorted(counts.items()):
         text = "not found (inlined?)" if c is None else (
@@ -312,7 +342,10 @@ def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     is_x86 = platform.machine() in ("x86_64", "AMD64")
-    p.add_argument("--levels", default="default,x86-64-v3,native" if is_x86 else "default,native",
+    levels = ["default", "x86-64-v3", "native"] if is_x86 else ["default", "native"]
+    if shutil.which("wasmtime"):
+        levels += ["wasm", "wasm-simd128"]
+    p.add_argument("--levels", default=",".join(levels),
                    help="comma-separated CPU levels: " + ", ".join(LEVELS))
     p.add_argument("--experiments", default=",".join(EXPERIMENTS),
                    help="comma-separated: " + ", ".join(EXPERIMENTS))
@@ -358,9 +391,10 @@ def main():
                 env = dict(os.environ, RUSTFLAGS=LEVELS[level],
                            CARGO_TARGET_DIR=str(work / f"target-{level}"))
                 print(f"\n=== {name} at {level} ===", flush=True)
-                results[(level, name)] = bench(tree, env, out / level / name, args)
+                results[(level, name)] = bench(tree, env, level, out / level / name, args)
                 counts.update(dump_asm(tree, env, name, level, out / "asm"))
-                if args.perf:
+                # perf can't name wasmtime's generated code, so no wasm.
+                if args.perf and not is_wasm(level):
                     perf[(level, name)] = perf_run(tree, env, name, level, out, args)
                 write_summary(out, results, counts, levels, names, perf)
     finally:
