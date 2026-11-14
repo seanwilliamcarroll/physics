@@ -1,0 +1,24 @@
+diff --git a/crates/engine/src/force.rs b/crates/engine/src/force.rs
+index aa87534..161b763 100644
+--- a/crates/engine/src/force.rs
++++ b/crates/engine/src/force.rs
+@@ -122,14 +122,11 @@ impl<S: Scalar> Force<S> for PairwiseGravity<S> {
+             for (a_j, &(x_j, m_j, w_j)) in acc_tail.iter_mut().zip(body_tail) {
+                 let r = x_j - x_i;
+                 let d_sq = r.length_sq() + self.softening_sq;
+-                if d_sq == S::ZERO {
+-                    // Coincident and unsoftened: no direction; skip, not 0/0.
+-                    continue;
+-                }
+-                // One force vector per pair, applied +/-: equal and
+-                // opposite by construction. Accelerations are F * w, so a
+-                // static body (w = 0) isn't moved.
+-                let f = r * (self.g_const * m_i * m_j / (d_sq * d_sq.sqrt()));
++                // Coincident and unsoftened: no direction, and 0/0; a select,
++                // not a branch, gives it no pull.
++                let s = self.g_const * m_i * m_j / (d_sq * d_sq.sqrt());
++                let s = if d_sq == S::ZERO { S::ZERO } else { s };
++                let f = r * s;
+                 sum_i += f * w_i;
+                 *a_j -= f * w_j;
+             }
