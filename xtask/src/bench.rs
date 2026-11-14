@@ -126,27 +126,22 @@ pub(crate) fn bench(
             let _ = fs::remove_dir_all(criterion.join(&c.name).join("change"));
         }
     }
-    let flag = match mode {
-        Mode::Save(n) => Some(("--save-baseline", *n)),
-        Mode::Compare(n) => Some(("--baseline", *n)),
-        // Lenient: a benchmark the record doesn't have runs uncompared.
-        Mode::Default if use_record => Some(("--baseline-lenient", store::BASELINE)),
-        Mode::Default | Mode::Local => None,
-    };
     let started = SystemTime::now();
-    run_criterion(root, &cargo, flag, filter)?;
+    run_criterion(root, &cargo, flag(mode, use_record), filter)?;
     let mut rows = table::collect(&criterion, started);
     println!("\n{}", table::format(&mut rows));
-    let against = match mode {
-        Mode::Compare(name) => format!("baseline `{name}`"),
-        Mode::Default if use_record => format!("the record for `{machine}`"),
-        _ => "each benchmark's previous run".to_owned(),
-    };
+    let against = against(mode, use_record, &machine);
     println!(
         "Time: the mean per iteration; ±: half its 95% confidence interval; Change: from {against}."
     );
     if use_record {
-        warn_if_not_compared(&rows, &store::ids(&recorded));
+        let missed = not_compared(&rows, &store::ids(&recorded));
+        if let Some(first) = missed.first() {
+            println!(
+                "bench: warning: {} benchmark(s) in the record weren't compared with it (e.g. {first}): has criterion's file format changed? (docs/benchmarks.md, \"Upgrading criterion\")",
+                missed.len()
+            );
+        }
     }
     if record {
         write_record(
@@ -159,11 +154,63 @@ pub(crate) fn bench(
             criterion.display()
         );
     }
-    let compared = matches!(mode, Mode::Compare(_)) || use_record;
-    if !compared {
+    if !compares(mode, use_record) {
         return Ok(());
     }
     let slower = report(&rows, threshold_pct, &against);
+    outcome(mode, slower, &against, threshold_pct)
+}
+
+/// The mode the command line asks for: `--save`, then `--baseline`, then
+/// `--compare-local`; else the default (the record, if there is one).
+pub(crate) const fn mode<'a>(
+    save: Option<&'a str>,
+    baseline: Option<&'a str>,
+    compare_local: bool,
+) -> Mode<'a> {
+    match (save, baseline) {
+        (Some(n), _) => Mode::Save(n),
+        (None, Some(n)) => Mode::Compare(n),
+        (None, None) if compare_local => Mode::Local,
+        (None, None) => Mode::Default,
+    }
+}
+
+/// Criterion's baseline flag for `mode`: none to compare with its own
+/// last run; `--baseline-lenient` for the record, so a benchmark the
+/// record doesn't have runs uncompared rather than failing the run.
+fn flag<'a>(mode: &Mode<'a>, use_record: bool) -> Option<(&'static str, &'a str)> {
+    match mode {
+        Mode::Save(n) => Some(("--save-baseline", n)),
+        Mode::Compare(n) => Some(("--baseline", n)),
+        Mode::Default if use_record => Some(("--baseline-lenient", store::BASELINE)),
+        Mode::Default | Mode::Local => None,
+    }
+}
+
+/// What the Change column compares with, in words.
+fn against(mode: &Mode<'_>, use_record: bool, machine: &str) -> String {
+    match mode {
+        Mode::Compare(name) => format!("baseline `{name}`"),
+        Mode::Default if use_record => format!("the record for `{machine}`"),
+        _ => "each benchmark's previous run".to_owned(),
+    }
+}
+
+/// Whether the run is compared with something worth listing changes
+/// against (a named baseline or the record), not just its last run.
+const fn compares(mode: &Mode<'_>, use_record: bool) -> bool {
+    matches!(mode, Mode::Compare(_)) || (matches!(mode, Mode::Default) && use_record)
+}
+
+/// Only `--baseline NAME` fails on a regression; the record and the last
+/// run are reported.
+fn outcome(
+    mode: &Mode<'_>,
+    slower: usize,
+    against: &str,
+    threshold_pct: f64,
+) -> Result<(), String> {
     match mode {
         Mode::Compare(_) if slower > 0 => Err(format!(
             "{slower} benchmark(s) slower than {against} by more than {threshold_pct}%"
@@ -267,40 +314,45 @@ fn warn_if_toolchain_differs(root: &Path, record_dir: &Path) {
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
         .unwrap_or_default();
-    if let Some(was) = store::meta_value(&meta, "rustc")
-        && was != rustc
-    {
-        println!("bench: warning: the record was measured with {was}, this run with {rustc}");
-    }
     let lock = fs::read_to_string(root.join("Cargo.lock")).unwrap_or_default();
-    if let (Some(was), Some(now)) = (
-        store::meta_value(&meta, "criterion"),
-        store::criterion_version(&lock),
-    ) && was != now
-    {
-        println!(
-            "bench: warning: the record was saved by criterion {was}, this run uses {now}: check it still compares (docs/benchmarks.md)"
-        );
+    for w in toolchain_warnings(&meta, &rustc, store::criterion_version(&lock)) {
+        println!("bench: warning: {w}");
     }
 }
 
-/// Criterion skips a baseline it can't read (lenient mode) without a
-/// word: a measured benchmark the record has, but with no change, means
-/// the record wasn't used, most likely because a criterion upgrade
-/// changed its files.
-fn warn_if_not_compared(rows: &[table::Row], recorded: &std::collections::BTreeSet<String>) {
-    let missed: Vec<&str> = rows
-        .iter()
+/// How the record's toolchain (`meta`, [`store::META`]'s text) differs
+/// from this run's.
+fn toolchain_warnings(meta: &str, rustc: &str, criterion: Option<&str>) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(was) = store::meta_value(meta, "rustc")
+        && was != rustc
+    {
+        out.push(format!(
+            "the record was measured with {was}, this run with {rustc}"
+        ));
+    }
+    if let (Some(was), Some(now)) = (store::meta_value(meta, "criterion"), criterion)
+        && was != now
+    {
+        out.push(format!(
+            "the record was saved by criterion {was}, this run uses {now}: check it still compares (docs/benchmarks.md)"
+        ));
+    }
+    out
+}
+
+/// The measured benchmarks the record has but criterion didn't compare
+/// with it. Criterion skips a baseline it can't read (lenient mode) with
+/// no more than a log line: this is how a criterion upgrade that changed
+/// its files shows.
+fn not_compared<'a>(
+    rows: &'a [table::Row],
+    recorded: &std::collections::BTreeSet<String>,
+) -> Vec<&'a str> {
+    rows.iter()
         .filter(|r| r.change.is_none() && recorded.contains(&r.id))
         .map(|r| r.id.as_str())
-        .collect();
-    if !missed.is_empty() {
-        println!(
-            "bench: warning: {} benchmark(s) in the record weren't compared with it (e.g. {}): has criterion's file format changed? (docs/benchmarks.md, \"Upgrading criterion\")",
-            missed.len(),
-            missed.first().copied().unwrap_or_default()
-        );
-    }
+        .collect()
 }
 
 #[cfg(test)]

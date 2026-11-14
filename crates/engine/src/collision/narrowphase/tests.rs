@@ -209,9 +209,13 @@ fn a_glancing_pair_that_touches_mid_substep_is_a_contact() {
 /// (inverse mass 0) still touches; only two pinned ends don't.
 #[test]
 fn a_circle_touches_a_pinned_circle() {
-    let mut p = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.15, 0.0), (0.0, 0.0))]);
-    assert!(p.set_body(1, Vec2::new(0.15, 0.0), 0.0, R));
-    let c = contacts(&p, &[]);
-    assert_eq!(c.len(), 1);
-    assert!((c[0].gap + 0.05).abs() < 1e-15, "{}", c[0].gap);
+    // Either end pinned (the fifth mutation run: only the second was).
+    for pinned in [0, 1] {
+        let mut p = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.15, 0.0), (0.0, 0.0))]);
+        let at = p.pos()[pinned];
+        assert!(p.set_body(pinned, at, 0.0, R));
+        let c = contacts(&p, &[]);
+        assert_eq!(c.len(), 1, "pinned {pinned}");
+        assert!((c[0].gap + 0.05).abs() < 1e-15, "{}", c[0].gap);
+    }
 }

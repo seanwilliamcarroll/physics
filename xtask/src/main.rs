@@ -222,12 +222,7 @@ fn run(cmd: Command) -> Result<(), String> {
             filter,
             record,
         } => {
-            let mode = match (save.as_deref(), baseline.as_deref()) {
-                (Some(n), _) => bench::Mode::Save(n),
-                (None, Some(n)) => bench::Mode::Compare(n),
-                (None, None) if compare_local => bench::Mode::Local,
-                (None, None) => bench::Mode::Default,
-            };
+            let mode = bench::mode(save.as_deref(), baseline.as_deref(), compare_local);
             bench::bench(
                 &root,
                 &mode,
