@@ -136,6 +136,70 @@ def count_ops(asm):
     return found
 
 
+# Hardware counters, as perf names them. Stalls aren't on every CPU; perf
+# says "<not supported>" and the column is left empty.
+PERF_EVENTS = ["task-clock", "cycles", "instructions", "branches", "branch-misses",
+               "stalled-cycles-frontend", "stalled-cycles-backend"]
+
+
+def bench_exe(tree, env):
+    """The built bench binary's path (cargo prints it as JSON)."""
+    built = run(["cargo", "bench", "-p", "engine", "--bench", "step", "--no-run",
+                 "--message-format=json"], cwd=tree, env=env, capture=True)
+    for line in built.stdout.splitlines():
+        if line.startswith("{"):
+            msg = json.loads(line)
+            if msg.get("target", {}).get("name") == "step" and msg.get("executable"):
+                return msg["executable"]
+    sys.exit("no bench executable in cargo's output")
+
+
+def perf_run(tree, env, name, level, out, args):
+    """perf stat and perf record + annotate on each of args.perf_benches.
+
+    Criterion's --profile-time runs one bench in a loop for that long with
+    no analysis: clean for a profiler, but it doesn't say how many
+    iterations it ran. So counters come out as ratios here (IPC, per-cent
+    stalls), and per-pair numbers are made from them with criterion's time.
+    """
+    exe = bench_exe(tree, env)
+    env = dict(env, CRITERION_HOME=str(out / level / name / "criterion-profile"))
+    stats = {}
+    for b in args.perf_benches.split(","):
+        bench_args = [exe, "--bench", "--profile-time", str(args.perf_time), f"^{b}$"]
+        stem = f"{level}--{name}--{b.replace('/', '-')}"
+        stat_file = out / "perf" / f"{stem}.stat.csv"
+        run(["perf", "stat", "-x,", "-o", str(stat_file), "-e", ",".join(PERF_EVENTS),
+             "--"] + bench_args, env=env, capture=True)
+        stats[b] = parse_stat(stat_file.read_text())
+        data = out / "perf" / f"{stem}.data"
+        run(["perf", "record", "-q", "-o", str(data), "--"] + bench_args,
+            env=env, capture=True)
+        # The functions over 5% of the samples, each instruction with its
+        # share: where the loop spends its cycles.
+        report = run(["perf", "annotate", "-i", str(data), "--stdio", "-M", "intel",
+                      "--percent-limit", "5", "--no-source"],
+                     env=env, capture=True, check=False)
+        (out / "perf" / f"{stem}.annotate.txt").write_text(report.stdout)
+        data.unlink(missing_ok=True)
+    return stats
+
+
+def parse_stat(text):
+    """perf stat -x, lines: value,unit,event,... -> {event: value}."""
+    found = {}
+    for line in text.splitlines():
+        fields = line.split(",")
+        if len(fields) < 3 or line.startswith("#"):
+            continue
+        try:
+            # perf may suffix the event (e.g. "cycles:u").
+            found[fields[2].split(":")[0]] = float(fields[0])
+        except ValueError:
+            pass  # <not supported> or <not counted>
+    return found
+
+
 def machine_info():
     lines = [f"host: {socket.gethostname()}", f"arch: {platform.machine()}"]
     cpuinfo = Path("/proc/cpuinfo")
@@ -154,7 +218,7 @@ def machine_info():
     return "\n".join(lines) + "\n"
 
 
-def write_summary(out, results, counts, levels, names):
+def write_summary(out, results, counts, levels, names, perf):
     benches = sorted({b for r in results.values() for b in r},
                      key=lambda b: (b.split("/")[0], int(b.split("/")[1])))
     with open(out / "results.csv", "w", newline="") as f:
@@ -201,6 +265,38 @@ def write_summary(out, results, counts, levels, names):
                              else f"{fmt(t)} ({(t / ref[b] - 1) * 100:+.0f}%)")
             md.append(f"| {b} | " + " | ".join(cells) + " |")
         md.append("")
+    if perf:
+        md += ["## perf", "",
+               "From `perf stat` over criterion's `--profile-time` run. GHz is",
+               "cycles / task-clock; per pair is criterion's mean time × GHz / pairs,",
+               "with pairs = n(n−1)/2. Backend stalls: cycles the core waited on",
+               "results or memory. Where each loop spends its cycles, instruction by",
+               "instruction: `perf/*.annotate.txt`.", "",
+               "| level | experiment | bench | GHz | IPC | cycles/pair | instr/pair "
+               "| branch miss | backend stall |",
+               "|---|---|---|---|---|---|---|---|---|"]
+        for (level, name), by_bench in perf.items():
+            for b, c in by_bench.items():
+                cycles, clock = c.get("cycles"), c.get("task-clock")
+                instr = c.get("instructions")
+                if not (cycles and clock and instr):
+                    md.append(f"| {level} | {name} | {b} | – | – | – | – | – | – |")
+                    continue
+                ghz = cycles / (clock * 1e6)  # task-clock is in ms
+                n = int(b.split("/")[1])
+                t = results.get((level, name), {}).get(b)
+                cpp = t * ghz / (n * (n - 1) / 2) if t else None
+                ipc = instr / cycles
+
+                def pct(event, of):
+                    v = c.get(event)
+                    return f"{v / of * 100:.1f}%" if v is not None and of else "–"
+
+                md.append(f"| {level} | {name} | {b} | {ghz:.2f} | {ipc:.2f} | "
+                          + (f"{cpp:.2f} | {cpp * ipc:.1f}" if cpp else "– | –")
+                          + f" | {pct('branch-misses', c.get('branches'))}"
+                          + f" | {pct('stalled-cycles-backend', cycles)} |")
+        md.append("")
     md += ["## sqrt and div in the dumped functions", "",
            "x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.",
            "aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.",
@@ -222,6 +318,13 @@ def main():
                    help="comma-separated: " + ", ".join(EXPERIMENTS))
     p.add_argument("--filter", default="^pairwise_", help="criterion's bench filter (regex)")
     p.add_argument("--quick", action="store_true", help="short criterion runs (a smoke test)")
+    p.add_argument("--perf", action="store_true",
+                   help="also perf stat and perf record/annotate (Linux; needs "
+                        "kernel.perf_event_paranoid <= 2)")
+    p.add_argument("--perf-benches", default="pairwise_f64/1024,pairwise_f32/1024",
+                   help="comma-separated bench ids for --perf")
+    p.add_argument("--perf-time", type=int, default=5,
+                   help="seconds per bench under perf (criterion's --profile-time)")
     p.add_argument("--out", type=Path, default=HERE / "results" / socket.gethostname().split(".")[0])
     args = p.parse_args()
     levels, names = args.levels.split(","), args.experiments.split(",")
@@ -232,15 +335,19 @@ def main():
         if x not in EXPERIMENTS:
             sys.exit(f"unknown experiment {x}")
 
+    if args.perf and not shutil.which("perf"):
+        sys.exit("--perf: perf isn't installed")
     out = args.out
     if out.exists():
         shutil.rmtree(out)
     (out / "asm").mkdir(parents=True)
+    if args.perf:
+        (out / "perf").mkdir()
     (out / "machine.txt").write_text(machine_info())
     work = HERE / ".work"
     work.mkdir(exist_ok=True)
 
-    results, counts = {}, {}
+    results, counts, perf = {}, {}, {}
     try:
         for name in names:
             tree = worktree(name, work)
@@ -253,7 +360,9 @@ def main():
                 print(f"\n=== {name} at {level} ===", flush=True)
                 results[(level, name)] = bench(tree, env, out / level / name, args)
                 counts.update(dump_asm(tree, env, name, level, out / "asm"))
-                write_summary(out, results, counts, levels, names)
+                if args.perf:
+                    perf[(level, name)] = perf_run(tree, env, name, level, out, args)
+                write_summary(out, results, counts, levels, names, perf)
     finally:
         for name in names:
             if (work / name).exists():
