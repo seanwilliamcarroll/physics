@@ -1,9 +1,9 @@
 # Demos on the personal site
 
-Status: **In progress** (planned 2026-11-12). Done: the checks V1–V4,
-this repo's steps P1–P3 and the first release (`v0.1.0`, 2026-11-13),
-and the site's S1–S6 (Hello Particles is in the site as a draft post).
-Left: S7 (the post, published) and S8 (a check of the live site). This
+Status: **Done** (planned 2026-11-12, finished 2026-11-13): the checks
+V1–V4, this repo's steps P1–P3 and the first release (`v0.1.0`), and the
+site's S1–S8. Hello Particles is published at
+<https://www.seanwilliamcarroll.com/posts/hello-particles/>. This
 replaces `hosting.md`, which was about publishing this repo's pages:
 that isn't going to happen.
 
@@ -196,16 +196,25 @@ required when S5 merged). Done, 2026-11-12 and 13:
   `application/wasm`; and the particles' pixels differ between two
   frames a second apart (a frozen canvas fails).
 
-Left:
-
 #### S7. The post, published
 
-The writing, and `draft: false`. Yours to write; I can draft.
+**Done** (2026-11-13, personal_site #16): Sean's words, `draft: false`.
+Checked on the real domain in a browser, light and dark: the demo
+starts when scrolled to, runs (60 frames in a second), draws in the
+theme's colours, and logs no errors.
 
 - **Done when:** merged, deployed, and the page works on the real
   domain in both themes.
 
 #### S8. A check of the live site
+
+**Done** (2026-11-13, personal_site #17): `npm run check:live` (through
+`./dc`). It finds the `.wasm` by following the page's scripts (no hashed
+name to keep up to date), checks its status, type and magic bytes, and
+that a made-up page is a real 404. It passes against production and
+fails on a missing page. Not checked: `content-encoding` (brotli was
+seen by hand, V1; a wrong encoding would show as a broken download, which
+the magic-byte check catches).
 
 - **Touches:** `scripts/check-live.mjs`, `package.json`
   (`check:live`).
