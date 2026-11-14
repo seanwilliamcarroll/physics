@@ -517,6 +517,9 @@ cargo xtask coverage          # needs: cargo install cargo-llvm-cov
   lines, not percentages, so adding code that's fully covered never reads
   as a drop. It reports; it never fails. One record for every machine:
   coverage depends on the code and the tests, not the machine.
+- **The README's coverage badge** is `docs/coverage-badge.json`, which
+  `--record` writes from the record's total (shields.io draws it from the
+  file on `main`): it always shows the committed record.
 - **`cargo xtask coverage --record`** replaces the record with this run's,
   in a pull request made through GitHub's API (as bench records are,
   `benchmarks.md`): from a commit (it refuses uncommitted changes), after

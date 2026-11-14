@@ -16,6 +16,10 @@ use super::{Counts, ratio};
 /// Where the record lives.
 pub(crate) const PATH: &str = "docs/coverage.md";
 
+/// The README's coverage badge: shields.io's endpoint format, drawn from
+/// the record's total (README.md links it).
+pub(crate) const BADGE: &str = "docs/coverage-badge.json";
+
 /// What the record says about the run it came from.
 pub(crate) struct Meta {
     pub date: String,
@@ -86,6 +90,29 @@ pub(crate) fn document(meta: &Meta, crates: &[Counts], total: &Counts, files: &[
         );
     }
     out
+}
+
+/// The badge for `total`'s lines covered: shields.io's endpoint JSON
+/// (`https://shields.io/badges/endpoint-badge`), the share to one decimal:
+/// green from 95%, yellow-green from 90, yellow from 80, orange from 70,
+/// red below.
+pub(crate) fn badge(total: &Counts) -> String {
+    let covered = total.lines.saturating_sub(total.missed_lines);
+    let pct = if total.lines == 0 {
+        0.0
+    } else {
+        100.0 * f64::from(covered) / f64::from(total.lines)
+    };
+    let color = match pct {
+        p if p >= 95.0 => "brightgreen",
+        p if p >= 90.0 => "yellowgreen",
+        p if p >= 80.0 => "yellow",
+        p if p >= 70.0 => "orange",
+        _ => "red",
+    };
+    format!(
+        "{{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"{pct:.1}%\",\"color\":\"{color}\"}}\n"
+    )
 }
 
 /// `covered/total` from a cell (`97.34% (2820/2897)`), as (total,
