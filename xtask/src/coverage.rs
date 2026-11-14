@@ -156,17 +156,21 @@ pub(crate) fn coverage(root: &Path, record: bool) -> Result<(), String> {
     }
     let table = rust(root, &cargo)?;
     let files = per_file(&table);
-    compare(root, &files);
+    compare(root, &cargo, &files);
     if record {
         let (crates, total) = per_crate(&table);
         write_record(root, &crates, &total, &files)?;
     }
+    // The site's JS tests load the built engine.wasm
+    // (tests/site/engine-loader.test.js): build it, as the pre-push hook
+    // does before them. CI's coverage job starts from a clean checkout.
+    super::site(root)?;
     js(root)
 }
 
 /// Prints (and, under GitHub Actions, adds to the job's summary) where
 /// this run's coverage fell short of the record. Never fails.
-fn compare(root: &Path, files: &[Counts]) {
+fn compare(root: &Path, cargo: &OsString, files: &[Counts]) {
     let Ok(text) = std::fs::read_to_string(root.join(record::PATH)) else {
         println!("coverage: no record ({}) to compare with", record::PATH);
         return;
@@ -191,8 +195,25 @@ fn compare(root: &Path, files: &[Counts]) {
             "coverage: {} file(s) with more missed than the record:",
             fell.len()
         );
+        // Which lines: llvm-cov's report again, from the same profile data.
+        let report = process::Command::new(cargo)
+            .current_dir(root)
+            .args([
+                "llvm-cov",
+                "report",
+                "--show-missing-lines",
+                "--ignore-filename-regex",
+                IGNORE_FILES,
+            ])
+            .stderr(Stdio::null())
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .unwrap_or_default();
         for f in &fell {
-            let _ = writeln!(summary, "  {f}");
+            let _ = writeln!(summary, "  {}", f.text);
+            if let Some(lines) = record::missing_lines(&report, &f.file) {
+                let _ = writeln!(summary, "    missed now: {lines}");
+            }
         }
     }
     print!("\n{summary}");
