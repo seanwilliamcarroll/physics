@@ -154,10 +154,19 @@ pub(crate) fn parse(text: &str) -> BTreeMap<String, Kept> {
         .collect()
 }
 
-/// Where this run's coverage is short of the record's, as lines to print:
-/// files with more lines or functions missed, and new files that aren't
-/// fully covered. Empty if nothing fell.
-pub(crate) fn fell(record: &BTreeMap<String, Kept>, now: &[Counts]) -> Vec<String> {
+/// A file where this run's coverage is short of the record's.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Fall {
+    /// The file, as the record names it (`swarm/src/vicsek.rs`).
+    pub file: String,
+    /// What fell, to print.
+    pub text: String,
+}
+
+/// Where this run's coverage is short of the record's: files with more
+/// lines or functions missed, and new files that aren't fully covered.
+/// Empty if nothing fell.
+pub(crate) fn fell(record: &BTreeMap<String, Kept>, now: &[Counts]) -> Vec<Fall> {
     let mut out = Vec::new();
     for f in now {
         match record.get(&f.name) {
@@ -165,26 +174,50 @@ pub(crate) fn fell(record: &BTreeMap<String, Kept>, now: &[Counts]) -> Vec<Strin
                 let more_lines = f.missed_lines > was.missed_lines;
                 let more_functions = f.missed_functions > was.missed_functions;
                 if more_lines || more_functions {
-                    out.push(format!(
-                        "{}: lines missed {} -> {}, functions missed {} -> {}",
-                        f.name,
-                        was.missed_lines,
-                        f.missed_lines,
-                        was.missed_functions,
-                        f.missed_functions
+                    out.push(fall(
+                        &f.name,
+                        format!(
+                            "{}: lines missed {} -> {}, functions missed {} -> {}",
+                            f.name,
+                            was.missed_lines,
+                            f.missed_lines,
+                            was.missed_functions,
+                            f.missed_functions
+                        ),
                     ));
                 }
             }
-            None if f.missed_lines > 0 || f.missed_functions > 0 => out.push(format!(
-                "{} (new): lines {}, functions {}",
-                f.name,
-                cell(f.lines, f.missed_lines),
-                cell(f.functions, f.missed_functions)
+            None if f.missed_lines > 0 || f.missed_functions > 0 => out.push(fall(
+                &f.name,
+                format!(
+                    "{} (new): lines {}, functions {}",
+                    f.name,
+                    cell(f.lines, f.missed_lines),
+                    cell(f.functions, f.missed_functions)
+                ),
             )),
             None => {}
         }
     }
     out
+}
+
+fn fall(file: &str, text: String) -> Fall {
+    Fall {
+        file: file.to_owned(),
+        text,
+    }
+}
+
+/// The uncovered line numbers `cargo llvm-cov report --show-missing-lines`
+/// gives for `file` (as the record names it, `swarm/src/vicsek.rs`): its
+/// "Uncovered Lines" section names files by absolute path.
+pub(crate) fn missing_lines<'a>(report: &'a str, file: &str) -> Option<&'a str> {
+    let (_, section) = report.split_once("Uncovered Lines:")?;
+    section.lines().find_map(|line| {
+        let (path, lines) = line.split_once(": ")?;
+        (path.ends_with(&format!("/{file}"))).then(|| lines.trim())
+    })
 }
 
 /// How many files have fewer lines or functions missed than the record.

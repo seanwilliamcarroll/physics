@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{Kept, Meta, badge, document, fell, parse, rose};
+use super::{Kept, Meta, badge, document, fell, missing_lines, parse, rose};
 use crate::coverage::Counts;
 
 fn counts(
@@ -102,13 +102,15 @@ fn a_fall_is_more_missed_or_a_new_file_short_of_full() {
         counts("new.rs", 4, 1, 1, 0),
         counts("new-covered.rs", 4, 0, 1, 0),
     ];
+    let falls = fell(&record, &now);
     assert_eq!(
-        fell(&record, &now),
+        falls.iter().map(|f| f.text.as_str()).collect::<Vec<_>>(),
         [
             "b.rs: lines missed 2 -> 3, functions missed 1 -> 1",
             "new.rs (new): lines 75.00% (3/4), functions 100.00% (1/1)",
         ]
     );
+    assert_eq!(falls[0].file, "b.rs");
     assert_eq!(rose(&record, &now), 0);
     assert_eq!(rose(&record, &[counts("b.rs", 10, 0, 2, 0)]), 1);
 }
@@ -124,4 +126,15 @@ fn the_badge_shows_the_share_of_lines_covered_and_its_colour() {
         badge(&counts("total", 0, 0, 0, 0)).contains("\"0.0%\""),
         "nothing to cover"
     );
+}
+
+#[test]
+fn missing_lines_are_read_from_llvm_cov_s_section_by_file() {
+    let report = "Filename  Regions ...\nTOTAL 1 2 3\n\nUncovered Lines:\n/home/r/physics/crates/swarm/src/vicsek.rs: 301, 305, 306\n/home/r/physics/crates/swarm/src/field.rs: 52\n";
+    assert_eq!(
+        missing_lines(report, "swarm/src/vicsek.rs"),
+        Some("301, 305, 306")
+    );
+    assert_eq!(missing_lines(report, "src/field.rs"), Some("52"));
+    assert_eq!(missing_lines(report, "swarm/src/other.rs"), None);
 }
