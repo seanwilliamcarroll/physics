@@ -241,9 +241,11 @@ const LOPSIDED_TOL: f64 = 0.053;
 #[test]
 fn coincident_bodies_pull_as_their_total_mass() {
     let mut p = Particles::<f64>::new();
-    p.add(Vec2::from_f64(0.0, 0.0), Vec2::ZERO, kg(1e10));
-    p.add(Vec2::from_f64(0.0, 0.0), Vec2::ZERO, kg(2e10));
-    p.add(Vec2::from_f64(100.0, 0.0), Vec2::ZERO, kg(1.0));
+    // Off the origin: there a bucket's moment (mass × position) is zero
+    // however it's summed (the fifth mutation run: `+=` for `-=` hid).
+    p.add(Vec2::from_f64(10.0, 5.0), Vec2::ZERO, kg(1e10));
+    p.add(Vec2::from_f64(10.0, 5.0), Vec2::ZERO, kg(2e10));
+    p.add(Vec2::from_f64(110.0, -20.0), Vec2::ZERO, kg(1.0));
     let direct = accel(&p, &PairwiseGravity::new(G, eps(EPS)));
     let tree = accel(&p, &bh::<f64>(EPS, 1.0));
     let (d, t) = (direct[2], tree[2]);

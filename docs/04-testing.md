@@ -876,6 +876,24 @@ still passed.
     test, which differs only on 32-bit targets, which mutants don't run
     on; the panic hook, which only the browser smoke test sees.
 
+- **The fifth full run (2026-11-13, at 777de29, after #258's bench
+  records and before #261's coverage record):** 351 of 7,124 missed (36
+  timeouts, 777 unviable), from 475. The node had pulled `43de4a7`
+  mid-run; cargo-mutants copies the source when it starts, so `777de29`
+  is what it mutated. Code changed after it (`github.rs`, the coverage
+  record) waits for the next run.
+  - **Real gaps, now tested:** three in tests written for the fourth
+    run (two more origin and symmetry traps: coincident Barnes–Hut bodies
+    at the origin, where a bucket's moment is zero whichever way it's
+    summed; a pinned contact tested with only the second body pinned),
+    a contact's resting speed (`2 |a_rel| h`, never read), and the bench
+    command's decisions (which criterion flag, what fails, the
+    toolchain and "weren't compared" warnings, the freshness filter),
+    pulled out of the command into functions to test them.
+  - **Everything else** is the equivalent classes above, crate by crate:
+    `xtask`'s remaining misses wrap commands (`cargo`, `git`, `gh`,
+    Chrome) that the hooks and real runs exercise.
+
 ## Phase 1 test-first order
 
 1. `Vec2` and `Scalar` unit tests.
