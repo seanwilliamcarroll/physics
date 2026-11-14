@@ -38,12 +38,20 @@ On aarch64 the levels are `default` and `native`.
 On the compute node, in tmux:
 
 ```sh
-tmux new -s gv 'cd ~/physics && git fetch && git checkout experiments-gravity-package && experiments/gravity-vectorize/run.py 2>&1 | tee ~/gv.log; exec bash'
+tmux new -s gv 'cd ~/physics && git fetch && git checkout experiments-gravity-package && experiments/gravity-vectorize/run.py --perf 2>&1 | tee ~/gv.log; exec bash'
 ```
 
-About 40 minutes (4 experiments × 3 levels; each level's first build is
+About 45 minutes (4 experiments × 3 levels; each level's first build is
 from scratch). `--quick`, `--levels`, `--experiments` and `--filter`
 narrow it (`run.py --help`).
+
+`--perf` (Linux) adds hardware counters for `pairwise_f64/1024` and
+`pairwise_f32/1024` (`--perf-benches`): `perf stat` for cycles,
+instructions and branch misses, and `perf record` + `perf annotate` for
+where the cycles go, instruction by instruction. Each bench runs under
+criterion's `--profile-time` (no analysis, just the loop). Ubuntu stops
+users using perf by default; `sudo sysctl kernel.perf_event_paranoid=1`
+allows it until the next reboot.
 
 ## Results
 
@@ -55,6 +63,10 @@ In `results/<host>/`:
   Written after every experiment, so a stopped run still has a summary.
 - `results.csv`: level, experiment, bench, mean in ns.
 - `asm/<level>--<experiment>--<function>-<f64|f32>.s`: Intel syntax.
+- With `--perf`: a perf table in `summary.md` (GHz, IPC, cycles and
+  instructions per pair, branch misses), and in `perf/` each bench's
+  `perf stat` output (`.stat.csv`) and annotated hot functions
+  (`.annotate.txt`).
 - `machine.txt`: CPU, SIMD flags, rustc.
 - `<level>/<experiment>/criterion/`: criterion's raw data.
 
