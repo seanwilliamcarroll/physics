@@ -3,8 +3,9 @@
 //! compares each run with it and reports where coverage fell; `--record`
 //! replaces it (in a pull request, `github.rs`).
 //!
-//! One record for every machine: coverage depends on the code and the
-//! tests, not on the machine that ran them. The comparison counts
+//! One record, made on GitHub's runner (the nightly's `record_coverage`
+//! option), because coverage of the same code differs a little between
+//! machines and the nightly compares on the runner. The comparison counts
 //! *missed* lines and functions, not percentages: adding code that is
 //! fully covered never reads as a drop.
 

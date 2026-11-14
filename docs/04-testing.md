@@ -515,15 +515,27 @@ cargo xtask coverage          # needs: cargo install cargo-llvm-cov
   the totals and every file with **more lines or functions missed** than
   the record, plus new files that aren't fully covered. It counts missed
   lines, not percentages, so adding code that's fully covered never reads
-  as a drop. It reports; it never fails. One record for every machine:
-  coverage depends on the code and the tests, not the machine.
+  as a drop. It reports; it never fails.
+- **Coverage depends on the machine, so the record is made where the
+  nightly compares: GitHub's runner.** The same code gave 232 lines
+  missed on a Mac, 240 on the compute node and 245 on the runner
+  (2026-11-14), each repeatable on its own machine. The runner's extra
+  misses were `state_bytes` in `swarm/src/vicsek.rs`, which the
+  determinism test does call: its iterator chain is compiled into the
+  test's binary, and whether llvm-cov credits that code to the library
+  varies with the build (a guess, not confirmed). Record with
+  `gh workflow run Nightly -f record_coverage=true`: the
+  `record-coverage` job runs `cargo xtask coverage --record` on the
+  runner. A local run's comparison is still useful for a file that
+  fell, but expect a few files to differ by machine.
 - **The README's coverage badge** is `docs/coverage-badge.json`, which
   `--record` writes from the record's total (shields.io draws it from the
   file on `main`): it always shows the committed record.
 - **`cargo xtask coverage --record`** replaces the record with this run's,
   in a pull request made through GitHub's API (as bench records are,
   `benchmarks.md`): from a commit (it refuses uncommitted changes), after
-  a change that moves coverage on purpose.
+  a change that moves coverage on purpose. Run it through the nightly's
+  `record_coverage` option (above), so the record is the runner's.
 - **The property tests' seed is fixed in a coverage run**
   (`PROPTEST_RNG_SEED`): proptest draws a new random seed every run, and
   a branch only odd inputs reach (`voices.rs`'s `note_on` refusals) was

@@ -35,6 +35,10 @@ on a pull request. The hooks stay the first line.
 - Seventeen past, not the hour: scheduled runs queue behind everyone
   else's, and the top of the hour is the busiest. GitHub may start a
   run late; it doesn't start one early.
+- **Late can mean hours.** The first scheduled run (2026-11-14) was
+  queued at 07:17 and started at 14:07; it tested `main` as of 07:17.
+  Nothing on our side was wrong (no incident was posted either), so a
+  missing run in the morning isn't a fault until it's missing all day.
 
 ## How "only if main moved" works
 
@@ -52,7 +56,19 @@ Comparing with the last *successful* run (not the last run) means a
 red `main` is tested again every night until it's fixed. That's the
 intent: a failure shouldn't go quiet after one night.
 
-A manual run (`gh workflow run Nightly`) always runs everything.
+A manual run (`gh workflow run Nightly`) always runs everything. Two
+options change that:
+
+- `-f fail=true` fails `hooks` at once and skips `slow` and `coverage`:
+  a rehearsal of a red night (C4).
+- `-f record_coverage=true` runs only `record-coverage`: `cargo xtask
+  coverage --record` on the runner, so the coverage record comes from
+  the machine the nightly compares on (`04-testing.md`, Coverage). That
+  job alone may write (`contents`, `pull-requests`): it pushes the
+  record's branch and opens the pull request. If the repository doesn't
+  let Actions open pull requests (Settings → Actions → "Allow GitHub
+  Actions to create and approve pull requests"), the branch is still
+  pushed and the job's log gives the `gh pr create` command.
 
 ## What it runs
 

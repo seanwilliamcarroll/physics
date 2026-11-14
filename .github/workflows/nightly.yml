@@ -16,6 +16,10 @@ on:
         description: "Fail on purpose, to try the failure issue (the checks themselves are skipped)"
         type: boolean
         default: false
+      record_coverage:
+        description: "Only record coverage on this runner (docs/coverage.md), in a pull request; the checks are skipped"
+        type: boolean
+        default: false
 
 # One at a time; a run in progress is left to finish.
 concurrency:
@@ -64,7 +68,7 @@ jobs:
   # added to a hook is in CI the same day.
   hooks:
     needs: changed
-    if: needs.changed.outputs.run == 'true'
+    if: needs.changed.outputs.run == 'true' && !inputs.record_coverage
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -103,7 +107,7 @@ jobs:
   slow:
     needs: changed
     # Not in a rehearsal of a failure: `hooks` fails for it at once.
-    if: needs.changed.outputs.run == 'true' && !inputs.fail
+    if: needs.changed.outputs.run == 'true' && !inputs.fail && !inputs.record_coverage
     runs-on: ubuntu-24.04
     # Measured: 54 min (docs/17-nightly-ci.md). Twice that, for a slower runner.
     timeout-minutes: 120
@@ -120,7 +124,7 @@ jobs:
   # the tests failing under instrumentation.
   coverage:
     needs: changed
-    if: needs.changed.outputs.run == 'true' && !inputs.fail
+    if: needs.changed.outputs.run == 'true' && !inputs.fail && !inputs.record_coverage
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -130,6 +134,30 @@ jobs:
 
       - name: cargo xtask coverage
         run: cargo xtask coverage
+
+  # Records coverage on this runner (`gh workflow run Nightly -f
+  # record_coverage=true`): the record the nightly compares with has to
+  # come from the same kind of machine, because coverage of the same code
+  # differs between machines (docs/04-testing.md, Coverage). Opens the
+  # record's pull request through GitHub's API (xtask/src/github.rs); if
+  # the repository doesn't let Actions open pull requests, the branch is
+  # pushed and the log gives the command to open one. Never merges.
+  record-coverage:
+    if: inputs.record_coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup
+
+      - name: cargo xtask coverage --record
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cargo xtask coverage --record
 
   # A failure that can't be missed: an issue, opened on a failed night
   # and closed by the next green one (.github/scripts/nightly-report.sh).
