@@ -1,4 +1,4 @@
 rustc=rustc 1.99.1 (58cf8f9c3 2026-10-13)
 criterion=0.8.2
-commit=816ddd6
-date=2026-11-13
+commit=ea2169b
+date=2026-11-14
