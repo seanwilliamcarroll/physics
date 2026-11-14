@@ -1,0 +1,9 @@
+# started on Sat Nov 14 15:57:33 2026
+
+4991.72,msec,task-clock,4991716708,100.00,,
+27632572268,,cycles,4991716708,100.00,,
+105319477743,,instructions,4991716708,100.00,,
+9581836232,,branches,4991716708,100.00,,
+6191790,,branch-misses,4991716708,100.00,,
+92757897,,stalled-cycles-frontend,4991716708,100.00,,
+<not supported>,,stalled-cycles-backend,0,100.00,,
