@@ -6,6 +6,13 @@ to write a post from. The short, settled results are in `experiments.md`;
 the reproducible package (patches, `run.py`, results) is in
 `experiments/gravity-vectorize/`.
 
+**What's committed:** each run's `summary.md`, `results.csv` and
+`machine.txt`, and `results/sweep.md`. The asm listings, perf output
+(`perf/*.annotate.txt`, `*.stat.csv`), logs and criterion's raw data are
+**not**: they stay on the machine that ran the experiment. Where this
+notebook quotes them, rerun the package (`experiments/gravity-vectorize/`)
+to see them again.
+
 ## The question
 
 `PairwiseGravity::accumulate` (`crates/engine/src/force.rs`) is the
