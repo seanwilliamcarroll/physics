@@ -24,3 +24,7 @@ engine.demo_free(demo);
 - Scenes are compiled in: `demo_new(kind, …)` with a `DEMO_*` code.
 - The types (`EngineExports`) are checked against the wasm's export table
   when the package is built.
+- The module uses WebAssembly SIMD (Chrome 91, Firefox 89, Safari 16.4 or
+  later). In a browser without it, `loadEngine` rejects with a
+  `WasmUnsupportedError` whose message is written for the visitor;
+  `simdSupported()` asks without loading anything.

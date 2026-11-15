@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { instantiate } from "../../site/js/engine-loader.ts";
+import { explainCompileError, instantiate, simdSupported, WasmUnsupportedError } from "../../site/js/engine-loader.ts";
 import { DEMO_FOUNTAIN, SCALAR_F32, TEST_PANIC_MESSAGE } from "../../site/js/abi.ts";
 
 const WASM = new URL("../../site/pkg/engine.wasm", import.meta.url);
@@ -89,4 +89,22 @@ test("a module with no memory export is refused", async () => {
   // The smallest module: the magic number and version, nothing else.
   const empty = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
   await assert.rejects(instantiate(empty, "empty.wasm"), /empty\.wasm exports no memory/);
+});
+
+test("the SIMD probe validates where wasm SIMD is supported (Node has it)", () => {
+  assert.equal(simdSupported(), true);
+});
+
+test("without SIMD, a compile error becomes a WasmUnsupportedError the visitor can read", () => {
+  const original = new WebAssembly.CompileError("invalid opcode 0xfd");
+  const explained = explainCompileError(original, "engine.wasm", false);
+  assert.ok(explained instanceof WasmUnsupportedError);
+  assert.equal(explained.name, "WasmUnsupportedError");
+  assert.match(explained.message, /engine\.wasm.*WebAssembly SIMD/);
+  assert.equal(explained.cause, original);
+});
+
+test("with SIMD, a compile error is passed on unchanged", () => {
+  const original = new WebAssembly.CompileError("something else");
+  assert.equal(explainCompileError(original, "engine.wasm", true), original);
 });

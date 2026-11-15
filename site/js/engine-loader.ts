@@ -17,6 +17,43 @@ export interface Loaded {
   lastPanic(): string | null;
 }
 
+/** Thrown instead of the browser's compile error when it can't run these
+ *  modules at all: they're built with wasm SIMD (`simd128`,
+ *  `.cargo/config.toml`), which it doesn't support. Its message is meant
+ *  for the page's visitor. */
+export class WasmUnsupportedError extends Error {
+  override name = "WasmUnsupportedError";
+}
+
+/** The smallest module that uses a SIMD instruction: a function returning
+ *  a `v128`, `i8x16.popcnt(i8x16.splat(0))`. It validates exactly when the
+ *  browser supports wasm SIMD. */
+const SIMD_PROBE = new Uint8Array([
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, // "\0asm", version 1
+  0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7b, // types: () -> v128
+  0x03, 0x02, 0x01, 0x00, // functions: one, of type 0
+  0x0a, 0x0a, 0x01, 0x08, 0x00, // code: one body, 8 bytes, no locals
+  0x41, 0x00, 0xfd, 0x0f, 0xfd, 0x62, 0x0b, // i32.const 0; i8x16.splat; i8x16.popcnt; end
+]);
+
+/** Whether this browser runs wasm SIMD, which every module here needs. */
+export function simdSupported(): boolean {
+  return WebAssembly.validate(SIMD_PROBE);
+}
+
+/** `err`, from compiling `name`, as the visitor should see it: a
+ *  [`WasmUnsupportedError`] if the browser lacks wasm SIMD (the original
+ *  error as its `cause`), otherwise `err` itself. `supported` is for
+ *  tests. */
+export function explainCompileError(err: unknown, name: string, supported = simdSupported()): unknown {
+  if (supported) return err;
+  return new WasmUnsupportedError(
+    `This browser can't run ${name}: it doesn't support WebAssembly SIMD. ` +
+      "Chrome 91, Firefox 89 and Safari 16.4 or later do.",
+    { cause: err },
+  );
+}
+
 /** The one import these modules take: the panic hook's sink
  *  (crates/web-common/src/panic_hook.rs). */
 type Imports = { env: { console_error(ptr: number, len: number): void } };
@@ -49,7 +86,12 @@ export async function instantiate(source: WasmSource, name: string): Promise<Loa
       },
     },
   };
-  const instance = await instanceOf(source, name, imports);
+  let instance: WebAssembly.Instance;
+  try {
+    instance = await instanceOf(source, name, imports);
+  } catch (err) {
+    throw explainCompileError(err, name);
+  }
   const memoryExport = instance.exports.memory;
   if (!(memoryExport instanceof WebAssembly.Memory)) throw new Error(`${name} exports no memory`);
   memory = memoryExport;

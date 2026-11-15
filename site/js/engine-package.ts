@@ -18,7 +18,7 @@ import type { EngineExports } from "./engine";
 
 export * from "./abi.ts";
 export * from "./engine-views.ts";
-export { instantiate } from "./engine-loader.ts";
+export { instantiate, simdSupported, WasmUnsupportedError } from "./engine-loader.ts";
 export type { Loaded, WasmSource } from "./engine-loader.ts";
 export type { DemoHandle, EngineExports, Ptr, Status } from "./engine";
 

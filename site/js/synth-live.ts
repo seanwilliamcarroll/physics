@@ -5,6 +5,7 @@
 
 import type { FromWorklet, ProcessorInit, ToWorklet } from "./synth-worklet.ts";
 import { SPECTRUM_SIZE } from "./acoustic-abi.ts";
+import { explainCompileError } from "./engine-loader.ts";
 
 const WORKLET_URL = new URL("./synth-worklet.js", import.meta.url);
 const WASM_URL = new URL("../pkg/acoustic.wasm", import.meta.url);
@@ -25,7 +26,11 @@ const SNAPSHOT_BUFFERS = 2;
 export async function compileAcoustic(): Promise<WebAssembly.Module> {
   const res = await fetch(WASM_URL);
   if (!res.ok) throw new Error(`fetching ${WASM_URL}: ${res.status}`);
-  return WebAssembly.compile(await res.arrayBuffer());
+  try {
+    return await WebAssembly.compile(await res.arrayBuffer());
+  } catch (err) {
+    throw explainCompileError(err, "acoustic.wasm");
+  }
 }
 
 /** What a page gets once audio runs. */
