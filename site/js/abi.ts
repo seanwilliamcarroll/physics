@@ -47,7 +47,7 @@ export const DEFAULT_RATE_HZ = 60;
 /** The most work one call may ask for: larger is refused (null, or
  *  status 0). Pages read their slider ranges from these. */
 export const MAX_PARTICLES = 2000000;
-export const MAX_GRAVITY_BODIES = 4096;
+export const MAX_GRAVITY_BODIES = 8192;
 export const MAX_CHAIN_LINKS = 40;
 export const MAX_JELLY_SIDE = 16;
 export const MAX_BOX_BALLS = 60;

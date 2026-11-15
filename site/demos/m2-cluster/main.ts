@@ -24,9 +24,10 @@ function isScene(s: string): s is SceneName {
   return Object.hasOwn(SCENES, s);
 }
 
-/** Body counts offered: powers of two, so the cost table's rows double. 4096
- *  costs ~17 ms per step per panel natively (M2.3: ~2 ns per pair). */
-const N_CHOICES = [16, 64, 128, 256, 512, 1024, 2048, 4096];
+/** Body counts offered: powers of two, so the cost table's rows double.
+ *  8192 is past the step budget on most machines: the page slows down
+ *  (`cargo xtask bench-wasm` reports the largest that fits). */
+const N_CHOICES = [16, 64, 128, 256, 512, 1024, 2048, 4096, 8192];
 
 /** Softening slider range, m. 0 is allowed on purpose (pure 1/r²); 0.5 is
  *  a quarter of the scene radius, where gravity is visibly mushy. The
@@ -75,6 +76,7 @@ const PRESETS: [string, string][] = [
   ["no softening", "?scene=collapse&eps_mm=0"],
   ["1024 bodies", "?n=1024"],
   ["4096 bodies", "?n=4096"],
+  ["8192 bodies", "?n=8192"],
   ["crude Barnes–Hut", "?n=1024&theta_pct=150"],
   ["10 Hz", "?rate=10"],
 ];

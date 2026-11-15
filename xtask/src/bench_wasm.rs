@@ -108,7 +108,40 @@ pub(crate) fn bench_wasm(root: &Path, budget_ms: u32) -> Result<(), String> {
         );
     }
     println!("note: wasm times include the O(n) render-buffer fill; native is World::step alone");
-    modules(root, budget_ms)
+    modules(root, budget_ms)?;
+    ceiling(root)
+}
+
+/// The largest cluster whose step fits the page's step budget, per scalar
+/// (`xtask/gravity_ceiling.mjs`): the gravity demo's practical size limit
+/// in this browser engine, on this machine.
+fn ceiling(root: &Path) -> Result<(), String> {
+    let script = root.join("xtask").join("gravity_ceiling.mjs");
+    println!("\nlargest cluster within the step budget (site/js/loop.ts), in Node…");
+    let output = process::Command::new("node")
+        .arg(&script)
+        .arg(root.join("site").join("pkg").join("engine.wasm"))
+        .output()
+        .map_err(|e| format!("failed to run node: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "ceiling search failed ({}): {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    println!("{:<8} {:>10} {:>12}", "scalar", "bodies", "a step");
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        let mut parts = line.split(' ');
+        if let (Some(scalar), Some(n), Some(ns)) = (parts.next(), parts.next(), parts.next()) {
+            let ns: f64 = ns
+                .parse()
+                .map_err(|e| format!("bad time in `{line}`: {e}"))?;
+            println!("{scalar:<8} {n:>10} {:>12}", format_ns(ns));
+        }
+    }
+    println!("(\"+\": the ABI's cap, MAX_GRAVITY_BODIES, fits too)");
+    Ok(())
 }
 
 /// The other modules (`xtask/bench_modules.mjs`): sand, boids, Vicsek,

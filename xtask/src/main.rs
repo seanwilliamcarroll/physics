@@ -112,7 +112,8 @@ enum Command {
     },
     /// Time the modules in Node: the engine's cluster, compared with the
     /// native criterion results (run cargo bench -p engine --bench step first),
-    /// then sand and swarm through their exports
+    /// then sand and swarm through their exports, then the largest cluster
+    /// whose step fits the page's step budget
     BenchWasm {
         /// Measuring time per case, in milliseconds (at least 10)
         #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(u32).range(10..))]

@@ -25,6 +25,11 @@ enum Run {
     Disk,
     /// 16 bodies, 300 steps (5 s: through the first collapse).
     Collapse,
+    /// 200 bodies, 100 steps: past the plain-loop cutoff (16-body worlds
+    /// run the plain loop), so the vector pair loop and its lanes are
+    /// pinned; 200 isn't a multiple of the lanes, so the leftover pairs
+    /// after the last block are too (`force/pairwise/knobs.rs`).
+    ClusterLarge,
     /// 600 steps (~3.3 orbits).
     Orbit(Integrator),
     /// A 64-body cluster under Barnes–Hut (θ = 0.5), 300 steps: enough
@@ -58,11 +63,12 @@ enum Run {
     PoolBreak(Solver),
 }
 
-const RUNS: [Run; 24] = [
+const RUNS: [Run; 25] = [
     Run::Fountain,
     Run::Cluster,
     Run::Disk,
     Run::Collapse,
+    Run::ClusterLarge,
     Run::Orbit(Integrator::SymplecticEuler),
     Run::Orbit(Integrator::ExplicitEuler),
     Run::Orbit(Integrator::VelocityVerlet),
@@ -152,6 +158,10 @@ fn run<S: Scalar>(r: Run) -> u64 {
             let mut w = pool_break::<S>(solver, nonzero(10), 10.0, 0.0).unwrap();
             stepped(&mut w, 240)
         }
+        Run::ClusterLarge => {
+            let mut w = cluster::<S>(200, 1).unwrap();
+            stepped(&mut w, 100)
+        }
         Run::ClusterBarnesHut => {
             let mut w = cluster_barnes_hut::<S>(64, 1, 0.5);
             stepped(&mut w, 300)
@@ -184,11 +194,12 @@ for_each_scalar!(every_run_is_repeatable);
 /// (then paste the new values from the failure message) or a bug.
 /// Recorded on aarch64-apple-darwin, Rust 1.99.1; `cargo xtask test-wasm`
 /// checks the same values on wasm32-wasip1 (`docs/04-testing.md`).
-const GOLDEN: [(u64, u64); 24] = [
+const GOLDEN: [(u64, u64); 25] = [
     (0x62d2_3ead_9eca_5aa2, 0x3310_5c41_b976_f7c6), // Fountain
     (0x5444_76f1_0dbc_08c8, 0x3dd0_4ef8_e624_0f65), // Cluster
     (0x7f78_7e7b_c5d7_4fb9, 0xa60c_e466_6830_9be0), // Disk
     (0x4243_55a9_2d1b_b9d3, 0x2ec5_fcc0_29c0_1f7b), // Collapse
+    (0x5dc8_ac29_6d6e_4dd8, 0xe1c6_411a_d1b4_6c67), // ClusterLarge
     (0x38b8_98d9_9f2e_436a, 0x62a3_677f_7c53_91e2), // Orbit(SymplecticEuler)
     (0xdbd3_a74a_c351_be50, 0xa548_448e_abb6_5ba7), // Orbit(ExplicitEuler)
     (0x521c_acff_69c8_f074, 0x2479_9e2b_6114_4cb8), // Orbit(VelocityVerlet)
@@ -211,8 +222,28 @@ const GOLDEN: [(u64, u64); 24] = [
     (0x7d22_34db_a781_a107, 0x3e46_5211_91e1_7f6f), // PoolBreak(Impulse)
 ];
 
+/// The pairwise-gravity settings that change results' bits
+/// (`crates/engine/src/force/pairwise/knobs.rs`): the goldens are for
+/// their defaults. (`GRAVITY_LOOP` doesn't change bits, so it's not here.)
+const BIT_CHANGING_SETTINGS: [(&str, Option<&str>); 2] = [
+    ("GRAVITY_LANES", option_env!("GRAVITY_LANES")),
+    ("GRAVITY_PLAIN_BELOW", option_env!("GRAVITY_PLAIN_BELOW")),
+];
+
 #[test]
 fn golden_hashes_are_unchanged() {
+    let set: Vec<String> = BIT_CHANGING_SETTINGS
+        .iter()
+        .filter_map(|(name, value)| value.map(|v| format!("{name}={v}")))
+        .collect();
+    if !set.is_empty() {
+        eprintln!(
+            "golden hashes skipped: built with {}, which changes results' bits; \
+             the goldens are for the defaults",
+            set.join(", ")
+        );
+        return;
+    }
     let mut changed = Vec::new();
     for (r, &(g32, g64)) in RUNS.iter().zip(&GOLDEN) {
         let (h32, h64) = (run::<f32>(*r), run::<f64>(*r));
