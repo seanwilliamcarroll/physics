@@ -417,6 +417,39 @@ arguments were regrouped), and is 2–14% faster than the experiment's
 On the M4, natively, against plain: `f32` −50% at 1,024 and 4,096
 bodies, `f64` −3%.
 
+## Step 9: on main, both machines (2026-11-15)
+
+Recorded with `cargo xtask bench --record` on `main` after #277
+(`docs/bench/llm.tsv`, `docs/bench/macbook-air-5.tsv`; default builds:
+SSE2 on Zen 5, NEON on the M4).
+
+| Pairwise, 4,096 bodies | Zen 5 | M4 |
+|---|---|---|
+| `f32` | 13.4 → **4.67 ms** (−65%) | 8.8 → **4.29 ms** (−51%) |
+| `f64` | 18.7 → **10.9 ms** (−42%) | 8.7 → **8.4 ms** (−3%) |
+
+Zen 5 gains most because its scalar square root and division were the
+bottleneck (step 5): spread across vector lanes, that cost shrinks. The
+machines went from ~2× apart to 1.1–1.3×.
+
+In the browser's engine (Node's V8, `cargo xtask bench-wasm`):
+
+| | Zen 5 | M4 |
+|---|---|---|
+| Largest cluster whose step fits 10 ms, `f32` | 5,984 | 6,240 |
+| Largest cluster whose step fits 10 ms, `f64` | 3,904 | 4,416 |
+| wasm ÷ native, a step at 1,024 bodies | 1.01–1.03 | 1.03–1.05 |
+
+Before, about 3,950 bodies fit in either scalar (the plain loop, on the
+M4). The gravity scenes' cap went from 4,096 to **8,192 bodies**
+(`MAX_GRAVITY_BODIES`), past what fits anywhere measured, so the page can
+be pushed until it has to slow down (the step budget's slow motion).
+
+Along the way the benchmark record itself got smaller: criterion's files
+for every benchmark (309 files a machine) became one `.tsv` of means
+(5 KB), after the M4's first record timed out uploading
+(`docs/benchmarks.md`, Records).
+
 ## Open questions
 
 - **LLVM vs Cranelift on aarch64.** A smoke run on the M4: D2 natively
