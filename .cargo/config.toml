@@ -2,7 +2,18 @@
 # `cargo xtask <cmd>`: the build helper in xtask/ (docs/repo-layout.md).
 xtask = "run --quiet -p xtask --"
 
+# Every wasm build uses wasm SIMD (128-bit vectors): the site's modules,
+# the wasm tests, the hooks' wasm clippy. Browsers have had it since 2021–23
+# (Chrome 91, Firefox 89, Safari 16.4); one without it can't load the
+# modules at all, and the page says so (site/js/engine-loader.ts).
+# Speed only: vector square roots and divisions round as scalar ones do,
+# so the goldens are the same with or without it (docs/03-wasm-shell.md).
+# A RUSTFLAGS variable replaces these flags rather than adding to them.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]
+
 # `cargo test --target wasm32-wasip1` runs test binaries in wasmtime
 # (`cargo xtask test-wasm`; docs/04-testing.md, cross-platform determinism).
 [target.wasm32-wasip1]
 runner = "wasmtime"
+rustflags = ["-C", "target-feature=+simd128"]

@@ -270,9 +270,9 @@ about 2.4 ms a step in V8 leaves most of a 60 Hz frame for drawing.
 
 ### The wasm module as built (S1.5, `crates/swarm-web` → `swarm.wasm`)
 
-48.5 KB, built with `simd128` in its own target dir (`target/simd`:
-cargo rebuilds everything when `RUSTFLAGS` changes, and the other
-modules build without it). Exports: `swarm_new(n, width, height, scale,
+48.5 KB, built with `simd128` (then in its own target dir, `target/simd`,
+while the other modules built without it; since 2026-11-15 every module
+is, `03-wasm-shell.md`). Exports: `swarm_new(n, width, height, scale,
 seed)` (a world in pixels, drawn at one pixel per `scale`: the page's
 2560 × 1440 at 2), `advance`, `set_rate`, `set_step_cap`,
 `set_neighbours` (brute force refused past `MAX_BRUTE` = 16,384),
@@ -297,8 +297,14 @@ run, and the boid itself adds nothing at distance 0): 1.65 ns a pair in
 V8, 0.53 natively (it was 1.17). The page's brute force and sorted then
 share an inner loop and differ only in their candidates, which is the
 comparison worth showing. Its golden moved (lane order); `cargo xtask
-test-wasm` now also runs `swarm`'s tests built with `simd128`, and every
-golden holds.
+test-wasm` now also runs `swarm`'s tests built with `simd128` (since
+2026-11-15 every crate's are), and every golden holds.
+
+**Still open (found 2026-11-15):** measured without `simd128` against
+with, some of swarm's loops lose: the boids render takes 246 µs with it
+against 128 without (+93%), Vicsek's step +10%, Physarum's +5%, the grid
+step +4%, while sorted (−21%) and brute force (−26%) gain. The render is
+the one worth a look.
 
 Through the real exports in Node 22, the page's world (10k boids in
 2560 × 1440, drawn 1280 × 720): **a step 2.37 ms sorted, 4.54 grid;
