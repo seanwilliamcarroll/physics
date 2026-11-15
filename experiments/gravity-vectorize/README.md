@@ -108,6 +108,10 @@ In `results/<host>/`:
 - `machine.txt`: CPU, SIMD flags, rustc.
 - `<level>/<experiment>/criterion/`: criterion's raw data.
 
+Committed: each run's `summary.md`, `results.csv` and `machine.txt`, and
+`results/sweep.md` (from `sweep_doc.py`). The asm, perf files, logs and
+criterion's data are git-ignored: they stay where the run made them.
+
 To bring them back to the Mac:
 
 ```sh

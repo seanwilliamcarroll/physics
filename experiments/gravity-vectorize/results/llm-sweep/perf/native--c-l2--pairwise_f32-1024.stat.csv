@@ -1,9 +1,0 @@
-# started on Sun Nov 15 10:44:24 2026
-
-4997.98,msec,task-clock,4997978530,100.00,,
-27693509803,,cycles,4997978530,100.00,,
-60520883702,,instructions,4997978530,100.00,,
-3475807068,,branches,4997978530,100.00,,
-23064811,,branch-misses,4997978530,100.00,,
-424959986,,stalled-cycles-frontend,4997978530,100.00,,
-<not supported>,,stalled-cycles-backend,0,100.00,,
