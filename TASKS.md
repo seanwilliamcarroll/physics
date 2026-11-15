@@ -243,6 +243,42 @@ have found; two genes at their ranges' edges. `AntParams::EVOLVED`; the
 
 ---
 
+## Gravity, the site, then the next milestone (from 2026-11-15)
+
+Done: wasm `simd128` everywhere with a message where it's missing
+(#276); pairwise gravity's vector loops and build knobs (#277,
+`docs/gravity-vectorize.md`); the 8,192-body cap; the slim benchmark
+record (#279); both machines recorded on the new `main` (#278, #280).
+In order:
+
+1. **Per-target gravity settings.** Sweep the knobs on the new `main`
+   (`experiments/gravity-vectorize/run.py --experiments sweep`, both
+   machines, ~3 h each). If `blocked` clearly beats `two-pass` for `f64`
+   in wasm (or anywhere), make the default loop depend on the target
+   (bit-safe: the loops agree; `GRAVITY_LANES` stays one value
+   everywhere). Record the decision in the notebook.
+2. **Cranelift vs LLVM.** The 4-lane `f64` blocked loop on the M4 ran
+   ~40% faster as wasm (wasmtime, V8) than LLVM's native AArch64 code.
+   The hot loop side by side (LLVM's asm, Cranelift's machine code), a
+   minimal Rust reproducer checked on Compiler Explorer with timings, a
+   write-up; then decide whether to file an LLVM issue.
+3. **Release** the physics package (public).
+4. **`personal_site` PR:** pull in the release; the demo component
+   shows `WasmUnsupportedError`'s message instead of "Reloading the
+   page may help".
+5. **Smaller:** swarm's boids render is 2× slower with `simd128`
+   (`15-swarm.md`); the notebook's open questions (a cutoff per row,
+   base's +30% at 16 bodies); a targeted mutation run on `llm` for the
+   new code (`force/pairwise`, the bench record, `github.rs`, coverage,
+   the broadphase); keep checking the nightly runs.
+6. **A post** on the gravity work, from the notebook.
+7. **A second demo for the website** (cradle, break shot, double
+   pendulum or jelly).
+8. **The next milestone:** M10, the A4 drum, collective construction,
+   M8 fixed point (`docs/05-roadmap.md`).
+
+---
+
 ## Health (after M7)
 
 Done: the API audit and its PRs (#159–#164: `web-common`, `engine-web`,
@@ -252,8 +288,8 @@ mutation run (#144); the second full run (16cea2a, M9's crates
 included) triaged, its real gaps tested (`04-testing.md`, "Mutation
 testing"); `docs/setup.md`, Node through nvm. Open:
 
-- **Your check:** `m2-cluster?n=4096` in slow motion, not frozen
-  ("Known gaps").
+- **Your check:** `m2-cluster?n=8192` in slow motion, not frozen
+  ("Known gaps"; the cap was 4,096 until 2026-11-15).
 - **Mutation, still to do:** `test-support` and `xtask` under
   `--test-workspace=true` (their misses are mostly artifacts).
 - **TODO: why the piano model is slow in debug builds.** Selecting it
