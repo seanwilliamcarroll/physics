@@ -1,0 +1,841 @@
+ Percent |	Source code & Disassembly of step-35121908f1e82308 for cpu/cycles/P (12080 samples, percent: local period)
+--------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3      Disassembly of section .text:
+         :
+         : 5      0000000000115840 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate>:
+    0.00 :   115840: push   rbp
+    0.00 :   115841: push   r15
+    0.00 :   115843: push   r14
+    0.00 :   115845: push   r13
+    0.00 :   115847: push   r12
+    0.00 :   115849: push   rbx
+    0.00 :   11584a: sub    rsp,0x188
+    0.00 :   115851: mov    r15,QWORD PTR [rsi+0x10]
+    0.00 :   115855: movabs rax,0x3ffffffffffffff8
+    0.00 :   11585f: mov    r12,rcx
+    0.00 :   115862: movabs rcx,0x7ffffffffffffffd
+    0.00 :   11586c: add    rax,0x7
+    0.00 :   115870: lea    rbp,[r15*4+0x0]
+    0.00 :   115878: cmp    r15,rax
+    0.00 :   11587b: setbe  al
+    0.00 :   11587e: cmp    rbp,rcx
+    0.00 :   115881: setb   cl
+    0.00 :   115884: test   al,cl
+    0.00 :   115886: jne    11588d <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x4d>
+    0.00 :   115888: call   1259d0 <alloc::raw_vec::capacity_overflow>
+    0.00 :   11588d: mov    QWORD PTR [rsp+0x40],rdi
+    0.00 :   115892: mov    QWORD PTR [rsp+0x10],r15
+    0.00 :   115897: mov    QWORD PTR [rsp+0x38],rdx
+    0.00 :   11589c: mov    QWORD PTR [rsp+0xc0],r12
+    0.00 :   1158a4: mov    QWORD PTR [rsp+0x20],rbp
+    0.00 :   1158a9: test   rbp,rbp
+    0.00 :   1158ac: je     11590a <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xca>
+    0.00 :   1158ae: mov    r14,QWORD PTR [rip+0x1a7f03]        # 2bd7b8 <malloc@GLIBC_2.2.5>
+    0.00 :   1158b5: mov    rdi,rbp
+    0.00 :   1158b8: mov    rbx,rsi
+    0.00 :   1158bb: call   r14
+    0.00 :   1158be: mov    QWORD PTR [rsp],rax
+    0.00 :   1158c2: test   rax,rax
+    0.00 :   1158c5: je     116169 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x929>
+    0.00 :   1158cb: mov    rdi,rbp
+    0.00 :   1158ce: call   r14
+    0.00 :   1158d1: test   rax,rax
+    0.00 :   1158d4: je     116176 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x936>
+    0.00 :   1158da: mov    rdi,rbp
+    0.00 :   1158dd: mov    r12,rax
+    0.00 :   1158e0: call   r14
+    0.00 :   1158e3: mov    rsi,rbp
+    0.00 :   1158e6: test   rax,rax
+    0.00 :   1158e9: je     116185 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x945>
+    0.00 :   1158ef: mov    rdi,rsi
+    0.00 :   1158f2: mov    rbp,rax
+    0.00 :   1158f5: call   r14
+    0.01 :   1158f8: test   rax,rax
+    0.00 :   1158fb: je     116191 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x951>
+    0.00 :   115901: mov    rdx,QWORD PTR [rsp]
+    0.00 :   115905: mov    rsi,rbx
+    0.00 :   115908: jmp    11591f <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xdf>
+    0.00 :   11590a: mov    ebp,0x4
+    0.00 :   11590f: mov    edx,0x4
+    0.00 :   115914: mov    r12d,0x4
+    0.00 :   11591a: mov    eax,0x4
+    0.00 :   11591f: mov    rdi,QWORD PTR [rsi+0x40]
+    0.00 :   115923: mov    QWORD PTR [rsp+0x60],r15
+    0.00 :   115928: mov    QWORD PTR [rsp+0x68],rdx
+    0.00 :   11592d: mov    QWORD PTR [rsp+0x78],r15
+    0.00 :   115932: mov    QWORD PTR [rsp+0x80],r12
+    0.00 :   11593a: mov    QWORD PTR [rsp+0x90],r15
+    0.00 :   115942: mov    QWORD PTR [rsp+0x98],rbp
+    0.00 :   11594a: mov    QWORD PTR [rsp+0xa8],r15
+    0.00 :   115952: mov    QWORD PTR [rsp+0xb0],rax
+    0.00 :   11595a: mov    QWORD PTR [rsp+0x70],0x0
+    0.00 :   115963: mov    QWORD PTR [rsp+0x88],0x0
+    0.00 :   11596f: mov    QWORD PTR [rsp+0xa0],0x0
+    0.00 :   11597b: mov    QWORD PTR [rsp+0xb8],0x0
+    0.00 :   115987: cmp    rdi,r15
+    0.00 :   11598a: cmovae rdi,r15
+    0.00 :   11598e: mov    QWORD PTR [rsp+0x18],rdi
+    0.00 :   115993: test   rdi,rdi
+    0.00 :   115996: je     115b2e <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x2ee>
+    0.00 :   11599c: mov    rax,QWORD PTR [rsi+0x38]
+    0.00 :   1159a0: mov    r15,QWORD PTR [rsi+0x8]
+    0.00 :   1159a4: mov    rbp,rdx
+    0.01 :   1159a7: xor    r13d,r13d
+    0.00 :   1159aa: mov    QWORD PTR [rsp+0x48],rax
+    0.00 :   1159af: jmp    1159e8 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x1a8>
+    0.00 :   1159b1: data16 data16 data16 data16 data16 cs nop WORD PTR [rax+rax*1+0x0]
+    0.06 :   1159c0: vmovss xmm0,DWORD PTR [rsp]
+    0.01 :   1159c5: mov    rax,QWORD PTR [rsp+0xb0]
+    0.05 :   1159cd: vmovss DWORD PTR [rax+rbx*4],xmm0
+    0.02 :   1159d2: inc    rbx
+    0.01 :   1159d5: mov    QWORD PTR [rsp+0xb8],rbx
+    0.01 :   1159dd: cmp    QWORD PTR [rsp+0x18],r13
+    0.00 :   1159e2: je     115b43 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x303>
+    0.03 :   1159e8: mov    rax,QWORD PTR [rsp+0x48]
+    0.00 :   1159ed: vmovss xmm0,DWORD PTR [r15+r13*8]
+    0.01 :   1159f3: vmovss xmm2,DWORD PTR [r15+r13*8+0x4]
+    0.03 :   1159fa: vmovss xmm1,DWORD PTR [rax+r13*4]
+    0.02 :   115a00: vmovss DWORD PTR [rsp+0x8],xmm0
+    0.02 :   115a06: vmovss DWORD PTR [rsp+0x28],xmm2
+    0.01 :   115a0c: vmovss DWORD PTR [rsp],xmm1
+    0.02 :   115a11: cmp    r13,QWORD PTR [rsp+0x60]
+    0.00 :   115a16: jne    115a27 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x1e7>
+    0.00 :   115a18: lea    rdi,[rsp+0x60]
+    0.00 :   115a1d: call   114c10 <<alloc::raw_vec::RawVec<f32>>::grow_one>
+    0.00 :   115a22: mov    rbp,QWORD PTR [rsp+0x68]
+    0.02 :   115a27: vmovss xmm0,DWORD PTR [rsp+0x8]
+    0.06 :   115a2d: vmovss DWORD PTR [rbp+r13*4+0x0],xmm0
+    0.12 :   115a34: inc    r13
+    0.04 :   115a37: mov    r12,QWORD PTR [rsp+0x88]
+    0.02 :   115a3f: mov    QWORD PTR [rsp+0x70],r13
+    0.02 :   115a44: cmp    r12,QWORD PTR [rsp+0x78]
+    0.00 :   115a49: jne    115a55 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x215>
+    0.00 :   115a4b: lea    rdi,[rsp+0x78]
+    0.00 :   115a50: call   114c10 <<alloc::raw_vec::RawVec<f32>>::grow_one>
+    0.07 :   115a55: vmovss xmm0,DWORD PTR [rsp+0x28]
+    0.02 :   115a5b: vmovss xmm3,DWORD PTR [rsp]
+    0.02 :   115a60: mov    rax,QWORD PTR [rsp+0x80]
+    0.07 :   115a68: vxorps xmm2,xmm2,xmm2
+    0.02 :   115a6c: vxorps xmm1,xmm1,xmm1
+    0.03 :   115a70: vmovss DWORD PTR [rsp+0x8],xmm1
+    0.02 :   115a76: mov    QWORD PTR [rsp+0x50],rax
+    0.04 :   115a7b: vmovss DWORD PTR [rax+r12*4],xmm0
+    0.05 :   115a81: inc    r12
+    0.09 :   115a84: vucomiss xmm3,xmm2
+    0.01 :   115a88: mov    QWORD PTR [rsp+0x88],r12
+    0.02 :   115a90: jne    115ab0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x270>
+    0.00 :   115a92: jp     115ab0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x270>
+    0.00 :   115a94: mov    r14,QWORD PTR [rsp+0xa0]
+    0.00 :   115a9c: cmp    r14,QWORD PTR [rsp+0x90]
+    0.00 :   115aa4: je     115ad5 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x295>
+    0.00 :   115aa6: jmp    115ae2 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x2a2>
+    0.00 :   115aa8: nop    DWORD PTR [rax+rax*1+0x0]
+    0.01 :   115ab0: vmovss xmm0,DWORD PTR [rip+0xfffffffffff19938]        # 2f3f0 <__abi_tag+0x2f0f4>
+    0.03 :   115ab8: vdivss xmm0,xmm0,DWORD PTR [rsp]
+    0.03 :   115abd: vmovss DWORD PTR [rsp+0x8],xmm0
+    0.01 :   115ac3: mov    r14,QWORD PTR [rsp+0xa0]
+    0.02 :   115acb: cmp    r14,QWORD PTR [rsp+0x90]
+    0.00 :   115ad3: jne    115ae2 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x2a2>
+    0.00 :   115ad5: lea    rdi,[rsp+0x90]
+    0.00 :   115add: call   114c10 <<alloc::raw_vec::RawVec<f32>>::grow_one>
+    0.02 :   115ae2: vmovss xmm0,DWORD PTR [rsp+0x8]
+    0.02 :   115ae8: mov    rax,QWORD PTR [rsp+0x98]
+    0.02 :   115af0: mov    QWORD PTR [rsp+0x28],rax
+    0.04 :   115af5: vmovss DWORD PTR [rax+r14*4],xmm0
+    0.01 :   115afb: inc    r14
+    0.02 :   115afe: mov    rbx,QWORD PTR [rsp+0xb8]
+    0.04 :   115b06: mov    QWORD PTR [rsp+0xa0],r14
+    0.08 :   115b0e: cmp    rbx,QWORD PTR [rsp+0xa8]
+    0.00 :   115b16: jne    1159c0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x180>
+    0.00 :   115b1c: lea    rdi,[rsp+0xa8]
+    0.00 :   115b24: call   114c10 <<alloc::raw_vec::RawVec<f32>>::grow_one>
+    0.00 :   115b29: jmp    1159c0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x180>
+    0.00 :   115b2e: mov    QWORD PTR [rsp+0x50],r12
+    0.00 :   115b33: mov    QWORD PTR [rsp+0x28],rbp
+    0.00 :   115b38: xor    r14d,r14d
+    0.00 :   115b3b: xor    ebx,ebx
+    0.00 :   115b3d: xor    r12d,r12d
+    0.00 :   115b40: xor    r13d,r13d
+    0.00 :   115b43: mov    rcx,QWORD PTR [rsp+0x10]
+    0.00 :   115b48: mov    rdx,rcx
+    0.00 :   115b4b: shr    rdx,0x3d
+    0.00 :   115b4f: je     115b62 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x322>
+    0.00 :   115b51: xor    edi,edi
+    0.00 :   115b53: mov    rsi,QWORD PTR [rsp+0x20]
+    0.00 :   115b58: call   1259a3 <alloc::raw_vec::handle_error>
+    0.00 :   115b5d: jmp    1161b9 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x979>
+    0.00 :   115b62: mov    rdx,QWORD PTR [rsp+0x40]
+    0.00 :   115b67: mov    rbp,QWORD PTR [rsp+0x38]
+    0.00 :   115b6c: mov    QWORD PTR [rsp+0xd0],rax
+    0.00 :   115b74: vmovss xmm0,DWORD PTR [rdx]
+    0.00 :   115b78: vmovss xmm1,DWORD PTR [rdx+0x4]
+    0.00 :   115b7d: mov    edx,0x4
+    0.00 :   115b82: mov    QWORD PTR [rsp+0x30],rdx
+    0.00 :   115b87: mov    QWORD PTR [rsp+0x18],rdx
+    0.00 :   115b8c: vmovss DWORD PTR [rsp+0x5c],xmm0
+    0.00 :   115b92: vmovss DWORD PTR [rsp+0x58],xmm1
+    0.00 :   115b98: test   rcx,rcx
+    0.00 :   115b9b: je     115be8 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x3a8>
+    0.00 :   115b9d: mov    r15,QWORD PTR [rsp+0x20]
+    0.00 :   115ba2: mov    rax,QWORD PTR [rip+0x1a7c87]        # 2bd830 <calloc@GLIBC_2.2.5>
+    0.00 :   115ba9: mov    esi,0x1
+    0.00 :   115bae: mov    rdi,r15
+    0.00 :   115bb1: call   rax
+    0.00 :   115bb3: mov    QWORD PTR [rsp+0x30],rax
+    0.00 :   115bb8: test   rax,rax
+    0.00 :   115bbb: je     1161a2 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x962>
+    0.00 :   115bc1: mov    rax,QWORD PTR [rip+0x1a7c68]        # 2bd830 <calloc@GLIBC_2.2.5>
+    0.00 :   115bc8: mov    esi,0x1
+    0.00 :   115bcd: mov    rdi,r15
+    0.00 :   115bd0: call   rax
+    0.00 :   115bd2: mov    QWORD PTR [rsp+0x18],rax
+    0.00 :   115bd7: test   rax,rax
+    0.00 :   115bda: je     1161ac <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x96c>
+    0.00 :   115be0: mov    rax,QWORD PTR [rsp+0xd0]
+    0.00 :   115be8: mov    QWORD PTR [rsp+0x8],rbx
+    0.00 :   115bed: mov    rdi,QWORD PTR [rsp+0x68]
+    0.00 :   115bf2: mov    rbx,QWORD PTR [rsp+0x28]
+    0.00 :   115bf7: mov    rsi,QWORD PTR [rsp+0x50]
+    0.00 :   115bfc: mov    QWORD PTR [rsp+0xd8],rax
+    0.00 :   115c04: mov    rax,rdi
+    0.00 :   115c07: mov    QWORD PTR [rsp+0x140],rdi
+    0.00 :   115c0f: jmp    115ca1 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x461>
+    0.00 :   115c14: data16 data16 cs nop WORD PTR [rax+rax*1+0x0]
+    0.06 :   115c20: mov    esi,0x2
+    0.06 :   115c25: lea    rdi,[rsp+0xf0]
+    0.08 :   115c2d: call   db090 <engine::force::tree_sum::<f32>>
+    0.04 :   115c32: vmovaps xmm2,XMMWORD PTR [rsp+0x130]
+    0.02 :   115c3b: vbroadcastss xmm1,DWORD PTR [rsp+0xc0]
+    0.03 :   115c45: mov    r11,QWORD PTR [rsp+0x158]
+    0.06 :   115c4d: mov    r10,QWORD PTR [rsp+0x20]
+    0.07 :   115c52: mov    r8,QWORD PTR [rsp+0x148]
+    0.05 :   115c5a: mov    rdx,QWORD PTR [rsp+0x40]
+    0.07 :   115c5f: mov    r9,QWORD PTR [rsp+0x48]
+    0.02 :   115c64: mov    rcx,QWORD PTR [rsp+0x150]
+    0.02 :   115c6c: mov    rbx,r12
+    0.03 :   115c6f: mov    r13,r15
+    0.05 :   115c72: mov    r14,r11
+    0.02 :   115c75: mov    r12,r9
+    0.01 :   115c78: mov    rsi,r10
+    0.02 :   115c7b: mov    rax,r8
+    0.05 :   115c7e: mov    QWORD PTR [rsp+0xc0],rdx
+    0.04 :   115c86: vinsertps xmm0,xmm2,xmm0,0x10
+    0.02 :   115c8c: vmovsd xmm2,QWORD PTR [rbp+0x0]
+    0.04 :   115c91: vmulps xmm0,xmm1,xmm0
+    0.07 :   115c95: vaddps xmm0,xmm0,xmm2
+    0.05 :   115c99: vmovlps QWORD PTR [rbp+0x0],xmm0
+    0.04 :   115c9e: mov    rbp,rcx
+    0.01 :   115ca1: mov    rdi,r8
+    0.02 :   115ca4: mov    r8,r15
+    0.04 :   115ca7: lea    r15,[rbp+0x8]
+    0.05 :   115cab: mov    QWORD PTR [rsp+0x38],rbp
+    0.05 :   115cb0: mov    rbp,QWORD PTR [rsp+0xc0]
+    0.04 :   115cb8: mov    QWORD PTR [rsp+0x130],r15
+    0.02 :   115cc0: sub    rbp,0x1
+    0.03 :   115cc4: cmovae rdx,rbp
+    0.02 :   115cc8: cmovae rcx,r15
+    0.01 :   115ccc: mov    r15,rax
+    0.01 :   115ccf: mov    QWORD PTR [rsp+0x40],rdx
+    0.02 :   115cd4: lea    rdx,[rax+0x4]
+    0.03 :   115cd8: mov    rax,r13
+    0.00 :   115cdb: sub    rax,0x1
+    0.04 :   115cdf: cmovb  rax,r8
+    0.00 :   115ce3: lea    r8,[rsi+0x4]
+    0.00 :   115ce7: cmovb  rdx,rdi
+    0.01 :   115ceb: mov    rdi,r12
+    0.00 :   115cee: sub    rdi,0x1
+    0.02 :   115cf2: mov    QWORD PTR [rsp+0x160],rax
+    0.06 :   115cfa: mov    rax,rsi
+    0.02 :   115cfd: mov    rsi,QWORD PTR [rsp]
+    0.02 :   115d01: cmovae r9,rdi
+    0.02 :   115d05: cmovae r10,r8
+    0.03 :   115d09: mov    QWORD PTR [rsp+0x48],r9
+    0.02 :   115d0e: mov    r9,r14
+    0.00 :   115d11: sub    r9,0x1
+    0.02 :   115d15: mov    QWORD PTR [rsp+0x20],r10
+    0.02 :   115d1a: lea    r10,[rbx+0x4]
+    0.02 :   115d1e: cmovae r11,r9
+    0.02 :   115d22: cmovae rsi,r10
+    0.03 :   115d26: cmp    QWORD PTR [rsp+0x8],0x0
+    0.06 :   115d2c: mov    QWORD PTR [rsp],rsi
+    0.03 :   115d30: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.02 :   115d36: cmp    QWORD PTR [rsp+0xc0],0x0
+    0.00 :   115d3f: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.02 :   115d45: test   r13,r13
+    0.01 :   115d48: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.04 :   115d4e: test   r15,r15
+    0.00 :   115d51: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.01 :   115d57: test   r12,r12
+    0.00 :   115d5a: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.05 :   115d60: test   rax,rax
+    0.00 :   115d63: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.06 :   115d69: test   r14,r14
+    0.00 :   115d6c: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.00 :   115d72: mov    rsi,rbx
+    0.03 :   115d75: test   rbx,rbx
+    0.00 :   115d78: je     1160d0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x890>
+    0.02 :   115d7e: mov    QWORD PTR [rsp+0x150],rcx
+    0.02 :   115d86: mov    rcx,QWORD PTR [rsp+0xd8]
+    0.03 :   115d8e: vmovss xmm0,DWORD PTR [r15]
+    0.03 :   115d93: vmovss xmm1,DWORD PTR [rax]
+    0.02 :   115d97: mov    rbx,QWORD PTR [rsp+0x8]
+    0.06 :   115d9c: mov    r15,QWORD PTR [rsp+0x160]
+    0.02 :   115da4: mov    QWORD PTR [rsp+0x148],rdx
+    0.02 :   115dac: mov    r12,QWORD PTR [rsp+0x30]
+    0.02 :   115db1: mov    r14,QWORD PTR [rsp+0x10]
+    0.01 :   115db6: mov    rax,QWORD PTR [rsp+0x18]
+    0.02 :   115dbb: mov    QWORD PTR [rsp+0x158],r11
+    0.03 :   115dc3: vmovss xmm2,DWORD PTR [rcx]
+    0.06 :   115dc7: add    rcx,0x4
+    0.01 :   115dcb: dec    rbx
+    0.02 :   115dce: mov    QWORD PTR [rsp+0xd8],rcx
+    0.02 :   115dd6: vmovaps XMMWORD PTR [rsp+0xc0],xmm2
+    0.04 :   115ddf: vmovss xmm2,DWORD PTR [rsp+0x5c]
+    0.03 :   115de5: vmulss xmm2,xmm2,DWORD PTR [rsi]
+    0.02 :   115de9: vmovss DWORD PTR [rsp+0xe0],xmm0
+    0.04 :   115df2: vmovss xmm0,DWORD PTR [rsp+0x58]
+    0.02 :   115df8: mov    QWORD PTR [rsp+0xf0],rdx
+    0.01 :   115e00: mov    rdx,QWORD PTR [rsp+0x130]
+    0.01 :   115e08: mov    QWORD PTR [rsp+0xf8],r15
+    0.07 :   115e10: mov    QWORD PTR [rsp+0x100],r8
+    0.02 :   115e18: mov    QWORD PTR [rsp+0x108],rdi
+    0.03 :   115e20: lea    rdi,[rsp+0xe0]
+    0.07 :   115e28: lea    rsi,[rsp+0xf0]
+    0.02 :   115e30: lea    r8,[rsp+0x168]
+    0.01 :   115e38: vmovss DWORD PTR [rsp+0xe4],xmm1
+    0.01 :   115e41: mov    QWORD PTR [rsp+0x110],r10
+    0.01 :   115e49: mov    QWORD PTR [rsp+0x118],r9
+    0.02 :   115e51: mov    QWORD PTR [rsp+0x120],rcx
+    0.02 :   115e59: mov    QWORD PTR [rsp+0x168],r12
+    0.04 :   115e61: mov    QWORD PTR [rsp+0x170],r14
+    0.02 :   115e69: mov    QWORD PTR [rsp+0x178],rax
+    0.02 :   115e71: mov    rcx,rbp
+    0.02 :   115e74: mov    QWORD PTR [rsp+0x128],rbx
+    0.00 :   115e7c: mov    QWORD PTR [rsp+0x180],r14
+    0.02 :   115e84: vmovss DWORD PTR [rsp+0xe8],xmm2
+    0.02 :   115e8d: vmovss DWORD PTR [rsp+0xec],xmm0
+    0.04 :   115e96: call   dab00 <engine::force::pass_one::<f32>>
+    0.04 :   115e9b: cmp    rbp,r14
+    0.03 :   115e9e: mov    ecx,0x4
+    0.02 :   115ea3: mov    rax,r12
+    0.03 :   115ea6: mov    r14,rbp
+    0.02 :   115ea9: mov    QWORD PTR [rsp+0xf0],0x0
+    0.05 :   115eb5: cmova  rax,rcx
+    0.02 :   115eb9: mov    ecx,0x0
+    0.03 :   115ebe: cmova  r14,rcx
+    0.04 :   115ec2: movabs rcx,0x3ffffffffffffff8
+    0.02 :   115ecc: lea    r12,[r14*4+0x0]
+    0.01 :   115ed4: and    r12,rcx
+    0.00 :   115ed7: je     115f80 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x740>
+    0.02 :   115edd: lea    rdx,[r12-0x8]
+    0.01 :   115ee2: vxorps xmm0,xmm0,xmm0
+    0.02 :   115ee6: mov    rcx,rax
+    0.02 :   115ee9: mov    esi,edx
+    0.00 :   115eeb: shr    esi,0x3
+    0.02 :   115eee: inc    esi
+    0.00 :   115ef0: and    esi,0x7
+    0.00 :   115ef3: je     115f11 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x6d1>
+    0.04 :   115ef5: data16 cs nop WORD PTR [rax+rax*1+0x0]
+    0.07 :   115f00: vmovsd xmm1,QWORD PTR [rcx]
+    0.07 :   115f04: add    rcx,0x8
+    0.05 :   115f08: dec    rsi
+    0.10 :   115f0b: vaddps xmm0,xmm0,xmm1
+    0.04 :   115f0f: jne    115f00 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x6c0>
+    0.03 :   115f11: cmp    rdx,0x38
+    0.00 :   115f15: jb     115f70 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x730>
+    0.02 :   115f17: lea    rdx,[rax+r12*1]
+    0.02 :   115f1b: nop    DWORD PTR [rax+rax*1+0x0]
+    2.45 :   115f20: vmovsd xmm1,QWORD PTR [rcx]
+    2.22 :   115f24: vmovsd xmm2,QWORD PTR [rcx+0x8]
+    2.51 :   115f29: vmovsd xmm3,QWORD PTR [rcx+0x10]
+    2.45 :   115f2e: vaddps xmm0,xmm0,xmm1
+    2.21 :   115f32: vaddps xmm0,xmm0,xmm2
+    2.40 :   115f36: vmovsd xmm2,QWORD PTR [rcx+0x18]
+    2.26 :   115f3b: vaddps xmm0,xmm0,xmm3
+    2.93 :   115f3f: vmovsd xmm3,QWORD PTR [rcx+0x20]
+    2.53 :   115f44: vaddps xmm0,xmm0,xmm2
+    2.72 :   115f48: vmovsd xmm2,QWORD PTR [rcx+0x28]
+    2.36 :   115f4d: vaddps xmm0,xmm0,xmm3
+    2.46 :   115f51: vmovsd xmm3,QWORD PTR [rcx+0x30]
+    2.56 :   115f56: vaddps xmm0,xmm0,xmm2
+    2.09 :   115f5a: vmovsd xmm2,QWORD PTR [rcx+0x38]
+    2.18 :   115f5f: add    rcx,0x40
+    2.03 :   115f63: vaddps xmm0,xmm0,xmm3
+    2.13 :   115f67: vaddps xmm0,xmm0,xmm2
+    2.34 :   115f6b: cmp    rcx,rdx
+    0.00 :   115f6e: jne    115f20 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x6e0>
+    0.16 :   115f70: vmovlps QWORD PTR [rsp+0xf0],xmm0
+    0.20 :   115f79: jmp    115f84 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x744>
+    0.00 :   115f7b: nop    DWORD PTR [rax+rax*1+0x0]
+    0.00 :   115f80: vxorps xmm0,xmm0,xmm0
+    0.04 :   115f84: movabs rcx,0xffffffffffffffe
+    0.07 :   115f8e: mov    r13,r14
+    0.00 :   115f91: and    r13,rcx
+    0.05 :   115f94: test   r14b,0x1
+    0.00 :   115f98: je     115fa9 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x769>
+    0.02 :   115f9a: vaddss xmm0,xmm0,DWORD PTR [rax+r13*4]
+    0.02 :   115fa0: vmovss DWORD PTR [rsp+0xf0],xmm0
+    0.06 :   115fa9: mov    esi,0x2
+    0.09 :   115fae: lea    rdi,[rsp+0xf0]
+    0.12 :   115fb6: call   db090 <engine::force::tree_sum::<f32>>
+    0.03 :   115fbb: cmp    rbp,QWORD PTR [rsp+0x10]
+    0.05 :   115fc0: mov    rax,QWORD PTR [rsp+0x18]
+    0.05 :   115fc5: mov    ecx,0x4
+    0.05 :   115fca: vmovaps XMMWORD PTR [rsp+0x130],xmm0
+    0.04 :   115fd3: mov    QWORD PTR [rsp+0xf0],0x0
+    0.12 :   115fdf: cmova  rax,rcx
+    0.02 :   115fe3: test   r12,r12
+    0.00 :   115fe6: je     1160a0 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x860>
+    0.02 :   115fec: mov    rbp,QWORD PTR [rsp+0x38]
+    0.04 :   115ff1: lea    rdx,[r12-0x8]
+    0.02 :   115ff6: vxorps xmm0,xmm0,xmm0
+    0.02 :   115ffa: mov    rcx,rax
+    0.02 :   115ffd: mov    esi,edx
+    0.00 :   115fff: shr    esi,0x3
+    0.04 :   116002: inc    esi
+    0.02 :   116004: and    esi,0x7
+    0.00 :   116007: je     116021 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x7e1>
+    0.05 :   116009: nop    DWORD PTR [rax+0x0]
+    0.10 :   116010: vmovsd xmm1,QWORD PTR [rcx]
+    0.07 :   116014: add    rcx,0x8
+    0.14 :   116018: dec    rsi
+    0.08 :   11601b: vaddps xmm0,xmm0,xmm1
+    0.12 :   11601f: jne    116010 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x7d0>
+    0.07 :   116021: cmp    rdx,0x38
+    0.00 :   116025: jb     116080 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x840>
+    0.02 :   116027: add    r12,rax
+    0.09 :   11602a: nop    WORD PTR [rax+rax*1+0x0]
+    2.73 :   116030: vmovsd xmm1,QWORD PTR [rcx]
+    2.59 :   116034: vmovsd xmm2,QWORD PTR [rcx+0x8]
+    2.80 :   116039: vmovsd xmm3,QWORD PTR [rcx+0x10]
+    2.74 :   11603e: vaddps xmm0,xmm0,xmm1
+    2.80 :   116042: vaddps xmm0,xmm0,xmm2
+    2.94 :   116046: vmovsd xmm2,QWORD PTR [rcx+0x18]
+    2.93 :   11604b: vaddps xmm0,xmm0,xmm3
+    3.32 :   11604f: vmovsd xmm3,QWORD PTR [rcx+0x20]
+    2.64 :   116054: vaddps xmm0,xmm0,xmm2
+    2.71 :   116058: vmovsd xmm2,QWORD PTR [rcx+0x28]
+    2.77 :   11605d: vaddps xmm0,xmm0,xmm3
+    2.95 :   116061: vmovsd xmm3,QWORD PTR [rcx+0x30]
+    3.04 :   116066: vaddps xmm0,xmm0,xmm2
+    2.57 :   11606a: vmovsd xmm2,QWORD PTR [rcx+0x38]
+    2.17 :   11606f: add    rcx,0x40
+    2.23 :   116073: vaddps xmm0,xmm0,xmm3
+    2.43 :   116077: vaddps xmm0,xmm0,xmm2
+    2.56 :   11607b: cmp    rcx,r12
+    0.00 :   11607e: jne    116030 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x7f0>
+    0.10 :   116080: vmovlps QWORD PTR [rsp+0xf0],xmm0
+    0.19 :   116089: mov    r12,QWORD PTR [rsp]
+    0.19 :   11608d: mov    QWORD PTR [rsp+0x8],rbx
+    0.09 :   116092: test   r14b,0x1
+    0.00 :   116096: je     115c20 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x3e0>
+    0.07 :   11609c: jmp    1160bc <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x87c>
+    0.00 :   11609e: xchg   ax,ax
+    0.00 :   1160a0: mov    rbp,QWORD PTR [rsp+0x38]
+    0.00 :   1160a5: vxorps xmm0,xmm0,xmm0
+    0.00 :   1160a9: mov    r12,QWORD PTR [rsp]
+    0.00 :   1160ad: mov    QWORD PTR [rsp+0x8],rbx
+    0.00 :   1160b2: test   r14b,0x1
+    0.00 :   1160b6: je     115c20 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x3e0>
+    0.02 :   1160bc: vaddss xmm0,xmm0,DWORD PTR [rax+r13*4]
+    0.02 :   1160c2: vmovss DWORD PTR [rsp+0xf0],xmm0
+    0.01 :   1160cb: jmp    115c20 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x3e0>
+    0.01 :   1160d0: cmp    QWORD PTR [rsp+0x10],0x0
+    0.00 :   1160d6: je     1160ed <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x8ad>
+    0.00 :   1160d8: mov    rbx,QWORD PTR [rip+0x1a76e1]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   1160df: mov    rdi,QWORD PTR [rsp+0x18]
+    0.00 :   1160e4: call   rbx
+    0.00 :   1160e6: mov    rdi,QWORD PTR [rsp+0x30]
+    0.00 :   1160eb: call   rbx
+    0.00 :   1160ed: cmp    QWORD PTR [rsp+0xa8],0x0
+    0.00 :   1160f6: mov    rbx,QWORD PTR [rsp+0x50]
+    0.00 :   1160fb: mov    r14,QWORD PTR [rsp+0x28]
+    0.00 :   116100: je     116113 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x8d3>
+    0.00 :   116102: mov    rax,QWORD PTR [rip+0x1a76b7]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   116109: mov    rdi,QWORD PTR [rsp+0xd0]
+    0.00 :   116111: call   rax
+    0.00 :   116113: cmp    QWORD PTR [rsp+0x90],0x0
+    0.00 :   11611c: je     11612a <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x8ea>
+    0.00 :   11611e: mov    rax,QWORD PTR [rip+0x1a769b]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   116125: mov    rdi,r14
+    0.00 :   116128: call   rax
+    0.00 :   11612a: cmp    QWORD PTR [rsp+0x78],0x0
+    0.00 :   116130: je     11613e <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x8fe>
+    0.00 :   116132: mov    rax,QWORD PTR [rip+0x1a7687]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   116139: mov    rdi,rbx
+    0.00 :   11613c: call   rax
+    0.00 :   11613e: cmp    QWORD PTR [rsp+0x60],0x0
+    0.00 :   116144: je     116157 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x917>
+    0.00 :   116146: mov    rax,QWORD PTR [rip+0x1a7673]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   11614d: mov    rdi,QWORD PTR [rsp+0x140]
+    0.00 :   116155: call   rax
+    0.00 :   116157: add    rsp,0x188
+    0.00 :   11615e: pop    rbx
+    0.00 :   11615f: pop    r12
+    0.00 :   116161: pop    r13
+    0.00 :   116163: pop    r14
+    0.00 :   116165: pop    r15
+    0.00 :   116167: pop    rbp
+    0.00 :   116168: ret
+    0.00 :   116169: mov    edi,0x4
+    0.00 :   11616e: mov    rsi,rbp
+    0.00 :   116171: call   1259a3 <alloc::raw_vec::handle_error>
+    0.00 :   116176: mov    edi,0x4
+    0.00 :   11617b: mov    rsi,rbp
+    0.00 :   11617e: call   1259a3 <alloc::raw_vec::handle_error>
+    0.00 :   116183: jmp    1161b9 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x979>
+    0.00 :   116185: mov    edi,0x4
+    0.00 :   11618a: call   1259a3 <alloc::raw_vec::handle_error>
+    0.00 :   11618f: jmp    1161b9 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x979>
+    0.00 :   116191: mov    rsi,QWORD PTR [rsp+0x20]
+    0.00 :   116196: mov    edi,0x4
+    0.00 :   11619b: call   1259a3 <alloc::raw_vec::handle_error>
+    0.00 :   1161a0: jmp    1161b9 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x979>
+    0.00 :   1161a2: mov    edi,0x4
+    0.00 :   1161a7: jmp    115b53 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x313>
+    0.00 :   1161ac: mov    edi,0x4
+    0.00 :   1161b1: mov    rsi,r15
+    0.00 :   1161b4: call   1259a3 <alloc::raw_vec::handle_error>
+    0.00 :   1161b9: ud2
+    0.00 :   1161bb: mov    rbx,QWORD PTR [rip+0x1a75fe]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   1161c2: mov    rdi,QWORD PTR [rsp+0x30]
+    0.00 :   1161c7: mov    r14,rax
+    0.00 :   1161ca: call   rbx
+    0.00 :   1161cc: jmp    11623a <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x9fa>
+    0.00 :   1161ce: cmp    QWORD PTR [rsp+0x10],0x0
+    0.00 :   1161d4: mov    r14,rax
+    0.00 :   1161d7: je     116260 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa20>
+    0.00 :   1161dd: mov    rax,QWORD PTR [rip+0x1a75dc]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   1161e4: mov    rdi,rbp
+    0.00 :   1161e7: call   rax
+    0.00 :   1161e9: mov    rcx,QWORD PTR [rsp]
+    0.00 :   1161ed: jmp    1161fe <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x9be>
+    0.00 :   1161ef: cmp    QWORD PTR [rsp+0x10],0x0
+    0.00 :   1161f5: mov    rcx,QWORD PTR [rsp]
+    0.00 :   1161f9: mov    r14,rax
+    0.00 :   1161fc: je     116260 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa20>
+    0.00 :   1161fe: mov    rax,QWORD PTR [rip+0x1a75bb]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   116205: mov    rdi,r12
+    0.00 :   116208: mov    rbx,rcx
+    0.00 :   11620b: call   rax
+    0.00 :   11620d: mov    rdi,rbx
+    0.00 :   116210: mov    rax,QWORD PTR [rip+0x1a75a9]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   116217: call   rax
+    0.00 :   116219: mov    rdi,r14
+    0.00 :   11621c: call   298c40 <_Unwind_Resume@plt>
+    0.00 :   116221: cmp    QWORD PTR [rsp+0x10],0x0
+    0.00 :   116227: mov    rdi,QWORD PTR [rsp]
+    0.00 :   11622b: mov    r14,rax
+    0.00 :   11622e: je     116260 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa20>
+    0.00 :   116230: jmp    1162bb <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa7b>
+    0.00 :   116235: jmp    116237 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0x9f7>
+    0.00 :   116237: mov    r14,rax
+    0.00 :   11623a: cmp    QWORD PTR [rsp+0xa8],0x0
+    0.00 :   116243: jne    116268 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa28>
+    0.00 :   116245: cmp    QWORD PTR [rsp+0x90],0x0
+    0.00 :   11624e: jne    116284 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa44>
+    0.00 :   116250: cmp    QWORD PTR [rsp+0x78],0x0
+    0.00 :   116256: jne    11629d <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa5d>
+    0.00 :   116258: cmp    QWORD PTR [rsp+0x60],0x0
+    0.00 :   11625e: jne    1162b6 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa76>
+    0.00 :   116260: mov    rdi,r14
+    0.00 :   116263: call   298c40 <_Unwind_Resume@plt>
+    0.00 :   116268: mov    rdi,QWORD PTR [rsp+0xb0]
+    0.00 :   116270: mov    rax,QWORD PTR [rip+0x1a7549]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   116277: call   rax
+    0.00 :   116279: cmp    QWORD PTR [rsp+0x90],0x0
+    0.00 :   116282: je     116250 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa10>
+    0.00 :   116284: mov    rdi,QWORD PTR [rsp+0x98]
+    0.00 :   11628c: mov    rax,QWORD PTR [rip+0x1a752d]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   116293: call   rax
+    0.00 :   116295: cmp    QWORD PTR [rsp+0x78],0x0
+    0.00 :   11629b: je     116258 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa18>
+    0.00 :   11629d: mov    rdi,QWORD PTR [rsp+0x80]
+    0.00 :   1162a5: mov    rax,QWORD PTR [rip+0x1a7514]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   1162ac: call   rax
+    0.00 :   1162ae: cmp    QWORD PTR [rsp+0x60],0x0
+    0.00 :   1162b4: je     116260 <<engine::force::PairwiseGravity<f32> as engine::force::Force<f32>>::accumulate+0xa20>
+    0.00 :   1162b6: mov    rdi,QWORD PTR [rsp+0x68]
+    0.00 :   1162bb: mov    rax,QWORD PTR [rip+0x1a74fe]        # 2bd7c0 <free@GLIBC_2.2.5>
+    0.00 :   1162c2: call   rax
+    0.00 :   1162c4: mov    rdi,r14
+    0.00 :   1162c7: call   298c40 <_Unwind_Resume@plt>
+ Percent |	Source code & Disassembly of step-35121908f1e82308 for cpu/cycles/P (7600 samples, percent: local period)
+-------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000dab00 <engine::force::pass_one::<f32>>:
+    0.04 :   dab00:  push   r15
+    0.05 :   dab02:  push   r14
+    0.03 :   dab04:  push   rbx
+    0.03 :   dab05:  mov    rax,QWORD PTR [rsi+0x8]
+    0.04 :   dab09:  mov    r9,QWORD PTR [rsi+0x18]
+    0.06 :   dab0d:  mov    r10,QWORD PTR [rsi+0x28]
+    0.08 :   dab11:  mov    r11,QWORD PTR [rsi+0x38]
+    0.01 :   dab15:  mov    rbx,QWORD PTR [r8+0x8]
+    0.00 :   dab19:  mov    r14,QWORD PTR [r8+0x18]
+    0.01 :   dab1d:  cmp    r9,rax
+    0.05 :   dab20:  cmovb  rax,r9
+    0.04 :   dab24:  cmp    r10,rax
+    0.12 :   dab27:  cmovb  rax,r10
+    0.03 :   dab2b:  cmp    r11,rax
+    0.03 :   dab2e:  cmovb  rax,r11
+    0.04 :   dab32:  cmp    r14,rbx
+    0.03 :   dab35:  cmovb  rbx,r14
+    0.05 :   dab39:  cmp    rax,rcx
+    0.09 :   dab3c:  cmovae rax,rcx
+    0.09 :   dab40:  cmp    rbx,rax
+    0.04 :   dab43:  cmovb  rax,rbx
+    0.03 :   dab47:  test   rax,rax
+    0.00 :   dab4a:  je     daca5 <engine::force::pass_one::<f32>+0x1a5>
+    0.00 :   dab50:  vmovss xmm0,DWORD PTR [rdi]
+    0.03 :   dab54:  vmovss xmm1,DWORD PTR [rdi+0x4]
+    0.04 :   dab59:  vmovss xmm2,DWORD PTR [rdi+0x8]
+    0.07 :   dab5e:  vmovss xmm3,DWORD PTR [rdi+0xc]
+    0.05 :   dab63:  mov    r10,QWORD PTR [r8]
+    0.05 :   dab66:  mov    rcx,QWORD PTR [rsi]
+    0.11 :   dab69:  mov    rdi,QWORD PTR [rsi+0x10]
+    0.04 :   dab6d:  mov    r9,QWORD PTR [rsi+0x20]
+    0.03 :   dab71:  mov    rsi,QWORD PTR [rsi+0x30]
+    0.05 :   dab75:  mov    r8,QWORD PTR [r8+0x10]
+    0.03 :   dab79:  cmp    rax,0x4
+    0.00 :   dab7d:  jb     dac05 <engine::force::pass_one::<f32>+0x105>
+    0.08 :   dab83:  vmovdqa64 zmm7,ZMMWORD PTR [rip+0xfffffffffff529b3]        # 2d540 <__abi_tag+0x2d244>
+    0.04 :   dab8d:  vmovq  xmm4,r9
+    0.07 :   dab92:  vmovq  xmm5,rdi
+    0.01 :   dab97:  vmovq  xmm6,r10
+    0.05 :   dab9c:  vmovq  xmm8,rsi
+    0.11 :   daba1:  mov    r11,rsi
+    0.00 :   daba4:  sub    r11,r8
+    0.03 :   daba7:  vpunpcklqdq xmm4,xmm5,xmm4
+    0.07 :   dabab:  vmovq  xmm5,rcx
+    0.10 :   dabb0:  cmp    r11,0xffffffffffffffc1
+    0.09 :   dabb4:  vpunpcklqdq xmm5,xmm6,xmm5
+    0.11 :   dabb8:  setae  r11b
+    0.07 :   dabbc:  vinserti128 ymm4,ymm5,xmm4,0x1
+    0.14 :   dabc2:  vmovq  xmm5,r8
+    0.09 :   dabc7:  vinserti32x4 zmm4,zmm4,xmm8,0x2
+    0.11 :   dabce:  vpermq zmm4,zmm7,zmm4
+    0.09 :   dabd4:  vmovdqa64 zmm7,ZMMWORD PTR [rip+0xfffffffffff529a2]        # 2d580 <__abi_tag+0x2d284>
+    0.13 :   dabde:  vpermi2q zmm7,zmm6,zmm5
+    0.09 :   dabe4:  vpsubq zmm4,zmm4,zmm7
+    0.37 :   dabea:  vpcmpnleuq k0,zmm4,QWORD BCST [rip+0xfffffffffff5180b]        # 2c400 <__abi_tag+0x2c104>
+    0.04 :   dabf5:  kortestb k0,k0
+    0.08 :   dabf9:  setne  bl
+    0.08 :   dabfc:  or     bl,r11b
+    0.00 :   dabff:  je     dade7 <engine::force::pass_one::<f32>+0x2e7>
+    0.00 :   dac05:  xor    r11d,r11d
+    0.16 :   dac08:  lea    rbx,[r11+0x1]
+    0.04 :   dac0c:  test   al,0x1
+    0.00 :   dac0e:  je     daca0 <engine::force::pass_one::<f32>+0x1a0>
+    0.04 :   dac14:  vmovss xmm5,DWORD PTR [rcx+r11*4]
+    0.03 :   dac1a:  vmovss xmm6,DWORD PTR [rdi+r11*4]
+    0.08 :   dac20:  vmovss xmm4,DWORD PTR [rsi+r11*4]
+    0.05 :   dac26:  vsubss xmm5,xmm5,xmm0
+    0.03 :   dac2a:  vsubss xmm6,xmm6,xmm1
+    0.01 :   dac2e:  vmulss xmm7,xmm5,xmm5
+    0.01 :   dac32:  vmulss xmm8,xmm6,xmm6
+    0.04 :   dac36:  vaddss xmm7,xmm8,xmm7
+    0.03 :   dac3a:  vaddss xmm8,xmm3,xmm7
+    0.00 :   dac3e:  vxorps xmm7,xmm7,xmm7
+    0.05 :   dac42:  vucomiss xmm8,xmm7
+    0.01 :   dac46:  jne    dac4a <engine::force::pass_one::<f32>+0x14a>
+    0.00 :   dac48:  jnp    dac5f <engine::force::pass_one::<f32>+0x15f>
+    0.03 :   dac4a:  vsqrtss xmm9,xmm8,xmm8
+    0.01 :   dac4f:  vmulss xmm7,xmm2,DWORD PTR [r9+r11*4]
+    0.04 :   dac55:  vmulss xmm8,xmm8,xmm9
+    0.08 :   dac5a:  vdivss xmm7,xmm7,xmm8
+    0.03 :   dac5f:  vmovss xmm8,DWORD PTR [rdx+r11*8]
+    0.04 :   dac65:  vmovss xmm9,DWORD PTR [rdx+r11*8+0x4]
+    0.03 :   dac6c:  vmulss xmm5,xmm5,xmm7
+    0.00 :   dac70:  vmulss xmm6,xmm6,xmm7
+    0.01 :   dac74:  vmulss xmm7,xmm4,xmm5
+    0.01 :   dac78:  vmulss xmm4,xmm4,xmm6
+    0.05 :   dac7c:  vsubss xmm7,xmm8,xmm7
+    0.03 :   dac80:  vsubss xmm4,xmm9,xmm4
+    0.03 :   dac84:  vmovss DWORD PTR [rdx+r11*8],xmm7
+    0.01 :   dac8a:  vmovss DWORD PTR [rdx+r11*8+0x4],xmm4
+    0.00 :   dac91:  vmovss DWORD PTR [r10+r11*4],xmm5
+    0.01 :   dac97:  vmovss DWORD PTR [r8+r11*4],xmm6
+    0.03 :   dac9d:  mov    r11,rbx
+    0.04 :   daca0:  cmp    rax,rbx
+    0.00 :   daca3:  jne    dacae <engine::force::pass_one::<f32>+0x1ae>
+    0.03 :   daca5:  pop    rbx
+    0.08 :   daca6:  pop    r14
+    0.13 :   daca8:  pop    r15
+    0.07 :   dacaa:  vzeroupper
+    0.01 :   dacad:  ret
+    0.07 :   dacae:  lea    r8,[r8+r11*4+0x4]
+    0.01 :   dacb3:  lea    r10,[r10+r11*4+0x4]
+    0.13 :   dacb8:  lea    rsi,[rsi+r11*4+0x4]
+    0.01 :   dacbd:  lea    r9,[r9+r11*4+0x4]
+    0.00 :   dacc2:  lea    rdi,[rdi+r11*4+0x4]
+    0.01 :   dacc7:  lea    rcx,[rcx+r11*4+0x4]
+    0.00 :   daccc:  lea    rdx,[rdx+r11*8]
+    0.04 :   dacd0:  sub    rax,r11
+    0.03 :   dacd3:  xor    r11d,r11d
+    0.01 :   dacd6:  jmp    dad33 <engine::force::pass_one::<f32>+0x233>
+    0.00 :   dacd8:  nop    DWORD PTR [rax+rax*1+0x0]
+    0.01 :   dace0:  vmovss xmm10,DWORD PTR [rsi+r11*4]
+    0.04 :   dace6:  vmulss xmm8,xmm8,xmm4
+    0.03 :   dacea:  vinsertps xmm5,xmm5,xmm6,0x10
+    0.01 :   dacf0:  vmovups xmm6,XMMWORD PTR [rdx+r11*8]
+    0.00 :   dacf6:  vmulss xmm4,xmm9,xmm4
+    0.03 :   dacfa:  vinsertps xmm5,xmm5,xmm8,0x20
+    0.05 :   dad00:  vinsertps xmm5,xmm5,xmm4,0x30
+    0.01 :   dad06:  vshufps xmm7,xmm7,xmm10,0x0
+    0.04 :   dad0c:  vmulps xmm5,xmm7,xmm5
+    0.04 :   dad10:  vsubps xmm5,xmm6,xmm5
+    0.03 :   dad14:  vmovups XMMWORD PTR [rdx+r11*8],xmm5
+    0.00 :   dad1a:  vmovss DWORD PTR [r10+r11*4],xmm8
+    0.01 :   dad20:  vmovss DWORD PTR [r8+r11*4],xmm4
+    0.08 :   dad26:  add    r11,0x2
+    0.03 :   dad2a:  cmp    rax,r11
+    0.00 :   dad2d:  je     daca5 <engine::force::pass_one::<f32>+0x1a5>
+    0.01 :   dad33:  vmovss xmm6,DWORD PTR [rdi+r11*4-0x4]
+    0.03 :   dad3a:  vmovss xmm4,DWORD PTR [rcx+r11*4-0x4]
+    0.01 :   dad41:  vxorps xmm8,xmm8,xmm8
+    0.01 :   dad46:  vsubss xmm5,xmm4,xmm0
+    0.03 :   dad4a:  vsubss xmm6,xmm6,xmm1
+    0.00 :   dad4e:  vmulss xmm4,xmm5,xmm5
+    0.01 :   dad52:  vmulss xmm7,xmm6,xmm6
+    0.03 :   dad56:  vaddss xmm4,xmm4,xmm7
+    0.06 :   dad5a:  vaddss xmm7,xmm3,xmm4
+    0.04 :   dad5e:  vxorps xmm4,xmm4,xmm4
+    0.01 :   dad62:  vucomiss xmm7,xmm4
+    0.01 :   dad66:  jne    dad6a <engine::force::pass_one::<f32>+0x26a>
+    0.00 :   dad68:  jnp    dad7d <engine::force::pass_one::<f32>+0x27d>
+    0.01 :   dad6a:  vsqrtss xmm9,xmm7,xmm7
+    0.01 :   dad6e:  vmulss xmm8,xmm2,DWORD PTR [r9+r11*4-0x4]
+    0.01 :   dad75:  vmulss xmm7,xmm9,xmm7
+    0.01 :   dad79:  vdivss xmm8,xmm8,xmm7
+    0.05 :   dad7d:  vmulss xmm5,xmm8,xmm5
+    0.01 :   dad81:  vmulss xmm6,xmm8,xmm6
+    0.04 :   dad85:  vmovss xmm7,DWORD PTR [rsi+r11*4-0x4]
+    0.04 :   dad8c:  vmovss DWORD PTR [r10+r11*4-0x4],xmm5
+    0.05 :   dad93:  vmovss DWORD PTR [r8+r11*4-0x4],xmm6
+    0.07 :   dad9a:  vmovss xmm8,DWORD PTR [rcx+r11*4]
+    0.01 :   dada0:  vmovss xmm9,DWORD PTR [rdi+r11*4]
+    0.03 :   dada6:  vsubss xmm8,xmm8,xmm0
+    0.08 :   dadaa:  vsubss xmm9,xmm9,xmm1
+    0.00 :   dadae:  vmulss xmm10,xmm8,xmm8
+    0.01 :   dadb3:  vmulss xmm11,xmm9,xmm9
+    0.04 :   dadb8:  vaddss xmm10,xmm10,xmm11
+    0.01 :   dadbd:  vaddss xmm10,xmm10,xmm3
+    0.03 :   dadc1:  vucomiss xmm10,xmm4
+    0.01 :   dadc5:  jne    dadcd <engine::force::pass_one::<f32>+0x2cd>
+    0.00 :   dadc7:  jnp    dace0 <engine::force::pass_one::<f32>+0x1e0>
+    0.01 :   dadcd:  vsqrtss xmm11,xmm10,xmm10
+    0.03 :   dadd2:  vmulss xmm4,xmm2,DWORD PTR [r9+r11*4]
+    0.07 :   dadd8:  vmulss xmm10,xmm10,xmm11
+    0.03 :   daddd:  vdivss xmm4,xmm4,xmm10
+    0.06 :   dade2:  jmp    dace0 <engine::force::pass_one::<f32>+0x1e0>
+    0.06 :   dade7:  movabs rbx,0xffffffffffffff0
+    0.05 :   dadf1:  cmp    rax,0x10
+    0.00 :   dadf5:  jae    dadff <engine::force::pass_one::<f32>+0x2ff>
+    0.00 :   dadf7:  xor    r11d,r11d
+    0.00 :   dadfa:  jmp    daf4b <engine::force::pass_one::<f32>+0x44b>
+    0.07 :   dadff:  vmovaps zmm9,ZMMWORD PTR [rip+0xfffffffffff527b7]        # 2d5c0 <__abi_tag+0x2d2c4>
+    0.17 :   dae09:  vmovaps zmm10,ZMMWORD PTR [rip+0xfffffffffff527ed]        # 2d600 <__abi_tag+0x2d304>
+    0.13 :   dae13:  vmovaps zmm11,ZMMWORD PTR [rip+0xfffffffffff52823]        # 2d640 <__abi_tag+0x2d344>
+    0.05 :   dae1d:  vmovaps zmm12,ZMMWORD PTR [rip+0xfffffffffff52859]        # 2d680 <__abi_tag+0x2d384>
+    0.09 :   dae27:  mov    r14,rax
+    0.00 :   dae2a:  shr    r14,0x4
+    0.11 :   dae2e:  vbroadcastss zmm4,xmm0
+    0.12 :   dae34:  vbroadcastss zmm5,xmm1
+    0.24 :   dae3a:  vbroadcastss zmm6,xmm3
+    0.04 :   dae40:  vbroadcastss zmm7,xmm2
+    0.05 :   dae46:  mov    r11,rax
+    0.00 :   dae49:  and    r11,rbx
+    0.14 :   dae4c:  xor    r15d,r15d
+    0.09 :   dae4f:  vpxor  xmm8,xmm8,xmm8
+    0.07 :   dae54:  shl    r14,0x6
+    0.18 :   dae58:  nop    DWORD PTR [rax+rax*1+0x0]
+    2.09 :   dae60:  vmovups zmm13,ZMMWORD PTR [rcx+r15*1]
+    2.25 :   dae67:  vmovups zmm14,ZMMWORD PTR [rdi+r15*1]
+    2.29 :   dae6e:  vmovups zmm15,ZMMWORD PTR [rsi+r15*1]
+    2.38 :   dae75:  vsubps zmm13,zmm13,zmm4
+    2.74 :   dae7b:  vsubps zmm14,zmm14,zmm5
+    2.23 :   dae81:  vmulps zmm16,zmm13,zmm13
+    2.31 :   dae87:  vmulps zmm17,zmm14,zmm14
+    2.18 :   dae8d:  vaddps zmm16,zmm16,zmm17
+    1.72 :   dae93:  vmulps zmm17,zmm7,ZMMWORD PTR [r9+r15*1]
+    2.18 :   dae9a:  vaddps zmm16,zmm6,zmm16
+    1.92 :   daea0:  vsqrtps zmm18,zmm16
+    2.15 :   daea6:  vcmpneqps k1,zmm16,zmm8
+    2.21 :   daead:  vmulps zmm18,zmm16,zmm18
+    3.77 :   daeb3:  vdivps zmm16{k1}{z},zmm17,zmm18
+    1.96 :   daeb9:  vmovups zmm17,ZMMWORD PTR [rdx+r15*2]
+    2.63 :   daec0:  vmovups zmm18,ZMMWORD PTR [rdx+r15*2+0x40]
+    2.73 :   daec8:  vmovaps zmm19,zmm17
+    2.64 :   daece:  vpermt2ps zmm19,zmm9,zmm18
+    2.31 :   daed4:  vpermt2ps zmm17,zmm10,zmm18
+    2.33 :   daeda:  vmulps zmm13,zmm13,zmm16
+    2.72 :   daee0:  vmulps zmm14,zmm14,zmm16
+    2.34 :   daee6:  vmulps zmm16,zmm15,zmm13
+    2.75 :   daeec:  vmulps zmm15,zmm15,zmm14
+    2.00 :   daef2:  vsubps zmm16,zmm19,zmm16
+    2.25 :   daef8:  vsubps zmm15,zmm17,zmm15
+    1.89 :   daefe:  vmovaps zmm17,zmm16
+    2.27 :   daf04:  vpermt2ps zmm17,zmm11,zmm15
+    2.18 :   daf0a:  vpermt2ps zmm16,zmm12,zmm15
+    6.39 :   daf10:  vmovups ZMMWORD PTR [rdx+r15*2],zmm16
+    4.19 :   daf17:  vmovups ZMMWORD PTR [rdx+r15*2+0x40],zmm17
+    4.42 :   daf1f:  vmovups ZMMWORD PTR [r10+r15*1],zmm13
+    3.96 :   daf26:  vmovups ZMMWORD PTR [r8+r15*1],zmm14
+    2.10 :   daf2d:  add    r15,0x40
+    1.93 :   daf31:  cmp    r14,r15
+    0.00 :   daf34:  jne    dae60 <engine::force::pass_one::<f32>+0x360>
+    0.13 :   daf3a:  cmp    rax,r11
+    0.00 :   daf3d:  je     daca5 <engine::force::pass_one::<f32>+0x1a5>
+    0.21 :   daf43:  test   al,0xc
+    0.00 :   daf45:  je     dac08 <engine::force::pass_one::<f32>+0x108>
+    0.05 :   daf4b:  vmovaps ymm9,YMMWORD PTR [rip+0xfffffffffff5a2ed]        # 35240 <serde_json::ser::Formatter::write_char_escape::HEX_DIGITS+0x560>
+    0.12 :   daf53:  vmovdqa ymm10,YMMWORD PTR [rip+0xfffffffffff5a4a5]        # 35400 <criterion::plot::gnuplot_backend::summary::COMPARISON_COLORS+0x160>
+    0.20 :   daf5b:  add    rbx,0xc
+    0.11 :   daf5f:  vbroadcastss xmm4,xmm0
+    0.04 :   daf64:  vbroadcastss xmm5,xmm1
+    0.00 :   daf69:  vbroadcastss xmm6,xmm3
+    0.01 :   daf6e:  vbroadcastss xmm7,xmm2
+    0.03 :   daf73:  mov    r14,r11
+    0.01 :   daf76:  vxorps xmm8,xmm8,xmm8
+    0.03 :   daf7b:  mov    r11,rbx
+    0.00 :   daf7e:  and    r11,rax
+    0.00 :   daf81:  data16 data16 data16 data16 data16 cs nop WORD PTR [rax+rax*1+0x0]
+    0.04 :   daf90:  vmovups xmm11,XMMWORD PTR [rcx+r14*4]
+    0.03 :   daf96:  vmovups xmm12,XMMWORD PTR [rdi+r14*4]
+    0.05 :   daf9c:  vsubps xmm11,xmm11,xmm4
+    0.05 :   dafa0:  vsubps xmm12,xmm12,xmm5
+    0.07 :   dafa4:  vmulps xmm13,xmm11,xmm11
+    0.11 :   dafa9:  vmulps xmm14,xmm12,xmm12
+    0.06 :   dafae:  vaddps xmm13,xmm13,xmm14
+    0.07 :   dafb3:  vmulps xmm14,xmm7,XMMWORD PTR [r9+r14*4]
+    0.08 :   dafb9:  vaddps xmm13,xmm13,xmm6
+    0.08 :   dafbd:  vsqrtps xmm15,xmm13
+    0.07 :   dafc2:  vcmpneqps k1,xmm13,xmm8
+    0.13 :   dafc9:  vmulps xmm15,xmm13,xmm15
+    0.13 :   dafce:  vdivps xmm13{k1}{z},xmm14,xmm15
+    0.06 :   dafd4:  vbroadcastf128 ymm14,XMMWORD PTR [rsi+r14*4]
+    0.09 :   dafda:  vmovups ymm15,YMMWORD PTR [rdx+r14*8]
+    0.09 :   dafe0:  vpermd ymm14,ymm10,ymm14
+    0.07 :   dafe5:  vmulps xmm11,xmm11,xmm13
+    0.12 :   dafea:  vmulps xmm12,xmm12,xmm13
+    0.08 :   dafef:  vmovaps ymm13,ymm11
+    0.08 :   daff4:  vpermt2ps ymm13,ymm9,ymm12
+    0.11 :   daffa:  vmulps ymm13,ymm14,ymm13
+    0.08 :   dafff:  vsubps ymm13,ymm15,ymm13
+    0.06 :   db004:  vmovups YMMWORD PTR [rdx+r14*8],ymm13
+    0.09 :   db00a:  vmovups XMMWORD PTR [r10+r14*4],xmm11
+    0.09 :   db010:  vmovups XMMWORD PTR [r8+r14*4],xmm12
+    0.11 :   db016:  add    r14,0x4
+    0.04 :   db01a:  cmp    r11,r14
+    0.00 :   db01d:  jne    daf90 <engine::force::pass_one::<f32>+0x490>
+    0.17 :   db023:  cmp    rax,r11
+    0.00 :   db026:  je     daca5 <engine::force::pass_one::<f32>+0x1a5>
+    0.05 :   db02c:  jmp    dac08 <engine::force::pass_one::<f32>+0x108>

@@ -1,0 +1,309 @@
+ Percent |	Source code & Disassembly of step-cd954fe8a8f3c603 for cpu/cycles/P (19187 samples, percent: local period)
+--------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000d1450 <engine::force::sweep::<f32>>:
+    0.00 :   d1450:  push   rbp
+    0.01 :   d1451:  push   r15
+    0.01 :   d1453:  push   r14
+    0.00 :   d1455:  push   r13
+    0.01 :   d1457:  push   r12
+    0.02 :   d1459:  push   rbx
+    0.02 :   d145a:  mov    rbx,rcx
+    0.02 :   d145d:  mov    r11,rsi
+    0.02 :   d1460:  mov    rsi,QWORD PTR [rsp+0x50]
+    0.02 :   d1465:  mov    r10,QWORD PTR [rsp+0x40]
+    0.02 :   d146a:  mov    ebp,r9d
+    0.00 :   d146d:  and    ebp,0x3
+    0.03 :   d1470:  mov    QWORD PTR [rsp-0x30],r9
+    0.02 :   d1475:  mov    rcx,r9
+    0.00 :   d1478:  shr    rcx,0x2
+    0.01 :   d147c:  mov    eax,r10d
+    0.00 :   d147f:  and    eax,0x3
+    0.01 :   d1482:  mov    r9,r10
+    0.00 :   d1485:  shr    r9,0x2
+    0.01 :   d1489:  mov    r14d,esi
+    0.00 :   d148c:  and    r14d,0x3
+    0.02 :   d1490:  mov    r10,rsi
+    0.00 :   d1493:  shr    r10,0x2
+    0.02 :   d1497:  mov    QWORD PTR [rsp-0x20],rbx
+    0.01 :   d149c:  shr    rbx,0x2
+    0.02 :   d14a0:  cmp    rcx,rbx
+    0.01 :   d14a3:  cmovb  rbx,rcx
+    0.00 :   d14a7:  mov    QWORD PTR [rsp-0x28],rdi
+    0.00 :   d14ac:  cmp    r9,rbx
+    0.01 :   d14af:  cmovb  rbx,r9
+    0.01 :   d14b3:  mov    rdi,QWORD PTR [rsp+0x70]
+    0.02 :   d14b8:  cmp    r10,rbx
+    0.01 :   d14bb:  cmovb  rbx,r10
+    0.02 :   d14bf:  mov    rsi,QWORD PTR [rsp+0x60]
+    0.01 :   d14c4:  mov    rcx,rsi
+    0.00 :   d14c7:  shr    rcx,0x2
+    0.03 :   d14cb:  mov    r10,rdi
+    0.00 :   d14ce:  shr    r10,0x2
+    0.02 :   d14d2:  cmp    r10,rcx
+    0.02 :   d14d5:  cmovae r10,rcx
+    0.03 :   d14d9:  cmp    r10,rbx
+    0.01 :   d14dc:  cmovae r10,rbx
+    0.01 :   d14e0:  mov    rbx,QWORD PTR [rsp+0x68]
+    0.00 :   d14e5:  mov    r15,QWORD PTR [rsp+0x58]
+    0.00 :   d14ea:  mov    r13,QWORD PTR [rsp+0x48]
+    0.01 :   d14ef:  mov    r12,QWORD PTR [rsp+0x38]
+    0.01 :   d14f4:  test   r10,r10
+    0.00 :   d14f7:  movaps XMMWORD PTR [rsp-0x18],xmm0
+    0.00 :   d14fc:  mov    QWORD PTR [rsp-0x38],r11
+    0.02 :   d1501:  je     d1652 <engine::force::sweep::<f32>+0x202>
+    0.02 :   d1507:  movaps xmm7,xmm0
+    0.01 :   d150a:  movsd  xmm4,QWORD PTR [r11]
+    0.03 :   d150f:  movaps xmm0,xmm4
+    0.01 :   d1512:  shufps xmm0,xmm4,0x11
+    0.02 :   d1516:  movaps xmm6,xmm4
+    0.03 :   d1519:  shufps xmm6,xmm4,0x0
+    0.01 :   d151d:  shufps xmm7,xmm7,0x0
+    0.00 :   d1521:  movss  xmm8,DWORD PTR [r11+0x8]
+    0.01 :   d1527:  shufps xmm8,xmm8,0x0
+    0.02 :   d152c:  shufps xmm4,xmm4,0x55
+    0.00 :   d1530:  shl    r10,0x4
+    0.02 :   d1534:  xorps  xmm9,xmm9
+    0.01 :   d1538:  xor    ecx,ecx
+    0.02 :   d153a:  xorps  xmm3,xmm3
+    0.01 :   d153d:  xorps  xmm2,xmm2
+    0.00 :   d1540:  xorps  xmm1,xmm1
+    0.00 :   d1543:  data16 data16 data16 cs nop WORD PTR [rax+rax*1+0x0]
+    1.77 :   d1550:  movsd  xmm10,QWORD PTR [rdx+rcx*1]
+    1.80 :   d1556:  subps  xmm10,xmm6
+    1.59 :   d155a:  movsd  xmm11,QWORD PTR [rdx+rcx*1+0x8]
+    1.90 :   d1561:  movsd  xmm14,QWORD PTR [r8+rcx*1]
+    1.50 :   d1567:  subps  xmm14,xmm4
+    1.59 :   d156b:  movsd  xmm12,QWORD PTR [r8+rcx*1+0x8]
+    1.65 :   d1572:  shufps xmm12,xmm11,0x11
+    1.44 :   d1577:  movaps xmm13,xmm10
+    1.44 :   d157b:  mulps  xmm13,xmm10
+    1.39 :   d157f:  movaps xmm11,xmm14
+    1.34 :   d1583:  mulps  xmm11,xmm14
+    1.45 :   d1587:  addps  xmm11,xmm13
+    1.72 :   d158b:  addps  xmm11,xmm7
+    1.34 :   d158f:  movsd  xmm15,QWORD PTR [r12+rcx*1]
+    1.41 :   d1595:  movsd  xmm13,QWORD PTR [r12+rcx*1+0x8]
+    1.40 :   d159c:  mulps  xmm15,xmm8
+    1.69 :   d15a0:  sqrtps xmm5,xmm11
+    1.70 :   d15a4:  mulps  xmm5,xmm11
+    1.87 :   d15a8:  divps  xmm15,xmm5
+    2.08 :   d15ac:  cmpneqps xmm11,xmm9
+    2.11 :   d15b1:  andps  xmm11,xmm15
+    2.26 :   d15b5:  mulps  xmm10,xmm11
+    2.53 :   d15b9:  mulps  xmm11,xmm14
+    2.44 :   d15bd:  shufps xmm12,xmm12,0xd8
+    2.44 :   d15c2:  subps  xmm12,xmm0
+    2.30 :   d15c6:  movaps xmm5,xmm12
+    2.14 :   d15ca:  mulps  xmm5,xmm12
+    2.08 :   d15ce:  movaps xmm14,xmm5
+    2.04 :   d15d2:  shufps xmm14,xmm5,0xe7
+    1.96 :   d15d7:  shufps xmm5,xmm5,0xe2
+    2.03 :   d15db:  addps  xmm5,xmm14
+    1.84 :   d15df:  addps  xmm5,xmm7
+    1.82 :   d15e2:  mulps  xmm13,xmm8
+    2.00 :   d15e6:  sqrtps xmm14,xmm5
+    1.89 :   d15ea:  mulps  xmm14,xmm5
+    1.82 :   d15ee:  divps  xmm13,xmm14
+    1.74 :   d15f2:  cmpneqps xmm5,xmm9
+    1.72 :   d15f7:  andps  xmm5,xmm13
+    1.62 :   d15fb:  pshufd xmm5,xmm5,0x5
+    2.03 :   d1600:  mulps  xmm5,xmm12
+    1.63 :   d1604:  movups xmm12,XMMWORD PTR [r15+rcx*1]
+    1.65 :   d1609:  movups xmm13,XMMWORD PTR [r13+rcx*1+0x0]
+    1.78 :   d160f:  addps  xmm3,xmm10
+    1.50 :   d1613:  shufps xmm10,xmm5,0x74
+    1.63 :   d1618:  mulps  xmm10,xmm13
+    1.88 :   d161c:  subps  xmm12,xmm10
+    1.61 :   d1620:  movups XMMWORD PTR [r15+rcx*1],xmm12
+    1.53 :   d1625:  movups xmm10,XMMWORD PTR [rbx+rcx*1]
+    1.55 :   d162a:  addps  xmm2,xmm11
+    1.44 :   d162e:  shufps xmm11,xmm5,0x24
+    1.88 :   d1633:  mulps  xmm11,xmm13
+    1.37 :   d1637:  subps  xmm10,xmm11
+    1.32 :   d163b:  movups XMMWORD PTR [rbx+rcx*1],xmm10
+    1.30 :   d1640:  addps  xmm1,xmm5
+    1.60 :   d1643:  add    rcx,0x10
+    1.25 :   d1647:  cmp    r10,rcx
+    0.00 :   d164a:  jne    d1550 <engine::force::sweep::<f32>+0x100>
+    0.42 :   d1650:  jmp    d165b <engine::force::sweep::<f32>+0x20b>
+    0.00 :   d1652:  xorps  xmm3,xmm3
+    0.00 :   d1655:  xorps  xmm2,xmm2
+    0.00 :   d1658:  xorps  xmm1,xmm1
+    0.02 :   d165b:  mov    r9,QWORD PTR [rsp-0x20]
+    0.01 :   d1660:  mov    ecx,r9d
+    0.00 :   d1663:  and    ecx,0x3
+    0.00 :   d1666:  cmp    rbp,rcx
+    0.02 :   d1669:  cmovb  rcx,rbp
+    0.03 :   d166d:  cmp    rax,rcx
+    0.01 :   d1670:  cmovb  rcx,rax
+    0.01 :   d1674:  cmp    r14,rcx
+    0.01 :   d1677:  cmovb  rcx,r14
+    0.02 :   d167b:  mov    eax,esi
+    0.00 :   d167d:  and    eax,0x3
+    0.00 :   d1680:  mov    r10d,edi
+    0.00 :   d1683:  and    r10d,0x3
+    0.01 :   d1687:  cmp    r10,rax
+    0.01 :   d168a:  cmovb  rax,r10
+    0.01 :   d168e:  cmp    rax,rcx
+    0.00 :   d1691:  cmovae rax,rcx
+    0.01 :   d1695:  movaps xmm4,xmm1
+    0.01 :   d1698:  unpckhpd xmm4,xmm1
+    0.01 :   d169c:  movaps xmm5,xmm1
+    0.00 :   d169f:  shufps xmm5,xmm1,0xff
+    0.01 :   d16a3:  test   rax,rax
+    0.00 :   d16a6:  je     d1934 <engine::force::sweep::<f32>+0x4e4>
+    0.01 :   d16ac:  movabs rcx,0x1ffffffffffffffc
+    0.01 :   d16b6:  movabs r10,0xffffffffffffffc
+    0.00 :   d16c0:  and    r9,rcx
+    0.02 :   d16c3:  mov    rbp,QWORD PTR [rsp-0x30]
+    0.00 :   d16c8:  and    rbp,rcx
+    0.00 :   d16cb:  mov    r11,QWORD PTR [rsp+0x40]
+    0.00 :   d16d0:  and    r11,rcx
+    0.01 :   d16d3:  mov    r14,QWORD PTR [rsp+0x50]
+    0.01 :   d16d8:  and    r14,rcx
+    0.01 :   d16db:  and    rsi,r10
+    0.00 :   d16de:  and    rdi,r10
+    0.01 :   d16e1:  mov    r10,QWORD PTR [rsp-0x38]
+    0.01 :   d16e6:  movss  xmm8,DWORD PTR [r10]
+    0.00 :   d16eb:  movss  xmm7,DWORD PTR [r10+0x4]
+    0.00 :   d16f1:  movss  xmm6,DWORD PTR [r10+0x8]
+    0.01 :   d16f7:  movss  xmm9,DWORD PTR [rdx+r9*4]
+    0.00 :   d16fd:  movss  xmm11,DWORD PTR [r8+rbp*4]
+    0.01 :   d1703:  movss  xmm10,DWORD PTR [r13+r14*4+0x0]
+    0.01 :   d170a:  subss  xmm9,xmm8
+    0.00 :   d170f:  subss  xmm11,xmm7
+    0.01 :   d1714:  movaps xmm0,xmm9
+    0.01 :   d1718:  mulss  xmm0,xmm9
+    0.00 :   d171d:  movaps xmm13,xmm11
+    0.01 :   d1721:  mulss  xmm13,xmm11
+    0.02 :   d1726:  addss  xmm13,xmm0
+    0.00 :   d172b:  movaps xmm14,XMMWORD PTR [rsp-0x18]
+    0.00 :   d1731:  addss  xmm13,xmm14
+    0.01 :   d1736:  xorps  xmm12,xmm12
+    0.01 :   d173a:  ucomiss xmm13,xmm12
+    0.00 :   d173e:  jne    d1742 <engine::force::sweep::<f32>+0x2f2>
+    0.00 :   d1740:  jnp    d175f <engine::force::sweep::<f32>+0x30f>
+    0.01 :   d1742:  movss  xmm12,DWORD PTR [r12+r11*4]
+    0.01 :   d1748:  mulss  xmm12,xmm6
+    0.01 :   d174d:  xorps  xmm0,xmm0
+    0.01 :   d1750:  sqrtss xmm0,xmm13
+    0.01 :   d1755:  mulss  xmm0,xmm13
+    0.00 :   d175a:  divss  xmm12,xmm0
+    0.01 :   d175f:  mulss  xmm9,xmm12
+    0.00 :   d1764:  mulss  xmm11,xmm12
+    0.01 :   d1769:  movaps xmm0,xmm10
+    0.01 :   d176d:  mulss  xmm0,xmm9
+    0.00 :   d1772:  movss  xmm12,DWORD PTR [r15+rsi*4]
+    0.01 :   d1778:  subss  xmm12,xmm0
+    0.01 :   d177d:  movss  DWORD PTR [r15+rsi*4],xmm12
+    0.03 :   d1783:  mulss  xmm10,xmm11
+    0.00 :   d1788:  movss  xmm0,DWORD PTR [rbx+rdi*4]
+    0.01 :   d178d:  subss  xmm0,xmm10
+    0.02 :   d1792:  movss  DWORD PTR [rbx+rdi*4],xmm0
+    0.02 :   d1797:  movaps xmm10,xmm3
+    0.01 :   d179b:  addss  xmm10,xmm9
+    0.01 :   d17a0:  movaps xmm9,xmm2
+    0.00 :   d17a4:  addss  xmm9,xmm11
+    0.03 :   d17a9:  cmp    eax,0x1
+    0.00 :   d17ac:  jne    d17bb <engine::force::sweep::<f32>+0x36b>
+    0.03 :   d17ae:  movaps xmm3,xmm10
+    0.03 :   d17b2:  movaps xmm2,xmm9
+    0.02 :   d17b6:  jmp    d1934 <engine::force::sweep::<f32>+0x4e4>
+    0.01 :   d17bb:  movss  xmm12,DWORD PTR [rdx+r9*4+0x4]
+    0.00 :   d17c2:  movss  xmm11,DWORD PTR [r8+rbp*4+0x4]
+    0.00 :   d17c9:  movss  xmm13,DWORD PTR [r13+r14*4+0x4]
+    0.00 :   d17d0:  subss  xmm12,xmm8
+    0.01 :   d17d5:  subss  xmm11,xmm7
+    0.01 :   d17da:  movaps xmm0,xmm12
+    0.00 :   d17de:  mulss  xmm0,xmm12
+    0.01 :   d17e3:  movaps xmm15,xmm11
+    0.00 :   d17e7:  mulss  xmm15,xmm11
+    0.01 :   d17ec:  addss  xmm15,xmm0
+    0.01 :   d17f1:  addss  xmm15,xmm14
+    0.00 :   d17f6:  xorps  xmm14,xmm14
+    0.01 :   d17fa:  ucomiss xmm15,xmm14
+    0.01 :   d17fe:  jne    d1802 <engine::force::sweep::<f32>+0x3b2>
+    0.00 :   d1800:  jnp    d1820 <engine::force::sweep::<f32>+0x3d0>
+    0.01 :   d1802:  movss  xmm14,DWORD PTR [r12+r11*4+0x4]
+    0.00 :   d1809:  mulss  xmm14,xmm6
+    0.00 :   d180e:  xorps  xmm0,xmm0
+    0.01 :   d1811:  sqrtss xmm0,xmm15
+    0.01 :   d1816:  mulss  xmm0,xmm15
+    0.00 :   d181b:  divss  xmm14,xmm0
+    0.00 :   d1820:  mulss  xmm12,xmm14
+    0.00 :   d1825:  mulss  xmm11,xmm14
+    0.01 :   d182a:  movaps xmm0,xmm13
+    0.01 :   d182e:  mulss  xmm0,xmm12
+    0.00 :   d1833:  movss  xmm14,DWORD PTR [r15+rsi*4+0x4]
+    0.00 :   d183a:  subss  xmm14,xmm0
+    0.01 :   d183f:  movss  DWORD PTR [r15+rsi*4+0x4],xmm14
+    0.01 :   d1846:  mulss  xmm13,xmm11
+    0.01 :   d184b:  movss  xmm0,DWORD PTR [rbx+rdi*4+0x4]
+    0.00 :   d1851:  subss  xmm0,xmm13
+    0.01 :   d1856:  movss  DWORD PTR [rbx+rdi*4+0x4],xmm0
+    0.00 :   d185c:  shufps xmm3,xmm3,0x55
+    0.01 :   d1860:  addss  xmm3,xmm12
+    0.01 :   d1865:  shufps xmm2,xmm2,0x55
+    0.00 :   d1869:  addss  xmm2,xmm11
+    0.00 :   d186e:  movlhps xmm3,xmm10
+    0.01 :   d1872:  shufps xmm3,xmm10,0xe2
+    0.01 :   d1877:  movlhps xmm2,xmm9
+    0.00 :   d187b:  shufps xmm2,xmm9,0xe2
+    0.01 :   d1880:  cmp    eax,0x2
+    0.00 :   d1883:  je     d1934 <engine::force::sweep::<f32>+0x4e4>
+    0.01 :   d1889:  movss  xmm10,DWORD PTR [rdx+r9*4+0x8]
+    0.01 :   d1890:  movss  xmm9,DWORD PTR [r8+rbp*4+0x8]
+    0.00 :   d1897:  movss  xmm11,DWORD PTR [r13+r14*4+0x8]
+    0.02 :   d189e:  subss  xmm10,xmm8
+    0.02 :   d18a3:  subss  xmm9,xmm7
+    0.02 :   d18a8:  movaps xmm0,xmm10
+    0.00 :   d18ac:  mulss  xmm0,xmm10
+    0.00 :   d18b1:  movaps xmm7,xmm9
+    0.00 :   d18b5:  mulss  xmm7,xmm9
+    0.00 :   d18ba:  addss  xmm7,xmm0
+    0.00 :   d18be:  movaps xmm8,XMMWORD PTR [rsp-0x18]
+    0.00 :   d18c4:  addss  xmm8,xmm7
+    0.01 :   d18c9:  xorps  xmm7,xmm7
+    0.00 :   d18cc:  ucomiss xmm8,xmm7
+    0.01 :   d18d0:  jne    d18d4 <engine::force::sweep::<f32>+0x484>
+    0.00 :   d18d2:  jnp    d18ef <engine::force::sweep::<f32>+0x49f>
+    0.00 :   d18d4:  mulss  xmm6,DWORD PTR [r12+r11*4+0x8]
+    0.01 :   d18db:  xorps  xmm0,xmm0
+    0.00 :   d18de:  sqrtss xmm0,xmm8
+    0.00 :   d18e3:  mulss  xmm0,xmm8
+    0.00 :   d18e8:  divss  xmm6,xmm0
+    0.00 :   d18ec:  movaps xmm7,xmm6
+    0.00 :   d18ef:  mulss  xmm10,xmm7
+    0.00 :   d18f4:  mulss  xmm9,xmm7
+    0.01 :   d18f9:  movaps xmm0,xmm11
+    0.00 :   d18fd:  mulss  xmm0,xmm10
+    0.00 :   d1902:  movss  xmm6,DWORD PTR [r15+rsi*4+0x8]
+    0.00 :   d1909:  subss  xmm6,xmm0
+    0.00 :   d190d:  movss  DWORD PTR [r15+rsi*4+0x8],xmm6
+    0.00 :   d1914:  mulss  xmm11,xmm9
+    0.00 :   d1919:  movss  xmm0,DWORD PTR [rbx+rdi*4+0x8]
+    0.01 :   d191f:  subss  xmm0,xmm11
+    0.00 :   d1924:  movss  DWORD PTR [rbx+rdi*4+0x8],xmm0
+    0.00 :   d192a:  addss  xmm5,xmm10
+    0.00 :   d192f:  addss  xmm4,xmm9
+    0.04 :   d1934:  mov    rax,QWORD PTR [rsp-0x28]
+    0.02 :   d1939:  movlps QWORD PTR [rax],xmm3
+    0.04 :   d193c:  movss  DWORD PTR [rax+0x8],xmm5
+    0.04 :   d1941:  movaps xmm0,xmm1
+    0.03 :   d1944:  shufps xmm0,xmm1,0x55
+    0.06 :   d1948:  movss  DWORD PTR [rax+0xc],xmm0
+    0.01 :   d194d:  movlps QWORD PTR [rax+0x10],xmm2
+    0.01 :   d1951:  movss  DWORD PTR [rax+0x18],xmm4
+    0.01 :   d1956:  movss  DWORD PTR [rax+0x1c],xmm1
+    0.01 :   d195b:  pop    rbx
+    0.00 :   d195c:  pop    r12
+    0.00 :   d195e:  pop    r13
+    0.03 :   d1960:  pop    r14
+    0.01 :   d1962:  pop    r15
+    0.02 :   d1964:  pop    rbp
+    0.02 :   d1965:  ret

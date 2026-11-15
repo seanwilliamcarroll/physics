@@ -1,0 +1,81 @@
+ Percent |	Source code & Disassembly of step-cd954fe8a8f3c603 for cpu/cycles/P (19833 samples, percent: local period)
+--------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000d0f30 <engine::force::sweep::<f32>>:
+    0.01 :   d0f30:  mov    rax,QWORD PTR [rsp+0x28]
+    0.00 :   d0f35:  cmp    r8,rdx
+    0.00 :   d0f38:  cmovb  rdx,r8
+    0.00 :   d0f3c:  mov    r8,QWORD PTR [rsp+0x8]
+    0.00 :   d0f41:  cmp    r8,rdx
+    0.01 :   d0f44:  cmovb  rdx,r8
+    0.01 :   d0f48:  mov    r8,QWORD PTR [rsp+0x18]
+    0.01 :   d0f4d:  cmp    r8,rdx
+    0.00 :   d0f50:  cmovb  rdx,r8
+    0.01 :   d0f54:  mov    r8,QWORD PTR [rsp+0x38]
+    0.02 :   d0f59:  cmp    r8,rax
+    0.01 :   d0f5c:  cmovb  rax,r8
+    0.00 :   d0f60:  cmp    rax,rdx
+    0.01 :   d0f63:  cmovae rax,rdx
+    0.01 :   d0f67:  test   rax,rax
+    0.00 :   d0f6a:  je     d1064 <engine::force::sweep::<f32>+0x134>
+    0.01 :   d0f70:  mov    rdx,QWORD PTR [rsp+0x30]
+    0.02 :   d0f75:  mov    r8,QWORD PTR [rsp+0x20]
+    0.00 :   d0f7a:  mov    r10,QWORD PTR [rsp+0x10]
+    0.00 :   d0f7f:  movss  xmm1,DWORD PTR [rdi]
+    0.00 :   d0f83:  movss  xmm2,DWORD PTR [rdi+0x4]
+    0.00 :   d0f88:  movss  xmm3,DWORD PTR [rdi+0x8]
+    0.00 :   d0f8d:  xorps  xmm4,xmm4
+    0.00 :   d0f90:  xor    edi,edi
+    0.01 :   d0f92:  xorps  xmm5,xmm5
+    0.01 :   d0f95:  xorps  xmm6,xmm6
+    0.01 :   d0f98:  jmp    d0ff1 <engine::force::sweep::<f32>+0xc1>
+    0.00 :   d0f9a:  nop    WORD PTR [rax+rax*1+0x0]
+    2.97 :   d0fa0:  mulss  xmm7,xmm9
+    2.37 :   d0fa5:  mulss  xmm8,xmm9
+    2.62 :   d0faa:  movss  xmm9,DWORD PTR [r8+rdi*4]
+    2.42 :   d0fb0:  movss  xmm10,DWORD PTR [r10+rdi*4]
+    2.65 :   d0fb6:  movaps xmm11,xmm10
+    3.28 :   d0fba:  mulss  xmm11,xmm7
+    3.31 :   d0fbf:  subss  xmm9,xmm11
+    2.60 :   d0fc4:  movss  DWORD PTR [r8+rdi*4],xmm9
+    2.67 :   d0fca:  movss  xmm9,DWORD PTR [rdx+rdi*4]
+    2.78 :   d0fd0:  mulss  xmm10,xmm8
+    2.51 :   d0fd5:  subss  xmm9,xmm10
+    2.62 :   d0fda:  movss  DWORD PTR [rdx+rdi*4],xmm9
+    2.55 :   d0fe0:  inc    rdi
+    2.42 :   d0fe3:  addss  xmm5,xmm7
+    2.22 :   d0fe7:  addss  xmm6,xmm8
+    2.38 :   d0fec:  cmp    rax,rdi
+    0.00 :   d0fef:  je     d1054 <engine::force::sweep::<f32>+0x124>
+    2.62 :   d0ff1:  movss  xmm7,DWORD PTR [rsi+rdi*4]
+    2.59 :   d0ff6:  subss  xmm7,xmm1
+    2.84 :   d0ffa:  movss  xmm8,DWORD PTR [rcx+rdi*4]
+    2.84 :   d1000:  subss  xmm8,xmm2
+    2.83 :   d1005:  movaps xmm9,xmm7
+    2.78 :   d1009:  mulss  xmm9,xmm7
+    2.91 :   d100e:  movaps xmm10,xmm8
+    2.51 :   d1012:  mulss  xmm10,xmm8
+    2.60 :   d1017:  addss  xmm10,xmm9
+    2.66 :   d101c:  addss  xmm10,xmm0
+    5.82 :   d1021:  ucomiss xmm10,xmm4
+    3.69 :   d1025:  xorps  xmm9,xmm9
+    2.78 :   d1029:  jne    d1031 <engine::force::sweep::<f32>+0x101>
+    0.00 :   d102b:  jnp    d0fa0 <engine::force::sweep::<f32>+0x70>
+    2.82 :   d1031:  movss  xmm9,DWORD PTR [r9+rdi*4]
+    2.76 :   d1037:  mulss  xmm9,xmm3
+    2.69 :   d103c:  xorps  xmm11,xmm11
+    2.60 :   d1040:  sqrtss xmm11,xmm10
+    2.44 :   d1045:  mulss  xmm11,xmm10
+    2.27 :   d104a:  divss  xmm9,xmm11
+    2.18 :   d104f:  jmp    d0fa0 <engine::force::sweep::<f32>+0x70>
+    0.02 :   d1054:  movd   ecx,xmm5
+    0.07 :   d1058:  movd   eax,xmm6
+    0.06 :   d105c:  shl    rax,0x20
+    0.08 :   d1060:  or     rax,rcx
+    0.03 :   d1063:  ret
+    0.00 :   d1064:  xor    eax,eax
+    0.00 :   d1066:  ret

@@ -1,0 +1,239 @@
+ Percent |	Source code & Disassembly of step-72f9efceaa6d0178 for cpu/cycles/P (19487 samples, percent: local period)
+--------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000d2a90 <engine::force::sweep::<f64>>:
+    0.01 :   d2a90:  push   rbp
+    0.00 :   d2a91:  push   r15
+    0.01 :   d2a93:  push   r14
+    0.00 :   d2a95:  push   r13
+    0.00 :   d2a97:  push   r12
+    0.01 :   d2a99:  push   rbx
+    0.00 :   d2a9a:  mov    rbx,QWORD PTR [rsp+0x70]
+    0.00 :   d2a9f:  mov    r11,QWORD PTR [rsp+0x50]
+    0.00 :   d2aa4:  mov    r10,QWORD PTR [rsp+0x40]
+    0.01 :   d2aa9:  mov    r13d,r9d
+    0.00 :   d2aac:  and    r13d,0x3
+    0.00 :   d2ab0:  mov    QWORD PTR [rsp-0x70],r9
+    0.00 :   d2ab5:  mov    rax,r9
+    0.00 :   d2ab8:  shr    rax,0x2
+    0.01 :   d2abc:  mov    ebp,r10d
+    0.00 :   d2abf:  and    ebp,0x3
+    0.01 :   d2ac2:  mov    r9,r10
+    0.00 :   d2ac5:  shr    r9,0x2
+    0.00 :   d2ac9:  mov    r10d,r11d
+    0.00 :   d2acc:  and    r10d,0x3
+    0.01 :   d2ad0:  shr    r11,0x2
+    0.01 :   d2ad4:  mov    QWORD PTR [rsp-0x60],rcx
+    0.00 :   d2ad9:  mov    r15,rcx
+    0.00 :   d2adc:  shr    r15,0x2
+    0.01 :   d2ae0:  cmp    rax,r15
+    0.00 :   d2ae3:  cmovb  r15,rax
+    0.01 :   d2ae7:  mov    r14,QWORD PTR [rsp+0x60]
+    0.00 :   d2aec:  cmp    r9,r15
+    0.01 :   d2aef:  cmovb  r15,r9
+    0.01 :   d2af3:  cmp    r11,r15
+    0.00 :   d2af6:  cmovb  r15,r11
+    0.00 :   d2afa:  mov    rax,r14
+    0.00 :   d2afd:  shr    rax,0x2
+    0.00 :   d2b01:  shr    rbx,0x2
+    0.02 :   d2b05:  cmp    rbx,rax
+    0.00 :   d2b08:  cmovae rbx,rax
+    0.01 :   d2b0c:  mov    QWORD PTR [rsp-0x68],rdi
+    0.00 :   d2b11:  cmp    rbx,r15
+    0.00 :   d2b14:  cmovae rbx,r15
+    0.01 :   d2b18:  mov    r11,QWORD PTR [rsp+0x68]
+    0.01 :   d2b1d:  vxorpd xmm1,xmm1,xmm1
+    0.01 :   d2b21:  vmovupd XMMWORD PTR [rsp-0x50],xmm1
+    0.00 :   d2b27:  mov    QWORD PTR [rsp-0x40],0x0
+    0.01 :   d2b30:  vmovupd XMMWORD PTR [rsp-0x30],xmm1
+    0.01 :   d2b36:  mov    QWORD PTR [rsp-0x20],0x0
+    0.01 :   d2b3f:  mov    r15,QWORD PTR [rsp+0x58]
+    0.01 :   d2b44:  mov    r12,QWORD PTR [rsp+0x48]
+    0.00 :   d2b49:  mov    rax,QWORD PTR [rsp+0x38]
+    0.00 :   d2b4e:  test   rbx,rbx
+    0.00 :   d2b51:  je     d2cfb <engine::force::sweep::<f64>+0x26b>
+    0.01 :   d2b57:  vbroadcastf128 ymm2,XMMWORD PTR [rsi]
+    0.01 :   d2b5c:  vmovapd XMMWORD PTR [rsp-0x18],xmm0
+    0.00 :   d2b62:  vmovddup xmm4,xmm0
+    0.02 :   d2b66:  vmovddup xmm5,QWORD PTR [rsi+0x10]
+    0.00 :   d2b6b:  vmovddup xmm6,xmm2
+    0.00 :   d2b6f:  vshufpd xmm7,xmm2,xmm2,0x3
+    0.00 :   d2b74:  shl    rbx,0x5
+    0.01 :   d2b78:  vxorpd xmm3,xmm3,xmm3
+    0.01 :   d2b7c:  xor    r9d,r9d
+    0.01 :   d2b7f:  vxorpd xmm9,xmm9,xmm9
+    0.00 :   d2b84:  vxorpd xmm8,xmm8,xmm8
+    0.02 :   d2b89:  vxorpd xmm0,xmm0,xmm0
+    0.00 :   d2b8d:  nop    DWORD PTR [rax]
+    1.05 :   d2b90:  vmovupd xmm10,XMMWORD PTR [rdx+r9*1+0x8]
+    0.99 :   d2b97:  vsubpd xmm10,xmm10,xmm6
+    0.91 :   d2b9b:  vmovupd xmm11,XMMWORD PTR [r8+r9*1+0x8]
+    0.98 :   d2ba2:  vsubpd xmm11,xmm11,xmm7
+    0.97 :   d2ba6:  vmulpd xmm12,xmm10,xmm10
+    0.79 :   d2bab:  vmulpd xmm13,xmm11,xmm11
+    1.22 :   d2bb0:  vaddpd xmm12,xmm12,xmm13
+    1.38 :   d2bb5:  vaddpd xmm12,xmm12,xmm4
+    1.15 :   d2bb9:  vmulpd xmm13,xmm5,XMMWORD PTR [rax+r9*1+0x8]
+    1.22 :   d2bc0:  vsqrtpd xmm14,xmm12
+    1.31 :   d2bc5:  vmulpd xmm14,xmm12,xmm14
+    1.10 :   d2bca:  vdivpd xmm13,xmm13,xmm14
+    1.41 :   d2bcf:  vcmpneqpd xmm12,xmm12,xmm0
+    1.34 :   d2bd4:  vandpd xmm12,xmm12,xmm13
+    1.47 :   d2bd9:  vmulpd xmm10,xmm10,xmm12
+    1.38 :   d2bde:  vmovsd xmm13,QWORD PTR [rdx+r9*1]
+    1.72 :   d2be4:  vmovhpd xmm13,xmm13,QWORD PTR [r8+r9*1]
+    1.46 :   d2bea:  vmulpd xmm11,xmm11,xmm12
+    1.57 :   d2bef:  vmovsd xmm12,QWORD PTR [rdx+r9*1+0x18]
+    1.56 :   d2bf6:  vmovhpd xmm12,xmm12,QWORD PTR [r8+r9*1+0x18]
+    1.43 :   d2bfd:  vinsertf128 ymm12,ymm12,xmm13,0x1
+    1.60 :   d2c03:  vsubpd ymm12,ymm12,ymm2
+    2.61 :   d2c07:  vmulpd ymm13,ymm12,ymm12
+    2.69 :   d2c0c:  vextractf128 xmm14,ymm13,0x1
+    5.07 :   d2c12:  vhaddpd xmm13,xmm13,xmm14
+    2.02 :   d2c17:  vaddpd xmm13,xmm13,xmm4
+    2.17 :   d2c1b:  vmovsd xmm14,QWORD PTR [rax+r9*1+0x18]
+    1.91 :   d2c22:  vmovhpd xmm14,xmm14,QWORD PTR [rax+r9*1]
+    2.19 :   d2c28:  vmulpd xmm14,xmm14,xmm5
+    2.02 :   d2c2c:  vsqrtpd xmm15,xmm13
+    1.99 :   d2c31:  vmulpd xmm15,xmm13,xmm15
+    2.01 :   d2c36:  vdivpd xmm14,xmm14,xmm15
+    2.07 :   d2c3b:  vcmpneqpd xmm13,xmm13,xmm0
+    2.09 :   d2c40:  vandpd xmm13,xmm13,xmm14
+    2.02 :   d2c45:  vpermpd ymm13,ymm13,0x50
+    1.98 :   d2c4b:  vmulpd ymm12,ymm12,ymm13
+    2.01 :   d2c50:  vmovupd ymm13,YMMWORD PTR [r15+r9*1]
+    2.02 :   d2c56:  vmovupd ymm14,YMMWORD PTR [r12+r9*1]
+    2.06 :   d2c5c:  vperm2f128 ymm15,ymm12,ymm10,0x21
+    1.81 :   d2c62:  vinsertf128 ymm1,ymm10,xmm12,0x1
+    1.89 :   d2c68:  vshufpd ymm1,ymm15,ymm1,0x4
+    1.80 :   d2c6d:  vmulpd ymm1,ymm14,ymm1
+    1.57 :   d2c71:  vsubpd ymm1,ymm13,ymm1
+    1.67 :   d2c75:  vmovupd YMMWORD PTR [r15+r9*1],ymm1
+    1.65 :   d2c7b:  vmovupd ymm1,YMMWORD PTR [r11+r9*1]
+    1.54 :   d2c81:  vpermpd ymm13,ymm11,0xd0
+    1.69 :   d2c87:  vblendpd ymm15,ymm13,ymm14,0x1
+    1.71 :   d2c8d:  vinsertf128 ymm13,ymm13,xmm12,0x1
+    1.82 :   d2c93:  vblendpd ymm13,ymm15,ymm13,0xa
+    1.60 :   d2c99:  vpermpd ymm15,ymm12,0xff
+    1.55 :   d2c9f:  vblendpd ymm14,ymm14,ymm15,0x1
+    1.66 :   d2ca5:  vmulpd ymm13,ymm13,ymm14
+    1.57 :   d2caa:  vsubpd ymm1,ymm1,ymm13
+    1.65 :   d2caf:  vmovupd YMMWORD PTR [r11+r9*1],ymm1
+    1.62 :   d2cb5:  vaddpd xmm9,xmm10,xmm9
+    1.62 :   d2cba:  vaddpd xmm8,xmm11,xmm8
+    1.56 :   d2cbf:  vaddpd ymm3,ymm12,ymm3
+    1.06 :   d2cc3:  add    r9,0x20
+    0.92 :   d2cc7:  cmp    rbx,r9
+    0.00 :   d2cca:  jne    d2b90 <engine::force::sweep::<f64>+0x100>
+    0.03 :   d2cd0:  vmovupd XMMWORD PTR [rsp-0x50],xmm9
+    0.04 :   d2cd6:  vmovlpd QWORD PTR [rsp-0x40],xmm3
+    0.07 :   d2cdc:  vmovupd XMMWORD PTR [rsp-0x30],xmm8
+    0.11 :   d2ce2:  vmovhpd QWORD PTR [rsp-0x20],xmm3
+    0.09 :   d2ce8:  vextractf128 xmm2,ymm3,0x1
+    0.03 :   d2cee:  vshufpd xmm1,xmm2,xmm2,0x1
+    0.02 :   d2cf3:  vmovapd xmm0,XMMWORD PTR [rsp-0x18]
+    0.02 :   d2cf9:  jmp    d2d03 <engine::force::sweep::<f64>+0x273>
+    0.00 :   d2cfb:  vxorpd xmm1,xmm1,xmm1
+    0.00 :   d2cff:  vxorpd xmm2,xmm2,xmm2
+    0.00 :   d2d03:  vmovsd QWORD PTR [rsp-0x58],xmm2
+    0.01 :   d2d09:  vmovsd QWORD PTR [rsp-0x38],xmm1
+    0.01 :   d2d0f:  mov    rcx,QWORD PTR [rsp-0x60]
+    0.02 :   d2d14:  mov    ebx,ecx
+    0.00 :   d2d16:  and    ebx,0x3
+    0.01 :   d2d19:  cmp    r13,rbx
+    0.01 :   d2d1c:  cmovb  rbx,r13
+    0.00 :   d2d20:  cmp    rbp,rbx
+    0.00 :   d2d23:  cmovb  rbx,rbp
+    0.01 :   d2d27:  cmp    r10,rbx
+    0.01 :   d2d2a:  cmovb  rbx,r10
+    0.01 :   d2d2e:  mov    r9d,r14d
+    0.00 :   d2d31:  and    r9d,0x3
+    0.00 :   d2d35:  mov    rdi,QWORD PTR [rsp+0x70]
+    0.01 :   d2d3a:  mov    r10d,edi
+    0.00 :   d2d3d:  and    r10d,0x3
+    0.01 :   d2d41:  cmp    r10,r9
+    0.00 :   d2d44:  cmovb  r9,r10
+    0.01 :   d2d48:  cmp    r9,rbx
+    0.01 :   d2d4b:  cmovae r9,rbx
+    0.01 :   d2d4f:  test   r9,r9
+    0.00 :   d2d52:  je     d2e80 <engine::force::sweep::<f64>+0x3f0>
+    0.01 :   d2d58:  movabs r10,0xffffffffffffffc
+    0.00 :   d2d62:  and    rcx,r10
+    0.00 :   d2d65:  mov    rbp,QWORD PTR [rsp-0x70]
+    0.02 :   d2d6a:  and    rbp,r10
+    0.00 :   d2d6d:  mov    rbx,QWORD PTR [rsp+0x40]
+    0.00 :   d2d72:  mov    r13,r14
+    0.00 :   d2d75:  mov    r14,rbx
+    0.00 :   d2d78:  and    r14,r10
+    0.01 :   d2d7b:  mov    rbx,QWORD PTR [rsp+0x50]
+    0.01 :   d2d80:  and    rbx,r10
+    0.00 :   d2d83:  lea    rdx,[rdx+rcx*8]
+    0.00 :   d2d87:  lea    r8,[r8+rbp*8]
+    0.00 :   d2d8b:  lea    rax,[rax+r14*8]
+    0.01 :   d2d8f:  dec    r9
+    0.01 :   d2d92:  vmovq  xmm1,r9
+    0.00 :   d2d97:  vpbroadcastq ymm2,xmm1
+    0.01 :   d2d9c:  vpbroadcastq ymm1,QWORD PTR [rip+0xfffffffffff59973]        # 2c718 <__abi_tag+0x2c41c>
+    0.01 :   d2da5:  vpxor  ymm2,ymm2,ymm1
+    0.00 :   d2da9:  vmovdqa ymm1,YMMWORD PTR [rip+0xfffffffffff5f78f]        # 32540 <criterion::plot::gnuplot_backend::summary::COMPARISON_COLORS+0x20>
+    0.00 :   d2db1:  vpcmpgtq ymm2,ymm1,ymm2
+    0.01 :   d2db6:  vpcmpeqd ymm1,ymm1,ymm1
+    0.00 :   d2dba:  vpxor  ymm1,ymm2,ymm1
+    0.00 :   d2dbe:  vmaskmovpd ymm8,ymm1,YMMWORD PTR [rdx]
+    0.00 :   d2dc3:  lea    rcx,[r12+rbx*8]
+    0.00 :   d2dc7:  vmaskmovpd ymm2,ymm1,YMMWORD PTR [r8]
+    0.00 :   d2dcc:  vmaskmovpd ymm3,ymm1,YMMWORD PTR [rax]
+    0.01 :   d2dd1:  movabs rax,0x7fffffffffffffc
+    0.02 :   d2ddb:  and    r13,rax
+    0.00 :   d2dde:  lea    rdx,[r15+r13*8]
+    0.00 :   d2de2:  vbroadcastsd ymm4,QWORD PTR [rsi+0x10]
+    0.01 :   d2de8:  vbroadcastsd ymm5,QWORD PTR [rsi+0x8]
+    0.01 :   d2dee:  vbroadcastsd ymm6,QWORD PTR [rsi]
+    0.01 :   d2df3:  vmaskmovpd ymm7,ymm1,YMMWORD PTR [rcx]
+    0.01 :   d2df8:  vsubpd ymm8,ymm8,ymm6
+    0.01 :   d2dfc:  vbroadcastsd ymm6,xmm0
+    0.00 :   d2e01:  vsubpd ymm2,ymm2,ymm5
+    0.00 :   d2e05:  vmulpd ymm3,ymm3,ymm4
+    0.00 :   d2e09:  vmulpd ymm4,ymm8,ymm8
+    0.01 :   d2e0e:  vmulpd ymm5,ymm2,ymm2
+    0.01 :   d2e12:  vaddpd ymm4,ymm4,ymm5
+    0.00 :   d2e16:  vaddpd ymm4,ymm6,ymm4
+    0.01 :   d2e1a:  vsqrtpd ymm5,ymm4
+    0.00 :   d2e1e:  vmulpd ymm5,ymm4,ymm5
+    0.01 :   d2e22:  vdivpd ymm3,ymm3,ymm5
+    0.02 :   d2e26:  vxorpd xmm5,xmm5,xmm5
+    0.00 :   d2e2a:  vcmpneqpd ymm4,ymm4,ymm5
+    0.00 :   d2e2f:  vandpd ymm3,ymm4,ymm3
+    0.00 :   d2e33:  vmulpd ymm0,ymm8,ymm3
+    0.01 :   d2e37:  vmulpd ymm4,ymm7,ymm0
+    0.02 :   d2e3b:  vmaskmovpd ymm5,ymm1,YMMWORD PTR [rdx]
+    0.00 :   d2e40:  vsubpd ymm4,ymm5,ymm4
+    0.00 :   d2e44:  vmaskmovpd YMMWORD PTR [rdx],ymm1,ymm4
+    0.00 :   d2e49:  and    rdi,rax
+    0.00 :   d2e4c:  lea    rax,[r11+rdi*8]
+    0.01 :   d2e50:  vmulpd ymm2,ymm2,ymm3
+    0.01 :   d2e54:  vmulpd ymm3,ymm7,ymm2
+    0.00 :   d2e58:  vmaskmovpd ymm4,ymm1,YMMWORD PTR [rax]
+    0.00 :   d2e5d:  vsubpd ymm3,ymm4,ymm3
+    0.04 :   d2e61:  vmaskmovpd YMMWORD PTR [rax],ymm1,ymm3
+    0.02 :   d2e66:  vaddpd ymm0,ymm0,YMMWORD PTR [rsp-0x58]
+    0.00 :   d2e6c:  vmaskmovpd YMMWORD PTR [rsp-0x58],ymm1,ymm0
+    0.00 :   d2e73:  vaddpd ymm0,ymm2,YMMWORD PTR [rsp-0x38]
+    0.00 :   d2e79:  vmaskmovpd YMMWORD PTR [rsp-0x38],ymm1,ymm0
+    0.02 :   d2e80:  vmovups ymm0,YMMWORD PTR [rsp-0x58]
+    0.03 :   d2e86:  mov    rax,QWORD PTR [rsp-0x68]
+    0.01 :   d2e8b:  vmovups YMMWORD PTR [rax],ymm0
+    0.03 :   d2e8f:  vmovups ymm0,YMMWORD PTR [rsp-0x38]
+    0.03 :   d2e95:  vmovups YMMWORD PTR [rax+0x20],ymm0
+    0.03 :   d2e9a:  pop    rbx
+    0.02 :   d2e9b:  pop    r12
+    0.01 :   d2e9d:  pop    r13
+    0.00 :   d2e9f:  pop    r14
+    0.01 :   d2ea1:  pop    r15
+    0.00 :   d2ea3:  pop    rbp
+    0.00 :   d2ea4:  vzeroupper
+    0.01 :   d2ea7:  ret

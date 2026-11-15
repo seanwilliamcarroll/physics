@@ -1,0 +1,284 @@
+ Percent |	Source code & Disassembly of step-72f9efceaa6d0178 for cpu/cycles/P (12807 samples, percent: local period)
+--------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000d2f00 <engine::force::pass_one::<f32>>:
+    0.01 :   d2f00:  mov    rax,QWORD PTR [rsi+0x8]
+    0.02 :   d2f04:  mov    r9,QWORD PTR [rsi+0x18]
+    0.00 :   d2f08:  mov    r10,QWORD PTR [rsi+0x28]
+    0.02 :   d2f0c:  cmp    r9,rax
+    0.01 :   d2f0f:  cmovb  rax,r9
+    0.02 :   d2f13:  mov    r9,QWORD PTR [rsi+0x38]
+    0.03 :   d2f17:  cmp    r10,rax
+    0.01 :   d2f1a:  cmovb  rax,r10
+    0.01 :   d2f1e:  mov    r10,QWORD PTR [r8+0x8]
+    0.02 :   d2f22:  cmp    r9,rax
+    0.01 :   d2f25:  cmovb  rax,r9
+    0.03 :   d2f29:  mov    r9,QWORD PTR [r8+0x18]
+    0.03 :   d2f2d:  cmp    r9,r10
+    0.01 :   d2f30:  cmovb  r10,r9
+    0.04 :   d2f34:  cmp    rax,rcx
+    0.02 :   d2f37:  cmovae rax,rcx
+    0.02 :   d2f3b:  cmp    r10,rax
+    0.02 :   d2f3e:  cmovb  rax,r10
+    0.05 :   d2f42:  test   rax,rax
+    0.00 :   d2f45:  je     d31f8 <engine::force::pass_one::<f32>+0x2f8>
+    0.02 :   d2f4b:  push   r14
+    0.04 :   d2f4d:  push   rbx
+    0.01 :   d2f4e:  vmovss xmm0,DWORD PTR [rdi]
+    0.02 :   d2f52:  vmovss xmm1,DWORD PTR [rdi+0x4]
+    0.01 :   d2f57:  vmovss xmm2,DWORD PTR [rdi+0x8]
+    0.01 :   d2f5c:  vmovss xmm3,DWORD PTR [rdi+0xc]
+    0.03 :   d2f61:  mov    rcx,QWORD PTR [rsi]
+    0.02 :   d2f64:  mov    rdi,QWORD PTR [rsi+0x10]
+    0.04 :   d2f68:  mov    r9,QWORD PTR [rsi+0x20]
+    0.01 :   d2f6c:  mov    r10,QWORD PTR [rsi+0x30]
+    0.02 :   d2f70:  mov    rsi,QWORD PTR [r8]
+    0.01 :   d2f73:  mov    r8,QWORD PTR [r8+0x10]
+    0.02 :   d2f77:  cmp    rax,0x10
+    0.00 :   d2f7b:  jb     d3025 <engine::force::pass_one::<f32>+0x125>
+    0.01 :   d2f81:  vmovq  xmm4,r9
+    0.01 :   d2f86:  vmovq  xmm5,rdi
+    0.01 :   d2f8b:  vpunpcklqdq xmm4,xmm5,xmm4
+    0.01 :   d2f8f:  vmovq  xmm5,rcx
+    0.02 :   d2f94:  vmovq  xmm6,rsi
+    0.02 :   d2f99:  vpbroadcastq xmm6,xmm6
+    0.01 :   d2f9e:  vpunpcklqdq xmm7,xmm6,xmm5
+    0.00 :   d2fa2:  vinserti128 ymm7,ymm7,xmm4,0x1
+    0.05 :   d2fa8:  vmovq  xmm8,r10
+    0.00 :   d2fad:  vpunpcklqdq xmm5,xmm8,xmm5
+    0.05 :   d2fb1:  vinserti128 ymm4,ymm5,xmm4,0x1
+    0.05 :   d2fb7:  vmovq  xmm5,r8
+    0.03 :   d2fbc:  vpbroadcastq xmm5,xmm5
+    0.02 :   d2fc1:  vpunpcklqdq xmm8,xmm6,xmm5
+    0.03 :   d2fc5:  vinserti128 ymm8,ymm8,xmm5,0x1
+    0.04 :   d2fcb:  vpsubq ymm4,ymm4,ymm8
+    0.04 :   d2fd0:  vpunpcklqdq xmm5,xmm5,xmm6
+    0.03 :   d2fd4:  vinserti128 ymm5,ymm5,xmm6,0x1
+    0.02 :   d2fda:  vpsubq ymm5,ymm7,ymm5
+    0.02 :   d2fde:  mov    r11,r10
+    0.00 :   d2fe1:  sub    r11,r8
+    0.01 :   d2fe4:  cmp    r11,0xffffffffffffffe1
+    0.02 :   d2fe8:  setae  r11b
+    0.02 :   d2fec:  vpbroadcastq ymm6,QWORD PTR [rip+0xfffffffffff59723]        # 2c718 <__abi_tag+0x2c41c>
+    0.02 :   d2ff5:  vpxor  ymm4,ymm4,ymm6
+    0.01 :   d2ff9:  vpbroadcastq ymm7,QWORD PTR [rip+0xfffffffffff59a9e]        # 2caa0 <__abi_tag+0x2c7a4>
+    0.02 :   d3002:  vpcmpgtq ymm4,ymm4,ymm7
+    0.03 :   d3007:  vpxor  ymm5,ymm5,ymm6
+    0.05 :   d300b:  vpcmpgtq ymm5,ymm5,ymm7
+    0.02 :   d3010:  vpackssdw ymm4,ymm5,ymm4
+    0.04 :   d3014:  vtestps ymm4,ymm4
+    0.01 :   d3019:  setne  bl
+    0.01 :   d301c:  or     bl,r11b
+    0.00 :   d301f:  je     d30e7 <engine::force::pass_one::<f32>+0x1e7>
+    0.00 :   d3025:  xor    r11d,r11d
+    0.03 :   d3028:  sub    rax,r11
+    0.02 :   d302b:  lea    rdx,[rdx+r11*8]
+    0.01 :   d302f:  add    rdx,0x4
+    0.05 :   d3033:  lea    r10,[r10+r11*4]
+    0.04 :   d3037:  lea    r9,[r9+r11*4]
+    0.04 :   d303b:  lea    rdi,[rdi+r11*4]
+    0.01 :   d303f:  lea    rcx,[rcx+r11*4]
+    0.06 :   d3043:  lea    r8,[r8+r11*4]
+    0.09 :   d3047:  lea    rsi,[rsi+r11*4]
+    0.02 :   d304b:  xor    r11d,r11d
+    0.04 :   d304e:  jmp    d30a0 <engine::force::pass_one::<f32>+0x1a0>
+    0.07 :   d3050:  vmovss xmm7,DWORD PTR [r10+r11*4]
+    0.09 :   d3056:  vmulss xmm4,xmm4,xmm6
+    0.03 :   d305a:  vmulss xmm5,xmm5,xmm6
+    0.06 :   d305e:  vmulss xmm6,xmm7,xmm4
+    0.12 :   d3062:  vmovss xmm8,DWORD PTR [rdx+r11*8-0x4]
+    0.08 :   d3069:  vsubss xmm6,xmm8,xmm6
+    0.08 :   d306d:  vmovss xmm8,DWORD PTR [rdx+r11*8]
+    0.09 :   d3073:  vmovss DWORD PTR [rdx+r11*8-0x4],xmm6
+    0.11 :   d307a:  vmulss xmm6,xmm7,xmm5
+    0.09 :   d307e:  vsubss xmm6,xmm8,xmm6
+    0.07 :   d3082:  vmovss DWORD PTR [rdx+r11*8],xmm6
+    0.05 :   d3088:  vmovss DWORD PTR [rsi+r11*4],xmm4
+    0.06 :   d308e:  vmovss DWORD PTR [r8+r11*4],xmm5
+    0.12 :   d3094:  inc    r11
+    0.08 :   d3097:  cmp    rax,r11
+    0.00 :   d309a:  je     d31f5 <engine::force::pass_one::<f32>+0x2f5>
+    0.15 :   d30a0:  vmovss xmm4,DWORD PTR [rcx+r11*4]
+    0.12 :   d30a6:  vmovss xmm5,DWORD PTR [rdi+r11*4]
+    0.08 :   d30ac:  vsubss xmm4,xmm4,xmm0
+    0.10 :   d30b0:  vsubss xmm5,xmm5,xmm1
+    0.12 :   d30b4:  vmulss xmm6,xmm4,xmm4
+    0.08 :   d30b8:  vmulss xmm7,xmm5,xmm5
+    0.06 :   d30bc:  vaddss xmm6,xmm6,xmm7
+    0.08 :   d30c0:  vaddss xmm7,xmm3,xmm6
+    0.15 :   d30c4:  vxorps xmm6,xmm6,xmm6
+    0.23 :   d30c8:  vucomiss xmm7,xmm6
+    0.06 :   d30cc:  jne    d30d0 <engine::force::pass_one::<f32>+0x1d0>
+    0.00 :   d30ce:  jnp    d3050 <engine::force::pass_one::<f32>+0x150>
+    0.05 :   d30d0:  vmulss xmm6,xmm2,DWORD PTR [r9+r11*4]
+    0.07 :   d30d6:  vsqrtss xmm8,xmm7,xmm7
+    0.05 :   d30da:  vmulss xmm7,xmm8,xmm7
+    0.06 :   d30de:  vdivss xmm6,xmm6,xmm7
+    0.09 :   d30e2:  jmp    d3050 <engine::force::pass_one::<f32>+0x150>
+    0.00 :   d30e7:  movabs r11,0xffffffffffffff8
+    0.02 :   d30f1:  and    r11,rax
+    0.02 :   d30f4:  vbroadcastss ymm4,xmm0
+    0.03 :   d30f9:  vbroadcastss ymm5,xmm1
+    0.00 :   d30fe:  vbroadcastss ymm6,xmm3
+    0.02 :   d3103:  vbroadcastss ymm7,xmm2
+    0.02 :   d3108:  lea    rbx,[rax*4+0x0]
+    0.02 :   d3110:  and    rbx,0xffffffffffffffe0
+    0.01 :   d3114:  xor    r14d,r14d
+    0.00 :   d3117:  vpxor  xmm8,xmm8,xmm8
+    0.01 :   d311c:  nop    DWORD PTR [rax+0x0]
+    1.90 :   d3120:  vmovups ymm9,YMMWORD PTR [rcx+r14*1]
+    2.07 :   d3126:  vsubps ymm9,ymm9,ymm4
+    4.09 :   d312a:  vmovups ymm10,YMMWORD PTR [rdi+r14*1]
+    1.91 :   d3130:  vsubps ymm10,ymm10,ymm5
+    1.65 :   d3134:  vmovups ymm11,YMMWORD PTR [r10+r14*1]
+    1.47 :   d313a:  vmulps ymm12,ymm9,ymm9
+    1.68 :   d313f:  vmulps ymm13,ymm10,ymm10
+    1.63 :   d3144:  vaddps ymm12,ymm12,ymm13
+    1.56 :   d3149:  vmulps ymm13,ymm7,YMMWORD PTR [r9+r14*1]
+    1.69 :   d314f:  vaddps ymm12,ymm12,ymm6
+    1.65 :   d3153:  vsqrtps ymm14,ymm12
+    1.42 :   d3158:  vmulps ymm14,ymm12,ymm14
+    1.74 :   d315d:  vdivps ymm13,ymm13,ymm14
+    1.93 :   d3162:  vcmpneqps ymm12,ymm12,ymm8
+    1.68 :   d3168:  vandps ymm12,ymm12,ymm13
+    1.56 :   d316d:  vmulps ymm9,ymm9,ymm12
+    1.73 :   d3172:  vmulps ymm10,ymm10,ymm12
+    3.55 :   d3177:  vmulps ymm12,ymm11,ymm9
+    1.89 :   d317c:  vmovups ymm13,YMMWORD PTR [rdx+r14*2]
+    4.18 :   d3182:  vmovups ymm14,YMMWORD PTR [rdx+r14*2+0x20]
+    4.07 :   d3189:  vshufps ymm15,ymm13,ymm14,0x88
+    4.25 :   d318f:  vpermpd ymm15,ymm15,0xd8
+    4.64 :   d3195:  vsubps ymm12,ymm15,ymm12
+    4.44 :   d319a:  vshufps ymm13,ymm13,ymm14,0xdd
+    4.08 :   d31a0:  vpermpd ymm13,ymm13,0xd8
+    4.30 :   d31a6:  vmulps ymm11,ymm11,ymm10
+    4.22 :   d31ab:  vsubps ymm11,ymm13,ymm11
+    2.06 :   d31b0:  vunpckhps ymm13,ymm12,ymm11
+    2.09 :   d31b5:  vunpcklps ymm11,ymm12,ymm11
+    2.12 :   d31ba:  vperm2f128 ymm12,ymm11,ymm13,0x31
+    1.72 :   d31c0:  vinsertf128 ymm11,ymm11,xmm13,0x1
+    2.02 :   d31c6:  vmovups YMMWORD PTR [rdx+r14*2],ymm11
+    3.92 :   d31cc:  vmovups YMMWORD PTR [rdx+r14*2+0x20],ymm12
+    1.86 :   d31d3:  vmovups YMMWORD PTR [rsi+r14*1],ymm9
+    2.22 :   d31d9:  vmovups YMMWORD PTR [r8+r14*1],ymm10
+    2.09 :   d31df:  add    r14,0x20
+    2.04 :   d31e3:  cmp    rbx,r14
+    0.00 :   d31e6:  jne    d3120 <engine::force::pass_one::<f32>+0x220>
+    0.69 :   d31ec:  cmp    rax,r11
+    0.00 :   d31ef:  jne    d3028 <engine::force::pass_one::<f32>+0x128>
+    0.56 :   d31f5:  pop    rbx
+    0.49 :   d31f6:  pop    r14
+    0.43 :   d31f8:  vzeroupper
+    0.13 :   d31fb:  ret
+ Percent |	Source code & Disassembly of step-72f9efceaa6d0178 for cpu/cycles/P (4794 samples, percent: local period)
+-------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000d3250 <engine::force::tree_sum::<f32>>:
+   12.62 :   d3250:  cmp    rsi,0x1
+    0.00 :   d3254:  je     d3260 <engine::force::tree_sum::<f32>+0x10>
+    3.27 :   d3256:  vxorps xmm0,xmm0,xmm0
+    2.00 :   d325a:  test   rsi,rsi
+    0.00 :   d325d:  jne    d3265 <engine::force::tree_sum::<f32>+0x15>
+    0.00 :   d325f:  ret
+    4.92 :   d3260:  vmovss xmm0,DWORD PTR [rdi]
+    4.63 :   d3264:  ret
+    1.38 :   d3265:  push   r14
+    1.37 :   d3267:  push   rbx
+    1.46 :   d3268:  push   rax
+    2.08 :   d3269:  mov    rax,rsi
+    0.00 :   d326c:  shr    rax,1
+    2.18 :   d326f:  lea    rbx,[rdi+rax*4]
+    1.11 :   d3273:  sub    rsi,rax
+    1.24 :   d3276:  mov    r14,rsi
+    3.45 :   d3279:  mov    rsi,rax
+    5.02 :   d327c:  call   d3250 <engine::force::tree_sum::<f32>>
+    2.47 :   d3281:  vmovss DWORD PTR [rsp+0x4],xmm0
+    4.67 :   d3287:  mov    rdi,rbx
+    5.74 :   d328a:  mov    rsi,r14
+    8.17 :   d328d:  call   d3250 <engine::force::tree_sum::<f32>>
+   13.36 :   d3292:  vaddss xmm0,xmm0,DWORD PTR [rsp+0x4]
+    6.05 :   d3298:  add    rsp,0x8
+    5.33 :   d329c:  pop    rbx
+    4.96 :   d329d:  pop    r14
+    2.52 :   d329f:  ret
+ Percent |	Source code & Disassembly of step-72f9efceaa6d0178 for cpu/cycles/P (1393 samples, percent: local period)
+-------------------------------------------------------------------------------------------------------------------------
+         :
+         :
+         :
+         : 3     Disassembly of section .text:
+         :
+         : 5     00000000000d2aa0 <engine::force::lane_sum::<f32>>:
+    1.21 :   d2aa0:  sub    rsp,0x48
+    0.93 :   d2aa4:  vxorps xmm0,xmm0,xmm0
+    0.99 :   d2aa8:  vmovups YMMWORD PTR [rsp+0x20],ymm0
+    0.51 :   d2aae:  vmovups YMMWORD PTR [rsp],ymm0
+    1.92 :   d2ab3:  mov    ecx,esi
+    0.00 :   d2ab5:  and    ecx,0xf
+    0.87 :   d2ab8:  lea    rdx,[rsi*4+0x0]
+    0.21 :   d2ac0:  movabs rax,0x3fffffffffffffc0
+    0.15 :   d2aca:  and    rax,rdx
+    0.00 :   d2acd:  je     d2afd <engine::force::lane_sum::<f32>+0x5d>
+    0.29 :   d2acf:  add    rax,rdi
+    0.29 :   d2ad2:  mov    rdx,rdi
+    0.14 :   d2ad5:  vxorps xmm1,xmm1,xmm1
+    1.15 :   d2ad9:  nop    DWORD PTR [rax+0x0]
+   11.89 :   d2ae0:  vaddps ymm0,ymm0,YMMWORD PTR [rdx]
+   15.23 :   d2ae4:  vaddps ymm1,ymm1,YMMWORD PTR [rdx+0x20]
+   13.96 :   d2ae9:  add    rdx,0x40
+   12.68 :   d2aed:  cmp    rdx,rax
+    0.00 :   d2af0:  jne    d2ae0 <engine::force::lane_sum::<f32>+0x40>
+    2.88 :   d2af2:  vmovups YMMWORD PTR [rsp],ymm0
+    1.87 :   d2af7:  vmovups YMMWORD PTR [rsp+0x20],ymm1
+    1.73 :   d2afd:  test   rcx,rcx
+    0.00 :   d2b00:  je     d2bba <engine::force::lane_sum::<f32>+0x11a>
+    1.42 :   d2b06:  movabs rax,0xffffffffffffff0
+    1.07 :   d2b10:  and    rsi,rax
+    1.15 :   d2b13:  lea    rax,[rdi+rsi*4]
+    1.16 :   d2b17:  lea    rdx,[rcx-0x1]
+    1.56 :   d2b1b:  vmovq  xmm0,rdx
+    0.43 :   d2b20:  vpbroadcastq ymm3,xmm0
+    0.43 :   d2b25:  lea    ecx,[rcx*4+0x1c]
+    0.14 :   d2b2c:  and    ecx,0xffffffe0
+    0.22 :   d2b2f:  vmovdqa ymm0,YMMWORD PTR [rip+0xfffffffffff600e9]        # 32c20 <criterion::plot::gnuplot_backend::summary::COMPARISON_COLORS+0x740>
+    0.29 :   d2b37:  vmovdqa ymm1,YMMWORD PTR [rip+0xfffffffffff5fb21]        # 32660 <criterion::plot::gnuplot_backend::summary::COMPARISON_COLORS+0x180>
+    0.07 :   d2b3f:  xor    edx,edx
+    0.15 :   d2b41:  vpbroadcastq ymm2,QWORD PTR [rip+0xfffffffffff59bce]        # 2c718 <__abi_tag+0x2c41c>
+    0.21 :   d2b4a:  vpxor  ymm3,ymm3,ymm2
+    0.44 :   d2b4e:  vpcmpeqd ymm4,ymm4,ymm4
+    0.14 :   d2b52:  vpbroadcastq ymm5,QWORD PTR [rip+0xfffffffffff596e5]        # 2c240 <__abi_tag+0x2bf44>
+    0.42 :   d2b5b:  nop    DWORD PTR [rax+rax*1+0x0]
+    0.49 :   d2b60:  vpxor  ymm6,ymm1,ymm2
+    1.01 :   d2b64:  vpcmpgtq ymm6,ymm6,ymm3
+    0.35 :   d2b69:  vpxor  ymm7,ymm0,ymm2
+    0.65 :   d2b6d:  vpcmpgtq ymm7,ymm7,ymm3
+    0.36 :   d2b72:  vpackssdw ymm6,ymm6,ymm7
+    0.42 :   d2b76:  vpxor  ymm6,ymm6,ymm4
+    0.35 :   d2b7a:  vextracti128 xmm7,ymm6,0x1
+    0.36 :   d2b80:  vpackssdw xmm6,xmm6,xmm7
+    0.58 :   d2b84:  vpshufd xmm6,xmm6,0xd8
+    0.51 :   d2b89:  vpmovzxwd ymm6,xmm6
+    0.29 :   d2b8e:  vpslld ymm6,ymm6,0x1f
+    0.50 :   d2b93:  vmaskmovps ymm7,ymm6,YMMWORD PTR [rax+rdx*1]
+    0.35 :   d2b99:  vmaskmovps ymm8,ymm6,YMMWORD PTR [rsp+rdx*1]
+    0.63 :   d2b9f:  vaddps ymm7,ymm8,ymm7
+    0.72 :   d2ba3:  vmaskmovps YMMWORD PTR [rsp+rdx*1],ymm6,ymm7
+    0.15 :   d2ba9:  vpaddq ymm1,ymm1,ymm5
+    0.58 :   d2bad:  vpaddq ymm0,ymm0,ymm5
+    0.58 :   d2bb1:  add    rdx,0x20
+    0.35 :   d2bb5:  cmp    rcx,rdx
+    0.00 :   d2bb8:  jne    d2b60 <engine::force::lane_sum::<f32>+0xc0>
+    2.37 :   d2bba:  mov    rdi,rsp
+    2.28 :   d2bbd:  mov    esi,0x10
+    2.44 :   d2bc2:  vzeroupper
+    0.58 :   d2bc5:  call   d3250 <engine::force::tree_sum::<f32>>
+    3.85 :   d2bca:  add    rsp,0x48
+    1.08 :   d2bce:  ret
