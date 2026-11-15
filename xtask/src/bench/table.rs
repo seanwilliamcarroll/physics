@@ -14,7 +14,7 @@ use std::time::SystemTime;
 use crate::bench_wasm::format_ns;
 
 /// One benchmark's line in the table.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Row {
     pub id: String,
     /// The mean time per iteration, ns.

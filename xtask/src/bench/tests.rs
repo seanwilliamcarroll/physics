@@ -61,9 +61,7 @@ fn changes_are_read_from_every_change_directory() {
 // From the fifth mutation run: the command's decisions, pulled out of it
 // to be tested (which flag criterion gets, what fails, the warnings).
 
-use super::{
-    Mode, against, compares, flag, mode, not_compared, outcome, report, toolchain_warnings,
-};
+use super::{Mode, against, compares, flag, mode, outcome, report, toolchain_warnings};
 use crate::bench::table::Row;
 
 fn row(id: &str, change: Option<f64>) -> Row {
@@ -86,14 +84,11 @@ fn the_command_line_picks_save_then_baseline_then_local_then_the_record() {
 
 #[test]
 fn criterion_gets_the_flag_for_the_mode() {
-    assert_eq!(flag(&Mode::Save("m"), true), Some(("--save-baseline", "m")));
-    assert_eq!(flag(&Mode::Compare("m"), true), Some(("--baseline", "m")));
-    assert_eq!(
-        flag(&Mode::Default, true),
-        Some(("--baseline-lenient", "recorded"))
-    );
-    assert_eq!(flag(&Mode::Default, false), None, "no record: the last run");
-    assert_eq!(flag(&Mode::Local, true), None);
+    assert_eq!(flag(&Mode::Save("m")), Some(("--save-baseline", "m")));
+    assert_eq!(flag(&Mode::Compare("m")), Some(("--baseline", "m")));
+    // The record is compared with by xtask after the run, not criterion.
+    assert_eq!(flag(&Mode::Default), None);
+    assert_eq!(flag(&Mode::Local), None);
 }
 
 #[test]
@@ -124,17 +119,6 @@ fn the_report_counts_what_got_slower_past_the_threshold() {
 }
 
 #[test]
-fn a_recorded_benchmark_without_a_change_was_not_compared() {
-    let rows = [
-        row("in-record", None),
-        row("compared", Some(0.0)),
-        row("new", None),
-    ];
-    let recorded = ["in-record", "compared"].map(str::to_owned).into();
-    assert_eq!(not_compared(&rows, &recorded), ["in-record"]);
-}
-
-#[test]
 fn a_different_rustc_or_criterion_is_warned_of() {
     let meta = "rustc=rustc 1.99.1\ncriterion=0.8.2\n";
     assert_eq!(
@@ -146,8 +130,8 @@ fn a_different_rustc_or_criterion_is_warned_of() {
     assert!(w[0].contains("rustc 1.99.1") && w[1].contains("criterion 0.8.2"));
 }
 
-/// `table::collect` and `store::measured` take only benchmarks this run
-/// measured: `new/estimates.json` written at or after the start.
+/// `table::collect` takes only benchmarks this run measured:
+/// `new/estimates.json` written at or after the start.
 #[test]
 fn only_benchmarks_measured_since_the_start_are_collected() {
     use std::fs;
@@ -180,11 +164,8 @@ fn only_benchmarks_measured_since_the_start_are_collected() {
         .into_iter()
         .map(|r| r.id)
         .collect();
-    let files = super::store::measured(&root, start);
     fs::remove_dir_all(&root).unwrap();
     assert_eq!(ids, ["fresh/a"]);
-    assert!(files.keys().all(|k| k.starts_with("fresh/a/")), "{files:?}");
-    assert_eq!(files.len(), 4, "the four files");
 }
 
 #[test]
