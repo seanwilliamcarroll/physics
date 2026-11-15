@@ -14,6 +14,7 @@ The story so far, step by step: `docs/gravity-vectorize.md`.
 | `patches/b-select.patch` | B: the `d_sq == 0` branch as a select |
 | `patches/c-lanes.patch` | C: two passes; body i's sum in 4 lanes, `pass_one` not inlined |
 | `patches/d-soa.patch` | D2: separate arrays throughout, blocks of 4 as whole-array steps (`sweep`) |
+| `patches/c-lanes-n.patch` | C with pass 2's lane count set at build time (`GRAVITY_LANES`): experiments `c-l1` (in-order sum), `c-l4` (C's bits), `c-l8`, `c-l16` |
 | `patches/d-lanes.patch` | D with the block width set at build time (`GRAVITY_LANES`): experiments `d-l2`, `d-l4`, `d-l8`, `d-l16`. `d-l4` gives D2's bits |
 
 `base` is the commit the patches apply to, `ea2169b` (main after #273).

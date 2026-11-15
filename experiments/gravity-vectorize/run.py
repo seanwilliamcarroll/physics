@@ -41,8 +41,14 @@ EXPERIMENTS = {
 # machine. d-l4 is d-soa's arithmetic (same bits) with map2 as a loop.
 for _lanes in (2, 4, 8, 16):
     EXPERIMENTS[f"d-l{_lanes}"] = ("d-lanes.patch", [("sweep", "engine::force::sweep::<{s}>")])
+# C with pass 2's LANES set at build time: c-l1 sums in order (no
+# reassociation); c-l4 is c-lanes (same bits).
+for _lanes in (1, 4, 8, 16):
+    EXPERIMENTS[f"c-l{_lanes}"] = ("c-lanes-n.patch",
+                                   [("pass_one", "engine::force::pass_one::<{s}>")])
 # Build-time environment per experiment.
 EXPERIMENT_ENV = {f"d-l{n}": {"GRAVITY_LANES": str(n)} for n in (2, 4, 8, 16)}
+EXPERIMENT_ENV |= {f"c-l{n}": {"GRAVITY_LANES": str(n)} for n in (1, 4, 8, 16)}
 ACCUMULATE = ("accumulate",
               "<engine::force::PairwiseGravity<{s}> as engine::force::Force<{s}>>::accumulate")
 
