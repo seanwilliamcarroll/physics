@@ -39,16 +39,20 @@ EXPERIMENTS = {
 }
 # D with LANES set at build time (GRAVITY_LANES): which width suits which
 # machine. d-l4 is d-soa's arithmetic (same bits) with map2 as a loop.
-for _lanes in (2, 4, 8, 16):
+for _lanes in (1, 2, 4, 8, 16):
     EXPERIMENTS[f"d-l{_lanes}"] = ("d-lanes.patch", [("sweep", "engine::force::sweep::<{s}>")])
 # C with pass 2's LANES set at build time: c-l1 sums in order (no
 # reassociation); c-l4 is c-lanes (same bits).
-for _lanes in (1, 4, 8, 16):
+for _lanes in (1, 2, 4, 8, 16):
     EXPERIMENTS[f"c-l{_lanes}"] = ("c-lanes-n.patch",
                                    [("pass_one", "engine::force::pass_one::<{s}>")])
 # Build-time environment per experiment.
-EXPERIMENT_ENV = {f"d-l{n}": {"GRAVITY_LANES": str(n)} for n in (2, 4, 8, 16)}
-EXPERIMENT_ENV |= {f"c-l{n}": {"GRAVITY_LANES": str(n)} for n in (1, 4, 8, 16)}
+LANE_COUNTS = (1, 2, 4, 8, 16)
+EXPERIMENT_ENV = {f"{loop}-l{n}": {"GRAVITY_LANES": str(n)}
+                  for loop in "cd" for n in LANE_COUNTS}
+# Named lists for --experiments. sweep: C and D (the same bits at each
+# LANES; only the loop differs) at every lane count, against base.
+PRESETS = {"sweep": ["base"] + [f"{loop}-l{n}" for loop in "cd" for n in LANE_COUNTS]}
 ACCUMULATE = ("accumulate",
               "<engine::force::PairwiseGravity<{s}> as engine::force::Force<{s}>>::accumulate")
 
@@ -428,7 +432,8 @@ def main():
     p.add_argument("--levels", default=",".join(levels),
                    help="comma-separated CPU levels: " + ", ".join(LEVELS))
     p.add_argument("--experiments", default=",".join(EXPERIMENTS),
-                   help="comma-separated: " + ", ".join(EXPERIMENTS))
+                   help="comma-separated: " + ", ".join(EXPERIMENTS)
+                        + "; or a preset: " + ", ".join(PRESETS))
     p.add_argument("--filter", default="^pairwise_", help="criterion's bench filter (regex)")
     p.add_argument("--quick", action="store_true", help="short criterion runs (a smoke test)")
     p.add_argument("--perf", action="store_true",
@@ -445,7 +450,8 @@ def main():
     args = p.parse_args()
     if args.from_log:
         return from_log(args.from_log, args.out.resolve())
-    levels, names = args.levels.split(","), args.experiments.split(",")
+    levels = args.levels.split(",")
+    names = [n for x in args.experiments.split(",") for n in PRESETS.get(x, [x])]
     for x in levels:
         if x not in LEVELS:
             sys.exit(f"unknown level {x}")

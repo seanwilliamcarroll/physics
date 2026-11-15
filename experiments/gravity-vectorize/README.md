@@ -14,8 +14,8 @@ The story so far, step by step: `docs/gravity-vectorize.md`.
 | `patches/b-select.patch` | B: the `d_sq == 0` branch as a select |
 | `patches/c-lanes.patch` | C: two passes; body i's sum in 4 lanes, `pass_one` not inlined |
 | `patches/d-soa.patch` | D2: separate arrays throughout, blocks of 4 as whole-array steps (`sweep`) |
-| `patches/c-lanes-n.patch` | C with pass 2's lane count set at build time (`GRAVITY_LANES`): experiments `c-l1` (in-order sum), `c-l4` (C's bits), `c-l8`, `c-l16` |
-| `patches/d-lanes.patch` | D with the block width set at build time (`GRAVITY_LANES`): experiments `d-l2`, `d-l4`, `d-l8`, `d-l16`. `d-l4` gives D2's bits |
+| `patches/c-lanes-n.patch` | C with pass 2's lane count set at build time (`GRAVITY_LANES`): experiments `c-l1`, `c-l2`, `c-l4` (C's bits), `c-l8`, `c-l16`; `c-l1` sums in order |
+| `patches/d-lanes.patch` | D with the block width set at build time (`GRAVITY_LANES`): experiments `d-l1`, `d-l2`, `d-l4`, `d-l8`, `d-l16`. `d-l4` gives D2's bits |
 
 `base` is the commit the patches apply to, `ea2169b` (main after #273).
 Experiment A's code was lost; its M4 result is in `docs/experiments.md`.
@@ -70,9 +70,12 @@ else running shows up in the times.
 cd ~/physics && git fetch && git checkout experiments-gravity-package && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/gravity-vectorize/run.py --out experiments/gravity-vectorize/results/m4 2>&1 | tee ~/gv-m4.log
 ```
 
-A full run is 8 experiments × up to 7 levels: about two hours. Fewer
-with `--experiments`, e.g. only the lane sweep against base and C:
-`--experiments base,c-lanes,d-l2,d-l4,d-l8,d-l16`. `--quick`, `--levels`, `--experiments` and `--filter`
+`--experiments sweep` is the comparison that matters: base, and C and D
+at 1, 2, 4, 8 and 16 lanes. C and D give identical bits at the same lane
+count (checked on the golden hashes at each), so the loop could differ by
+target while the lane count stays one value. 11 experiments × up to 7
+levels: about three hours. Without `--experiments`, every experiment runs,
+the older fixed-width ones too. `--quick`, `--levels`, `--experiments` and `--filter`
 narrow it (`run.py --help`).
 
 `--perf` (Linux) adds hardware counters for `pairwise_f64/1024` and
