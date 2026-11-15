@@ -87,7 +87,7 @@ physics/
 │   ├── sand/               # M9: the falling-sand automaton (grid, rules; integers only)
 │   ├── sand-web/           # cdylib → sand.wasm (the sand page's C ABI, on web-common)
 │   ├── swarm/              # S1–S5: boids, Vicsek, ants, Physarum, evolution (f32; the counting-sort grid)
-│   └── swarm-web/          # cdylib → swarm.wasm (simd128; the swarm pages' C ABI)
+│   └── swarm-web/          # cdylib → swarm.wasm (the swarm pages' C ABI)
 │
 ├── package/                # the physics-engine npm package's README and tsconfig (cargo xtask package)
 ├── xtask/                  # build helper (clap; see docs/00-scope.md)

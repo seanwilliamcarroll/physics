@@ -179,8 +179,9 @@ The acoustic track ships its own module, `acoustic.wasm`
 (`crates/acoustic-web`): sizes in `12-acoustic-foundations.md`. M9's
 falling sand ships `sand.wasm` (`crates/sand-web`, 37.6 KB): sizes in
 `11-falling-sand.md`. The swarm track's `swarm.wasm` (`crates/swarm-web`;
-48.5 KB at S1, 103.8 KB with all four models) is the one module built
-with `simd128` (`15-swarm.md`, S1.4–5).
+48.5 KB at S1, 103.8 KB with all four models) was the first module built
+with `simd128` (`15-swarm.md`, S1.4–5); now every module is (below,
+SIMD).
 
 ### The render buffer
 
@@ -334,9 +335,29 @@ Rust exposes metric values per step the same way as positions.
 - **Threads / SharedArrayBuffer:** require cross-origin isolation headers on
   the website host. Revisit for large-N benchmarks. Workers, a step budget
   and wasm threads compared: `workers.md`.
-- **SIMD:** adopted for `swarm.wasm` alone (S1.4, `15-swarm.md`):
-  `-C target-feature=+simd128` and loops written in lanes, no
-  `core::arch::wasm32` intrinsics. The other modules build without it.
+- **SIMD:** every module is built with `-C target-feature=+simd128`
+  (`.cargo/config.toml`, both wasm targets, so the site, `test-wasm` and
+  the hooks' wasm clippy all get it); loops written in lanes where it
+  matters, no `core::arch::wasm32` intrinsics. First for `swarm.wasm`
+  (S1.4, `15-swarm.md`), then for all (2026-11-15), after the gravity
+  experiments (`gravity-vectorize.md`). Measured in Node
+  (`cargo xtask bench-wasm`, M4), without → with:
+
+  | | without | with |
+  |---|---|---|
+  | engine step, 1024 bodies (each integrator, each scalar) | 805–1,630 µs | −15 to −20% |
+  | engine step, 128 bodies | 13–27 µs | −15 to −20% |
+  | sand busy step, 640 × 360 | 582 µs | −3% |
+  | acoustic, 10 notes, a 128-frame block | 6.0 µs | 5.9 µs |
+
+  The goldens are the same with and without it: vector square roots and
+  divisions round as scalar ones do, and nothing fuses a multiply and an
+  add, so `test-wasm` (now all with `simd128`) checks what ships.
+  **No fallback:** a module with SIMD instructions fails to compile in an
+  engine without SIMD (Chrome 91, Firefox 89, Safari 16.4 and later have
+  it). The loader (`engine-loader.ts`) then checks with a 31-byte probe
+  module and throws a `WasmUnsupportedError` saying so, which the pages
+  show in place of the browser's compile error.
 
 ## Milestone: "hello particles" (M0, done)
 
