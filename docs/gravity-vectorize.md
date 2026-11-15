@@ -1,6 +1,6 @@
 # Vectorizing pairwise gravity: a lab notebook
 
-Status: **in progress** (2026-11-14). The whole line of thought for the
+Status: **in progress** (2026-11-14; updated 2026-11-15). The whole line of thought for the
 gravity-loop experiments, in order, including the dead ends: the record
 to write a post from. The short, settled results are in `experiments.md`;
 the reproducible package (patches, `run.py`, results) is in
@@ -253,6 +253,91 @@ A first rough look on the M4 (`--quick`, `f64`/1024): 4 lanes 759 µs, 8
 lanes 630, 16 lanes 565 (base 543). Wider blocks help even where vectors
 hold 2 `f64`: latency hiding, not width.
 
+## Step 7: the M4 run and the lane sweep (2026-11-15)
+
+Full tables: `results/m4/` and `results/llm-lanes/`.
+
+**A bug on the way.** Both runs were given `--out` as a relative path;
+criterion resolved it from the crate's folder inside the throwaway
+worktree, so the native levels' data was deleted with it (the wasm
+levels, run by wasmtime and Node from the script's folder, were fine).
+Nothing needed rerunning: criterion prints every result, and
+`run.py --from-log` rebuilt both summaries from the logs (criterion's
+printed estimate, within a percent or so of its mean; used for every
+level, so they stay comparable). `--out` is now made absolute.
+
+`f64`, 4096 bodies, ms (best in bold):
+
+| | base | C | D2 (`d-l4`) | `d-l8` | `d-l16` |
+|---|---|---|---|---|---|
+| M4 native | 8.85 | 10.21 | 12.28 | 9.89 | **8.51** |
+| M4 wasm + simd128 | 9.77 | 10.32 | **7.43** | 7.64 | 10.40 |
+| M4 V8 + simd128 | 10.65 | 9.66 | **6.98** | 6.99 | 9.14 |
+| Zen 5 default (SSE2) | 18.74 | 11.51 | 10.92 | **10.09** | 10.83 |
+| Zen 5 AVX2 | 18.71 | 7.51 | 11.59 | 8.73 | **7.40** |
+| Zen 5 AVX-512 | 18.77 | **4.05** | 10.62 | 7.79 | 5.39 |
+| Zen 5 wasm + simd128 | 18.69 | 11.65 | **10.08** | 10.12 | 13.14 |
+| Zen 5 V8 + simd128 | 18.73 | 11.64 | 9.97 | **9.92** | 12.77 |
+
+What it says:
+
+- **The Cranelift result holds, narrowly.** On the M4, D2 as wasm runs
+  in 7.4 ms (wasmtime) and 7.0 (V8) against 12.3 compiled natively by
+  LLVM: the same source, the same CPU, 40% faster. But only at 4 lanes:
+  natively 2 and 8 lanes are 9.9, and at 16 LLVM beats both wasm
+  engines. Static asm counts (instructions, stack references, scalar
+  adds) don't explain it. A specific case for an LLVM report: a 4-lane
+  `f64` block on AArch64.
+- **Wider blocks help, to a point.** The best D is about four vectors
+  a block on x86 (8 lanes with SSE2, 16 with AVX2); the M4 in `f64`
+  likes 16 (eight NEON vectors; it has 32 registers). Beyond, it falls
+  off: 16 lanes in wasm is the worst in its row.
+- **wasmtime and V8 within 1–2% of each other** everywhere.
+- `target-cpu=native` changes nothing on the M4; `d-l4` and `d-soa`
+  compile to identical code (`map2` as a loop or written out).
+- Every vector version is slower at 16 bodies (5–14× at 8–16 lanes):
+  a fallback below some n is needed.
+
+### C and D are the same arithmetic
+
+C with 4 lanes and D2 give **identical golden hashes**: each computes a
+pair's force the same way, puts pair j in lane j mod LANES of body i's
+sum, and adds the lanes in the same tree. They differ in the loop:
+
+| | C | D |
+|---|---|---|
+| Passes per body i | two: pass 1 computes every pair's force, updates body j, stores the force in `fx`/`fy`; pass 2 sums them in LANES lanes | one: blocks of LANES pairs, body i's lanes updated in the same loop |
+| LANES controls | pass 2 only (the order) | the block size and the order |
+| Vector width chosen by | LLVM's loop vectorizer, on pass 1's plain loop: as wide as the target allows | the SLP vectorizer, packing D's straight-line block: at most LANES, and sensitive to its shape |
+| Extra cost | `fx`/`fy` written and read for every pair | accelerations copied to separate arrays and back, once a call |
+
+C trades memory traffic for a width that adapts; D avoids the traffic
+but is tied to LANES. Hence C wins with AVX-512 and D at 128 bits.
+
+### LANES can't vary by target
+
+Speed-only flags (`simd128`, `target-cpu`) can differ per system: vector
+square roots and divisions round as scalar ones, and Rust never fuses a
+multiply and an add, so the bits don't change. LANES sets the order of
+the sums, so it changes the bits, and the goldens must be identical on
+native and wasm (`04-testing.md`). One LANES for every target, then:
+C's design suits that, since the vector width only touches pass 1,
+which sums nothing across pairs.
+
+### Decisions (2026-11-15)
+
+- **C, with LANES on top**, goes into the engine; changing the golden
+  hashes is fine. C's pass 2 lane count is now build-time
+  (`c-l1`…`c-l16`; `c-l1` is an in-order sum, to measure what the order
+  costs; `c-l4` gives C's bits) and is being swept on both machines to
+  choose one LANES; then a plain loop below a measured n.
+- **Every wasm module built with `simd128`** (#276): engine −15 to −20%
+  in Node, goldens unchanged. Without SIMD a module can't load at all
+  (wasm has no fallback), so the loader detects that with a 31-byte probe
+  and the pages show a `WasmUnsupportedError` message instead of a
+  compile error. The same comparison found swarm's boids render 2× slower
+  with `simd128` (it already shipped with it): open, in `15-swarm.md`.
+
 ## Open questions
 
 - **LLVM vs Cranelift on aarch64.** A smoke run on the M4: D2 natively
@@ -268,10 +353,9 @@ hold 2 `f64`: latency hiding, not width.
 - Why base is +30% at 16 bodies after #273 (noted, not understood).
 - The best LANES per machine and level (the sweep), and whether a
   compile-time rule fits it.
-- Whether to adopt C (with a small-n fallback) or a D with the right
-  LANES, given the golden-hash change.
-- Whether the site's `engine.wasm` is built with `simd128` (likely not);
-  if not, that's a separate, cheap win for the demos.
+- C's best LANES (the sweep) and the n below which the plain loop wins.
+- The M4's 4-lane anomaly: LLVM's and Cranelift's machine code for D2's
+  loop, side by side.
 
 ## Upstream? (LLVM)
 
