@@ -44,7 +44,7 @@ for m, _ in RUNS:
     md += [f"**{m}:** " + "; ".join(machine[m]), ""]
 md += ["Levels: `default` (target baseline), `x86-64-v3` (AVX2), `native` (`-C target-cpu=native`), `wasm` / `wasm-simd128` (wasmtime), `v8` / `v8-simd128` (Node).", ""]
 
-md += ["## Contents", "", "1. All data", "2. By platform", "3. By method", "4. Best per platform", "5. perf (Zen 5, 1024 bodies)", ""]
+md += ["## Contents", "", "1. All data", "2. By platform", "3. By method", "4. Best per platform", "4a. Best per build, 4096 bodies", "5. perf (Zen 5, 1024 bodies)", ""]
 
 md += ["## 1. All data", ""]
 rows = []
@@ -78,6 +78,20 @@ for m, _ in RUNS:
             r.append(f"{e}: {cell(m, l, e, b)}")
         rows.append(r)
 md += table(["machine", "level"] + [head(b) for b in BENCHES], rows)
+
+md += ["## 4a. Best per build, 4096 bodies", "",
+       "For each machine and level, the fastest experiment at 4096 bodies, with its time and change against `base`.", ""]
+rows = []
+for m, _ in RUNS:
+    for l in levels[m]:
+        r = [m, l]
+        for b in ("pairwise_f64/4096", "pairwise_f32/4096"):
+            e = min((x for x in EXPS if (m, l, x, b) in data), key=lambda x: data[(m, l, x, b)])
+            t, base = data[(m, l, e, b)], data[(m, l, "base", b)]
+            r += [f"`{e}`", f"{t / 1e6:.2f}", f"{base / 1e6:.2f}", f"{(t / base - 1) * 100:+.0f}%"]
+        rows.append(r)
+md += table(["machine", "level", "f64 best", "f64 ms", "f64 base ms", "f64 vs base",
+             "f32 best", "f32 ms", "f32 base ms", "f32 vs base"], rows)
 
 md += ["## 5. perf (Zen 5, 1024 bodies)", "", "From `llm-sweep/summary.md`: cycles and instructions per pair, IPC.", ""]
 perf = open("llm-sweep/summary.md").read()

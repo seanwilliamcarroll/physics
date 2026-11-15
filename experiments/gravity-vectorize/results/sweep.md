@@ -16,6 +16,7 @@ Levels: `default` (target baseline), `x86-64-v3` (AVX2), `native` (`-C target-cp
 2. By platform
 3. By method
 4. Best per platform
+4a. Best per build, 4096 bodies
 5. perf (Zen 5, 1024 bodies)
 
 ## 1. All data
@@ -595,6 +596,26 @@ Fastest experiment per machine, level and bench, with its time and change agains
 | M4 | wasm-simd128 | base: 173 | base: 9.71 | d-l4: 477 (-21%) | d-l4: 7.42 (-24%) | base: 181 | c-l2: 7.79 (-24%) | c-l4: 358 (-44%) | c-l16: 4.89 (-52%) |
 | M4 | v8 | base: 219 | base: 12.7 | d-l2: 774 (-3%) | d-l2: 12.2 (-5%) | base: 212 | base: 12.4 | d-l1: 772 (-1%) | d-l2: 12.3 (-2%) |
 | M4 | v8-simd128 | base: 201 | d-l2: 9.7 (-8%) | d-l4: 452 (-32%) | d-l8: 6.96 (-35%) | base: 219 | c-l2: 7.36 (-30%) | c-l8: 341 (-49%) | c-l16: 4.69 (-56%) |
+
+## 4a. Best per build, 4096 bodies
+
+For each machine and level, the fastest experiment at 4096 bodies, with its time and change against `base`.
+
+| machine | level | f64 best | f64 ms | f64 base ms | f64 vs base | f32 best | f32 ms | f32 base ms | f32 vs base |
+|---|---|---|---|---|---|---|---|---|---|
+| Zen 5 | default | `d-l8` | 10.03 | 18.71 | -46% | `c-l16` | 4.92 | 13.40 | -63% |
+| Zen 5 | x86-64-v3 | `c-l8` | 6.86 | 18.69 | -63% | `c-l16` | 3.02 | 13.13 | -77% |
+| Zen 5 | native | `c-l8` | 3.39 | 18.74 | -82% | `c-l16` | 1.85 | 13.13 | -86% |
+| Zen 5 | wasm | `d-l1` | 19.00 | 20.39 | -7% | `d-l1` | 14.87 | 16.72 | -11% |
+| Zen 5 | wasm-simd128 | `d-l8` | 10.07 | 18.68 | -46% | `c-l16` | 5.05 | 14.19 | -64% |
+| Zen 5 | v8 | `d-l2` | 18.90 | 20.38 | -7% | `d-l2` | 14.95 | 16.80 | -11% |
+| Zen 5 | v8-simd128 | `d-l8` | 9.95 | 18.70 | -47% | `c-l16` | 5.04 | 22.22 | -77% |
+| M4 | default | `d-l1` | 7.94 | 8.74 | -9% | `c-l16` | 4.46 | 8.76 | -49% |
+| M4 | native | `d-l1` | 8.01 | 8.72 | -8% | `c-l16` | 4.46 | 8.82 | -49% |
+| M4 | wasm | `base` | 12.59 | 12.59 | +0% | `base` | 12.23 | 12.23 | +0% |
+| M4 | wasm-simd128 | `d-l4` | 7.42 | 9.77 | -24% | `c-l16` | 4.89 | 10.21 | -52% |
+| M4 | v8 | `d-l2` | 12.23 | 12.86 | -5% | `d-l2` | 12.27 | 12.48 | -2% |
+| M4 | v8-simd128 | `d-l8` | 6.96 | 10.65 | -35% | `c-l16` | 4.69 | 10.55 | -56% |
 
 ## 5. perf (Zen 5, 1024 bodies)
 
