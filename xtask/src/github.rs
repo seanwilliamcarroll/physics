@@ -154,6 +154,29 @@ fn write_locally(root: &Path, files: &[(String, Option<String>)]) -> Result<(), 
     Ok(())
 }
 
+/// The most files one tree request carries.
+const TREE_BATCH_FILES: usize = 50;
+/// The most entry text one tree request carries.
+const TREE_BATCH_BYTES: usize = 256 * 1024;
+
+/// `entries` in order, grouped so each group has at most `files` entries
+/// and `bytes` of text (an entry larger than that goes alone).
+pub(crate) fn batches(entries: &[String], files: usize, bytes: usize) -> Vec<&[String]> {
+    let mut out = Vec::new();
+    let (mut start, mut size) = (0, 0);
+    for (k, e) in entries.iter().enumerate() {
+        if k > start && (k - start == files || size + e.len() > bytes) {
+            out.push(entries.get(start..k).unwrap_or_default());
+            (start, size) = (k, 0);
+        }
+        size += e.len();
+    }
+    if start < entries.len() {
+        out.push(entries.get(start..).unwrap_or_default());
+    }
+    out
+}
+
 /// One entry of a tree request: a file's content, or its removal.
 pub(crate) fn tree_entry(path: &str, text: Option<&str>) -> String {
     let content = text.map_or_else(
@@ -190,17 +213,22 @@ fn push_branch(
         .iter()
         .map(|(p, t)| tree_entry(p, t.as_deref()))
         .collect();
-    let tree = gh_api(
-        root,
-        "POST",
-        &format!("{REPO}/git/trees"),
-        &format!(
-            "{{\"base_tree\":{},\"tree\":[{}]}}",
-            json_string(&base_tree),
-            entries.join(",")
-        ),
-        ".sha",
-    )?;
+    // In batches, each tree built on the one before: GitHub timed out on
+    // one request with a machine's first record (~330 files, ~200 KB).
+    let mut tree = base_tree;
+    for batch in batches(&entries, TREE_BATCH_FILES, TREE_BATCH_BYTES) {
+        tree = gh_api(
+            root,
+            "POST",
+            &format!("{REPO}/git/trees"),
+            &format!(
+                "{{\"base_tree\":{},\"tree\":[{}]}}",
+                json_string(&tree),
+                batch.join(",")
+            ),
+            ".sha",
+        )?;
+    }
     let commit = gh_api(
         root,
         "POST",

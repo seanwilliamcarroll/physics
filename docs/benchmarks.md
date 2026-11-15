@@ -8,7 +8,7 @@ the index and the current state.
 
 | Command | What it does |
 |---|---|
-| `cargo xtask bench [FILTER]` | Every criterion bench (`cargo bench --workspace --bench '*'`), or those whose names contain FILTER (e.g. `sand_step`), **compared with this machine's record** (`docs/bench/<machine>/`, below) if it has one, else with each benchmark's previous run here. Then a table, and what moved more than 10% (`--threshold N`), faster or slower: reported, never failed. |
+| `cargo xtask bench [FILTER]` | Every criterion bench (`cargo bench --workspace --bench '*'`), or those whose names contain FILTER (e.g. `sand_step`), **compared with this machine's record** (`docs/bench/<machine>.tsv`, below) if it has one, else with each benchmark's previous run here. Then a table, and what moved more than 10% (`--threshold N`), faster or slower: reported, never failed. |
 | `cargo xtask bench --compare-local` | The same, compared with each benchmark's previous run here instead of the record. |
 | `cargo xtask bench --save main` | The same, also kept as a named local baseline `main` (in `target/criterion/`). |
 | `cargo xtask bench --baseline main` | Compared with that local baseline instead, and **fails if anything got slower** by more than the threshold. |
@@ -48,24 +48,25 @@ prints above it as each finishes.
 A machine's **record** is what later runs on it compare with by
 default: its last recorded results, committed to the repository.
 
-- `docs/bench/<machine>/<benchmark>/`: criterion's own four files for
-  each benchmark (`benchmark.json`, `estimates.json`, `sample.json` with
-  every sample, `tukey.json`), about 2 KB a benchmark. Every sample is
-  kept so a comparison can tell a real change from noise, as criterion
-  does with any baseline.
-- `docs/bench/<machine>/record.txt`: the rustc, criterion version,
-  commit and date it was measured with.
+- `docs/bench/<machine>.tsv`: one line per benchmark, its id, mean and
+  half its 95% confidence interval (ns) and declared throughput, after
+  `#` lines with the rustc, criterion version, commit and date it was
+  measured with. About 70 bytes a benchmark.
 - `docs/bench/<machine>.md`: the same results as a table, to read.
+
+Until 2026-11-15 a record was criterion's own files for each benchmark
+(every sample, ~4 files a benchmark, ~300 files a machine). A machine's
+first record of that size timed out uploading through GitHub's API, and
+the comparison only ever used the mean, so the record became the means.
 
 `<machine>` is `hostname -s` in lower case: numbers from different
 machines don't compare, so each has its own record. Git's history keeps
 the earlier ones (`git log -p docs/bench/llm.md`).
 
-**Comparing:** a plain `cargo xtask bench` copies the record into
-criterion's directory as a baseline named `recorded`
-(`target/criterion/<benchmark>/recorded/`) and runs criterion with
-`--baseline-lenient recorded`: a benchmark the record doesn't have runs
-uncompared. On a branch, the record is the one committed there (usually
+**Comparing:** a plain `cargo xtask bench` runs criterion as usual, then
+gives each benchmark's change from the record as its mean over the
+recorded mean, less one (what criterion's change estimate is too); a
+benchmark the record doesn't have shows none. On a branch, the record is the one committed there (usually
 `main`'s from when you branched): the run says whether the branch is
 slower than `main` was. It warns when the record was made with another
 rustc or criterion (not like for like).
@@ -77,19 +78,19 @@ when HEAD isn't `origin/main`).
 - A full run replaces the record; a filtered run
   (`--record sand_step`) replaces just the benchmarks it measured and
   keeps the rest, and the table is rebuilt from the whole record.
-- It opens a pull request with the record's files, made through GitHub's
-  API (`gh api`): nothing in the checkout changes and no hooks run.
+- It opens a pull request with the record's two files, made through
+  GitHub's API (`gh api`, in batches of at most 50 files): nothing in
+  the checkout changes and no hooks run.
   Without a `gh` login it writes the files into `docs/bench/` to commit
   by hand. It never merges.
 - GitHub's shared runners are too noisy to record on.
 
-**Upgrading criterion.** It's pinned (`=0.8.2`, `Cargo.toml`) because the
-records are its saved files, and that format isn't a public API. After a
-bump, run `cargo xtask bench` against an existing record: every
-benchmark should show a Change. If criterion can't read a record it
-prints an error and skips the comparison, and `xtask` warns "weren't
-compared with it". Then re-record on each machine (the old records stay
-in git's history).
+**Upgrading criterion.** It's pinned (`=0.8.2`, `Cargo.toml`): xtask
+reads the mean out of its `estimates.json`, which isn't a public API.
+After a bump, run `cargo xtask bench`: every benchmark in the record
+should show a Change, and the table should have every benchmark. Means
+from another criterion may not compare like for like (xtask warns), so
+re-record on each machine.
 
 ## The suites
 

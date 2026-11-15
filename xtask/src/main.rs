@@ -100,12 +100,12 @@ enum Command {
         #[arg(long, default_value_t = 10)]
         threshold: u32,
         /// Compare with each benchmark's previous run here, not this
-        /// machine's record (`docs/bench/<machine>/`)
+        /// machine's record (`docs/bench/<machine>.tsv`)
         #[arg(long, conflicts_with_all = ["save", "baseline"])]
         compare_local: bool,
         /// Run only benchmarks whose names contain this (criterion's filter)
         filter: Option<String>,
-        /// Also update this machine's record (`docs/bench/<machine>/` and its
+        /// Also update this machine's record (`docs/bench/<machine>.tsv` and its
         /// table, `docs/bench/<machine>.md`), in a pull request if gh is logged in
         #[arg(long)]
         record: bool,

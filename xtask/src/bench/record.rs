@@ -1,7 +1,7 @@
 //! `cargo xtask bench --record`: this machine's record, updated from this
-//! run and proposed as a pull request. The record is criterion's data
-//! (`docs/bench/<machine>/`, `store.rs`: what later runs compare with) and
-//! its table (`docs/bench/<machine>.md`, with the date, the commit, the
+//! run and proposed as a pull request. The record is each benchmark's mean
+//! (`docs/bench/<machine>.tsv`, `store.rs`: what later runs compare with)
+//! and its table (`docs/bench/<machine>.md`, with the date, the commit, the
 //! machine and the toolchain). One per machine: numbers from different
 //! machines don't compare. Git's history keeps the earlier records.
 //!
@@ -15,7 +15,7 @@
 use std::fmt::Write as _;
 use std::path::Path;
 
-use super::store::{self, Files};
+use super::store;
 use super::table::{self, Row};
 use crate::github::{self, output};
 
@@ -102,28 +102,16 @@ pub(crate) fn context(root: &Path, filter: Option<&str>, against: &str) -> Conte
 }
 
 /// The record's files after this run, by path in the repository: the
-/// table, the data, [`store::META`]; `None` for a file the run removes (a
-/// benchmark a full run no longer has).
+/// table, then the record (`record`, [`store::render`]'s text).
 pub(crate) fn changes(
     ctx: &Context,
-    old: &Files,
-    new: &Files,
-    meta: &str,
+    record: &str,
     rows: &mut [Row],
 ) -> Vec<(String, Option<String>)> {
-    let dir = store::data_dir(&ctx.machine);
-    let mut out = vec![(path(&ctx.machine), Some(document(ctx, rows)))];
-    out.push((format!("{dir}/{}", store::META), Some(meta.to_owned())));
-    out.extend(
-        new.iter()
-            .map(|(k, v)| (format!("{dir}/{k}"), Some(v.clone()))),
-    );
-    out.extend(
-        old.keys()
-            .filter(|k| !new.contains_key(*k))
-            .map(|k| (format!("{dir}/{k}"), None)),
-    );
-    out
+    vec![
+        (path(&ctx.machine), Some(document(ctx, rows))),
+        (store::path(&ctx.machine), Some(record.to_owned())),
+    ]
 }
 
 /// Records the run: the files from [`changes`], as a pull request if `gh`
@@ -140,9 +128,9 @@ pub(crate) fn record(
         .and_then(|(_, t)| t.as_deref())
         .unwrap_or_default();
     let body = format!(
-        "{table}\nThe record for `{}`: its table and criterion's data (`{}/`), which later runs on this machine compare with. Opened by `cargo xtask bench --record`; not merged by it.\n",
+        "{table}\nThe record for `{}`: its table and each benchmark's mean (`{}`), which later runs on this machine compare with. Opened by `cargo xtask bench --record`; not merged by it.\n",
         ctx.machine,
-        store::data_dir(&ctx.machine)
+        store::path(&ctx.machine)
     );
     github::propose(root, files, &branch, &title, &body)
 }
