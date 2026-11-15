@@ -60,9 +60,11 @@ pub(crate) const DEFAULT_RATE_HZ: u32 = 60;
 ///
 /// Particles in a `demo_new` scene: the M0 fountain's largest.
 pub(crate) const MAX_PARTICLES: u32 = 2_000_000;
-/// Bodies in a gravity scene (M2): pairwise gravity is O(n²), ~17 ms per
-/// step at this many natively (M2.3).
-pub(crate) const MAX_GRAVITY_BODIES: u32 = 4096;
+/// Bodies in a gravity scene (M2): pairwise gravity is O(n²). Past what
+/// fits the page's step budget on most machines (4,096 fit in 4.3 ms `f32`,
+/// 8.6 ms `f64` in V8 on an M4, `cargo xtask bench-wasm`), so the page can
+/// be pushed until it has to slow down (the step budget's slow motion).
+pub(crate) const MAX_GRAVITY_BODIES: u32 = 8192;
 /// Links in the M4 chain.
 pub(crate) const MAX_CHAIN_LINKS: u32 = 40;
 /// Particles along a side of the M5 jelly.
