@@ -475,6 +475,22 @@ gap left is `f64` in the browser on the M4 (~18%). Not tried: more than
 16 lanes (two-pass in M4 wasm `f64` went from 1.23 at 8 to 1.18 at 16;
 `GRAVITY_LANES` allows up to 64).
 
+## Step 11: Cranelift vs LLVM, explained (2026-11-15)
+
+The M4's 4-lane anomaly (step 7) is one LLVM decision. Its loop
+vectorizer, on AArch64, vectorizes the blocked loop's *outer* loop
+across blocks with **ordered FP reductions**: each lane's sum stays in
+order, so it's added element by element, a serial chain of scalar adds
+with spills. With `-C llvm-args=-force-ordered-reductions=false`, the
+native blocked 4-lane loop goes from 12.48 ms to **7.58 ms** at 4,096
+bodies, where wasmtime (7.36) and V8 (7.08) were. The wasm32 target
+doesn't vectorize this way, so Cranelift and V8 are handed the fast
+loop; Cranelift's machine code has the same shape as LLVM's fast one.
+
+The shipped default (two-pass, 16 lanes) isn't affected: the same speed
+with the option off. A 30-line reproducer, the three compilers' loops
+side by side, and a draft LLVM issue: `experiments/llvm-ordered-reductions/`.
+
 ## Open questions
 
 - **LLVM vs Cranelift on aarch64.** A smoke run on the M4: D2 natively
@@ -494,8 +510,8 @@ gap left is `f64` in the browser on the M4 (~18%). Not tried: more than
   (measured in Node, not extrapolated).
 - Whether a cutoff per row (plain for short rows) beats one per world.
 - Whether 32 or 64 lanes closes the M4's browser `f64` gap (step 10).
-- The M4's 4-lane anomaly: LLVM's and Cranelift's machine code for D2's
-  loop, side by side.
+- In the reproducer, Cranelift's loop is still 20% faster than LLVM's
+  fast one with the same shape (step 11). Not explained.
 
 ## Upstream? (LLVM)
 
