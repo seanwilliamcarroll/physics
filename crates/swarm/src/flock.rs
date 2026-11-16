@@ -4,8 +4,11 @@
 use math::SplitMix64;
 use math::convert::f64_to_f32;
 
+mod brute;
+mod grid;
+mod sorted;
+
 use crate::grid::Grid;
-use crate::rules::{Ranges, Seen, finish, steer};
 use crate::{Arena, Params};
 
 /// The most boids a flock holds: 2¹⁸.
@@ -187,75 +190,17 @@ impl Flock {
         })
     }
 
-    /// One step: every boid's update from the current state into the
-    /// next buffer, then the swap. Neighbours found as [`Self::neighbours`]
-    /// says ([`Neighbours::Sorted`] by default: the fastest, measured).
+    /// One step: every boid's next state, from the current state into
+    /// the next buffer by the technique [`Self::neighbours`] says
+    /// ([`Neighbours::Sorted`] by default: the fastest, measured), then the
+    /// swap. Each technique is a method of its own (`flock/brute.rs`,
+    /// `grid.rs`, `sorted.rs`): the same rules, the same neighbours, found
+    /// differently.
     pub fn step(&mut self) {
-        let n = self.cur.len();
-        let (cur, p, arena, predator) = (&self.cur, &self.params, self.arena, self.predator);
         match self.neighbours {
-            Neighbours::Brute => {
-                // Every boid is a candidate: the whole arrays are one run,
-                // read by the lane loop (the boid itself, at distance 0,
-                // adds nothing). The scalar loop this replaced ran 20×
-                // slower in wasm with simd128 (docs/15-swarm.md, S1.5).
-                let ranges = Ranges::of(p);
-                for i in 0..n {
-                    let Some(me) = cur.get(i) else { continue };
-                    let mut seen = Seen::default();
-                    seen.add_span(ranges, me, &cur.x, &cur.y, &cur.vx, &cur.vy);
-                    self.next.set(i, finish(p, arena, predator, me, &seen));
-                }
-            }
-            Neighbours::Grid => {
-                let grid = &mut self.grid;
-                grid.rebuild(
-                    arena.width(),
-                    arena.height(),
-                    p.visual_range,
-                    &cur.x,
-                    &cur.y,
-                );
-                for i in 0..n {
-                    let Some(me) = cur.get(i) else { continue };
-                    let others = grid
-                        .around(me.x, me.y)
-                        .filter(|&j| j != i)
-                        .filter_map(|j| cur.get(j));
-                    self.next.set(i, steer(p, arena, predator, me, others));
-                }
-            }
-            Neighbours::Sorted => {
-                let grid = &mut self.grid;
-                grid.rebuild(
-                    arena.width(),
-                    arena.height(),
-                    p.visual_range,
-                    &cur.x,
-                    &cur.y,
-                );
-                // Into cell order (in `next`, then swapped to be `cur`):
-                // cell c's boids are now slots start[c]..start[c + 1], and
-                // a block's candidates three runs of the arrays, read
-                // whole by the lane loop.
-                self.next.gather(cur, grid.order());
-                core::mem::swap(&mut self.cur, &mut self.next);
-                let (cur, ranges) = (&self.cur, Ranges::of(p));
-                for i in 0..n {
-                    let Some(me) = cur.get(i) else { continue };
-                    let mut seen = Seen::default();
-                    for span in grid.spans_around(me.x, me.y) {
-                        let (x, y, vx, vy) = (
-                            cur.x.get(span.clone()).unwrap_or_default(),
-                            cur.y.get(span.clone()).unwrap_or_default(),
-                            cur.vx.get(span.clone()).unwrap_or_default(),
-                            cur.vy.get(span).unwrap_or_default(),
-                        );
-                        seen.add_span(ranges, me, x, y, vx, vy);
-                    }
-                    self.next.set(i, finish(p, arena, predator, me, &seen));
-                }
-            }
+            Neighbours::Brute => self.step_brute(),
+            Neighbours::Grid => self.step_grid(),
+            Neighbours::Sorted => self.step_sorted(),
         }
         core::mem::swap(&mut self.cur, &mut self.next);
         self.steps += 1;
