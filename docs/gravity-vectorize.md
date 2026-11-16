@@ -533,7 +533,9 @@ case, though that one may simply be our code's shape.
 
 ## For the post
 
-Threads worth telling:
+Published 2026-11-16: "AI-Assisted Performance Optimization",
+<https://www.seanwilliamcarroll.com/posts/gravity-optimized/>, with the
+4,096-body cluster as its demo. The threads it was drafted from:
 
 - The same loop is limited by different things on different chips
   (memory traffic and adds on the M4, square root throughput on Zen 5),

@@ -248,8 +248,8 @@ have found; two genes at their ranges' edges. `AntParams::EVOLVED`; the
 Done: wasm `simd128` everywhere with a message where it's missing
 (#276); pairwise gravity's vector loops and build knobs (#277,
 `docs/gravity-vectorize.md`); the 8,192-body cap; the slim benchmark
-record (#279); both machines recorded on the new `main` (#278, #280).
-In order:
+record (#279); both machines recorded on the new `main` (#278, #280);
+the flock's step split by technique (#286). In order:
 
 1. ~~**Per-target gravity settings.**~~ Decided 2026-11-15: none. At 16
    lanes `blocked` wins by ~2% at most, and loses 30–40% in wasm;
@@ -259,18 +259,19 @@ In order:
    side and a draft issue: `experiments/llvm-ordered-reductions/`.
    Still to do, by hand: try it on LLVM's main branch (Compiler
    Explorer), and decide whether to file the issue.
-3. **Release** the physics package (public).
-4. **`personal_site` PR:** pull in the release; the demo component
-   shows `WasmUnsupportedError`'s message instead of "Reloading the
-   page may help".
+3. ~~**Release** the physics package.~~ physics-engine 0.2.0, 2026-11-16.
+4. ~~**`personal_site` PR.**~~ 0.2.0 pulled in, and a demo the browser
+   can't run says why (personal_site #18); math in posts (#19).
 5. **Smaller:** swarm's boids render is 2× slower with `simd128`
    (`15-swarm.md`); the notebook's open questions (a cutoff per row,
    base's +30% at 16 bodies); a targeted mutation run on `llm` for the
    new code (`force/pairwise`, the bench record, `github.rs`, coverage,
    the broadphase); keep checking the nightly runs.
-6. **A post** on the gravity work, from the notebook.
-7. **A second demo for the website** (cradle, break shot, double
-   pendulum or jelly).
+6. ~~**A post** on the gravity work.~~ "AI-Assisted Performance
+   Optimization", published 2026-11-16 (personal_site #20).
+7. ~~**A second demo for the website.**~~ The gravity post's: the
+   4,096-body cluster. (Still candidates for later: cradle, break shot,
+   double pendulum, jelly.)
 8. **The next milestone:** M10, the A4 drum, collective construction,
    M8 fixed point (`docs/05-roadmap.md`).
 
