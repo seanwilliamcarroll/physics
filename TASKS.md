@@ -254,11 +254,11 @@ In order:
 1. ~~**Per-target gravity settings.**~~ Decided 2026-11-15: none. At 16
    lanes `blocked` wins by ~2% at most, and loses 30–40% in wasm;
    two-pass, 16 lanes, everywhere (`gravity-vectorize.md`, step 10).
-2. **Cranelift vs LLVM.** The 4-lane `f64` blocked loop on the M4 ran
-   ~40% faster as wasm (wasmtime, V8) than LLVM's native AArch64 code.
-   The hot loop side by side (LLVM's asm, Cranelift's machine code), a
-   minimal Rust reproducer checked on Compiler Explorer with timings, a
-   write-up; then decide whether to file an LLVM issue.
+2. **Cranelift vs LLVM.** Explained (`gravity-vectorize.md`, step 11):
+   LLVM's ordered FP reductions on AArch64. Reproducer, loops side by
+   side and a draft issue: `experiments/llvm-ordered-reductions/`.
+   Still to do, by hand: try it on LLVM's main branch (Compiler
+   Explorer), and decide whether to file the issue.
 3. **Release** the physics package (public).
 4. **`personal_site` PR:** pull in the release; the demo component
    shows `WasmUnsupportedError`'s message instead of "Reloading the
