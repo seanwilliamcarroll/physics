@@ -108,8 +108,19 @@ impl Seen {
     }
 }
 
-/// Partial sums in the lane loop.
-pub(crate) const LANES: usize = 8;
+mod knobs;
+
+pub(crate) use knobs::LANES;
+use knobs::{SUM, Sum};
+
+/// `a += x`, in the lane loop: as written, or reassociable when the build
+/// says so (`SWARM_SUM`, `knobs.rs`).
+fn accumulate(a: &mut f32, x: f32) {
+    *a = match SUM {
+        Sum::Ordered => *a + x,
+        Sum::Algebraic => a.algebraic_add(x),
+    };
+}
 
 /// 1.0 if `cond`, else 0.0: the lane loop's masks. The same values, so the
 /// same bits, everywhere; written per architecture for the code each gets
@@ -168,13 +179,13 @@ impl Lanes {
             let d_sq = dx * dx + dy * dy;
             let close = unit(d_sq < r.protected_sq);
             let near = unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
-            *cdx += close * dx;
-            *cdy += close * dy;
-            *sx += near * ox;
-            *sy += near * oy;
-            *svx += near * ovx;
-            *svy += near * ovy;
-            *n += near;
+            accumulate(cdx, close * dx);
+            accumulate(cdy, close * dy);
+            accumulate(sx, near * ox);
+            accumulate(sy, near * oy);
+            accumulate(svx, near * ovx);
+            accumulate(svy, near * ovy);
+            accumulate(n, near);
         }
     }
 
