@@ -312,10 +312,21 @@ scalar ones are the up-to-7 leftovers after the last block of 8, which
 Brute never has). Each 0/1 mask was written `f32::from(u8::from(cond))`,
 which LLVM's AArch64 code turned into five instructions (compare, narrow,
 mask, widen, convert). As `if cond { 1.0 } else { 0.0 }` the block of 8
-is 10 instructions shorter: Brute 14–16% faster natively (52.1 → 43.8 ms
-at 10k), Sorted ~8% (noisy), the same bits. The wasm was already the
-select form either way: `swarm.wasm` is unchanged, op for op, and so is
-its speed in V8.
+is 12 instructions shorter: Brute 14–16% faster natively (52.1 → 43.6 ms
+at 10k), Sorted ~8% (noisy), the same bits. But on x86 (cross-compiled
+on the Mac, `x86_64-apple-darwin` with an explicit `target-cpu`; timed on
+Zen 5) the integer form was never long, and the select made the
+baseline loop 2 instructions longer: Brute +2.6%. So the mask is a helper
+per architecture (`rules::unit`): the select on `aarch64`, the integer
+form elsewhere; the same values either way, so the same bits. The wasm
+was already the select form either way: `swarm.wasm` is unchanged, op
+for op, and so is its speed in V8.
+
+Found reading x86 too: at the baseline level (SSE2, 16 vector
+registers) the loop is 107 instructions a block, 42 of them register
+copies (`movaps`), for 14 accumulators; with AVX2, 34. And AVX-512 goes
+unused: 8 `f32` lanes fill a 256-bit register. Both are leads for a lane
+sweep like gravity's.
 
 The bench builds each case lazily, in its own closure, so a filtered run
 or profile builds only what it measures (it had warmed every flock with

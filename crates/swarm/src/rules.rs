@@ -111,6 +111,25 @@ impl Seen {
 /// Partial sums in the lane loop.
 pub(crate) const LANES: usize = 8;
 
+/// 1.0 if `cond`, else 0.0: the lane loop's masks. The same values, so the
+/// same bits, everywhere; written per architecture for the code each gets
+/// (`docs/15-swarm.md`, "The lane loop's masks"). On `aarch64` as a select:
+/// through an integer it compiled to five instructions a mask (compare,
+/// narrow, mask, widen, convert), the select to a compare and an AND with
+/// 1.0's bits (Brute 14–16% faster on an M4). Elsewhere through an integer:
+/// x86 compiles that well already, and the select made its loop longer
+/// (Brute 2.6% slower on Zen 5); wasm gets the same code either way.
+#[cfg(target_arch = "aarch64")]
+fn unit(cond: bool) -> f32 {
+    if cond { 1.0 } else { 0.0 }
+}
+
+/// 1.0 if `cond`, else 0.0 (see the `aarch64` version).
+#[cfg(not(target_arch = "aarch64"))]
+fn unit(cond: bool) -> f32 {
+    f32::from(u8::from(cond))
+}
+
 #[derive(Default)]
 struct Lanes {
     sum_x: [f32; LANES],
@@ -147,16 +166,8 @@ impl Lanes {
         {
             let (dx, dy) = (me.x - ox, me.y - oy);
             let d_sq = dx * dx + dy * dy;
-            // 1.0 or 0.0 as a select: a vector compare's all-ones lanes
-            // ANDed with 1.0's bits (two instructions); through an integer,
-            // `f32::from(u8::from(..))`, it was five (narrow, mask, widen,
-            // convert).
-            let close = if d_sq < r.protected_sq { 1.0 } else { 0.0 };
-            let near = if d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0 {
-                1.0
-            } else {
-                0.0
-            };
+            let close = unit(d_sq < r.protected_sq);
+            let near = unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
             *cdx += close * dx;
             *cdy += close * dy;
             *sx += near * ox;
