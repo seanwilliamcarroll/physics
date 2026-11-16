@@ -4,8 +4,9 @@ Status: **in the engine** (two-pass, 16 lanes; 2026-11-15). Begun
 2026-11-14. The whole line of thought for the
 gravity-loop experiments, in order, including the dead ends: the record
 to write a post from. The short, settled results are in `experiments.md`;
-the recorded sweeps are in `experiments/gravity-vectorize/`, and the
-runner that makes them is `experiments/sweep/`.
+the recorded sweeps and the driver that makes them (`run.py`) are in
+`experiments/gravity-vectorize/`, and the shared machinery in
+`experiments/sweep/`.
 
 **What's committed:** each run's `summary.md`, `results.csv` and
 `machine.txt`, and `results/sweep.md`. The asm listings, perf output
@@ -162,9 +163,10 @@ invariant (equal lengths). Decision deferred to the cross-machine results.
 
 ## Step 4: a package to rerun everything elsewhere
 
-(As it was then. The runner has since moved to `experiments/sweep/`,
-shared with the swarm experiments, and sweeps the engine's knobs instead
-of patches: step 8.)
+(As it was then. Since then the machinery has moved to `experiments/sweep/`,
+shared with the swarm experiments; `run.py` here is a short driver that
+describes this experiment, and sweeps the engine's knobs instead of
+patches: step 8.)
 
 `experiments/gravity-vectorize/`: each experiment a patch against
 `ea2169b`, and `run.py`, which for each experiment makes a git worktree,

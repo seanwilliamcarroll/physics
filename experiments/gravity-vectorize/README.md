@@ -3,11 +3,13 @@
 `PairwiseGravity`'s build settings, swept across CPU levels and wasm
 engines. The settings are the engine's gravity knobs
 (`crates/engine/src/force/pairwise/knobs.rs`); how they were chosen, step
-by step: `docs/gravity-vectorize.md`. Runs with the shared runner,
-`experiments/sweep/` (its README has the levels, commands and output).
+by step: `docs/gravity-vectorize.md`. `run.py` runs it, with the shared
+machinery in `experiments/sweep/` (its README has the levels, commands
+and output).
 
 | File | What |
 |---|---|
+| `run.py` | the driver: the experiments below |
 | `sweep_doc.py` | writes `results/sweep.md` from the two first recorded sweeps |
 | `results/` | the recorded sweeps (below) |
 
@@ -28,7 +30,7 @@ Benches: `pairwise_f32` and `pairwise_f64` at 16, 128, 1,024 and 4,096
 bodies; `--perf` profiles both at 1,024.
 
 ```sh
-experiments/sweep/run.py --experiments sweep    # (--suite gravity is the default)
+experiments/gravity-vectorize/run.py --experiments sweep
 ```
 
 A sweep is 11 experiments × up to 7 levels: about three hours.
