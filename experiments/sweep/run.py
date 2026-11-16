@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Benchmark pairwise gravity's build settings and dump their assembly.
+"""Benchmark a suite's build settings and dump their assembly: pairwise
+gravity's (the default) or, with `--suite swarm`, the boids' lane loop's
+(SWARM_LANES, SWARM_SUM; crates/swarm/src/rules/knobs.rs).
 
 Each experiment is a setting of the engine's gravity knobs
 (`GRAVITY_LOOP`, `GRAVITY_LANES`, `GRAVITY_PLAIN_BELOW`;
@@ -9,8 +11,9 @@ functions' assembly. Results land in results/<host>/: summary.md,
 results.csv, machine.txt (committed); asm/, perf/ (not).
 
 Usage (from the repo root or anywhere):
-    experiments/gravity-vectorize/run.py                 # everything
-    experiments/gravity-vectorize/run.py --levels default --quick
+    experiments/sweep/run.py                             # gravity, everything
+    experiments/sweep/run.py --suite swarm --experiments sweep
+    experiments/sweep/run.py --levels default --quick
 Stdlib only.
 """
 
@@ -28,6 +31,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
+# Where each suite's results go by default: its experiment's own folder.
+EXPERIMENT_DIRS = {"gravity": "gravity-vectorize", "swarm": "swarm-lanes"}
 
 TWO_PASS = ("pass_one", "engine::force::pairwise::two_pass::pass_one::<{s}>")
 BLOCKED = ("sweep", "engine::force::pairwise::blocked::sweep::<{s}>")
@@ -53,8 +58,48 @@ PRESETS = {"sweep": ["plain"] + [f"{loop}-l{n}" for loop in ("two-pass", "blocke
                                  for n in LANE_COUNTS]}
 # The reference each table compares against.
 REFERENCE = "plain"
-ACCUMULATE = ("accumulate",
-              "<engine::force::PairwiseGravity<{s}> as engine::force::Force<{s}>>::accumulate")
+ACCUMULATE = [("accumulate",
+               "<engine::force::PairwiseGravity<{s}> as engine::force::Force<{s}>>::accumulate")]
+
+# A suite: the package and bench, its experiments (knob settings), the
+# functions to dump, and what its tables compare against. Gravity's values
+# are the module's defaults above; `--suite` swaps them in (`select`).
+PACKAGE = "engine"
+KNOBS = ("GRAVITY_LOOP", "GRAVITY_LANES", "GRAVITY_PLAIN_BELOW")
+DEFAULT_FILTER = "^pairwise_"
+PERF_BENCHES = "pairwise_f64/1024,pairwise_f32/1024"
+# Whether a bench's last id part is a body count n with n(n-1)/2 pairs (the
+# perf table's per-pair columns).
+PAIRS = True
+SCALARS = ("f64", "f32")
+
+# The boids' lane loop (crates/swarm/src/rules/knobs.rs): SWARM_LANES
+# partial sums, or one sum the compiler may reorder (algebraic).
+SWARM_FNS = [("add_span", "<swarm::rules::Seen>::add_span"),
+             ("flock_step", "<swarm::flock::Flock>::step")]
+SWARM_EXPERIMENTS = {f"lanes-{n}": ({"SWARM_LANES": str(n)}, []) for n in LANE_COUNTS}
+SWARM_EXPERIMENTS["algebraic"] = ({"SWARM_LANES": "1", "SWARM_SUM": "algebraic"}, [])
+SUITES = {
+    "gravity": None,  # the module's defaults
+    "swarm": dict(
+        PACKAGE="swarm",
+        KNOBS=("SWARM_LANES", "SWARM_SUM"),
+        EXPERIMENTS=SWARM_EXPERIMENTS,
+        PRESETS={"sweep": list(SWARM_EXPERIMENTS)},
+        REFERENCE="lanes-8",
+        ACCUMULATE=SWARM_FNS,
+        DEFAULT_FILTER="^swarm_step/(Brute|Sorted)/(1000|10000)$",
+        PERF_BENCHES="swarm_step/Brute/10000,swarm_step/Sorted/10000",
+        PAIRS=False,
+        SCALARS=("f32",),
+    ),
+}
+
+
+def select(suite):
+    """Swap a suite's definitions into the module's globals."""
+    for key, value in (SUITES[suite] or {}).items():
+        globals()[key] = value
 
 # CPU level -> RUSTFLAGS. "default" is the target's baseline (x86-64: SSE2,
 # 2 f64 per vector; aarch64: NEON, the same). x86-64-v3 adds AVX2 (4 f64);
@@ -122,25 +167,25 @@ def bench(tree, env, level, out, args):
             run(["wasmtime", "run", "--dir", f"{crit}::/criterion",
                  "--env", "CRITERION_HOME=/criterion", exe, "--bench"] + flags, env=env)
     else:
-        run(["cargo", "bench", "-p", "engine", "--bench", "step", "--"] + flags,
+        run(["cargo", "bench", "-p", PACKAGE, "--bench", "step", "--"] + flags,
             cwd=tree, env=dict(env, CRITERION_HOME=str(crit)))
     times = {}
-    for est in sorted((out / "criterion").glob("pairwise_*/*/new/estimates.json")):
-        group, size = est.parts[-4], est.parts[-3]
-        data = json.loads(est.read_text())
-        times[f"{group}/{size}"] = data["mean"]["point_estimate"]
+    # Every case's latest run, named by criterion's own id (benchmark.json).
+    for est in sorted((out / "criterion").rglob("new/estimates.json")):
+        meta = json.loads((est.parent / "benchmark.json").read_text())
+        times[meta["full_id"]] = json.loads(est.read_text())["mean"]["point_estimate"]
     return times
 
 
 def dump_asm(tree, env, name, level, asm_dir):
     """Save each hot function's assembly; return per-file instruction counts."""
     counts = {}
-    for s in ("f64", "f32"):
-        for short, fn in [ACCUMULATE] + EXPERIMENTS[name][1]:
+    for s in SCALARS:
+        for short, fn in ACCUMULATE + EXPERIMENTS[name][1]:
             symbol = fn.format(s=s)
             dest = asm_dir / f"{level}--{name}--{short}-{s}.s"
             style = [] if is_wasm(level) else ["--intel"]
-            result = run(["cargo", "asm", "-p", "engine", "--bench", "step"]
+            result = run(["cargo", "asm", "-p", PACKAGE, "--bench", "step"]
                          + target_args(level) + style + [symbol], cwd=tree, env=env,
                          capture=True, check=False)
             asm = only(result.stdout, symbol)
@@ -194,7 +239,7 @@ PERF_EVENTS = ["task-clock", "cycles", "instructions", "branches", "branch-misse
 
 def bench_exe(tree, env, level):
     """The built bench binary's path (cargo prints it as JSON); a .wasm for wasm."""
-    built = run(["cargo", "bench", "-p", "engine", "--bench", "step", "--no-run",
+    built = run(["cargo", "bench", "-p", PACKAGE, "--bench", "step", "--no-run",
                  "--message-format=json"] + target_args(level),
                 cwd=tree, env=env, capture=True)
     for line in built.stdout.splitlines():
@@ -218,7 +263,7 @@ def perf_run(tree, env, name, level, out, args):
     stats = {}
     for b in args.perf_benches.split(","):
         bench_args = [exe, "--bench", "--profile-time", str(args.perf_time), f"^{b}$"]
-        stem = f"{level}--{name}--{b.replace('/', '-')}"
+        stem = f"{level}--{name}--{b.replace('/', '__')}"
         stat_file = out / "perf" / f"{stem}.stat.csv"
         run(["perf", "stat", "-x,", "-o", str(stat_file), "-e", ",".join(PERF_EVENTS),
              "--"] + bench_args, env=env, capture=True)
@@ -283,10 +328,17 @@ def machine_info():
     return "\n".join(lines) + "\n"
 
 
+def bench_order(bench):
+    """Sort key: the id's name parts, then its last part as a number (sizes
+    in order, 16 before 128)."""
+    head, _, last = bench.rpartition("/")
+    return (head, int(last) if last.isdigit() else 0, last)
+
+
 def write_summary(out, results, counts, levels, names, perf,
                   statistic="mean"):
     benches = sorted({b for r in results.values() for b in r},
-                     key=lambda b: (b.split("/")[0], int(b.split("/")[1])))
+                     key=bench_order)
     with open(out / "results.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["level", "experiment", "bench", f"{statistic}_ns"])
@@ -353,9 +405,9 @@ def write_summary(out, results, counts, levels, names, perf,
                     md.append(f"| {level} | {name} | {b} | – | – | – | – | – | – |")
                     continue
                 ghz = cycles / (clock * 1e6)  # task-clock is in ms
-                n = int(b.split("/")[1])
+                n = int(b.rpartition("/")[2]) if PAIRS else 0
                 t = results.get((level, name), {}).get(b)
-                cpp = t * ghz / (n * (n - 1) / 2) if t else None
+                cpp = t * ghz / (n * (n - 1) / 2) if t and PAIRS else None
                 ipc = instr / cycles
 
                 def pct(event, of):
@@ -381,7 +433,7 @@ def write_summary(out, results, counts, levels, names, perf,
 
 UNITS = {"ps": 1e-3, "ns": 1.0, "µs": 1e3, "us": 1e3, "ms": 1e6, "s": 1e9}
 HEADER = re.compile(r"^=== (\S+) at (\S+) ===$")
-TIME = re.compile(r"^(pairwise_f(?:32|64)/\d+)\s+time:\s+\[\S+ \S+ (\S+) (\S+) ")
+TIME = re.compile(r"^(\S+/\d+)\s+time:\s+\[\S+ \S+ (\S+) (\S+) ")
 
 
 def from_log(log, out):
@@ -402,14 +454,20 @@ def from_log(log, out):
     perf = {}
     for f in sorted((out / "perf").glob("*.stat.csv")) if (out / "perf").exists() else []:
         level, name, bench = f.name.removesuffix(".stat.csv").split("--")
-        bench = "/".join(bench.rsplit("-", 1))  # pairwise_f64-1024
+        # "swarm_step__Brute__10000"; older runs wrote "pairwise_f64-1024".
+        bench = bench.replace("__", "/") if "__" in bench else "/".join(bench.rsplit("-", 1))
         perf.setdefault((level, name), {})[bench] = parse_stat(f.read_text())
     write_summary(out, results, counts, levels, names, perf, statistic="estimate")
     print(f"Rebuilt from {log}: {out / 'summary.md'}")
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__,
+    # The suite first: the other options' defaults depend on it.
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--suite", choices=list(SUITES), default="gravity")
+    suite = pre.parse_known_args()[0].suite
+    select(suite)
+    p = argparse.ArgumentParser(description=__doc__, parents=[pre],
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     is_x86 = platform.machine() in ("x86_64", "AMD64")
     levels = ["default", "x86-64-v3", "native"] if is_x86 else ["default", "native"]
@@ -422,19 +480,21 @@ def main():
     p.add_argument("--experiments", default=",".join(EXPERIMENTS),
                    help="comma-separated: " + ", ".join(EXPERIMENTS)
                         + "; or a preset: " + ", ".join(PRESETS))
-    p.add_argument("--filter", default="^pairwise_", help="criterion's bench filter (regex)")
+    p.add_argument("--filter", default=DEFAULT_FILTER, help="criterion's bench filter (regex)")
     p.add_argument("--quick", action="store_true", help="short criterion runs (a smoke test)")
     p.add_argument("--perf", action="store_true",
                    help="also perf stat and perf record/annotate (Linux; needs "
                         "kernel.perf_event_paranoid <= 2)")
-    p.add_argument("--perf-benches", default="pairwise_f64/1024,pairwise_f32/1024",
+    p.add_argument("--perf-benches", default=PERF_BENCHES,
                    help="comma-separated bench ids for --perf")
     p.add_argument("--perf-time", type=int, default=5,
                    help="seconds per bench under perf (criterion's --profile-time)")
     p.add_argument("--from-log", type=Path,
                    help="rebuild --out's summary from a run's log (its criterion "
                         "lines), the asm and perf files already in --out")
-    p.add_argument("--out", type=Path, default=HERE / "results" / socket.gethostname().split(".")[0])
+    host = socket.gethostname().split(".")[0]
+    p.add_argument("--out", type=Path,
+                   default=HERE.parent / EXPERIMENT_DIRS[suite] / "results" / host)
     args = p.parse_args()
     if args.from_log:
         return from_log(args.from_log, args.out.resolve())
@@ -468,11 +528,11 @@ def main():
         for level in levels:
             # One target dir per level: changing RUSTFLAGS rebuilds every
             # dependency, so levels don't share. A knob change rebuilds only
-            # the engine (cargo tracks the variables it reads).
+            # the crate that reads them (cargo tracks the variables).
             env = dict(os.environ, RUSTFLAGS=LEVELS[level],
                        CARGO_TARGET_DIR=str(build_dir(work, level)),
                        **EXPERIMENTS[name][0])
-            for knob in ("GRAVITY_LOOP", "GRAVITY_LANES", "GRAVITY_PLAIN_BELOW"):
+            for knob in KNOBS:
                 if knob not in EXPERIMENTS[name][0]:
                     env.pop(knob, None)
             print(f"\n=== {name} at {level} ===", flush=True)

@@ -28,11 +28,34 @@ fn a_run_is_repeatable() {
     assert_eq!(run_with(Neighbours::Grid), run_with(Neighbours::Grid));
 }
 
+/// The lane loop's build settings that change results' bits
+/// (`crates/swarm/src/rules/knobs.rs`): the goldens through it (brute
+/// force, sorted) are for their defaults.
+fn lanes_overridden() -> bool {
+    let set: Vec<String> = [
+        ("SWARM_LANES", option_env!("SWARM_LANES")),
+        ("SWARM_SUM", option_env!("SWARM_SUM")),
+    ]
+    .iter()
+    .filter_map(|(k, v)| v.map(|v| format!("{k}={v}")))
+    .collect();
+    if !set.is_empty() {
+        eprintln!(
+            "golden hash skipped: built with {}, which changes results' bits",
+            set.join(", ")
+        );
+    }
+    !set.is_empty()
+}
+
 /// The golden hash: a change in results fails here, intended or not.
 const GOLDEN: u64 = 0x3936_c982_06e6_75ed;
 
 #[test]
 fn the_golden_hash_is_unchanged() {
+    if lanes_overridden() {
+        return;
+    }
     let h = run();
     assert_eq!(h, GOLDEN, "if intended, set GOLDEN = {h:#018x}");
 }
@@ -52,6 +75,9 @@ const GOLDEN_SORTED: u64 = 0x63d2_df7d_ad03_a772;
 
 #[test]
 fn the_sorted_golden_hash_is_unchanged() {
+    if lanes_overridden() {
+        return;
+    }
     let h = run_with(Neighbours::Sorted);
     assert_eq!(
         h, GOLDEN_SORTED,
