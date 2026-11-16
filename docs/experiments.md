@@ -28,7 +28,7 @@ them a square root and one a division. At 4,096 bodies, 8,386,560 pairs.
 
 The vectorizing experiments (B, C, D) led to the loops now in the
 engine, chosen by build settings (`force/pairwise/knobs.rs`);
-`experiments/gravity-vectorize/` benchmarks those settings at several
+`experiments/sweep/` (`--suite gravity`) benchmarks those settings at several
 CPU levels and in wasm. The whole line of thought, step by step, is in
 `gravity-vectorize.md`.
 

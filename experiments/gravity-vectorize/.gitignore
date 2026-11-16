@@ -1,5 +1,3 @@
-.work/
-__pycache__/
 # criterion's raw data (thousands of files); results.csv has the means
 results/*/*/*/criterion/
 results/*/*/*/criterion-profile/
