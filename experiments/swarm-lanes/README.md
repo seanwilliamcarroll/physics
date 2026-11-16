@@ -11,8 +11,8 @@ Read on the M4 first (`docs/15-swarm.md`, "The lane loop's masks"): with
 vector registers) its 14 accumulators spill to the stack, and AVX-512's
 512-bit registers go unused.
 
-Runs with the shared runner, `experiments/sweep/`, as `--suite swarm`
-(its README has the levels, commands and output).
+`run.py` runs it, with the shared machinery in `experiments/sweep/` (its
+README has the levels, commands and output).
 
 ## Experiments
 
@@ -38,7 +38,7 @@ boids; `--perf` profiles both at 10,000. The asm dumps are
 it).
 
 ```sh
-experiments/sweep/run.py --suite swarm --experiments sweep
+experiments/swarm-lanes/run.py --experiments sweep
 ```
 
 6 experiments × up to 7 levels: about an hour.

@@ -1,21 +1,45 @@
 # Sweep
 
-The runner the vectorizing experiments share: it benchmarks a suite's
-build settings (knobs read at compile time) at several CPU levels and in
-two WebAssembly engines, and keeps the assembly. Stdlib Python 3.
+The machinery the vectorizing experiments share: it benchmarks build
+settings (knobs, environment variables a crate reads at compile time) at
+several CPU levels and in two WebAssembly engines, and keeps the
+assembly. Stdlib Python 3. It knows no experiment: each experiment's
+folder has a short driver, `run.py`, that describes it and runs it.
 
-| Suite | Experiment folder | What it varies |
-|---|---|---|
-| `gravity` (default) | `experiments/gravity-vectorize/` | pairwise gravity: `GRAVITY_LOOP`, `GRAVITY_LANES`, `GRAVITY_PLAIN_BELOW` (`crates/engine/src/force/pairwise/knobs.rs`) |
-| `swarm` | `experiments/swarm-lanes/` | the boids' lane loop: `SWARM_LANES`, `SWARM_SUM` (`crates/swarm/src/rules/knobs.rs`) |
-
-Each experiment folder's README lists its experiments; results go to
-`<experiment folder>/results/<host>` unless `--out` says otherwise.
+| Experiment | What it varies |
+|---|---|
+| `experiments/gravity-vectorize/` | pairwise gravity: `GRAVITY_LOOP`, `GRAVITY_LANES`, `GRAVITY_PLAIN_BELOW` (`crates/engine/src/force/pairwise/knobs.rs`) |
+| `experiments/swarm-lanes/` | the boids' lane loop: `SWARM_LANES`, `SWARM_SUM` (`crates/swarm/src/rules/knobs.rs`) |
 
 | File | What |
 |---|---|
-| `run.py` | runs a suite on the current checkout |
+| `sweep.py` | the library: `Suite`, `Experiment`, `main(suite)` |
 | `wasi-node.mjs` | runs the wasm bench in Node, for the `v8` levels |
+
+## A new experiment
+
+A folder with a `run.py` that puts `experiments/sweep` on `sys.path`,
+builds a `Suite` and calls `main` (copy `swarm-lanes/run.py`):
+
+```python
+SUITE = Suite(
+    title="…",                  # summary.md's heading
+    package="swarm",            # a package with a `step` criterion bench
+    knobs=("SWARM_LANES", …),   # every knob it reads (unset unless an experiment sets it)
+    experiments={"lanes-8": Experiment({"SWARM_LANES": "8"}), …},
+    reference="lanes-8",        # what the tables compare against
+    results=HERE / "results",   # --out defaults to results/<host>
+    functions=(("add_span", "<swarm::rules::Seen>::add_span"),),  # asm to dump
+    filter="^swarm_step/…",     # criterion's default filter
+    perf_benches="…",           # for --perf
+)
+```
+
+Optional: `presets` (named lists for `--experiments`), `scalars` (what
+`{s}` in a symbol becomes, e.g. `("f64", "f32")`), `pairs` (bench sizes
+are body counts: per-pair perf columns). Give it a `.gitignore` like
+the others' (only summaries are committed) and a README with the
+question and the experiments.
 
 ## Levels
 
@@ -40,7 +64,7 @@ On the compute node, in tmux (a tmux command runs in a non-interactive
 shell, so nvm is loaded by hand; `nvm install` reads `.nvmrc`):
 
 ```sh
-tmux new -s sweep 'cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && experiments/sweep/run.py --suite SUITE --perf --experiments sweep 2>&1 | tee ~/sweep.log; exec bash'
+tmux new -s sweep 'cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && experiments/EXPERIMENT/run.py --perf --experiments sweep --out experiments/EXPERIMENT/results/llm 2>&1 | tee ~/sweep.log; exec bash'
 ```
 
 On a Mac, with `caffeinate` keeping it awake (`-i`: no idle sleep; `-s`:
@@ -48,14 +72,14 @@ no system sleep on mains power; closing the lid still sleeps it). Leave
 the machine alone meanwhile:
 
 ```sh
-cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/sweep/run.py --suite SUITE --experiments sweep 2>&1 | tee ~/sweep.log
+cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/EXPERIMENT/run.py --experiments sweep --out experiments/EXPERIMENT/results/m4 2>&1 | tee ~/sweep.log
 ```
 
 `--quick`, `--levels`, `--experiments` and `--filter` narrow a run
-(`run.py --suite SUITE --help` shows the suite's defaults). Each run
+(`run.py --help` shows the experiment's defaults). Each run
 replaces its `--out` folder.
 
-`--perf` (Linux) adds hardware counters for the suite's perf benches:
+`--perf` (Linux) adds hardware counters for the experiment's perf benches:
 `perf stat` (cycles, instructions, branch misses) and `perf record` +
 `perf annotate` (where the cycles go). Ubuntu stops users using perf by
 default; `sudo sysctl kernel.perf_event_paranoid=1` allows it until the
@@ -68,7 +92,7 @@ next reboot. perf skips the wasm levels.
 Each run writes to its `--out` folder:
 
 - `summary.md`: per level, mean times with the change against the
-  suite's reference experiment; the reference at each level against
+  reference experiment; the reference at each level against
   `default`; sqrt/div instructions in each dumped function by width; with
   `--perf`, IPC (and for gravity, cycles and instructions per pair).
 - `results.csv`: level, experiment, bench, mean in ns.
