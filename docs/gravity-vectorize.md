@@ -450,6 +450,31 @@ for every benchmark (309 files a machine) became one `.tsv` of means
 (5 KB), after the M4's first record timed out uploading
 (`docs/benchmarks.md`, Records).
 
+## Step 10: per-target settings? No (2026-11-15)
+
+The knobs swept again on `main` (`results/llm-main`, `results/m4-main`:
+the engine's own loops, lane total fixed). The loop may differ by target
+without changing bits; the lane count may not. At 16 lanes, `f64`, 4,096
+bodies, time ÷ the best for that build:
+
+| | Zen 5 SSE2 | AVX2 | AVX-512 | Zen 5 wasm | Zen 5 V8 | M4 native | M4 wasm | M4 V8 |
+|---|---|---|---|---|---|---|---|---|
+| two-pass, 16 | 1.08 | 1.00 | 1.00 | 1.06 | 1.09 | 1.08 | 1.18 | 1.17 |
+| blocked, 16 | 1.06 | 1.09 | 1.64 | 1.42 | 1.38 | 1.06 | 1.59 | 1.60 |
+
+- At 16 lanes `blocked` wins only by ~2%, on Zen 5's baseline build and
+  M4 native; in wasm it's 30–40% worse.
+- `blocked` is the best in wasm `f64` only at 4 or 8 lanes, and the lane
+  count is global: 8 costs every `f32` build ~10%, 4 ~35%.
+- `f32`: two-pass at 16 is the best on all 9 builds.
+- The loop chosen per build and precision at 16 lanes: 1.038 (geometric
+  mean over both precisions), against 1.04 for two-pass alone.
+
+**Decided: no per-target settings.** Two-pass, 16 lanes, everywhere. The
+gap left is `f64` in the browser on the M4 (~18%). Not tried: more than
+16 lanes (two-pass in M4 wasm `f64` went from 1.23 at 8 to 1.18 at 16;
+`GRAVITY_LANES` allows up to 64).
+
 ## Open questions
 
 - **LLVM vs Cranelift on aarch64.** A smoke run on the M4: D2 natively
@@ -468,6 +493,7 @@ for every benchmark (309 files a machine) became one `.tsv` of means
 - The largest world per build that steps within the 10 ms budget
   (measured in Node, not extrapolated).
 - Whether a cutoff per row (plain for short rows) beats one per world.
+- Whether 32 or 64 lanes closes the M4's browser `f64` gap (step 10).
 - The M4's 4-lane anomaly: LLVM's and Cranelift's machine code for D2's
   loop, side by side.
 

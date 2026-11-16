@@ -251,12 +251,9 @@ Done: wasm `simd128` everywhere with a message where it's missing
 record (#279); both machines recorded on the new `main` (#278, #280).
 In order:
 
-1. **Per-target gravity settings.** Sweep the knobs on the new `main`
-   (`experiments/gravity-vectorize/run.py --experiments sweep`, both
-   machines, ~3 h each). If `blocked` clearly beats `two-pass` for `f64`
-   in wasm (or anywhere), make the default loop depend on the target
-   (bit-safe: the loops agree; `GRAVITY_LANES` stays one value
-   everywhere). Record the decision in the notebook.
+1. ~~**Per-target gravity settings.**~~ Decided 2026-11-15: none. At 16
+   lanes `blocked` wins by ~2% at most, and loses 30–40% in wasm;
+   two-pass, 16 lanes, everywhere (`gravity-vectorize.md`, step 10).
 2. **Cranelift vs LLVM.** The 4-lane `f64` blocked loop on the M4 ran
    ~40% faster as wasm (wasmtime, V8) than LLVM's native AArch64 code.
    The hot loop side by side (LLVM's asm, Cranelift's machine code), a
