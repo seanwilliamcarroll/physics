@@ -1,0 +1,8 @@
+# criterion's raw data (thousands of files); results.csv has the means
+results/*/*/*/criterion/
+results/*/*/*/criterion-profile/
+# Only each run's summary.md, results.csv and machine.txt are committed:
+# the asm, perf output and logs stay on the machine that made them.
+results/*/asm/
+results/*/perf/
+results/*/run.log
