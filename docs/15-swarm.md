@@ -306,6 +306,21 @@ against 128 without (+93%), Vicsek's step +10%, Physarum's +5%, the grid
 step +4%, while sorted (−21%) and brute force (−26%) gain. The render is
 the one worth a look.
 
+**The lane loop's masks (2026-11-16).** Read on the M4 (`Seen::add_span`,
+annotated: every float instruction in the lane loop is vector; the
+scalar ones are the up-to-7 leftovers after the last block of 8, which
+Brute never has). Each 0/1 mask was written `f32::from(u8::from(cond))`,
+which LLVM's AArch64 code turned into five instructions (compare, narrow,
+mask, widen, convert). As `if cond { 1.0 } else { 0.0 }` the block of 8
+is 10 instructions shorter: Brute 14–16% faster natively (52.1 → 43.8 ms
+at 10k), Sorted ~8% (noisy), the same bits. The wasm was already the
+select form either way: `swarm.wasm` is unchanged, op for op, and so is
+its speed in V8.
+
+The bench builds each case lazily, in its own closure, so a filtered run
+or profile builds only what it measures (it had warmed every flock with
+Sorted first: a "Brute" profile was 63% that).
+
 Through the real exports in Node 22, the page's world (10k boids in
 2560 × 1440, drawn 1280 × 720): **a step 2.37 ms sorted, 4.54 grid;
 drawing 0.26 ms.** 100k: 23.6 ms a step, 2.0 ms to draw.
