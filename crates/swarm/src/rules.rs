@@ -147,10 +147,16 @@ impl Lanes {
         {
             let (dx, dy) = (me.x - ox, me.y - oy);
             let d_sq = dx * dx + dy * dy;
-            let close = f32::from(u8::from(d_sq < r.protected_sq));
-            let near = f32::from(u8::from(
-                d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0,
-            ));
+            // 1.0 or 0.0 as a select: a vector compare's all-ones lanes
+            // ANDed with 1.0's bits (two instructions); through an integer,
+            // `f32::from(u8::from(..))`, it was five (narrow, mask, widen,
+            // convert).
+            let close = if d_sq < r.protected_sq { 1.0 } else { 0.0 };
+            let near = if d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0 {
+                1.0
+            } else {
+                0.0
+            };
             *cdx += close * dx;
             *cdy += close * dy;
             *sx += near * ox;
