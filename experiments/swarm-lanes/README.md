@@ -43,18 +43,45 @@ experiments/swarm-lanes/run.py --experiments sweep
 
 6 experiments × up to 7 levels: about an hour.
 
-## First look
+## Results (2026-11-16)
 
-A smoke run on the M4 (`--quick`, `swarm_step/Brute/1000` only, so rough):
+`results/llm` (Ryzen 7 9700X, Zen 5; with `--perf`) and `results/m4`
+(Apple M4), on `main` at 43d6e33. Time against `lanes-8` (today's code)
+at the same level, 10,000 boids:
 
-| | `lanes-1` | `lanes-8` | `algebraic` |
-|---|---|---|---|
-| native | 1.15 ms | 454 µs | 380 µs |
-| wasmtime + simd128 | 1.60 ms | 1.54 ms | 491 µs |
-| V8 + simd128 | 1.61 ms | 1.84 ms | 474 µs |
+| level | Brute: `lanes-1` | `lanes-4` | `lanes-16` | `algebraic` | Sorted: `lanes-1` | `lanes-4` | `lanes-16` | `algebraic` |
+|---|---|---|---|---|---|---|---|---|
+| Zen 5 default (SSE2) | +191% | +171% | −2% | −11% | +72% | +42% | +7% | −28% |
+| Zen 5 x86-64-v3 (AVX2) | +558% | +473% | +16% | −0% | +167% | +114% | +34% | −16% |
+| Zen 5 native (AVX-512) | +590% | +536% | −34% | −34% | +182% | +128% | +30% | −19% |
+| Zen 5 wasmtime simd128 | −18% | −30% | −68% | −67% | −4% | −19% | −58% | −73% |
+| Zen 5 V8 simd128 | −5% | −6% | −64% | −59% | −9% | −19% | −65% | −75% |
+| M4 native | +156% | +177% | +2% | −21% | +75% | +64% | +22% | −29% |
+| M4 wasmtime simd128 | +4% | −25% | −64% | −70% | −20% | −47% | −51% | −70% |
+| M4 V8 simd128 | −1% | +5% | −70% | −71% | −24% | −29% | −55% | −71% |
 
-In wasm, today's 8 lanes barely beat one sum, and letting the compiler
-reorder is 3–4× faster: the wasm build of the lane loop looks badly
-compiled. The asm on the M4 (natively): with one ordered sum the loop is
-part vector, part scalar (LLVM's ordered reductions, as in the gravity
-work); with `algebraic` it's a clean 27-instruction vector loop.
+Full tables (and 1,000 boids, wasm without simd128): each
+`summary.md`.
+
+What the asm says (`asm/`, not committed):
+
+- **Natively, 8 lanes is the sweet spot**, except AVX-512 (Zen 5
+  native), where 16 lanes fill a 512-bit register (−34% brute force).
+  With 1 lane the sums are scalar; with 4, LLVM vectorizes awkwardly
+  (x86 baseline: 131 instructions per 4 candidates, against 107 per 8).
+  So the x86 baseline's stack spills at 8 lanes (24 a block) are not
+  what holds it back: 4 lanes spill less and are 2.7× slower. At 16,
+  AVX2's 16 registers spill (+16% to +34%).
+- **In wasm with simd128, 8 lanes compiles badly.** The hot loop is
+  half vector, half scalar: 76 lane extracts, inserts and splats, 68
+  scalar f32 ops, 501 instructions a block. 16 lanes is clean (129
+  vector ops, no lane moves, no scalar), and 2–3× faster. Not the masks'
+  form: the select form (as on aarch64) gives the same loop. So LLVM's
+  SLP vectorizer, for wasm, at 8.
+- **`algebraic`** (one sum, reorderable) is fastest or close almost
+  everywhere: what the compiler does when free to choose the order. Its
+  bits depend on the target, so it can't ship as is, but it marks the
+  headroom (the M4 natively: −21% to −29%).
+
+The browser demos run the wasm-simd128 build, so they pay for the bad
+8-lane loop.
