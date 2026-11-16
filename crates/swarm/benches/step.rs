@@ -2,6 +2,12 @@
 //! against the grid as the flock grows, at the page's density (10k boids
 //! in 2560 × 1440; the arena grows with n). Each flock is warmed up 300
 //! steps first, so it's flocking, not uniform. `cargo bench -p swarm`.
+//!
+//! Every case builds what it measures lazily, inside its own closure, the
+//! first time criterion runs it: criterion runs a case's closure only when
+//! the filter matches, so a filtered run (`cargo bench -- 'Brute/10000$'`,
+//! or `cargo xtask profile`) builds and warms only that case. Built up
+//! front, a filtered profile was mostly other cases' set-up.
 // Bench setup unwraps sizes that can't fail; benches aren't test code,
 // so the workspace's unwrap lint applies (docs/lint-policy.md).
 #![expect(clippy::unwrap_used, reason = "bench setup: fixed, valid sizes")]
@@ -35,10 +41,14 @@ fn bench(c: &mut Criterion) {
         ),
     ] {
         for &n in sizes {
-            let mut f = flock(n);
-            f.set_neighbours(how);
+            let mut built: Option<Flock> = None;
             group.throughput(Throughput::Elements(n as u64));
             group.bench_function(BenchmarkId::new(format!("{how:?}"), n), |b| {
+                let f = built.get_or_insert_with(|| {
+                    let mut f = flock(n);
+                    f.set_neighbours(how);
+                    f
+                });
                 b.iter(|| f.step());
             });
         }
@@ -53,17 +63,34 @@ fn bench(c: &mut Criterion) {
 fn models(c: &mut Criterion) {
     let mut group = c.benchmark_group("swarm_models");
     group.sample_size(20);
-    let mut v = Vicsek::new(4_000, 31.6, VicsekParams::paper(2.0), 1).unwrap();
-    // Warmed up: the cost follows the clustering, which takes a while.
-    for _ in 0..500 {
-        v.step();
-    }
-    group.bench_function("vicsek/4000", |b| b.iter(|| v.step()));
-    let mut ants = Colony::new(200, 120, 500, (25.0, 60.0, 6.0), AntParams::DEFAULT, 1).unwrap();
-    ants.paint_food(160.0, 60.0, 8.0, 50);
-    group.bench_function("ants/200x120_500", |b| b.iter(|| ants.step()));
-    let mut slime = Slime::new(512, 100_000, SlimeParams::DEFAULT, 1).unwrap();
-    group.bench_function("physarum/512_100k", |b| b.iter(|| slime.step()));
+    let mut vicsek: Option<Vicsek> = None;
+    group.bench_function("vicsek/4000", |b| {
+        let v = vicsek.get_or_insert_with(|| {
+            let mut v = Vicsek::new(4_000, 31.6, VicsekParams::paper(2.0), 1).unwrap();
+            // Warmed up: the cost follows the clustering, which takes a while.
+            for _ in 0..500 {
+                v.step();
+            }
+            v
+        });
+        b.iter(|| v.step());
+    });
+    let mut colony: Option<Colony> = None;
+    group.bench_function("ants/200x120_500", |b| {
+        let ants = colony.get_or_insert_with(|| {
+            let mut ants =
+                Colony::new(200, 120, 500, (25.0, 60.0, 6.0), AntParams::DEFAULT, 1).unwrap();
+            ants.paint_food(160.0, 60.0, 8.0, 50);
+            ants
+        });
+        b.iter(|| ants.step());
+    });
+    let mut slime: Option<Slime> = None;
+    group.bench_function("physarum/512_100k", |b| {
+        let s =
+            slime.get_or_insert_with(|| Slime::new(512, 100_000, SlimeParams::DEFAULT, 1).unwrap());
+        b.iter(|| s.step());
+    });
     group.finish();
 }
 
