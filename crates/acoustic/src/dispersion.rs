@@ -80,8 +80,11 @@ impl Dispersion {
 /// its phase lag is `2w + 2[arg(1 − p e^{−jw}) + arg(1 − p* e^{−jw})]`,
 /// computed per pole so it never wraps (each factor stays within ±π/2).
 fn biquad_delay(r: f64, th: f64, w: f64) -> f64 {
-    let factor =
-        |angle: f64| libm::atan2(-r * libm::sin(angle - w), 1.0 - r * libm::cos(angle - w));
+    // `sincos`: one range reduction for both (it was 7% of the design).
+    let factor = |angle: f64| {
+        let (s, c) = libm::sincos(angle - w);
+        libm::atan2(-r * s, 1.0 - r * c)
+    };
     (2.0 * w + 2.0 * (factor(th) + factor(-th))) / w
 }
 
@@ -94,7 +97,7 @@ fn biquad_delay(r: f64, th: f64, w: f64) -> f64 {
 /// parameter.
 fn biquad_delay_gradient(r: f64, th: f64, w: f64) -> (f64, f64) {
     let parts = |angle: f64| {
-        let (s, c) = (libm::sin(angle - w), libm::cos(angle - w));
+        let (s, c) = libm::sincos(angle - w);
         let q = 1.0 - 2.0 * r * c + r * r;
         (-s / q, (r * r - r * c) / q)
     };
