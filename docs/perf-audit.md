@@ -201,52 +201,25 @@ What the gaps are made of:
 - **FFT** and **broadphase**: well above their floors, but used by an
   analysis tool and by scenes of at most about 60 balls.
 
-### Ranked
+### Ranked by time to be saved (2026-11-17)
 
-By how far above its floor, weighted by whether a page feels it:
+Longest-running first (the µs-scale kernels wait: ants, broadphase, FFT,
+the piano voices). Measured: the bench records (`docs/bench/`; Zen 5 at
+x86's SSE2 baseline), the boids at 16 lanes from the lane sweep. Floors
+from the counts above. **Saving**: from half the gap to the floor
+(realistic) to all of it (the bound); the floor is a model, so read the
+ranges as an order of magnitude.
 
-1. **Sorted boids' span edges:** the default mode of a page, 4.5–6.6×
-   above the floor, three quarters of it outside the vector loop.
-2. **Vicsek's neighbour loop:** 3.6× above its scalar floor, 14× above
-   a vector one; the boids' method applies.
-3. **Sand's chunk waking:** about a fifth of a busy step, a cheap fix.
-4. **The piano design:** a visible pause, about 2.5× of redundant
-   evaluation plus the refits.
-5. **Physarum and the ants' diffusion:** 5–6× above scalar floors; one
-   stencil serves both.
-6. **Barnes–Hut's walk:** 5×; the biggest change of these.
-7. **Pairwise gravity:** 2.8×, already studied (`gravity-vectorize.md`).
-8. **The piano voices, FFT, broadphase:** far from their floors but not
-   felt (2% of the audio budget; an analysis tool; small scenes).
+| # | Operation | M4: measured / floor | M4 saving | Zen 5: measured / floor | Zen 5 saving | The floor, and what's in the gap |
+|---|---|---|---|---|---|---|
+| 1 | piano design, 88 keys | 175 / ~60 ms | 57–115 ms | 165 / ~60 ms | 52–105 ms | An algorithmic floor (estimated): the Jacobian's redundant evaluations (~2–2.5×), key 69's refits; `std`'s trig in place of `libm`'s not counted |
+| 2 | boids, Grid, 100k | 42 / 3.3 ms | 20–39 ms | 43 / 2.9 ms | 20–40 ms | ~10.7 M candidates at the lane loop's floor; Grid runs all scalar (`Seen::add`) |
+| 3 | boids, Brute force, 10k | 45 / 31 ms | 7–14 ms | 48 / 27 ms | 10–21 ms | 10⁸ candidates, 22 FP ops each; the M4 is near its floor counting the masks (38 ms); Zen 5's AVX-512 build: 13 ms, floor 6.8 |
+| 4 | sand, busy, 1920 × 1080 | 14.6 / ~4.7 ms | 5–10 ms | 15.2 / ~3.7 ms | 6–11 ms | Rough: ~10 cycles a cell; chunk waking alone is ~22% (3 ms) |
+| 5 | boids, Sorted, 100k | 13.3 / 3.3 ms | 5–10 ms | 14.1 / 2.9 ms | 6–11 ms | As 10k: span edges (leftovers, per-span reductions) |
+| 6 | pairwise gravity, `f64` 4096 | 8.4 / 3.1 ms | 3–5 ms | 10.9 / ~3.8 ms* | 4–7 ms* | 1.6 cycles a pair (M4, probed `sqrt`, `div`); *Zen 5: its AVX-512 build's 2.5 cycles, achieved, not a floor (the SSE floor needs a probe) |
+| 7 | Barnes–Hut, `f64` 4096 | 4.0 / 0.8 ms | 2–3 ms | 5.6 / 1.6 ms | 2–4 ms | 590 k interactions, 831 k visits, scalar; Zen 5's scalar `sqrt` and `div` are slow (12 cycles a pair in gravity's base) |
+| 8 | Physarum, 512², 100 k | 2.6 / 0.5 ms | 1–2 ms | 4.1 / 0.4 ms | 2–4 ms | Agents ~15 cycles scalar, the stencil vectorized; on x86 also `floor` |
+| 9 | boids, Sorted, 10k | 1.8 / 0.34 ms | 0.7–1.4 ms | 1.9 / 0.29 ms | 0.8–1.6 ms | Span edges: three quarters of `add_span` |
+| 10 | Vicsek, 4000 | 1.1 / 0.07 ms | 0.5–0.9 ms | 1.2 / 0.06 ms | 0.5–1.1 ms | 409 k candidates at a vector lane loop's floor |
 
-### Findings
-
-| # | § | Severity | Finding | Remediation |
-|---|---|---|---|---|
-| 1 | 6 | High | The shipped target has no recorded baseline: `cargo xtask bench-wasm` prints Node timings but keeps no record, so a wasm regression is judged from memory (the boids render's 2× with `simd128` went unnoticed until measured by hand). | Record `bench-wasm` per machine beside the native record, compared the same way. |
-| 2 | 5 | Medium | The boids lane loop has no test at awkward span lengths (0, 1, `LANES` ± 1, …): only end to end, where spans are whatever the flock gives. | A property test: `add_span` against `Seen::add` over generated spans, to rounding. |
-| 3 | 5, 6 | Medium | The aarch64 path (`unit`'s select) is built and tested only on the Mac: CI is x86, and the compute node's mutation runs can't see it (2026-11-17: its 3 mutants "missed"). | An aarch64 CI job (GitHub's arm64 runners), or at least the M4 in the release checklist. |
-| 4 | 3 | Medium | The two settings files repeat their parsing (`number`, `same`, `panic_at_build`), and tuning values live in each crate's code (`CHUNK` in sand, the grids' cell sizes) without one place that lists them and how each was chosen. | One shared const parser; a table of tuning values (here or in each crate's doc) with their source. |
-| 5 | 4 | Medium | Most hot loops' asm has never been read (the table's "no"s). | Phase 1 decides which deserve it: the ones with a large share and a gap to their floor. |
-| 6 | 7 | Low | No per-kernel record of its level and why. | The kernel table's Level column, kept current. |
-
-## Plan
-
-1. **Measure (no code changes).** Profile every bench group natively
-   and in V8 (`experiments/perf-audit/profile.py`; both machines,
-   2026-11-17); fill the kernel table's shares; floors for the top
-   three (done, above).
-   For the top kernels, a back-of-envelope floor (operations ÷ the
-   machine's throughput, as for the boids) and the measured fraction of
-   it. Output: the kernels ranked by share × gap to floor.
-2. **Protect the shipped target (finding 1).** `bench-wasm` records,
-   per machine, compared like the native record. Before any
-   optimization, so its wins and losses in wasm are measured.
-3. **Oracles where kernels lack them (findings 2, 3).** The lane loop's
-   property test; the aarch64 job or checklist line.
-4. **Optimize, top of the ranking first.** Per kernel: read the asm on
-   each target, try the change behind a build setting if it changes
-   bits, sweep on both machines and in wasm, record the result
-   (adopted or not) as the gravity and swarm work did.
-5. **Tidy the tuning values (finding 4)** as each kernel is touched,
-   not as a separate rewrite.
