@@ -309,7 +309,7 @@ the one worth a look.
 **The lane loop's masks (2026-11-16).** Read on the M4 (`Seen::add_span`,
 annotated: every float instruction in the lane loop is vector; the
 scalar ones are the up-to-7 leftovers after the last block of 8, which
-Brute never has). Each 0/1 mask was written `f32::from(u8::from(cond))`,
+Brute never has; 16 lanes since, below). Each 0/1 mask was written `f32::from(u8::from(cond))`,
 which LLVM's AArch64 code turned into five instructions (compare, narrow,
 mask, widen, convert). As `if cond { 1.0 } else { 0.0 }` the block of 8
 is 12 instructions shorter: Brute 14–16% faster natively (52.1 → 43.6 ms
@@ -327,6 +327,20 @@ registers) the loop is 107 instructions a block, 42 of them register
 copies (`movaps`), for 14 accumulators; with AVX2, 34. And AVX-512 goes
 unused: 8 `f32` lanes fill a 256-bit register. Both are leads for a lane
 sweep like gravity's.
+
+**The lane sweep: 16 lanes (2026-11-16).** `SWARM_LANES` and
+`SWARM_SUM` (`rules/knobs.rs`) made the lane count a build setting, and
+`experiments/swarm-lanes/` swept 1–16 lanes and a reorderable single sum
+on Zen 5 and the M4, natively and in wasm (its README has the tables
+and the asm). Natively, 8 lanes was best except with AVX-512 (16: −34%
+brute force); fewer lanes were 1.5–6× slower, so the baseline's spills
+weren't what held it back. But in wasm with `simd128`, LLVM compiled the
+8-lane loop half scalar (76 lane extracts and inserts a block), while 16
+lanes came out clean: brute force and sorted 2–3× faster in wasmtime and
+V8. The lane count sets the order of the sums, and every target must
+give the same bits, so it's one count for all: 16, for the browsers.
+Natively sorted pays 20–34% (Zen 5 AVX2 and native, M4), brute force
+about even. New golden hashes (brute force, sorted).
 
 The bench builds each case lazily, in its own closure, so a filtered run
 or profile builds only what it measures (it had warmed every flock with

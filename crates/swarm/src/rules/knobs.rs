@@ -2,7 +2,7 @@
 //! compile time from the environment (cargo rebuilds when they change):
 //!
 //! - `SWARM_LANES`: how many partial sums each running sum is split into
-//!   (a power of two, 1 to 64; default 8). 1 is one running sum, the
+//!   (a power of two, 1 to 64; default 16). 1 is one running sum, the
 //!   loop as written without lanes.
 //! - `SWARM_SUM`: `ordered` (default) or `algebraic`. Algebraic adds with
 //!   `f32::algebraic_add`, which lets the compiler reorder them (and so
@@ -27,7 +27,7 @@ pub(crate) enum Sum {
     Algebraic,
 }
 
-const DEFAULT_LANES: usize = 8;
+const DEFAULT_LANES: usize = 16;
 
 /// `SWARM_LANES` as a number; a bad value fails the build.
 pub(crate) const fn lanes(setting: Option<&str>) -> usize {
