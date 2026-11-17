@@ -19,7 +19,7 @@ Each is a setting of the knobs:
 
 | Experiment | `GRAVITY_LOOP` | `GRAVITY_LANES` | `GRAVITY_PLAIN_BELOW` |
 |---|---|---|---|
-| `default` | (default: `two-pass`) | (default: 16) | (default: 64) |
+| `default` | the target's (`tuning.rs`) | the target's | the target's (64) |
 | `plain` | — | — | 1000000: the plain loop at every size |
 | `two-pass-l1` … `two-pass-l16` | `two-pass` | 1, 2, 4, 8, 16 | 1: the loop at every size |
 | `blocked-l1` … `blocked-l16` | `blocked` | 1, 2, 4, 8, 16 | 1 |

@@ -2,12 +2,16 @@
 //! computes every later pair's force (body j's share applied, the force
 //! kept in scratch arrays) with nothing summed across pairs, so the
 //! compiler vectorizes it at whatever width the target has; pass 2 sums
-//! the kept forces into `LANES` lanes.
+//! the kept forces into `L` lanes.
 
-use super::{Bodies, LANES, PairwiseGravity, lane_total};
+use super::{Bodies, PairwiseGravity, lane_total};
 use crate::{Scalar, Vec2};
 
-pub(super) fn accumulate<S: Scalar>(g: &PairwiseGravity<S>, b: &Bodies<S>, acc: &mut [Vec2<S>]) {
+pub(super) fn accumulate<S: Scalar, const L: usize>(
+    g: &PairwiseGravity<S>,
+    b: &Bodies<S>,
+    acc: &mut [Vec2<S>],
+) {
     let n = b.x.len();
     // Each pair's force on body i, x and y, for pass 2.
     let (mut fx, mut fy) = (vec![S::ZERO; n], vec![S::ZERO; n]);
@@ -40,8 +44,8 @@ pub(super) fn accumulate<S: Scalar>(g: &PairwiseGravity<S>, b: &Bodies<S>, acc: 
         );
         let len = acc_tail.len();
         let (sum_x, sum_y) = (
-            lane_sum(fx.get(..len).unwrap_or_default()),
-            lane_sum(fy.get(..len).unwrap_or_default()),
+            lane_sum::<S, L>(fx.get(..len).unwrap_or_default()),
+            lane_sum::<S, L>(fy.get(..len).unwrap_or_default()),
         );
         *a_i += Vec2::new(sum_x, sum_y) * w_i;
         acc_rest = acc_tail;
@@ -78,11 +82,11 @@ fn pass_one<S: Scalar>(
     }
 }
 
-/// `values` summed in `LANES` partial sums (value k in lane k mod LANES),
+/// `values` summed in `L` partial sums (value k in lane k mod L),
 /// then the lanes as a tree ([`lane_total`]).
-fn lane_sum<S: Scalar>(values: &[S]) -> S {
-    let mut lanes = [S::ZERO; LANES];
-    let (chunks, rest) = values.as_chunks::<LANES>();
+fn lane_sum<S: Scalar, const L: usize>(values: &[S]) -> S {
+    let mut lanes = [S::ZERO; L];
+    let (chunks, rest) = values.as_chunks::<L>();
     for chunk in chunks {
         for (lane, &v) in lanes.iter_mut().zip(chunk) {
             *lane += v;

@@ -281,6 +281,19 @@ ranges as an order of magnitude.
   polynomial `sincos` and `atan` over the ~25 target frequencies at once)
   would be the next step, and a bigger one.
 
+- **Pairwise gravity's kernels per target (2026-11-17):** the guide's
+  §1–3 done for the one kernel with per-target choices.
+  `force/pairwise/tuning.rs` holds each target's kernel per scalar (loop
+  and lane count) and the plain-loop threshold, the only target `cfg`
+  in the crate; the build settings override it for experiments; the
+  loops are generic over their lane count. From the sweeps on `main`:
+  `f32` two-pass at 16 lanes everywhere; `f64` blocked at 4 lanes in
+  wasm, at 1 on aarch64, at 8 at x86's SSE2 baseline, two-pass at 16
+  with AVX2 and up. Measured: `f64` at 4,096 bodies **−17% in V8**
+  (8.56 → 7.12 ms; −29% at 128), −6% natively on the M4 (−14% at 128);
+  `f32` unchanged. The two loops are tested bit for bit against each
+  other at 1, 4, 8 and 16 lanes, and against the plain loop to rounding.
+
 ### Findings
 
 | # | § | Severity | Finding | Remediation |
