@@ -289,8 +289,9 @@ tolerances, and native and wasm needn't agree to the bit. In order:
    five paths, `sincos`, cached normal equations, the elimination
    vectorized, shared `sin`/`cos`; algebraic adds tried, no gain).
    Still:
-   - `std`'s trig on Zen 5 (no gain on the M4; wasm compiles both to
-     the same port): a bench on `llm`;
+   - ~~`std` in place of `libm`~~: measured, kept `libm` (fused
+     `sincos` and inlining: the design 20% slower in V8 with `std`,
+     Vicsek 13% natively; `docs/perf-audit.md`);
    - maybe vectorized trig (a polynomial `sincos`, `atan` across the
      target frequencies): the trig is half of what's left;
    - 11 keys miss the design tests' 1-cent tolerance (key 107: 10.9

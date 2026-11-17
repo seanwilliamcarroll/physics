@@ -261,9 +261,18 @@ ranges as an order of magnitude.
     cached, run too rarely (−0.5%); the elimination update, once
     vectorized, gains nothing from fused multiply–adds (+0.04%). Not
     kept.
-  - **`std`'s trig instead of `libm`'s:** no change on the M4 (+0.2%);
-    wasm compiles both to the same port. Zen 5 to check (glibc's `atan`
-    may be faster: `atan` was 61% of the design there).
+  - **`std`'s math instead of `libm`** (every call in the crates
+    switched, measured, not kept): `libm` earns its place. `std` has no
+    fused `sincos` (its `sin_cos` is a `sin` and a `cos`, two range
+    reductions), so the piano design was **20% slower in V8** (40.4 →
+    48.6 ms) and 5% faster natively on the M4; and `libm` is Rust that
+    LTO inlines into hot loops, where `std` calls the platform's
+    library: Vicsek was **13% slower natively** with `std` (1.22 → 1.38
+    ms), unchanged in V8. The rest moved a few per cent either way
+    (ants, Physarum −2 to −4%; piano voices −7% native, +2% V8). Each
+    `std` function on wasm is the same port as `libm`'s; the difference
+    is `sincos` and inlining. Zen 5 natively not measured: x86 native
+    isn't shipped.
 
   Every key's worst partial within 0.00001 cent of before, the same
   biquad counts and iterations. M4 51 → 30 ms; V8 69 → 40 ms; wasmtime
