@@ -72,8 +72,13 @@ fn order_falls_with_noise() {
 /// crosses 0.5 at η = 3.69, 3.53, 3.28 (N = 40, 100, 400). Bounds: each
 /// size below the last by 0.03 in `v_a` and 0.05 in η, every crossing in
 /// 3.0–4.0.
+///
+/// In the slow tier: about 6 s in a test build, but 58 s under the
+/// nightly's coverage build, half its two-minute limit, and on a slow
+/// runner (2026-11-17: the whole suite at 2.1×) it timed out.
 #[test]
-fn the_transition_sharpens_and_moves_down_with_size() {
+#[ignore = "slow: cargo xtask slow"]
+fn slow_the_transition_sharpens_and_moves_down_with_size() {
     let past: Vec<f64> = SIZES.iter().map(|&(n, l)| order(n, l, 4.5)).collect();
     let cross: Vec<f64> = SIZES.iter().map(|&(n, l)| crossing(n, l)).collect();
     for w in past.windows(2) {
