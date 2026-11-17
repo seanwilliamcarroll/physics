@@ -27,9 +27,10 @@ for ((x4, y4), o4) in xs.iter().zip(ys).zip(out.iter_mut()) {
 
 The SLP vectorizer packs each block into two 2-wide vectors, which is
 the shape that's fast. On AArch64, the **loop vectorizer** then goes
-further: it vectorizes the *outer* loop across blocks (two blocks an
-iteration, de-interleaved with `ld4.2d`/`zip`), so each vector holds
-one lane of two consecutive blocks. The sums must stay in order (block
+further: it vectorizes the *outer* loop across blocks (vectorization
+factor 2, interleaved twice: four blocks an iteration, each pair
+de-interleaved with `ld4.2d`/`zip`), so each vector holds one lane of
+two consecutive blocks. The sums must stay in order (block
 *b*'s value before *b+1*'s: floating-point addition isn't associative,
 and Rust doesn't allow reordering it), so it adds them one element at a
 time: an **ordered reduction**, a serial chain of scalar `fadd`s with
@@ -73,7 +74,8 @@ speed with the option off.
 
 ## The loops side by side (`repro.rs`, `sweep`)
 
-**LLVM, default (ordered reductions).** 185 lines for two blocks, the
+**LLVM, default (ordered reductions).** 185 lines for four blocks (two
+pairs; first written here as two blocks, corrected 2026-11-17), the
 main loop. Excerpts: it starts by spilling and de-interleaving two
 blocks,
 
@@ -224,7 +226,8 @@ settings.
 > A loop over blocks of four `f64`, with four running sums (one per
 > lane) across blocks, is SLP-vectorized into two `<2 x double>` per
 > block. On AArch64 the loop vectorizer then also vectorizes the outer
-> loop (VF 2, interleaving two blocks with `ld4`/`zip`) using ordered
+> loop (VF 2, interleave count 2: four blocks an iteration, each pair
+> de-interleaved with `ld4`/`zip`) using ordered
 > (strict) reductions: each sum becomes a chain of scalar `fadd` and lane
 > moves, with heavy spilling. With `-force-ordered-reductions=false` the
 > outer loop isn't vectorized and the result is faster: 3.0 → 2.5 µs for
@@ -238,3 +241,28 @@ settings.
 > reproducer) outweighs the gain from the wider loop.
 >
 > Reproducer: `repro.rs` (attached), asm for both settings (attached).
+
+## All five compilations, side by side (2026-11-17)
+
+LLVM native (as built, and with ordered reductions off), the wasm, and
+the code Cranelift and V8 (`node --print-wasm-code --no-liftoff`) make
+from it, per block of four:
+
+| | blocks an iteration | instructions a block | scalar `fadd` a block | a call | cycles a block (4.4 GHz) |
+|---|---|---|---|---|---|
+| LLVM, as built | 4 | 46 | 8 | 2.91 µs | ≈12.5 |
+| LLVM, ordered reductions off | 1 | 31 | 0 | 2.44 µs | ≈10.5 |
+| Cranelift (wasmtime 50) | 1 | 38 | 0 | 2.00 µs | ≈8.6 |
+| TurboFan (Node 24; unrolled ×3) | 3 | 40 | 0 | 2.21 µs | ≈9.5 |
+
+Every path has the same arithmetic a block: two 2-wide `fsqrt` and two
+`fdiv`. Cranelift's loop is LLVM's fast one nearly instruction for
+instruction, in another order (each half finished and stored before
+the sums; LLVM interleaves the halves and stores once with `stp`). The
+20% between them is still unexplained. Ruled out: llvm-mca's M4 model
+(predicts LLVM's faster, 9.1 against 9.8 cycles), `-C
+target-cpu=apple-m4` (no change), loop alignment 16/32/64 (no change).
+Next to try: LLVM's loop reordered by hand to Cranelift's order (the
+divider is the likely bottleneck, so the order the `fsqrt`/`fdiv`
+reach it may matter).
+
