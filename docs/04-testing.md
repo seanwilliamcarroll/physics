@@ -914,6 +914,22 @@ still passed.
   - **Everything else** is the equivalent classes above, crate by crate:
     `xtask`'s remaining misses wrap commands (`cargo`, `git`, `gh`,
     Chrome) that the hooks and real runs exercise.
+- **The sixth full run (2026-11-17, at 260ef90, on the compute node):**
+  371 of 7,439 missed (33 timeouts, 812 unviable). 304 of the misses
+  and all 33 timeouts are the fifth run's; the 67 new ones are in code
+  written since, gone through one by one:
+  - **Real gaps, now tested:** the swarm build settings' parsing
+    (`rules/knobs.rs`: no tests at all, 27); gravity's switch from the
+    plain loop at exactly `PLAIN_BELOW` bodies (`<` for `<=` survived:
+    nothing ran 64); `number`'s bound in both settings files (its
+    in-loop guard was equivalent to the final one, so it's now checked
+    arithmetic and one bound); the coverage badge's colours at each
+    threshold, a fall or a rise on functions alone; a first tree batch
+    with an oversized entry; a record's `bytes` throughput and its
+    dropped changes. Re-run on those functions: every mutant caught.
+  - **Artifacts:** the aarch64 `unit` (3): the compute node is x86, so
+    it never built it; and `xtask`'s commands around `gh`, `cargo` and
+    node, plus the tree batches' byte limit (a constant).
 
 ## Phase 1 test-first order
 

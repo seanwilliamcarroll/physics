@@ -43,6 +43,13 @@ fn entries_are_batched_in_order_under_the_limit() {
         ]
     );
     assert_eq!(batches(&[], 10, 6).len(), 0);
+    // An oversized first entry starts the first batch, not an empty one.
+    let first: Vec<String> = ["eeeeeeeeee", "f"]
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect();
+    let sizes: Vec<usize> = batches(&first, 10, 6).iter().map(|b| b.len()).collect();
+    assert_eq!(sizes, [1, 1]);
     // And at most `files` entries a batch, whatever their size.
     let many: Vec<String> = (0..7).map(|k| k.to_string()).collect();
     let sizes: Vec<usize> = batches(&many, 3, 1000).iter().map(|b| b.len()).collect();
