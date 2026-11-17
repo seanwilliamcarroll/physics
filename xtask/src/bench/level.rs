@@ -1,7 +1,8 @@
 //! The builds `cargo xtask bench` can measure (`--level`), each with its
 //! own record (`docs/bench/<machine>[-<level>].tsv`): the target's
 //! baseline (no flags: x86's SSE2, aarch64's NEON), x86-64-v3 (AVX2) and
-//! `native` (this CPU: AVX-512 where it has it), and `v8` (the benches
+//! `native` (this CPU: AVX-512 on x86 where it has it; on aarch64 its own
+//! scheduling model and extensions), and `v8` (the benches
 //! built for wasm32-wasip1 with `simd128`, run in Node: the build that
 //! ships). Each runs the matching row of the kernels' tuning tables
 //! (`force/pairwise/tuning.rs`, `rules/tuning.rs`), so each has its own
@@ -82,17 +83,17 @@ impl Level {
 
 /// This machine's CPU, as far as the levels care.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(
-    not(target_arch = "x86_64"),
-    allow(
-        dead_code,
-        reason = "the x86 variants are detected only on x86 hosts (the tests use them everywhere)"
-    )
+#[allow(
+    dead_code,
+    reason = "each host detects only its own variants (the tests use them all)"
 )]
 pub(crate) enum Cpu {
-    /// Not x86 (aarch64: the baseline already is the vector unit).
+    /// Neither x86 nor aarch64.
     #[default]
     Other,
+    /// aarch64: `native` adds the CPU's scheduling model and extensions
+    /// (on an M4: `bf16`, `i8mm`, `bti`) to the baseline's NEON.
+    Aarch64,
     X86,
     X86Avx2,
     X86Avx512,
@@ -107,14 +108,14 @@ pub(crate) struct Host {
 
 /// The levels this machine can run, in order: the baseline always;
 /// x86-64-v3 with AVX2; `native` with AVX-512 (without it, on x86 it would
-/// be v3 again; on aarch64 the baseline already is the M-series' vector
-/// unit); `v8` where Node is.
+/// be v3 again) and on aarch64 (the same vector width as the baseline, but
+/// the CPU's own scheduling: measured, not assumed); `v8` where Node is.
 pub(crate) fn available(host: Host) -> Vec<Level> {
     let mut out = vec![Level::Baseline];
     if matches!(host.cpu, Cpu::X86Avx2 | Cpu::X86Avx512) {
         out.push(Level::X86V3);
     }
-    if host.cpu == Cpu::X86Avx512 {
+    if matches!(host.cpu, Cpu::X86Avx512 | Cpu::Aarch64) {
         out.push(Level::Native);
     }
     if host.node {
@@ -138,7 +139,9 @@ pub(crate) fn host(root: &Path) -> Host {
     } else {
         Cpu::X86
     };
-    #[cfg(not(target_arch = "x86_64"))]
+    #[cfg(target_arch = "aarch64")]
+    let cpu = Cpu::Aarch64;
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     let cpu = Cpu::Other;
     Host { cpu, node }
 }

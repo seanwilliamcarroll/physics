@@ -42,10 +42,15 @@ fn each_level_builds_with_its_flags_in_its_own_directory() {
 #[test]
 fn a_machine_runs_the_levels_it_has() {
     let m4 = Host {
+        cpu: Cpu::Aarch64,
         node: true,
-        ..Host::default()
     };
-    assert_eq!(available(m4), [Level::Baseline, Level::V8]);
+    assert_eq!(available(m4), [Level::Baseline, Level::Native, Level::V8]);
+    let other = Host {
+        cpu: Cpu::Other,
+        node: false,
+    };
+    assert_eq!(available(other), [Level::Baseline]);
     let zen5 = Host {
         cpu: Cpu::X86Avx512,
         node: true,
