@@ -1,0 +1,3 @@
+# Profiles stay on the machine that made them; summary.md is committed.
+results/*/native/
+results/*/v8/
