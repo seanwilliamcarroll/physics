@@ -56,7 +56,7 @@ regressions.
 |---|---|---|
 | `baseline` | the target's default (no `target-cpu`): x86's SSE2, aarch64's NEON | every machine |
 | `x86-64-v3` | `-C target-cpu=x86-64-v3` (AVX2) | x86 with AVX2 |
-| `native` | `-C target-cpu=native` | x86 with AVX-512 (without it, it would be v3 again; on aarch64 the baseline already is the vector unit) |
+| `native` | `-C target-cpu=native` | x86 with AVX-512 (without it, it would be v3 again), and aarch64 (the same 128-bit NEON as the baseline, but the CPU's scheduling model and extensions: an M4 adds `bf16`, `i8mm`, `bti`) |
 | `v8` | wasm32-wasip1 with `simd128` (`.cargo/config.toml`), each bench run in Node through `experiments/sweep/wasi-node.mjs`: **the build that ships** | where Node is (the repo's, `.nvmrc`) |
 
 Each level builds in its own directory (`target/bench-<level>/`; the
@@ -65,7 +65,7 @@ sharing would rebuild everything at each switch. `RUSTFLAGS` from the
 environment is ignored: a record says what it was built with. `v8`
 compares with its record or its previous run (no `--save`/`--baseline`).
 So on `llm`, `bench-all` is baseline, x86-64-v3, native and v8; on the
-M4, baseline and v8.
+M4, baseline, native and v8.
 
 ## Records
 
