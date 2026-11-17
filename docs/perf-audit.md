@@ -159,14 +159,65 @@ chosen. Its floor is the algorithm's, not the machine's:
 Together, 175 ms → perhaps 60. One-off, but it's a pause in the page when
 the model changes (in wasm, more).
 
+### Floors for the rest (2026-11-17)
+
+Counted the same way (temporary counters, the benches' own cases);
+times from the bench records (`docs/bench/`; Zen 5's at x86's SSE2
+baseline). "Scalar floor": the operations over four pipes, one value
+each; "vector floor": four values each.
+
+| Kernel | Work a step | Measured (M4) | Cycles each (M4 / Zen 5) | Floor | Above it |
+|---|---|---|---|---|---|
+| pairwise gravity, `f64`/4096 | 8.39 M pairs | 8.43 ms | 4.4 / 7.2 a pair | 1.6 a pair (M4: vector `sqrt` 1.0, `div` 0.63, probed) | 2.8× |
+| pairwise gravity, `f32`/4096 | 8.39 M pairs | 4.29 ms | 2.2 / 3.1 | ~0.8 (`sqrt` 0.5, `div` 0.33) | 2.7× |
+| Barnes–Hut, `f64`/4096, θ 0.5 | 831 k node visits, 590 k interactions (144 a body against pairwise's 4,095) | 3.97 ms | 21 / 37 a visit | ~3 an interaction, ~2 a visit, scalar: 0.8 ms | 5× |
+| broadphase, 4,096 circles | 4,096 keys, 11,585 pairs, two comparison sorts | 322 µs | 346 / 530 a circle | a radix sort and the pairs, ~50 a circle: 45 µs | 7× |
+| Vicsek, N = 4,000 | 409 k candidates, 37% within range | 1.0 ms (`step` 92%) | 11 / 15 a candidate | 12 operations: scalar 3, vector 0.75 | 3.6× / 14× |
+| ants, 200 × 120 | 2 diffusions, 40 k cells | 161 µs (diffusion 85%) | 18 / 24 a cell | ~12 operations: scalar 3, vector 0.75 | 6× / 23× |
+| Physarum, 512², 100 k agents | 100 k agents (3 sensor reads each), 262 k cells diffused and decayed | 2.60 ms | 114 / 229 an agent, all in | diffusion ~0.7 a cell vector, agents ~15 scalar: ~0.5 ms | 5× |
+| sand, busy, 1920 × 1080 | 2.07 M cells (70% empty), 621 k moves | 14.6 ms | 31 / 41 a cell | an empty cell a load and a test | see below |
+| FFT, `f32`/16384 | 5 N log₂ N = 1.15 M flops | 97.8 µs | 2.7 / 1.5 flops a cycle | 16 a cycle (four 4-wide pipes) | 6× / 11× |
+
+What the gaps are made of:
+
+- **Vicsek** is the boids' neighbour loop again, scalar and branchy (37%
+  of comparisons pass, unpredictably): the lane loop's method (masks,
+  partial sums) applies directly, with the sorted spans' lesson.
+- **Ants' diffusion** scatters each cell's share to eight neighbours,
+  with an edge test per cell. Written as a gather (each cell sums its
+  neighbours' shares: a 3 × 3 stencil), the interior vectorizes.
+- **Physarum's** agents branch on random field comparisons (the turn,
+  40% of the profile's lines); its diffusion is the same stencil as the
+  ants'. On x86 at the baseline, `floor` is a library call (17%).
+- **Sand:** 31 cycles a cell on average, though 70% are empty. The
+  profile's second-hottest lines (`grid.rs:76`–`79`, about 22%) wake the
+  3 × 3 chunks around every move: 621 k moves × 9 chunk writes. Waking
+  once per chunk per step (or per row) would remove most of it, before
+  any look at the rules themselves.
+- **Barnes–Hut** does 14× fewer interactions than pairwise at 4,096 but
+  is only 2.1× faster: each costs 6–7× a vector pair (a scalar walk,
+  unpredictable accept/open branches). Walking several bodies at once
+  is the usual remedy; a bigger change.
+- **FFT** and **broadphase**: well above their floors, but used by an
+  analysis tool and by scenes of at most about 60 balls.
+
 ### Ranked
+
+By how far above its floor, weighted by whether a page feels it:
 
 1. **Sorted boids' span edges:** the default mode of a page, 4.5–6.6×
    above the floor, three quarters of it outside the vector loop.
-2. **The piano design:** a visible pause, about 2.5× of redundant
+2. **Vicsek's neighbour loop:** 3.6× above its scalar floor, 14× above
+   a vector one; the boids' method applies.
+3. **Sand's chunk waking:** about a fifth of a busy step, a cheap fix.
+4. **The piano design:** a visible pause, about 2.5× of redundant
    evaluation plus the refits.
-3. **The piano voices:** 2.8× above the scalar floor, but 2% of the
-   audio budget.
+5. **Physarum and the ants' diffusion:** 5–6× above scalar floors; one
+   stencil serves both.
+6. **Barnes–Hut's walk:** 5×; the biggest change of these.
+7. **Pairwise gravity:** 2.8×, already studied (`gravity-vectorize.md`).
+8. **The piano voices, FFT, broadphase:** far from their floors but not
+   felt (2% of the audio budget; an analysis tool; small scenes).
 
 ### Findings
 
