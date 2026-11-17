@@ -284,15 +284,15 @@ profiles on both machines and in V8, floors, and a ranking by time to be
 saved. Golden hashes are gone (#301): results are tested against
 tolerances, and native and wasm needn't agree to the bit. In order:
 
-1. **Piano design** (#303: the Jacobian in closed form, −60%). Still:
-   - the refits (33 keys fit 2–4 times; in progress);
-   - **the asm** of the fit's hot code (`biquad_delay`, the gradient,
-     the solve) on each platform: M4 and Zen 5 natively, and the wasm
-     through Cranelift and V8 (`docs/perf-audit.md`'s method);
-   - **algebraic adds** (`f64::algebraic_add` and friends) where a
-     reduction or a multiply–add chain is the bottleneck, measured;
-   - `std`'s trig in place of `libm`'s (native only: wasm compiles both
-     to the same port);
+1. **Piano design:** 231 → 40 ms in V8 (#303 the Jacobian in closed
+   form; #304 convergence, short refits; this PR: the asm read on all
+   five paths, `sincos`, cached normal equations, the elimination
+   vectorized, shared `sin`/`cos`; algebraic adds tried, no gain).
+   Still:
+   - `std`'s trig on Zen 5 (no gain on the M4; wasm compiles both to
+     the same port): a bench on `llm`;
+   - maybe vectorized trig (a polynomial `sincos`, `atan` across the
+     target frequencies): the trig is half of what's left;
    - 11 keys miss the design tests' 1-cent tolerance (key 107: 10.9
      cents), found by the probe in #303: look into it, and test all 88.
 2. **Per-architecture kernels, starting with pairwise gravity:** none
