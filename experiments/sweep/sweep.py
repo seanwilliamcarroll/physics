@@ -19,6 +19,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -429,6 +430,8 @@ def main(suite, doc=None):
     presets = f"; or a preset: {', '.join(suite.presets)}" if suite.presets else ""
     p.add_argument("--experiments", default=",".join(suite.experiments),
                    help="comma-separated: " + ", ".join(suite.experiments) + presets)
+    p.add_argument("--reference", default=suite.reference,
+                   help="the experiment tables compare against (default %(default)s)")
     p.add_argument("--filter", default=suite.filter, help="criterion's bench filter (regex)")
     p.add_argument("--quick", action="store_true", help="short criterion runs (a smoke test)")
     p.add_argument("--perf", action="store_true",
@@ -445,6 +448,10 @@ def main(suite, doc=None):
     p.add_argument("--out", type=Path, default=suite.results / host,
                    help="where results go (replaced); default results/<host>")
     args = p.parse_args()
+    if args.reference != suite.reference:
+        if args.reference not in suite.experiments:
+            sys.exit(f"unknown reference {args.reference}")
+        suite = dataclasses.replace(suite, reference=args.reference)
     if args.from_log:
         return from_log(suite, args.from_log, args.out.resolve())
     levels = args.levels.split(",")

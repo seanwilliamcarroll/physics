@@ -25,6 +25,8 @@ Settings of the lane loop's knobs (`crates/swarm/src/rules/knobs.rs`):
 | `lanes-8` | 8 | `ordered` | the code before the sweep: the reference the tables compare against |
 | `lanes-16` | 16 | `ordered` | wider: does AVX-512 get used? (the default since the sweep) |
 | `algebraic` | 1 | `algebraic` | one sum the compiler may reorder (`f32::algebraic_add`): free to vectorize as it likes |
+| `grouped` | 16 | `ordered`, `SWARM_LOOP=grouped` | one pass per register's worth of lanes: no spills, the same bits as `lanes-16` |
+| `grouped-4` | 16 | as `grouped`, `SWARM_GROUP=4` | 4-lane passes even where registers are wider |
 
 All but `lanes-8` change the order of the sums, so the results' last
 bits; the golden hashes through the lane loop skip when a knob is set.
@@ -41,7 +43,12 @@ it).
 experiments/swarm-lanes/run.py --experiments sweep
 ```
 
-6 experiments × up to 7 levels: about an hour.
+6 experiments × up to 7 levels: about an hour. The grouped loop
+against today's 16 lanes (3 experiments, about half an hour):
+
+```sh
+experiments/swarm-lanes/run.py --experiments loops --reference lanes-16
+```
 
 ## Results (2026-11-16)
 

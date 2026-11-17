@@ -76,12 +76,10 @@ impl Seen {
         }
     }
 
-    /// Candidates given as the same span of four arrays, without
-    /// branches: each candidate's terms times 0 or 1, in [`LANES`]
-    /// independent partial sums (so the loop can run as vector
-    /// instructions; float addition isn't associative, so the compiler
-    /// won't reorder one running sum into lanes by itself). The sums
-    /// round differently from [`Self::add`]'s, as any order does.
+    /// Candidates given as the same span of four arrays: whole blocks of
+    /// [`LANES`] through the lane loop (`rules/lanes.rs`: without
+    /// branches, into `LANES` partial sums), the rest one at a time. The
+    /// sums round differently from [`Self::add`]'s, as any order does.
     pub(crate) fn add_span(
         &mut self,
         r: Ranges,
@@ -91,17 +89,13 @@ impl Seen {
         vx: &[f32],
         vy: &[f32],
     ) {
-        let mut lanes = Lanes::default();
         let ((cx, rx), (cy, ry), (cvx, rvx), (cvy, rvy)) = (
             x.as_chunks::<LANES>(),
             y.as_chunks::<LANES>(),
             vx.as_chunks::<LANES>(),
             vy.as_chunks::<LANES>(),
         );
-        for (((a, b), c), d) in cx.iter().zip(cy).zip(cvx).zip(cvy) {
-            lanes.add(r, me, a, b, c, d);
-        }
-        lanes.into(self);
+        lanes::add_blocks(self, r, me, cx, cy, cvx, cvy);
         for (((&x, &y), &vx), &vy) in rx.iter().zip(ry).zip(rvx).zip(rvy) {
             self.add(r, me, Boid { x, y, vx, vy });
         }
@@ -109,98 +103,9 @@ impl Seen {
 }
 
 mod knobs;
+mod lanes;
 
 pub(crate) use knobs::LANES;
-use knobs::{SUM, Sum};
-
-/// `a += x`, in the lane loop: as written, or reassociable when the build
-/// says so (`SWARM_SUM`, `knobs.rs`).
-fn accumulate(a: &mut f32, x: f32) {
-    *a = match SUM {
-        Sum::Ordered => *a + x,
-        Sum::Algebraic => a.algebraic_add(x),
-    };
-}
-
-/// 1.0 if `cond`, else 0.0: the lane loop's masks. The same values, so the
-/// same bits, everywhere; written per architecture for the code each gets
-/// (`docs/15-swarm.md`, "The lane loop's masks"). On `aarch64` as a select:
-/// through an integer it compiled to five instructions a mask (compare,
-/// narrow, mask, widen, convert), the select to a compare and an AND with
-/// 1.0's bits (Brute 14–16% faster on an M4). Elsewhere through an integer:
-/// x86 compiles that well already, and the select made its loop longer
-/// (Brute 2.6% slower on Zen 5); wasm gets the same code either way.
-#[cfg(target_arch = "aarch64")]
-fn unit(cond: bool) -> f32 {
-    if cond { 1.0 } else { 0.0 }
-}
-
-/// 1.0 if `cond`, else 0.0 (see the `aarch64` version).
-#[cfg(not(target_arch = "aarch64"))]
-fn unit(cond: bool) -> f32 {
-    f32::from(u8::from(cond))
-}
-
-#[derive(Default)]
-struct Lanes {
-    sum_x: [f32; LANES],
-    sum_y: [f32; LANES],
-    sum_vx: [f32; LANES],
-    sum_vy: [f32; LANES],
-    count: [f32; LANES],
-    close_dx: [f32; LANES],
-    close_dy: [f32; LANES],
-}
-
-impl Lanes {
-    fn add(
-        &mut self,
-        r: Ranges,
-        me: Boid,
-        x: &[f32; LANES],
-        y: &[f32; LANES],
-        vx: &[f32; LANES],
-        vy: &[f32; LANES],
-    ) {
-        let sums = self
-            .sum_x
-            .iter_mut()
-            .zip(&mut self.sum_y)
-            .zip(&mut self.sum_vx)
-            .zip(&mut self.sum_vy)
-            .zip(&mut self.count)
-            .zip(&mut self.close_dx)
-            .zip(&mut self.close_dy);
-        let others = x.iter().zip(y).zip(vx).zip(vy);
-        for (((((((sx, sy), svx), svy), n), cdx), cdy), (((&ox, &oy), &ovx), &ovy)) in
-            sums.zip(others)
-        {
-            let (dx, dy) = (me.x - ox, me.y - oy);
-            let d_sq = dx * dx + dy * dy;
-            let close = unit(d_sq < r.protected_sq);
-            let near = unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
-            accumulate(cdx, close * dx);
-            accumulate(cdy, close * dy);
-            accumulate(sx, near * ox);
-            accumulate(sy, near * oy);
-            accumulate(svx, near * ovx);
-            accumulate(svy, near * ovy);
-            accumulate(n, near);
-        }
-    }
-
-    /// Adds the lanes, in order, into `seen`.
-    fn into(self, seen: &mut Seen) {
-        let total = |a: [f32; LANES]| a.iter().sum::<f32>();
-        seen.sum_x += total(self.sum_x);
-        seen.sum_y += total(self.sum_y);
-        seen.sum_vx += total(self.sum_vx);
-        seen.sum_vy += total(self.sum_vy);
-        seen.count += total(self.count);
-        seen.close_dx += total(self.close_dx);
-        seen.close_dy += total(self.close_dy);
-    }
-}
 
 /// How close the predator must be to be fled, pixels (our choice: a
 /// little over twice the visual range, so a flock parts ahead of it).
