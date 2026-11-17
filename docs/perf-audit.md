@@ -73,7 +73,7 @@ that ships.
 | piano design (`piano_design_88_keys`, `stiff_waveguide_new/*`) | ~80% | ~80% | ~90% | ~87% | `libm`'s `atan` (31% M4, 61% Zen 5), `sin`, `cos` in `dispersion::refine` (inlined into `Voicing::coefficients` in the wasm); key 69 takes 27 ms against 1.8 ms for key 60 | no | ? |
 | FFT (`fft_f32/16384`) | 96% | 99% | 99% | 99% | radix-2 butterflies (`fft.rs:87`–`94`) | no | ? |
 
-### Candidates (from the profiles; floors to come)
+### Candidates (from the profiles; the top three's floors below)
 
 1. **Sorted boids' leftovers.** The page's default mode spends about a
    third of its step in the scalar path for each span's last < 16
@@ -97,6 +97,77 @@ that ships.
 7. **Broadphase's sort:** known (TASKS, 2026-11-14: kept, since the
    collision scenes have at most about 60 balls).
 
+### Floors for the top three (2026-11-17)
+
+Counted with temporary counters (not committed) on the bench's own cases,
+then priced against each machine: the M4 at 4.4 GHz with four 128-bit
+SIMD pipes; Zen 5 at 5.54 GHz (perf), two multiply and two add pipes.
+
+**1. Sorted boids, 10,000 (one step).** 29,958 spans (three a boid: one
+per row of cells), about 36 candidates each: 53,842 blocks of 16
+(861,472 candidates) and **211,746 leftovers**, 1.07 M candidates in
+all. At 22 FP operations a candidate the arithmetic floor is 0.34 ms on
+the M4 and 0.29 ms on Zen 5 at SSE (0.07 ms with AVX-512). Measured with
+16 lanes: 1.78 ms, 1.91 ms and 1.35 ms; `add_span` is 84% of it on the
+M4, **4.5× its floor** (6.6× on Zen 5 at SSE, 18× with AVX-512). Where
+the M4's 1.5 ms goes, from the profile's lines and the lane loop's
+measured 31.5 cycles a block:
+
+| | count | cycles each | ms | share of `add_span` |
+|---|---|---|---|---|
+| blocks (the vector loop) | 53,842 | 31.5 | 0.39 | 26% |
+| leftovers (scalar `Seen::add`, branchy) | 211,746 | ~15 | 0.70 | 47% |
+| per span (zeroing 7 × 16 lanes, adding them in order) | 29,958 | ~60 | 0.41 | 27% |
+
+The vector loop itself is near its floor; three quarters is the span's
+edges. Ways in, all changing sorted's bits (`GOLDEN_SORTED`, not
+brute force's): one set of lanes per boid across its three spans (a
+third of the reductions); the leftovers masked into a last block
+instead of the scalar path; or sorted with its own, smaller lane count
+(4: at most 3 leftovers, a 4-lane reduction).
+
+**2. Piano voices, 128 samples (16 voices × 3 strings).** 5,760
+string-samples, 33,792 dispersion stages (5.9 a string-sample), 8 flops
+each. `Waveguide::step` is 86% of 50.8 µs on the M4: 192 k cycles, 5.7
+a stage with all the per-sample work spread over them. The scalar floor
+is 2 cycles a stage (8 operations, four pipes): 15 µs, **2.8× below**;
+four strings to a vector, 0.5 a stage: 3.8 µs, 11× below. Each stage's
+chain is long (written left to right, `low` waits on a multiply and four
+adds, about 16 cycles), so the strings overlapping in the core is what
+keeps it at 5.7. But the block's budget is 2.67 ms (128 samples at 48
+kHz): it uses **1.9% of one core** (Zen 5: 63 µs, 2.4%). Headroom, not
+a bottleneck: low priority unless more voices are wanted.
+
+**3. Piano design (88 keys).** 141 fits (Levenberg–Marquardt, at most
+80 iterations each), 6,779 iterations, **5.74 M `biquad_delay` calls**,
+each two `sin`, two `cos` and two `atan2`: 30 ns a call, about 22 cycles
+a transcendental, 175 ms on the M4 (165 on Zen 5), when the piano is
+chosen. Its floor is the algorithm's, not the machine's:
+
+- The finite-difference Jacobian recomputes each pole's un-nudged delay
+  for both its parameters, though the residuals just computed it, and a
+  nudge in `r` recomputes `sin` and `cos` of unchanged angles. Reusing
+  both: about 2× fewer transcendentals. An analytic Jacobian (the
+  derivatives from the same `sin` and `cos`): about 2.5×.
+- **Key 69's 15×** (27 ms against 1.8 for key 60) is the fit, not the
+  math: 6 fits instead of 2 (its cascade is too long for its loop, so
+  `design` drops poles and refits, three extra times) and 444
+  iterations, 74 a fit, against a cap of 80: they don't converge. Key
+  84: 4 fits. Choosing the count that fits before the first fit would
+  save most of it.
+
+Together, 175 ms → perhaps 60. One-off, but it's a pause in the page when
+the model changes (in wasm, more).
+
+### Ranked
+
+1. **Sorted boids' span edges:** the default mode of a page, 4.5–6.6×
+   above the floor, three quarters of it outside the vector loop.
+2. **The piano design:** a visible pause, about 2.5× of redundant
+   evaluation plus the refits.
+3. **The piano voices:** 2.8× above the scalar floor, but 2% of the
+   audio budget.
+
 ### Findings
 
 | # | § | Severity | Finding | Remediation |
@@ -111,8 +182,9 @@ that ships.
 ## Plan
 
 1. **Measure (no code changes).** Profile every bench group natively
-   and in V8 (`experiments/perf-audit/profile.py`; the M4 done
-   2026-11-17, both machines); fill the kernel table's shares.
+   and in V8 (`experiments/perf-audit/profile.py`; both machines,
+   2026-11-17); fill the kernel table's shares; floors for the top
+   three (done, above).
    For the top kernels, a back-of-envelope floor (operations ÷ the
    machine's throughput, as for the boids) and the measured fraction of
    it. Output: the kernels ranked by share × gap to floor.
