@@ -8,10 +8,18 @@ use core::f64::consts::PI;
 use super::{ANGLE_MARGIN, RADIUS_RANGE, Target, biquad_delay_gradient, cascade_delay};
 
 /// Iterations, and the damping's start and its factors.
-const ITERATIONS: u32 = 80;
+pub(super) const ITERATIONS: u32 = 80;
+/// A refit's while the pole count is still being chosen: enough to
+/// estimate the delay that count's fit will have, not to converge.
+pub(super) const ESTIMATE_ITERATIONS: u32 = 10;
 const DAMPING_START: f64 = 1e-3;
 const DAMPING_DOWN: f64 = 0.3;
 const DAMPING_UP: f64 = 10.0;
+/// An accepted step that lowers the cost by less than this fraction of
+/// it: converged. Without it most keys ran all [`ITERATIONS`] for gains
+/// of no audible consequence; at 1e-4 no key's worst partial moved by
+/// 0.0001 cent (all 88 checked, 2026-11-17), at 1e-3 one moved 2.2.
+const CONVERGED: f64 = 1e-4;
 /// Past this, steps are ~1e-8 of a gradient step: stop early (still
 /// deterministic, the same inputs stop at the same iteration).
 const DAMPING_STOP: f64 = 1e8;
@@ -26,12 +34,13 @@ fn residuals(params: &[f64], w1: f64, targets: &[Target]) -> Vec<f64> {
 }
 
 /// Damped Gauss–Newton (Levenberg–Marquardt) on `params` (radius, angle,
-/// …), minimizing the squared cents error, a fixed number of iterations.
-pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target]) {
+/// …), minimizing the squared cents error, for at most `iterations`
+/// (stopping early once a step gains less than [`CONVERGED`] of the cost).
+pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterations: u32) {
     let mut r = residuals(params, w1, targets);
     let mut cost: f64 = r.iter().map(|x| x * x).sum();
     let mut damping = DAMPING_START;
-    for _ in 0..ITERATIONS {
+    for _ in 0..iterations {
         // One column per parameter: a parameter moves only its own
         // biquad's delay, so its column is that biquad's derivative, in
         // closed form (`biquad_delay_gradient`), the pole's (r, θ) pair
@@ -84,10 +93,14 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target]) {
         let trial_r = residuals(&trial, w1, targets);
         let trial_cost: f64 = trial_r.iter().map(|x| x * x).sum();
         if trial_cost < cost {
+            let gain = cost - trial_cost;
             *params = trial;
             r = trial_r;
             cost = trial_cost;
             damping *= DAMPING_DOWN;
+            if gain <= CONVERGED * cost {
+                break;
+            }
         } else {
             damping *= DAMPING_UP;
             // So damped that every step is negligible: converged.
