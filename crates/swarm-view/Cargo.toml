@@ -1,0 +1,25 @@
+[package]
+name = "swarm-view"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "The swarm pages' demos: each model, its clock and its drawing, behind swarm-web's C ABI (docs/15-swarm.md)."
+
+[dependencies]
+libm.workspace = true
+math = { path = "../math" }
+swarm = { path = "../swarm" }
+web-common = { path = "../web-common" }
+
+[dev-dependencies]
+criterion.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "render"
+harness = false  # criterion provides main

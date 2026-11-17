@@ -597,13 +597,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "swarm-web"
+name = "swarm-view"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "libm",
  "math",
  "proptest",
  "swarm",
+ "web-common",
+]
+
+[[package]]
+name = "swarm-web"
+version = "0.1.0"
+dependencies = [
+ "math",
+ "proptest",
+ "swarm",
+ "swarm-view",
  "test-support",
  "web-common",
 ]

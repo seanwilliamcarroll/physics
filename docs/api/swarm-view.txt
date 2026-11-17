@@ -1,0 +1,108 @@
+pub mod swarm_view
+pub mod swarm_view::abi
+pub const swarm_view::abi::ANT_DECAY: u32
+pub const swarm_view::abi::ANT_DEPOSIT: u32
+pub const swarm_view::abi::ANT_DIFFUSION: u32
+pub const swarm_view::abi::ANT_FALLOFF: u32
+pub const swarm_view::abi::ANT_PARAM_COUNT: u32
+pub const swarm_view::abi::ANT_SENSOR_ANGLE: u32
+pub const swarm_view::abi::ANT_SENSOR_DISTANCE: u32
+pub const swarm_view::abi::ANT_SPEED: u32
+pub const swarm_view::abi::ANT_TURN: u32
+pub const swarm_view::abi::ANT_WIGGLE: u32
+pub const swarm_view::abi::DEFAULT_RATE_HZ: u32
+pub const swarm_view::abi::MAX_AGENTS: u32
+pub const swarm_view::abi::MAX_ANTS: u32
+pub const swarm_view::abi::MAX_ANT_BRUSH: u32
+pub const swarm_view::abi::MAX_ANT_SIDE: u32
+pub const swarm_view::abi::MAX_BOIDS: u32
+pub const swarm_view::abi::MAX_BRUTE: u32
+pub const swarm_view::abi::MAX_FOOD: u32
+pub const swarm_view::abi::MAX_NODES: u32
+pub const swarm_view::abi::MAX_PARTICLES: u32
+pub const swarm_view::abi::MAX_RATE_HZ: u32
+pub const swarm_view::abi::MAX_RUN: u32
+pub const swarm_view::abi::MAX_SCALE: u32
+pub const swarm_view::abi::MAX_SIDE: u32
+pub const swarm_view::abi::MAX_SLIME_SIDE: u32
+pub const swarm_view::abi::MAX_VICSEK_SIDE: u32
+pub const swarm_view::abi::MAX_VIEW: u32
+pub const swarm_view::abi::NEIGHBOURS_BRUTE: u32
+pub const swarm_view::abi::NEIGHBOURS_GRID: u32
+pub const swarm_view::abi::NEIGHBOURS_SORTED: u32
+pub const swarm_view::abi::PARAM_AVOID: u32
+pub const swarm_view::abi::PARAM_CENTERING: u32
+pub const swarm_view::abi::PARAM_COUNT: u32
+pub const swarm_view::abi::PARAM_MARGIN: u32
+pub const swarm_view::abi::PARAM_MATCHING: u32
+pub const swarm_view::abi::PARAM_MAX_SPEED: u32
+pub const swarm_view::abi::PARAM_MIN_SPEED: u32
+pub const swarm_view::abi::PARAM_PROTECTED_RANGE: u32
+pub const swarm_view::abi::PARAM_TURN: u32
+pub const swarm_view::abi::PARAM_VISUAL_RANGE: u32
+pub const swarm_view::abi::SLIME_DECAY: u32
+pub const swarm_view::abi::SLIME_DEPOSIT: u32
+pub const swarm_view::abi::SLIME_DIFFUSION: u32
+pub const swarm_view::abi::SLIME_PARAM_COUNT: u32
+pub const swarm_view::abi::SLIME_SENSOR_ANGLE: u32
+pub const swarm_view::abi::SLIME_SENSOR_OFFSET: u32
+pub const swarm_view::abi::SLIME_STEP: u32
+pub const swarm_view::abi::SLIME_TURN: u32
+pub const swarm_view::abi::TOOL_ERASE: u32
+pub const swarm_view::abi::TOOL_FOOD: u32
+pub const swarm_view::abi::TOOL_NEST: u32
+pub const swarm_view::abi::TOOL_WALL: u32
+pub mod swarm_view::ant_demo
+pub struct swarm_view::ant_demo::AntDemo
+impl swarm_view::ant_demo::AntDemo
+pub fn swarm_view::ant_demo::AntDemo::advance(&mut self, f64) -> u32
+pub const fn swarm_view::ant_demo::AntDemo::clock(&mut self) -> &mut web_common::fixed_step::FixedStep
+pub const fn swarm_view::ant_demo::AntDemo::colony(&self) -> &swarm::ants::Colony
+pub fn swarm_view::ant_demo::AntDemo::new(usize, usize, usize, usize, u64) -> core::option::Option<Self>
+pub fn swarm_view::ant_demo::AntDemo::paint(&mut self, u32, f64, f64, f64, u32) -> core::option::Option<u64>
+pub fn swarm_view::ant_demo::AntDemo::param(&self, u32) -> core::option::Option<f64>
+pub fn swarm_view::ant_demo::AntDemo::render(&mut self) -> &[u32]
+pub fn swarm_view::ant_demo::AntDemo::set_param(&mut self, u32, f64) -> bool
+pub const fn swarm_view::ant_demo::AntDemo::set_sensing(&mut self, bool)
+pub const fn swarm_view::ant_demo::AntDemo::view(&self) -> (usize, usize)
+pub mod swarm_view::demo
+pub struct swarm_view::demo::SwarmDemo
+impl swarm_view::demo::SwarmDemo
+pub fn swarm_view::demo::SwarmDemo::advance(&mut self, f64) -> u32
+pub const fn swarm_view::demo::SwarmDemo::clock(&mut self) -> &mut web_common::fixed_step::FixedStep
+pub const fn swarm_view::demo::SwarmDemo::flock(&self) -> &swarm::flock::Flock
+pub fn swarm_view::demo::SwarmDemo::new(usize, usize, usize, usize, u64) -> core::option::Option<Self>
+pub fn swarm_view::demo::SwarmDemo::param(&self, u32) -> core::option::Option<f64>
+pub fn swarm_view::demo::SwarmDemo::render(&mut self) -> &[u32]
+pub fn swarm_view::demo::SwarmDemo::set_neighbours(&mut self, swarm::flock::Neighbours) -> bool
+pub fn swarm_view::demo::SwarmDemo::set_param(&mut self, u32, f64) -> bool
+pub fn swarm_view::demo::SwarmDemo::set_predator(&mut self, core::option::Option<(f64, f64)>) -> bool
+pub const fn swarm_view::demo::SwarmDemo::view(&self) -> (usize, usize)
+pub const swarm_view::demo::BACKGROUND: u32
+pub fn swarm_view::demo::heading_index(f32, f32) -> usize
+pub mod swarm_view::slime_demo
+pub struct swarm_view::slime_demo::SlimeDemo
+impl swarm_view::slime_demo::SlimeDemo
+pub fn swarm_view::slime_demo::SlimeDemo::add_node(&mut self, f64, f64, f64) -> bool
+pub fn swarm_view::slime_demo::SlimeDemo::advance(&mut self, f64) -> u32
+pub fn swarm_view::slime_demo::SlimeDemo::clear_nodes(&mut self)
+pub const fn swarm_view::slime_demo::SlimeDemo::clock(&mut self) -> &mut web_common::fixed_step::FixedStep
+pub fn swarm_view::slime_demo::SlimeDemo::new(usize, usize, usize, u64) -> core::option::Option<Self>
+pub fn swarm_view::slime_demo::SlimeDemo::param(&self, u32) -> core::option::Option<f64>
+pub fn swarm_view::slime_demo::SlimeDemo::render(&mut self) -> &[u32]
+pub fn swarm_view::slime_demo::SlimeDemo::set_param(&mut self, u32, f64) -> bool
+pub const fn swarm_view::slime_demo::SlimeDemo::set_sensing(&mut self, bool)
+pub const fn swarm_view::slime_demo::SlimeDemo::slime(&self) -> &swarm::physarum::Slime
+pub const fn swarm_view::slime_demo::SlimeDemo::view(&self) -> usize
+pub mod swarm_view::vicsek_demo
+pub struct swarm_view::vicsek_demo::VicsekDemo
+impl swarm_view::vicsek_demo::VicsekDemo
+pub fn swarm_view::vicsek_demo::VicsekDemo::advance(&mut self, f64) -> u32
+pub const fn swarm_view::vicsek_demo::VicsekDemo::clock(&mut self) -> &mut web_common::fixed_step::FixedStep
+pub fn swarm_view::vicsek_demo::VicsekDemo::mean_order(&mut self, u32, u32) -> core::option::Option<f64>
+pub fn swarm_view::vicsek_demo::VicsekDemo::new(usize, f64, f64, usize, u64) -> core::option::Option<Self>
+pub fn swarm_view::vicsek_demo::VicsekDemo::render(&mut self) -> &[u32]
+pub fn swarm_view::vicsek_demo::VicsekDemo::set_noise(&mut self, f64) -> bool
+pub fn swarm_view::vicsek_demo::VicsekDemo::set_speed(&mut self, f64) -> bool
+pub const fn swarm_view::vicsek_demo::VicsekDemo::system(&self) -> &swarm::vicsek::Vicsek
+pub const fn swarm_view::vicsek_demo::VicsekDemo::view(&self) -> usize
