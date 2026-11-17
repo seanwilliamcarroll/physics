@@ -22,8 +22,8 @@ Settings of the lane loop's knobs (`crates/swarm/src/rules/knobs.rs`):
 |---|---|---|---|
 | `lanes-1` | 1 | `ordered` | one running sum, as written without lanes: what the compiler does alone |
 | `lanes-2`, `lanes-4` | 2, 4 | `ordered` | fewer accumulators: does x86's baseline stop spilling? |
-| `lanes-8` | 8 | `ordered` | today's code: the reference the tables compare against |
-| `lanes-16` | 16 | `ordered` | wider: does AVX-512 get used? |
+| `lanes-8` | 8 | `ordered` | the code before the sweep: the reference the tables compare against |
+| `lanes-16` | 16 | `ordered` | wider: does AVX-512 get used? (the default since the sweep) |
 | `algebraic` | 1 | `algebraic` | one sum the compiler may reorder (`f32::algebraic_add`): free to vectorize as it likes |
 
 All but `lanes-8` change the order of the sums, so the results' last
@@ -46,7 +46,7 @@ experiments/swarm-lanes/run.py --experiments sweep
 ## Results (2026-11-16)
 
 `results/llm` (Ryzen 7 9700X, Zen 5; with `--perf`) and `results/m4`
-(Apple M4), on `main` at 43d6e33. Time against `lanes-8` (today's code)
+(Apple M4), on `main` at 43d6e33. Time against `lanes-8` (the code then)
 at the same level, 10,000 boids:
 
 | level | Brute: `lanes-1` | `lanes-4` | `lanes-16` | `algebraic` | Sorted: `lanes-1` | `lanes-4` | `lanes-16` | `algebraic` |
@@ -83,5 +83,7 @@ What the asm says (`asm/`, not committed):
   bits depend on the target, so it can't ship as is, but it marks the
   headroom (the M4 natively: −21% to −29%).
 
-The browser demos run the wasm-simd128 build, so they pay for the bad
-8-lane loop.
+The browser demos run the wasm-simd128 build, so they paid for the bad
+8-lane loop. **Decision:** 16 lanes, for every target (the lane count
+sets the bits, which must match across targets). Natively sorted pays
+20–34%; brute force is about even, and better with AVX-512.

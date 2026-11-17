@@ -49,7 +49,7 @@ fn lanes_overridden() -> bool {
 }
 
 /// The golden hash: a change in results fails here, intended or not.
-const GOLDEN: u64 = 0x3936_c982_06e6_75ed;
+const GOLDEN: u64 = 0x3673_9731_39d9_e34f;
 
 #[test]
 fn the_golden_hash_is_unchanged() {
@@ -71,7 +71,7 @@ fn the_grid_golden_hash_is_unchanged() {
 }
 
 /// And sorted (the default): lane sums, another order again.
-const GOLDEN_SORTED: u64 = 0x63d2_df7d_ad03_a772;
+const GOLDEN_SORTED: u64 = 0xd7ab_3c60_52d8_cc15;
 
 #[test]
 fn the_sorted_golden_hash_is_unchanged() {

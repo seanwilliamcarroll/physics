@@ -24,7 +24,7 @@ SUITE = Suite(
     knobs=("SWARM_LANES", "SWARM_SUM"),
     experiments=EXPERIMENTS,
     presets={"sweep": list(EXPERIMENTS)},
-    reference="lanes-8",  # the code as it ships
+    reference="lanes-8",  # the code before the sweep (16 ships since)
     results=HERE / "results",
     # With one lane, add_span is inlined into Flock::step.
     functions=(("add_span", "<swarm::rules::Seen>::add_span"),
