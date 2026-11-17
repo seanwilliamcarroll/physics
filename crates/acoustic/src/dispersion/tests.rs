@@ -1,6 +1,6 @@
 use core::f64::consts::TAU;
 
-use super::{MAX_BIQUADS, design};
+use super::{MAX_BIQUADS, biquad_delay, biquad_delay_gradient, design};
 use crate::voicing::phase_delay_lowpass;
 
 const FS: f64 = 48_000.0;
@@ -81,4 +81,28 @@ fn a_short_loop_gets_a_smaller_filter() {
         full.count
     );
     assert_eq!(small.partials, full.partials, "the same targets");
+}
+
+/// The closed-form derivatives match central differences of the delay
+/// itself, over the radii and angles the design uses and frequencies
+/// across the band.
+#[test]
+fn the_delay_gradient_matches_central_differences() {
+    let h = 1e-6;
+    for r in [0.3, 0.7, 0.95, 0.995] {
+        for th in [0.05, 0.4, 1.2, 2.5] {
+            for w in [0.01, 0.2, 0.9, 2.0] {
+                let (dr, dth) = biquad_delay_gradient(r, th, w);
+                let num_r = (biquad_delay(r + h, th, w) - biquad_delay(r - h, th, w)) / (2.0 * h);
+                let num_th = (biquad_delay(r, th + h, w) - biquad_delay(r, th - h, w)) / (2.0 * h);
+                for (got, want, what) in [(dr, num_r, "r"), (dth, num_th, "θ")] {
+                    let tol = 1e-5 * want.abs().max(1.0);
+                    assert!(
+                        (got - want).abs() <= tol,
+                        "d/d{what} at r {r}, θ {th}, w {w}: {got} against {want}"
+                    );
+                }
+            }
+        }
+    }
 }

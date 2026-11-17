@@ -223,3 +223,47 @@ ranges as an order of magnitude.
 | 9 | boids, Sorted, 10k | 1.8 / 0.34 ms | 0.7–1.4 ms | 1.9 / 0.29 ms | 0.8–1.6 ms | Span edges: three quarters of `add_span` |
 | 10 | Vicsek, 4000 | 1.1 / 0.07 ms | 0.5–0.9 ms | 1.2 / 0.06 ms | 0.5–1.1 ms | 409 k candidates at a vector lane loop's floor |
 
+### Done
+
+- **Piano design, step 1 (2026-11-17):** the refinement's Jacobian in
+  closed form (`biquad_delay_gradient`): 5.75 M → 1.17 M `biquad_delay`
+  evaluations for 88 keys, and no `atan2` in the Jacobian. M4 174 → 67 ms
+  (−61%); in wasm, V8 231 → 92 ms, wasmtime 198 → 84. Every key's worst
+  partial error within 0.001 cent of before, the same biquad counts.
+  Found on the way: 11 keys miss the design tests' 1-cent tolerance
+  (keys 23–30, 52–53, 92, 98–100 at 1.0–2.7 cents; key 107 at 10.9, one
+  biquad), before and after; the tests sample six keys, all fine. Next:
+  the refits (33 keys fit 2–4 times: 68–84, 93–108) and the residuals'
+  `sin`/`cos` shared with the next Jacobian.
+
+### Findings
+
+| # | § | Severity | Finding | Remediation |
+|---|---|---|---|---|
+| 1 | 6 | High | The shipped target has no recorded baseline: `cargo xtask bench-wasm` prints Node timings but keeps no record, so a wasm regression is judged from memory (the boids render's 2× with `simd128` went unnoticed until measured by hand). | Record `bench-wasm` per machine beside the native record, compared the same way. |
+| 2 | 5 | Medium | The boids lane loop has no test at awkward span lengths (0, 1, `LANES` ± 1, …): only end to end, where spans are whatever the flock gives. | A property test: `add_span` against `Seen::add` over generated spans, to rounding. |
+| 3 | 5, 6 | Medium | The aarch64 path (`unit`'s select) is built and tested only on the Mac: CI is x86, and the compute node's mutation runs can't see it (2026-11-17: its 3 mutants "missed"). | An aarch64 CI job (GitHub's arm64 runners), or at least the M4 in the release checklist. |
+| 4 | 3 | Medium | The two settings files repeat their parsing (`number`, `same`, `panic_at_build`), and tuning values live in each crate's code (`CHUNK` in sand, the grids' cell sizes) without one place that lists them and how each was chosen. | One shared const parser; a table of tuning values (here or in each crate's doc) with their source. |
+| 5 | 4 | Medium | Most hot loops' asm has never been read (the table's "no"s). | Phase 1 decides which deserve it: the ones with a large share and a gap to their floor. |
+| 6 | 7 | Low | No per-kernel record of its level and why. | The kernel table's Level column, kept current. |
+
+## Plan
+
+1. **Measure (no code changes).** Profile every bench group natively
+   and in V8 (`experiments/perf-audit/profile.py`; both machines,
+   2026-11-17); fill the kernel table's shares; floors for the top
+   three (done, above).
+   For the top kernels, a back-of-envelope floor (operations ÷ the
+   machine's throughput, as for the boids) and the measured fraction of
+   it. Output: the kernels ranked by share × gap to floor.
+2. **Protect the shipped target (finding 1).** `bench-wasm` records,
+   per machine, compared like the native record. Before any
+   optimization, so its wins and losses in wasm are measured.
+3. **Oracles where kernels lack them (findings 2, 3).** The lane loop's
+   property test; the aarch64 job or checklist line.
+4. **Optimize, top of the ranking first.** Per kernel: read the asm on
+   each target, try the change behind a build setting if it changes
+   bits, sweep on both machines and in wasm, record the result
+   (adopted or not) as the gravity and swarm work did.
+5. **Tidy the tuning values (finding 4)** as each kernel is touched,
+   not as a separate rewrite.

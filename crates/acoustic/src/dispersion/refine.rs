@@ -5,10 +5,9 @@
 
 use core::f64::consts::PI;
 
-use super::{ANGLE_MARGIN, RADIUS_RANGE, Target, biquad_delay, cascade_delay};
+use super::{ANGLE_MARGIN, RADIUS_RANGE, Target, biquad_delay_gradient, cascade_delay};
 
-/// Iterations, the damping's start and its factors, and the numeric
-/// Jacobian's step.
+/// Iterations, and the damping's start and its factors.
 const ITERATIONS: u32 = 80;
 const DAMPING_START: f64 = 1e-3;
 const DAMPING_DOWN: f64 = 0.3;
@@ -16,7 +15,6 @@ const DAMPING_UP: f64 = 10.0;
 /// Past this, steps are ~1e-8 of a gradient step: stop early (still
 /// deterministic, the same inputs stop at the same iteration).
 const DAMPING_STOP: f64 = 1e8;
-const JACOBIAN_STEP: f64 = 1e-7;
 
 /// Each target's error in cents for the cascade `params`.
 fn residuals(params: &[f64], w1: f64, targets: &[Target]) -> Vec<f64> {
@@ -30,31 +28,28 @@ fn residuals(params: &[f64], w1: f64, targets: &[Target]) -> Vec<f64> {
 /// Damped Gauss–Newton (Levenberg–Marquardt) on `params` (radius, angle,
 /// …), minimizing the squared cents error, a fixed number of iterations.
 pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target]) {
-    let n = params.len();
     let mut r = residuals(params, w1, targets);
     let mut cost: f64 = r.iter().map(|x| x * x).sum();
     let mut damping = DAMPING_START;
     for _ in 0..ITERATIONS {
-        // A parameter moves only its own biquad's delay, so each column
-        // evaluates that biquad alone (not the whole cascade: 1/count the
-        // work, and no cancellation against the other biquads).
-        let jacobian: Vec<Vec<f64>> = (0..n)
-            .map(|i| {
-                let pair = params.get(i & !1..=i | 1);
-                let Some(&[r, th]) = pair else {
-                    return vec![0.0; targets.len()];
-                };
-                let nudged = if i % 2 == 0 {
-                    (r + JACOBIAN_STEP, th)
-                } else {
-                    (r, th + JACOBIAN_STEP)
-                };
-                let change = |w: f64| biquad_delay(nudged.0, nudged.1, w) - biquad_delay(r, th, w);
-                let at_f1 = change(w1);
-                targets
+        // One column per parameter: a parameter moves only its own
+        // biquad's delay, so its column is that biquad's derivative, in
+        // closed form (`biquad_delay_gradient`), the pole's (r, θ) pair
+        // together.
+        let jacobian: Vec<Vec<f64>> = params
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .flat_map(|&[r, th]| {
+                let (dr1, dth1) = biquad_delay_gradient(r, th, w1);
+                let (col_r, col_th): (Vec<f64>, Vec<f64>) = targets
                     .iter()
-                    .map(|t| (change(t.w) - at_f1) * t.weight / JACOBIAN_STEP)
-                    .collect()
+                    .map(|t| {
+                        let (dr, dth) = biquad_delay_gradient(r, th, t.w);
+                        ((dr - dr1) * t.weight, (dth - dth1) * t.weight)
+                    })
+                    .unzip();
+                [col_r, col_th]
             })
             .collect();
         let dot = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(x, y)| x * y).sum::<f64>();
