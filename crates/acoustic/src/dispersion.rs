@@ -17,8 +17,8 @@
 //!    removes its one-step approximations (in our port, placement alone
 //!    left partials 10–200 cents off; refined, under a cent).
 //!
-//! All `f64` with `libm` and fixed iteration counts, so the design is
-//! bit-identical on every platform.
+//! All `f64` with `libm`, and every stop decided by the numbers alone, so
+//! the same inputs give the same design.
 
 use core::f64::consts::{PI, TAU};
 use math::convert::{clamped_index, usize_to_f64};
@@ -150,20 +150,31 @@ pub(crate) fn design(fs: f64, f1: f64, b: f64, s: f64, max_delay: f64) -> Option
     let mut poles = place(fs, f0, b, df);
     pad(&mut poles, df / fs * TAU);
     let mut params: Vec<f64> = poles.iter().flat_map(|&(r, th)| [r, th]).collect();
-    refine::refine(&mut params, w1, &targets);
+    refine::refine(&mut params, w1, &targets, refine::ITERATIONS);
     // Too much delay at f₀ for this loop (a short treble loop): keep the
     // count that fits at this design's delay per biquad, drop the highest
-    // poles, refine again; repeat (rarely needed) until it fits.
+    // poles, refit; repeat until it fits. A count's delay shifts as its
+    // fit converges, so this can take a few rounds (four for some keys):
+    // the rounds only estimate the delay (short fits), and the count that
+    // fits gets a full one, checked again in case its converged delay no
+    // longer fits.
+    let mut converged = true;
     loop {
         let delay = cascade_delay(&params, w1);
         let count = params.len() / 2;
         if delay <= max_delay || count <= 1 {
-            break;
+            if converged {
+                break;
+            }
+            refine::refine(&mut params, w1, &targets, refine::ITERATIONS);
+            converged = true;
+            continue;
         }
         let per_biquad = delay / usize_to_f64(count);
         let fits = clamped_index(libm::floor(max_delay / per_biquad), count - 1).max(1);
         params.truncate(2 * fits);
-        refine::refine(&mut params, w1, &targets);
+        refine::refine(&mut params, w1, &targets, refine::ESTIMATE_ITERATIONS);
+        converged = false;
     }
     if cascade_delay(&params, w1) > max_delay {
         return None;

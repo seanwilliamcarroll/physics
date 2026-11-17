@@ -277,6 +277,43 @@ the flock's step split by technique (#286). In order:
 
 ---
 
+## Performance audit, then a health check (from 2026-11-17)
+
+The audit is `docs/perf-audit.md` (its guide `perf-code-audit-guide.md`):
+profiles on both machines and in V8, floors, and a ranking by time to be
+saved. Golden hashes are gone (#301): results are tested against
+tolerances, and native and wasm needn't agree to the bit. In order:
+
+1. **Piano design** (#303: the Jacobian in closed form, −60%). Still:
+   - the refits (33 keys fit 2–4 times; in progress);
+   - **the asm** of the fit's hot code (`biquad_delay`, the gradient,
+     the solve) on each platform: M4 and Zen 5 natively, and the wasm
+     through Cranelift and V8 (`docs/perf-audit.md`'s method);
+   - **algebraic adds** (`f64::algebraic_add` and friends) where a
+     reduction or a multiply–add chain is the bottleneck, measured;
+   - `std`'s trig in place of `libm`'s (native only: wasm compiles both
+     to the same port);
+   - 11 keys miss the design tests' 1-cent tolerance (key 107: 10.9
+     cents), found by the probe in #303: look into it, and test all 88.
+2. **Per-architecture kernels, starting with pairwise gravity:** none
+   exist yet (only the boids' two-line `unit`). Per the guide (§1–3):
+   the per-target choices (lanes, the loop, the plain-loop threshold)
+   in one module with a configuration per target, chosen at compile
+   time in one place, now that a lane count per target is allowed; the
+   lane sweeps have the data. Then the boids' lane loop the same way.
+3. **Exact-bit tests to tolerances:** go through the tests that demand
+   identical bits (the two gravity loops, substep equivalence, the
+   repeatability hashes) and decide each: a tolerance where exact bits
+   aren't the point; hashing dropped altogether if nothing needs it.
+4. **The audit's ranking, continued:** the boids' Grid mode (100k: 42
+   ms, scalar), Brute force and Sorted (lane counts per target and per
+   mode; Sorted's span edges), sand's chunk waking, pairwise, Barnes–Hut,
+   Physarum, Vicsek. And phase 2: a recorded wasm baseline.
+5. **A thorough health check:** file sizes, the module hierarchies and
+   organization, and the API surfaces (`cargo xtask api`), as after M7.
+
+---
+
 ## Health (after M7)
 
 Done: the API audit and its PRs (#159–#164: `web-common`, `engine-web`,

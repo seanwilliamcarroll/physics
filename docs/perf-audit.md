@@ -232,9 +232,18 @@ ranges as an order of magnitude.
   partial error within 0.001 cent of before, the same biquad counts.
   Found on the way: 11 keys miss the design tests' 1-cent tolerance
   (keys 23–30, 52–53, 92, 98–100 at 1.0–2.7 cents; key 107 at 10.9, one
-  biquad), before and after; the tests sample six keys, all fine. Next:
-  the refits (33 keys fit 2–4 times: 68–84, 93–108) and the residuals'
-  `sin`/`cos` shared with the next Jacobian.
+  biquad), before and after; the tests sample six keys, all fine.
+- **Piano design, step 2 (2026-11-17):** most keys ran all 80
+  iterations: the fit only stopped when its damping blew up. Now it
+  stops when an accepted step gains under 1e-4 of the cost (1e-3 cost
+  one key 2.2 cents; at 1e-4 no key's worst partial moved 0.0001 cent),
+  and while a short loop's pole count is being chosen (33 keys refit
+  2–4 times) the refits are short (10 iterations), the final count
+  fitted in full. Iterations 6,748 → 5,267. M4 68 → 51 ms (−25%); V8
+  93 → 68 ms, wasmtime 84 → 62. **Since the start: 174 → 51 ms
+  natively, 231 → 68 ms in V8 (−71%).** Next for this item (TASKS): the
+  asm on each platform, algebraic adds, `std` trig natively, and the 11
+  keys over 1 cent.
 
 ### Findings
 
