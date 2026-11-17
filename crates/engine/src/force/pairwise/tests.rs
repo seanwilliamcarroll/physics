@@ -1,6 +1,5 @@
-use super::knobs::{
-    DEFAULT_PLAIN_BELOW, LANES, LOOP, PLAIN_BELOW, PairLoop, lanes, pair_loop, plain_below,
-};
+use super::knobs::{lanes, pair_loop, plain_below};
+use super::tuning::{F64_LANES, PairLoop, TUNING};
 use super::{PairwiseGravity, plain};
 use crate::force::Force;
 use crate::params::kg;
@@ -48,15 +47,20 @@ fn start<S: Scalar>(n: usize) -> Vec<Vec2<S>> {
         .collect()
 }
 
-fn with<S: Scalar>(g: &PairwiseGravity<S>, pair_loop: PairLoop, p: &Particles<S>) -> Vec<Vec2<S>> {
+fn with<S: Scalar, const L: usize>(
+    g: &PairwiseGravity<S>,
+    pair_loop: PairLoop,
+    p: &Particles<S>,
+) -> Vec<Vec2<S>> {
     let mut acc = start(p.len());
-    g.accumulate_with(pair_loop, p, &mut acc);
+    g.accumulate_with::<L>(pair_loop, p, &mut acc);
     acc
 }
 
-/// Sizes around every block boundary up to a few blocks, then longer runs.
-fn sizes() -> impl Iterator<Item = usize> {
-    (1..=40).chain([LANES * 4 - 1, LANES * 4, LANES * 4 + 1, 200])
+/// Sizes around every block boundary of `L` lanes up to a few blocks, then
+/// longer runs.
+fn sizes<const L: usize>() -> impl Iterator<Item = usize> {
+    (1..=40).chain([L * 4 - 1, L * 4, L * 4 + 1, 200])
 }
 
 /// The exact value (`to_f64` is lossless), as bits.
@@ -64,22 +68,24 @@ fn bits<S: Scalar>(v: S) -> u64 {
     v.to_f64().to_bits()
 }
 
-fn loops_agree<S: Scalar>() {
+/// At the same lane count the two loops do the same additions in the
+/// same order: identical bits. Checked at every lane count a target uses.
+fn loops_agree<S: Scalar, const L: usize>() {
     for softening in [0.0, 0.05] {
         let g = PairwiseGravity::new(
             S::from_f64(6.674e-11),
             Softening::new(S::from_f64(softening)).unwrap(),
         );
-        for n in sizes() {
+        for n in sizes::<L>() {
             let p = world::<S>(n, 7 + n as u64);
             let (two, blocked) = (
-                with(&g, PairLoop::TwoPass, &p),
-                with(&g, PairLoop::Blocked, &p),
+                with::<S, L>(&g, PairLoop::TwoPass, &p),
+                with::<S, L>(&g, PairLoop::Blocked, &p),
             );
             for (k, (a, b)) in two.iter().zip(&blocked).enumerate() {
                 assert!(
                     bits(a.x) == bits(b.x) && bits(a.y) == bits(b.y),
-                    "n {n}, ε {softening}, body {k}: two-pass {a:?}, blocked {b:?}"
+                    "{L} lanes, n {n}, ε {softening}, body {k}: two-pass {a:?}, blocked {b:?}"
                 );
             }
         }
@@ -88,20 +94,25 @@ fn loops_agree<S: Scalar>() {
 
 #[test]
 fn the_two_loops_give_identical_bits_f64() {
-    loops_agree::<f64>();
+    loops_agree::<f64, 1>();
+    loops_agree::<f64, 4>();
+    loops_agree::<f64, 8>();
+    loops_agree::<f64, 16>();
 }
 
 #[test]
 fn the_two_loops_give_identical_bits_f32() {
-    loops_agree::<f32>();
+    loops_agree::<f32, 1>();
+    loops_agree::<f32, 4>();
+    loops_agree::<f32, 8>();
+    loops_agree::<f32, 16>();
 }
 
 /// The lanes reorder body i's sum, so the vector loops differ from the
-/// plain one in the last bits only.
-#[test]
-fn the_vector_loops_match_the_plain_loop_to_rounding() {
+/// plain one in the last bits only: at every lane count a target uses.
+fn match_plain<const L: usize>() {
     let g = PairwiseGravity::new(6.674e-11, Softening::new(0.05).unwrap());
-    for n in sizes() {
+    for n in sizes::<L>() {
         let p = world::<f64>(n, 11 + n as u64);
         let mut reference = start(n);
         plain::accumulate(&g, &p, &mut reference);
@@ -111,10 +122,11 @@ fn the_vector_loops_match_the_plain_loop_to_rounding() {
             .fold(0.0, f64::max)
             .max(1.0);
         for pair_loop in [PairLoop::TwoPass, PairLoop::Blocked] {
-            for (k, (a, r)) in with(&g, pair_loop, &p).iter().zip(&reference).enumerate() {
+            let got = with::<f64, L>(&g, pair_loop, &p);
+            for (k, (a, r)) in got.iter().zip(&reference).enumerate() {
                 assert!(
                     (*a - *r).length() <= 1e-12 * scale,
-                    "n {n}, {pair_loop:?}, body {k}: {a:?} vs plain {r:?}"
+                    "{L} lanes, n {n}, {pair_loop:?}, body {k}: {a:?} vs plain {r:?}"
                 );
             }
         }
@@ -122,15 +134,23 @@ fn the_vector_loops_match_the_plain_loop_to_rounding() {
 }
 
 #[test]
-fn the_knobs_parse_and_default() {
-    assert_eq!(lanes(None), 16);
-    assert_eq!(lanes(Some("1")), 1);
-    assert_eq!(lanes(Some("64")), 64);
-    assert_eq!(plain_below(None), DEFAULT_PLAIN_BELOW);
-    assert_eq!(plain_below(Some("96")), 96);
-    assert_eq!(pair_loop(None), PairLoop::TwoPass);
-    assert_eq!(pair_loop(Some("two-pass")), PairLoop::TwoPass);
-    assert_eq!(pair_loop(Some("blocked")), PairLoop::Blocked);
+fn the_vector_loops_match_the_plain_loop_to_rounding() {
+    match_plain::<1>();
+    match_plain::<4>();
+    match_plain::<8>();
+    match_plain::<16>();
+}
+
+#[test]
+fn the_settings_parse_and_unset_leaves_the_target_s() {
+    assert_eq!(lanes(None), None);
+    assert_eq!(lanes(Some("1")), Some(1));
+    assert_eq!(lanes(Some("64")), Some(64));
+    assert_eq!(plain_below(None), None);
+    assert_eq!(plain_below(Some("96")), Some(96));
+    assert_eq!(pair_loop(None), None);
+    assert_eq!(pair_loop(Some("two-pass")), Some(PairLoop::TwoPass));
+    assert_eq!(pair_loop(Some("blocked")), Some(PairLoop::Blocked));
 }
 
 #[test]
@@ -163,33 +183,27 @@ fn the_loop_must_be_one_of_the_two() {
     pair_loop(Some("fast"));
 }
 
-/// The plain loop below `PLAIN_BELOW` bodies, the vector loop from it on:
-/// at the threshold, bit for bit (the two differ in the last bits there,
-/// which the test checks first, or it would prove nothing).
+/// The plain loop below the threshold, the target's `f64` kernel from it
+/// on: at the threshold, bit for bit. Where the two give identical bits
+/// there (a one-lane kernel adds in the plain loop's order), which ran
+/// can't be told and doesn't matter.
 #[test]
 fn the_plain_loop_runs_below_the_threshold_only() {
+    let below = TUNING.plain_below;
     // A build that moves the threshold far out (the sweeps') skips this:
     // n² pairs at a million bodies is no test.
-    if PLAIN_BELOW < 2 || PLAIN_BELOW > 4096 {
+    if !(2..=4096).contains(&below) {
         return;
     }
     let g = PairwiseGravity::new(6.674e-11, Softening::new(0.05).unwrap());
-    for n in [PLAIN_BELOW - 1, PLAIN_BELOW] {
+    for n in [below - 1, below] {
         let p = world::<f64>(n, 5);
         let mut plain_acc = start(n);
         plain::accumulate(&g, &p, &mut plain_acc);
-        let vector = with(&g, LOOP, &p);
-        let differ = plain_acc
-            .iter()
-            .zip(&vector)
-            .any(|(a, b)| bits(a.x) != bits(b.x) || bits(a.y) != bits(b.y));
-        assert!(
-            differ,
-            "n {n}: the two loops agree to the bit, so this can't tell them apart"
-        );
+        let vector = with::<f64, F64_LANES>(&g, TUNING.f64.pair_loop, &p);
         let mut acc = start(n);
         g.accumulate(&p, &mut acc);
-        let expected = if n < PLAIN_BELOW { &plain_acc } else { &vector };
+        let expected = if n < below { &plain_acc } else { &vector };
         for (k, (a, e)) in acc.iter().zip(expected).enumerate() {
             assert!(
                 bits(a.x) == bits(e.x) && bits(a.y) == bits(e.y),
@@ -203,7 +217,7 @@ fn the_plain_loop_runs_below_the_threshold_only() {
 /// long one stops early rather than overflowing.
 #[test]
 fn the_threshold_reaches_a_million() {
-    assert_eq!(plain_below(Some("1000000")), 1_000_000);
+    assert_eq!(plain_below(Some("1000000")), Some(1_000_000));
 }
 
 #[test]
