@@ -94,3 +94,30 @@ The browser demos run the wasm-simd128 build, so they paid for the bad
 8-lane loop. **Decision:** 16 lanes, for every target (the lane count
 sets the bits, which must match across targets). Natively sorted pays
 20–34%; brute force is about even, and better with AVX-512.
+
+## The grouped loop (2026-11-17)
+
+`results/llm-grouped`, `results/m4-grouped`: `grouped` and `grouped-4`
+against `lanes-16` (the shipped loop, the same bits). Brute force and
+sorted at 10,000 boids:
+
+| level | Brute: `grouped` | `grouped-4` | Sorted: `grouped` | `grouped-4` |
+|---|---|---|---|---|
+| Zen 5 default (SSE) | +11% | +11% | +6% | +10% |
+| Zen 5 x86-64-v3 (AVX2) | **−8%** | +129% | −2% | +19% |
+| Zen 5 native (AVX-512) | 0% | +196% | −1% | +30% |
+| Zen 5 wasmtime simd128 | +3% | +3% | +6% | +6% |
+| Zen 5 V8 simd128 | +13% | +12% | +8% | +10% |
+| M4 native | −1% | −1% | −1% | −1% |
+| M4 wasmtime simd128 | **−17%** | −18% | +11% | +10% |
+| M4 V8 simd128 | 0% | −1% | +4% | +4% |
+
+No spills (asm: the M4's loop 33 instructions per 4 candidates, none on
+the stack; SSE's spills 63 → 9 a block, AVX2's 25 → 4), but few wins:
+the spills were nearly free. Zen 5 runs the shipped SSE loop at 4.8
+instructions a cycle (perf), its spills going to load and store units
+that would otherwise idle, and the M4 natively is limited by its four
+SIMD pipes, not the stack. Grouping costs the passes' fixed work, which
+sorted's short spans (one cell's boids) pay most. Not adopted:
+`lanes-16` stays the loop.
+
