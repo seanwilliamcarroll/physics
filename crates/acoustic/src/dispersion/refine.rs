@@ -40,37 +40,43 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterati
     let mut r = residuals(params, w1, targets);
     let mut cost: f64 = r.iter().map(|x| x * x).sum();
     let mut damping = DAMPING_START;
+    // JᵀJ and −Jᵀr at the current parameters: they change only when a step
+    // is taken. A rejected step just raises the damping and solves again.
+    let mut normal: Option<(Vec<Vec<f64>>, Vec<f64>)> = None;
     for _ in 0..iterations {
-        // One column per parameter: a parameter moves only its own
-        // biquad's delay, so its column is that biquad's derivative, in
-        // closed form (`biquad_delay_gradient`), the pole's (r, θ) pair
-        // together.
-        let jacobian: Vec<Vec<f64>> = params
-            .as_chunks::<2>()
-            .0
+        let (jtj, jtr) = normal.get_or_insert_with(|| {
+            // One column per parameter: a parameter moves only its own
+            // biquad's delay, so its column is that biquad's derivative,
+            // in closed form (`biquad_delay_gradient`), the pole's (r, θ)
+            // pair together.
+            let jacobian: Vec<Vec<f64>> = params
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .flat_map(|&[r, th]| {
+                    let (dr1, dth1) = biquad_delay_gradient(r, th, w1);
+                    let (col_r, col_th): (Vec<f64>, Vec<f64>) = targets
+                        .iter()
+                        .map(|t| {
+                            let (dr, dth) = biquad_delay_gradient(r, th, t.w);
+                            ((dr - dr1) * t.weight, (dth - dth1) * t.weight)
+                        })
+                        .unzip();
+                    [col_r, col_th]
+                })
+                .collect();
+            normal_equations(&jacobian, &r)
+        });
+        let mut system: Vec<Vec<f64>> = jtj
             .iter()
-            .flat_map(|&[r, th]| {
-                let (dr1, dth1) = biquad_delay_gradient(r, th, w1);
-                let (col_r, col_th): (Vec<f64>, Vec<f64>) = targets
-                    .iter()
-                    .map(|t| {
-                        let (dr, dth) = biquad_delay_gradient(r, th, t.w);
-                        ((dr - dr1) * t.weight, (dth - dth1) * t.weight)
-                    })
-                    .unzip();
-                [col_r, col_th]
-            })
-            .collect();
-        let dot = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(x, y)| x * y).sum::<f64>();
-        let mut system: Vec<Vec<f64>> = jacobian
-            .iter()
+            .zip(jtr.iter())
             .enumerate()
-            .map(|(i, ji)| {
-                let mut row: Vec<f64> = jacobian.iter().map(|jj| dot(ji, jj)).collect();
+            .map(|(i, (row, &b))| {
+                let mut row = row.clone();
                 if let Some(d) = row.get_mut(i) {
                     *d += damping;
                 }
-                row.push(-dot(ji, &r));
+                row.push(b);
                 row
             })
             .collect();
@@ -97,6 +103,7 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterati
             *params = trial;
             r = trial_r;
             cost = trial_cost;
+            normal = None;
             damping *= DAMPING_DOWN;
             if gain <= CONVERGED * cost {
                 break;
@@ -109,4 +116,33 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterati
             }
         }
     }
+}
+
+/// `JᵀJ` and `−Jᵀr` for the Jacobian's columns `jacobian` and the
+/// residuals `r`. `JᵀJ` is symmetric: the lower half computed, the upper
+/// mirrored from it.
+fn normal_equations(jacobian: &[Vec<f64>], r: &[f64]) -> (Vec<Vec<f64>>, Vec<f64>) {
+    let dot = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(x, y)| x * y).sum::<f64>();
+    let lower: Vec<Vec<f64>> = jacobian
+        .iter()
+        .enumerate()
+        .map(|(i, ji)| jacobian.iter().take(i + 1).map(|jj| dot(ji, jj)).collect())
+        .collect();
+    let n = jacobian.len();
+    let jtj = (0..n)
+        .map(|i| {
+            (0..n)
+                .map(|j| {
+                    let (row, col) = if j <= i { (i, j) } else { (j, i) };
+                    lower
+                        .get(row)
+                        .and_then(|l| l.get(col))
+                        .copied()
+                        .unwrap_or(0.0)
+                })
+                .collect()
+        })
+        .collect();
+    let jtr = jacobian.iter().map(|ji| -dot(ji, r)).collect();
+    (jtj, jtr)
 }
