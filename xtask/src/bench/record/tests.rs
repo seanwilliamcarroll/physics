@@ -1,6 +1,7 @@
-use super::{Context, changes, document, path, proposal};
+use super::{Context, changes, document, headlines, path, proposal};
 use crate::bench::level::Level;
 use crate::bench::table::{Row, Throughput};
+use crate::bench::{Change, Moved};
 
 fn context() -> Context {
     Context {
@@ -17,6 +18,7 @@ fn context() -> Context {
         dirty: true,
         filter: Some("sand_step".to_owned()),
         against: "each benchmark's previous run".to_owned(),
+        moved: None,
     }
 }
 
@@ -119,4 +121,69 @@ fn one_pull_request_carries_every_level() {
     ] {
         assert!(body.contains(name), "{name}: {body}");
     }
+}
+
+fn moved(slower: &[(&str, f64)], faster: &[(&str, f64)]) -> Moved {
+    let c = |v: &[(&str, f64)]| {
+        v.iter()
+            .map(|&(n, c)| Change {
+                name: n.to_owned(),
+                change: c,
+            })
+            .collect()
+    };
+    Moved {
+        slower: c(slower),
+        faster: c(faster),
+        threshold_pct: 10.0,
+    }
+}
+
+/// The headline leads the body: slower across every level first, then
+/// faster, then the levels with no previous record.
+#[test]
+fn the_pull_request_leads_with_what_moved() {
+    let level = |l: Level, m: Option<Moved>| {
+        let ctx = Context { moved: m, ..at(l) };
+        let files = vec![(path(&ctx.name), Some(format!("table of {}", ctx.name)))];
+        (ctx, files)
+    };
+    let runs = [
+        level(
+            Level::Baseline,
+            Some(moved(
+                &[("sand_step/busy", 0.12)],
+                &[("pairwise_f64/4096", -0.30)],
+            )),
+        ),
+        level(
+            Level::Native,
+            Some(moved(&[("swarm_step/Sorted/10000", 0.25)], &[])),
+        ),
+        level(Level::V8, None),
+    ];
+    let head = headlines(&runs);
+    assert!(
+        head.starts_with("## What moved, more than 10% against the previous record"),
+        "{head}"
+    );
+    let slow = head
+        .find("`swarm_step/Sorted/10000` | +25.0% (slower)")
+        .expect("native's slower");
+    let slow2 = head
+        .find("`sand_step/busy` | +12.0% (slower)")
+        .expect("baseline's slower");
+    let fast = head
+        .find("`pairwise_f64/4096` | -30.0% (faster)")
+        .expect("faster");
+    assert!(slow2 < fast && slow < fast, "slower before faster: {head}");
+    assert!(head.contains("| llm-native | `swarm_step"), "{head}");
+    assert!(
+        head.contains("First records (nothing to compare with): llm-v8."),
+        "{head}"
+    );
+    let (_, _, body) = proposal(&runs);
+    assert!(body.starts_with(&head), "the body opens with the headline");
+    let quiet = headlines(&[level(Level::Baseline, Some(moved(&[], &[])))]);
+    assert!(quiet.contains("Nothing."), "{quiet}");
 }

@@ -18,6 +18,7 @@
 use std::fmt::Write as _;
 use std::path::Path;
 
+use super::Moved;
 use super::level::Level;
 use super::store;
 use super::table::{self, Row};
@@ -49,6 +50,9 @@ pub(crate) struct Context {
     pub filter: Option<String>,
     /// What the Change column compares with.
     pub against: String,
+    /// What moved past the threshold against the previous record (`None`:
+    /// there was none, a first record).
+    pub moved: Option<Moved>,
 }
 
 /// The record's text.
@@ -121,6 +125,7 @@ pub(crate) fn context(root: &Path, filter: Option<&str>, against: &str, level: L
         dirty: output(root, "git", &["status", "--porcelain"]).is_some_and(|s| !s.is_empty()),
         filter: filter.map(str::to_owned),
         against: against.to_owned(),
+        moved: None,
     }
 }
 
@@ -154,6 +159,53 @@ pub(crate) fn record(root: &Path, runs: &[LevelRecord]) -> Result<(), String> {
     github::propose(root, &files, &branch, &title, &body)
 }
 
+/// The pull request's headline: every level's benchmarks that moved past
+/// the threshold against its previous record, slower first (worst first),
+/// then faster; or that nothing did; and which levels are first records.
+pub(crate) fn headlines(runs: &[LevelRecord]) -> String {
+    let threshold = runs
+        .iter()
+        .find_map(|(c, _)| c.moved.as_ref().map(|m| m.threshold_pct))
+        .unwrap_or(10.0);
+    let mut out = format!("## What moved, more than {threshold}% against the previous record\n\n");
+    let mut lines = Vec::new();
+    for (sign, pick) in [("slower", true), ("faster", false)] {
+        for (ctx, _) in runs {
+            let Some(m) = &ctx.moved else { continue };
+            for c in if pick { &m.slower } else { &m.faster } {
+                lines.push(format!(
+                    "| {} | `{}` | {:+.1}% ({sign}) |",
+                    ctx.name,
+                    c.name,
+                    c.change * 100.0
+                ));
+            }
+        }
+    }
+    if lines.is_empty() {
+        out.push_str("Nothing.\n");
+    } else {
+        out.push_str("| record | benchmark | change |\n|---|---|---|\n");
+        for l in lines {
+            let _ = writeln!(out, "{l}");
+        }
+    }
+    let first: Vec<&str> = runs
+        .iter()
+        .filter(|(c, _)| c.moved.is_none())
+        .map(|(c, _)| c.name.as_str())
+        .collect();
+    if !first.is_empty() {
+        let _ = writeln!(
+            out,
+            "\nFirst records (nothing to compare with): {}.",
+            first.join(", ")
+        );
+    }
+    out.push('\n');
+    out
+}
+
 /// The pull request's branch, title and body for `runs`: each level's
 /// table, in turn. Pure.
 pub(crate) fn proposal(runs: &[LevelRecord]) -> (String, String, String) {
@@ -178,7 +230,7 @@ pub(crate) fn proposal(runs: &[LevelRecord]) -> (String, String, String) {
             ),
         )
     };
-    let mut body = String::new();
+    let mut body = headlines(runs);
     for (ctx, files) in runs {
         let table = files
             .first()

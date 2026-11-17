@@ -221,7 +221,10 @@ fn run_level(
     println!(
         "Time: the mean per iteration; ±: half its 95% confidence interval; Change: from {against}."
     );
-    let files = record.then(|| record_files(root, filter, &against, &recorded, &rows, level));
+    let files = record.then(|| {
+        let moved = use_record.then(|| moved(&rows, threshold_pct));
+        record_files(root, filter, &against, &recorded, &rows, level, moved)
+    });
     if let Mode::Save(name) = mode {
         println!(
             "bench: saved baseline `{name}` under {}",
@@ -295,10 +298,18 @@ fn outcome(
     }
 }
 
-/// Lists what moved past `threshold_pct`, faster and slower; returns how
-/// many got slower.
-fn report(rows: &[table::Row], threshold_pct: f64, against: &str) -> usize {
-    let moved = rows
+/// What moved past a threshold against the record: slower (worst first)
+/// and faster (best first), and the threshold, whole percent.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Moved {
+    pub slower: Vec<Change>,
+    pub faster: Vec<Change>,
+    pub threshold_pct: f64,
+}
+
+/// The rows' changes past `threshold_pct`, sorted ([`classify`]).
+fn moved(rows: &[table::Row], threshold_pct: f64) -> Moved {
+    let changes = rows
         .iter()
         .filter_map(|r| {
             r.change.map(|change| Change {
@@ -307,7 +318,22 @@ fn report(rows: &[table::Row], threshold_pct: f64, against: &str) -> usize {
             })
         })
         .collect();
-    let (worse, better) = classify(moved, threshold_pct / 100.0);
+    let (slower, faster) = classify(changes, threshold_pct / 100.0);
+    Moved {
+        slower,
+        faster,
+        threshold_pct,
+    }
+}
+
+/// Lists what moved past `threshold_pct`, faster and slower; returns how
+/// many got slower.
+fn report(rows: &[table::Row], threshold_pct: f64, against: &str) -> usize {
+    let Moved {
+        slower: worse,
+        faster: better,
+        ..
+    } = moved(rows, threshold_pct);
     for c in &better {
         println!("bench: faster  {:+6.1}%  {}", c.change * 100.0, c.name);
     }
@@ -331,8 +357,10 @@ fn record_files(
     recorded: &store::Record,
     rows: &[table::Row],
     level: Level,
+    moved: Option<Moved>,
 ) -> record::LevelRecord {
-    let ctx = record::context(root, filter, against, level);
+    let mut ctx = record::context(root, filter, against, level);
+    ctx.moved = moved;
     let next = store::merge(recorded, &store::from_rows(rows), filter.is_none());
     let by_id = rows
         .iter()
