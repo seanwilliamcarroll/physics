@@ -69,7 +69,7 @@ build that ships. Zen 5: to come (`results/llm`).
 | Physarum (`swarm_models/physarum`) | 96% | 99% | the agents' sensing and turning (inlined; `physarum.rs:204`, the turn's branches, 40%) and `Slime::cell` | 1 | no | ? | yes |
 | Vicsek (`swarm_models/vicsek`) | 92% | 94% | `Vicsek::step`'s neighbour loop, scalar and branchy (`vicsek.rs:349`–`364`) | 1 | no | ? | yes |
 | piano voices (`piano_16_voices_x3_strings/128`) | 86% | 81% | `Waveguide::step`: the dispersion allpass cascade (`bridge.rs:121`), one serial filter chain per string | 1 | no | ? | yes |
-| piano design (`piano_design_88_keys`, `stiff_waveguide_new/*`) | ~80% | ~80% | `libm`'s `atan`, `sin`, `cos` (65–70%) in `dispersion::refine`; key 69 takes 27 ms against 1.8 ms for key 60 | 1 | no | ? | yes |
+| piano design (`piano_design_88_keys`, `stiff_waveguide_new/*`) | ~80% | ~80% | `libm`'s `atan`, `sin`, `cos` (65–70%) in `dispersion::refine` (inlined into `Voicing::coefficients` in the wasm); key 69 takes 27 ms against 1.8 ms for key 60 | 1 | no | ? | yes |
 | FFT (`fft_f32/16384`) | 96% | 99% | radix-2 butterflies (`fft.rs:87`–`94`) | 1 | no | ? | yes |
 
 ### Candidates (from the profiles; floors and Zen 5 to come)
