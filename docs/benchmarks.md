@@ -13,6 +13,8 @@ the index and the current state.
 | `cargo xtask bench --save main` | The same, also kept as a named local baseline `main` (in `target/criterion/`). |
 | `cargo xtask bench --baseline main` | Compared with that local baseline instead, and **fails if anything got slower** by more than the threshold. |
 | `cargo xtask bench --record` | Any of the above, then this machine's record updated from the run and proposed in a pull request (below). |
+| `cargo xtask bench --level native` | Any of the above for one **level** (below): `baseline` (the default), `x86-64-v3`, `native`, or `v8` (the wasm, in Node). Each has its own record. |
+| `cargo xtask bench-all [--record]` | Every level this machine has, each compared with its record; with `--record`, every level's record in **one** pull request. |
 | `cargo xtask profile …` | Where the time goes in one example or bench (`profiling.md`). |
 | `cargo xtask bench-wasm` | Builds the site, then times the modules in Node: the engine's cluster against criterion's native numbers, then sand, boids, Vicsek, ants and Physarum through their exports (`xtask/bench_modules.mjs`); last, the largest cluster per scalar whose 60 Hz step fits the page's step budget (`xtask/gravity_ceiling.mjs`; "+" when the ABI's cap, `MAX_GRAVITY_BODIES` = 8192, fits; on the M4 in V8, 6,112 `f32` and 4,448 `f64`, 2026-11-15). |
 
@@ -43,16 +45,42 @@ sand_step/settled/640x360_chunks        3.3 µs    0.1%      70.4 Gelem/s    +0.
 Criterion's own output (a block per benchmark, with its progress) still
 prints above it as each finishes.
 
+## Levels
+
+The same benchmarks, built several ways (`xtask/src/bench/level.rs`):
+each runs the matching row of the kernels' tuning tables
+(`force/pairwise/tuning.rs`, `rules/tuning.rs`), so each catches its own
+regressions.
+
+| Level | Build | Where |
+|---|---|---|
+| `baseline` | the target's default (no `target-cpu`): x86's SSE2, aarch64's NEON | every machine |
+| `x86-64-v3` | `-C target-cpu=x86-64-v3` (AVX2) | x86 with AVX2 |
+| `native` | `-C target-cpu=native` | x86 with AVX-512 (without it, it would be v3 again; on aarch64 the baseline already is the vector unit) |
+| `v8` | wasm32-wasip1 with `simd128` (`.cargo/config.toml`), each bench run in Node through `experiments/sweep/wasi-node.mjs`: **the build that ships** | where Node is (the repo's, `.nvmrc`) |
+
+Each level builds in its own directory (`target/bench-<level>/`; the
+baseline in `target/`): flags change every dependency's build, so
+sharing would rebuild everything at each switch. `RUSTFLAGS` from the
+environment is ignored: a record says what it was built with. `v8`
+compares with its record or its previous run (no `--save`/`--baseline`).
+So on `llm`, `bench-all` is baseline, x86-64-v3, native and v8; on the
+M4, baseline and v8.
+
 ## Records
 
 A machine's **record** is what later runs on it compare with by
 default: its last recorded results, committed to the repository.
 
-- `docs/bench/<machine>.tsv`: one line per benchmark, its id, mean and
+- `docs/bench/<name>.tsv`: one line per benchmark, its id, mean and
   half its 95% confidence interval (ns) and declared throughput, after
-  `#` lines with the rustc, criterion version, commit and date it was
-  measured with. About 70 bytes a benchmark.
-- `docs/bench/<machine>.md`: the same results as a table, to read.
+  `#` lines with the rustc, criterion version, commit, date, level and
+  `RUSTFLAGS` it was measured with. About 70 bytes a benchmark.
+- `docs/bench/<name>.md`: the same results as a table, to read.
+
+`<name>` is the machine's, plus the level's past the baseline:
+`llm.tsv` (the baseline, as before levels), `llm-x86-64-v3.tsv`,
+`llm-native.tsv`, `llm-v8.tsv`.
 
 Until 2026-11-15 a record was criterion's own files for each benchmark
 (every sample, ~4 files a benchmark, ~300 files a machine). A machine's
@@ -71,9 +99,10 @@ benchmark the record doesn't have shows none. On a branch, the record is the one
 slower than `main` was. It warns when the record was made with another
 rustc or criterion (not like for like).
 
-**Recording:** `cargo xtask bench --record`, on an idle machine (the
-compute node), from a commit (it refuses uncommitted changes, and warns
-when HEAD isn't `origin/main`).
+**Recording:** `cargo xtask bench --record` (one level) or `cargo xtask
+bench-all --record` (every level, one pull request), on an idle machine,
+from a commit (it refuses uncommitted changes, and warns when HEAD isn't
+`origin/main`).
 
 - A full run replaces the record; a filtered run
   (`--record sand_step`) replaces just the benchmarks it measured and

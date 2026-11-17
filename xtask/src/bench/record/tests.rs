@@ -1,4 +1,5 @@
-use super::{Context, changes, document, path};
+use super::{Context, changes, document, path, proposal};
+use crate::bench::level::Level;
 use crate::bench::table::{Row, Throughput};
 
 fn context() -> Context {
@@ -6,6 +7,8 @@ fn context() -> Context {
         date: "2026-11-13".to_owned(),
         time: "151500".to_owned(),
         machine: "llm".to_owned(),
+        level: Level::Baseline,
+        name: "llm".to_owned(),
         system: "Linux x86_64".to_owned(),
         cpus: 16,
         rustc: "rustc 1.99.1".to_owned(),
@@ -50,4 +53,70 @@ fn the_record_s_files_are_the_table_then_the_record() {
     let paths: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
     assert_eq!(paths, ["docs/bench/llm.md", "docs/bench/llm.tsv"]);
     assert_eq!(files[1].1.as_deref(), Some("the record\n"));
+}
+
+fn at(level: Level) -> Context {
+    Context {
+        level,
+        name: level.record_name("llm"),
+        ..context()
+    }
+}
+
+#[test]
+fn a_level_s_record_is_named_for_it_and_says_how_it_was_built() {
+    let ctx = at(Level::Native);
+    let mut rows = Vec::new();
+    let text = document(&ctx, &mut rows);
+    assert!(
+        text.starts_with("# Benchmarks, 2026-11-13, llm-native"),
+        "{text}"
+    );
+    assert!(
+        text.contains("- **Level:** native (`-C target-cpu=native`)"),
+        "{text}"
+    );
+    assert!(
+        text.contains("`cargo xtask bench --level native sand_step`"),
+        "{text}"
+    );
+    let files = changes(&ctx, "the record", &mut rows);
+    assert_eq!(files[0].0, "docs/bench/llm-native.md");
+    assert_eq!(files[1].0, "docs/bench/llm-native.tsv");
+    let base = document(&at(Level::Baseline), &mut rows);
+    assert!(
+        base.contains("`cargo xtask bench sand_step`"),
+        "no --level for the baseline: {base}"
+    );
+}
+
+#[test]
+fn one_pull_request_carries_every_level() {
+    let run = |l: Level| {
+        let ctx = at(l);
+        let files = vec![
+            (path(&ctx.name), Some(format!("table of {}", ctx.name))),
+            (format!("docs/bench/{}.tsv", ctx.name), Some(String::new())),
+        ];
+        (ctx, files)
+    };
+    let (branch, title, body) = proposal(&[run(Level::Baseline)]);
+    assert_eq!(branch, "bench/llm-2026-11-13-151500");
+    assert_eq!(title, "bench: results of 2026-11-13 on llm");
+    assert!(body.contains("table of llm\n"));
+    let (branch, title, body) =
+        proposal(&[run(Level::Baseline), run(Level::Native), run(Level::V8)]);
+    assert_eq!(branch, "bench/llm-all-2026-11-13-151500");
+    assert_eq!(
+        title,
+        "bench: results of 2026-11-13 on llm (baseline, native, v8)"
+    );
+    for name in [
+        "table of llm\n",
+        "table of llm-native",
+        "table of llm-v8",
+        "`docs/bench/llm-v8.tsv`",
+    ] {
+        assert!(body.contains(name), "{name}: {body}");
+    }
 }
