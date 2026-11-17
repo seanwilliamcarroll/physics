@@ -107,6 +107,10 @@ from a commit (it refuses uncommitted changes, and warns when HEAD isn't
 - A full run replaces the record; a filtered run
   (`--record sand_step`) replaces just the benchmarks it measured and
   keeps the rest, and the table is rebuilt from the whole record.
+- The pull request **leads with what moved**: every level's benchmarks
+  whose mean changed past the threshold (10%, `--threshold`) against the
+  previous record, slower first (worst first), then faster, then which
+  levels are first records; each level's table follows.
 - It opens a pull request with the record's two files, made through
   GitHub's API (`gh api`, in batches of at most 50 files): nothing in
   the checkout changes and no hooks run.
