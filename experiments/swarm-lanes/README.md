@@ -25,8 +25,6 @@ Settings of the lane loop's knobs (`crates/swarm/src/rules/knobs.rs`):
 | `lanes-8` | 8 | `ordered` | the code before the sweep: the reference the tables compare against |
 | `lanes-16` | 16 | `ordered` | wider: does AVX-512 get used? (the default since the sweep) |
 | `algebraic` | 1 | `algebraic` | one sum the compiler may reorder (`f32::algebraic_add`): free to vectorize as it likes |
-| `grouped` | 16 | `ordered`, `SWARM_LOOP=grouped` | one pass per register's worth of lanes: no spills, the same bits as `lanes-16` |
-| `grouped-4` | 16 | as `grouped`, `SWARM_GROUP=4` | 4-lane passes even where registers are wider |
 
 All but `lanes-8` change the order of the sums, so the results' last
 bits; the golden hashes through the lane loop skip when a knob is set.
@@ -43,12 +41,7 @@ it).
 experiments/swarm-lanes/run.py --experiments sweep
 ```
 
-6 experiments × up to 7 levels: about an hour. The grouped loop
-against today's 16 lanes (3 experiments, about half an hour):
-
-```sh
-experiments/swarm-lanes/run.py --experiments loops --reference lanes-16
-```
+6 experiments × up to 7 levels: about an hour.
 
 ## Results (2026-11-16)
 
@@ -97,8 +90,14 @@ sets the bits, which must match across targets). Natively sorted pays
 
 ## The grouped loop (2026-11-17)
 
-`results/llm-grouped`, `results/m4-grouped`: `grouped` and `grouped-4`
-against `lanes-16` (the shipped loop, the same bits). Brute force and
+A build setting, `SWARM_LOOP=grouped`, made the lane loop one pass per
+register's worth of lanes (`SWARM_GROUP`; 4, or 8 with AVX, 16 with
+AVX-512), so only that many lanes' sums were live: no spills, and the
+same bits (each lane adds the same candidates in the same order; the
+goldens held). `results/llm-grouped`, `results/m4-grouped`: `grouped` and
+`grouped-4` (4-lane passes everywhere) against `lanes-16`, with
+`--experiments lanes-16,grouped,grouped-4 --reference lanes-16` at
+bd067809, where the code was; it's been removed since. Brute force and
 sorted at 10,000 boids:
 
 | level | Brute: `grouped` | `grouped-4` | Sorted: `grouped` | `grouped-4` |
@@ -118,6 +117,6 @@ the spills were nearly free. Zen 5 runs the shipped SSE loop at 4.8
 instructions a cycle (perf), its spills going to load and store units
 that would otherwise idle, and the M4 natively is limited by its four
 SIMD pipes, not the stack. Grouping costs the passes' fixed work, which
-sorted's short spans (one cell's boids) pay most. Not adopted:
-`lanes-16` stays the loop.
+sorted's short spans (one cell's boids) pay most. Not adopted, and the
+code removed: `lanes-16` stays the loop.
 

@@ -4,9 +4,10 @@
 //! compiler won't split one running sum into lanes by itself). Lane `i`
 //! adds candidates `i`, `i + LANES`, `i + 2·LANES`, … in that order, and
 //! the lanes are added in order at the end: that order is the results'
-//! bits, whatever the loop's shape (`SWARM_LOOP`, `knobs.rs`).
+//! bits. (A loop one pass per register's worth of lanes, the same bits
+//! without spills, was tried and dropped: `experiments/swarm-lanes/`.)
 
-use super::knobs::{GROUP, LANES, Loop, SUM, Sum};
+use super::knobs::{LANES, SUM, Sum};
 use super::{Ranges, Seen};
 use crate::Boid;
 
@@ -21,46 +22,11 @@ pub(super) fn add_blocks(
     vx: &[[f32; LANES]],
     vy: &[[f32; LANES]],
 ) {
-    let lanes = match super::knobs::LOOP {
-        Loop::Lanes => {
-            let mut lanes = Lanes::<LANES>::new();
-            for (((a, b), c), d) in x.iter().zip(y).zip(vx).zip(vy) {
-                lanes.add(r, me, a, b, c, d);
-            }
-            lanes
-        }
-        Loop::Grouped => grouped(r, me, x, y, vx, vy),
-    };
-    lanes.into(seen);
-}
-
-/// The same sums, one pass per `GROUP` lanes: pass `g` adds lanes
-/// `g·GROUP..(g+1)·GROUP` of every block, so only `GROUP` lanes' sums are
-/// live at once (a register's worth each, by default). Each lane adds the
-/// same candidates in the same order as in one pass: the same bits.
-fn grouped(
-    r: Ranges,
-    me: Boid,
-    x: &[[f32; LANES]],
-    y: &[[f32; LANES]],
-    vx: &[[f32; LANES]],
-    vy: &[[f32; LANES]],
-) -> Lanes<LANES> {
-    let mut all = Lanes::<LANES>::new();
-    let part = |row: &[f32; LANES], g: usize| row.as_chunks::<GROUP>().0.get(g).copied();
-    for g in 0..LANES / GROUP {
-        let mut pass = Lanes::<GROUP>::new();
-        for (((a, b), c), d) in x.iter().zip(y).zip(vx).zip(vy) {
-            // `g` is below the chunk count, a constant: always `Some`.
-            if let (Some(a), Some(b), Some(c), Some(d)) =
-                (part(a, g), part(b, g), part(c, g), part(d, g))
-            {
-                pass.add(r, me, &a, &b, &c, &d);
-            }
-        }
-        all.set(g, &pass);
+    let mut lanes = Lanes::new();
+    for (((a, b), c), d) in x.iter().zip(y).zip(vx).zip(vy) {
+        lanes.add(r, me, a, b, c, d);
     }
-    all
+    lanes.into(seen);
 }
 
 /// `a += x`, in the lane loop: as written, or reassociable when the build
@@ -91,39 +57,39 @@ fn unit(cond: bool) -> f32 {
     f32::from(u8::from(cond))
 }
 
-/// `N` lanes' partial sums of each quantity.
-struct Lanes<const N: usize> {
-    sum_x: [f32; N],
-    sum_y: [f32; N],
-    sum_vx: [f32; N],
-    sum_vy: [f32; N],
-    count: [f32; N],
-    close_dx: [f32; N],
-    close_dy: [f32; N],
+/// `LANES` lanes' partial sums of each quantity.
+struct Lanes {
+    sum_x: [f32; LANES],
+    sum_y: [f32; LANES],
+    sum_vx: [f32; LANES],
+    sum_vy: [f32; LANES],
+    count: [f32; LANES],
+    close_dx: [f32; LANES],
+    close_dy: [f32; LANES],
 }
 
-impl<const N: usize> Lanes<N> {
+impl Lanes {
     const fn new() -> Self {
         Self {
-            sum_x: [0.0; N],
-            sum_y: [0.0; N],
-            sum_vx: [0.0; N],
-            sum_vy: [0.0; N],
-            count: [0.0; N],
-            close_dx: [0.0; N],
-            close_dy: [0.0; N],
+            sum_x: [0.0; LANES],
+            sum_y: [0.0; LANES],
+            sum_vx: [0.0; LANES],
+            sum_vy: [0.0; LANES],
+            count: [0.0; LANES],
+            close_dx: [0.0; LANES],
+            close_dy: [0.0; LANES],
         }
     }
 
-    /// One block of `N` candidates, candidate `i` into lane `i`.
+    /// One block of `LANES` candidates, candidate `i` into lane `i`.
     fn add(
         &mut self,
         r: Ranges,
         me: Boid,
-        x: &[f32; N],
-        y: &[f32; N],
-        vx: &[f32; N],
-        vy: &[f32; N],
+        x: &[f32; LANES],
+        y: &[f32; LANES],
+        vx: &[f32; LANES],
+        vy: &[f32; LANES],
     ) {
         let sums = self
             .sum_x
@@ -152,25 +118,9 @@ impl<const N: usize> Lanes<N> {
         }
     }
 
-    /// Puts a pass's `M` lanes in as lanes `g·M..(g+1)·M`.
-    fn set<const M: usize>(&mut self, g: usize, pass: &Lanes<M>) {
-        let put = |to: &mut [f32; N], from: &[f32; M]| {
-            if let Some(slot) = to.as_chunks_mut::<M>().0.get_mut(g) {
-                *slot = *from;
-            }
-        };
-        put(&mut self.sum_x, &pass.sum_x);
-        put(&mut self.sum_y, &pass.sum_y);
-        put(&mut self.sum_vx, &pass.sum_vx);
-        put(&mut self.sum_vy, &pass.sum_vy);
-        put(&mut self.count, &pass.count);
-        put(&mut self.close_dx, &pass.close_dx);
-        put(&mut self.close_dy, &pass.close_dy);
-    }
-
     /// Adds the lanes, in order, into `seen`.
     fn into(self, seen: &mut Seen) {
-        let total = |a: [f32; N]| a.iter().sum::<f32>();
+        let total = |a: [f32; LANES]| a.iter().sum::<f32>();
         seen.sum_x += total(self.sum_x);
         seen.sum_y += total(self.sum_y);
         seen.sum_vx += total(self.sum_vx);
