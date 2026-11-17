@@ -259,6 +259,10 @@ the flock's step split by technique (#286). In order:
    side and a draft issue: `experiments/llvm-ordered-reductions/`.
    Still to do, by hand: try it on LLVM's main branch (Compiler
    Explorer), and decide whether to file the issue.
+   Parked (2026-11-17): Cranelift's loop still beats LLVM's fast one by
+   20% with the same instructions in another order; ruled out llvm-mca,
+   `target-cpu=apple-m4`, alignment. Next would be LLVM's loop
+   reordered by hand (the README there).
 3. ~~**Release** the physics package.~~ physics-engine 0.2.0, 2026-11-16.
 4. ~~**`personal_site` PR.**~~ 0.2.0 pulled in, and a demo the browser
    can't run says why (personal_site #18); math in posts (#19).
@@ -272,7 +276,12 @@ the flock's step split by technique (#286). In order:
 7. ~~**A second demo for the website.**~~ The gravity post's: the
    4,096-body cluster. (Still candidates for later: cradle, break shot,
    double pendulum, jelly.)
-8. **The next milestone:** M10, the A4 drum, collective construction,
+8. ~~**Swarm's lane loop.**~~ Swept 1–16 lanes and a reorderable sum
+   (`experiments/swarm-lanes/`, on the shared `experiments/sweep/`
+   library, #289–#291): 16 lanes, 2–3× faster in wasm with `simd128`,
+   natively sorted 20–34% slower. Reaches the site with the next
+   release; the bench record shows it on the next run on each machine.
+9. **The next milestone:** M10, the A4 drum, collective construction,
    M8 fixed point (`docs/05-roadmap.md`).
 
 ---
