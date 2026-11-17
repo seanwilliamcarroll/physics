@@ -296,12 +296,11 @@ tolerances, and native and wasm needn't agree to the bit. In order:
      target frequencies): the trig is half of what's left;
    - 11 keys miss the design tests' 1-cent tolerance (key 107: 10.9
      cents), found by the probe in #303: look into it, and test all 88.
-2. **Per-architecture kernels, starting with pairwise gravity:** none
-   exist yet (only the boids' two-line `unit`). Per the guide (§1–3):
-   the per-target choices (lanes, the loop, the plain-loop threshold)
-   in one module with a configuration per target, chosen at compile
-   time in one place, now that a lane count per target is allowed; the
-   lane sweeps have the data. Then the boids' lane loop the same way.
+2. **Per-architecture kernels:** pairwise gravity done (this PR:
+   `force/pairwise/tuning.rs`, a kernel per target and scalar; `f64`
+   in V8 −17%, on the M4 −6%; Zen 5's x86 levels to confirm on `llm`).
+   Next: the boids' lane loop the same way (a lane count per target and
+   per mode, from the lane sweeps).
 3. **Exact-bit tests to tolerances:** go through the tests that demand
    identical bits (the two gravity loops, substep equivalence, the
    repeatability hashes) and decide each: a tolerance where exact bits
