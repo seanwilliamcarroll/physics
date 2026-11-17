@@ -51,20 +51,51 @@ in the vectorizer's style where it matters (fixed-size lane arrays,
 
 ### Kernel table
 
-To fill in (phase 1 below): one row per bench group, with its share of
-a profile on each target.
+Where each bench group's time goes, natively and in V8, on the M4 and on
+Zen 5 (`experiments/perf-audit/`, `results/{m4,llm}/summary.md`;
+2026-11-17): the hot kernel's share of the run. Native and V8 agree to
+a few per cent nearly everywhere: the hot code is the same in the build
+that ships.
 
-| Kernel | % (M4) | % (Zen 5) | % (V8) | Level | Asm read | Oracle-tested | Benchmarked | Floor |
-|---|---|---|---|---|---|---|---|---|
-| pairwise gravity (two-pass) | | | | 1 | yes | plain loop | yes | |
-| boids neighbour loop (`Seen::add_span`) | | | | 1 | yes | grid, end to end | yes | 31 ms (M4, 10k brute) |
-| Barnes–Hut | | | | 1 | no | pairwise? | yes | |
-| broadphase | | | | 1 | no | | yes | |
-| integrators (`step_*`) | | | | 1 | no | | yes | |
-| sand step | | | | 1 | no | chunked = full | yes | |
-| Vicsek, ants, Physarum steps | | | | 1 | no | | yes | |
-| renders (boids, Vicsek, ants, Physarum, sand) | | | | 1 | no | | Node only | |
-| waveguide, FFT, dispersion design | | | | 1 | no | | yes | |
+| Kernel (bench case) | M4 native | M4 V8 | Zen 5 native | Zen 5 V8 | The hot part | Asm read | Oracle |
+|---|---|---|---|---|---|---|---|
+| pairwise gravity (`pairwise_f64/4096`; also both integrators at 1024) | 95% | 99% | 98% | 99% | `two_pass::pass_one`, then `lane_sum` | yes | plain loop |
+| boids, sorted (`swarm_step/Sorted/10000`, the page's default) | 84% | 83% | 78% | 79% | `add_span`; the **scalar leftovers** (`Seen::add`, `rules.rs:70`, `:99`) about a third on the M4, 13% on Zen 5 | the lane loop only | grid, end to end |
+| boids, grid (`Grid/10000`) | 84% | 87% | 82% | 86% | all scalar `Seen::add` (by design: the reference) | no | – |
+| boids, brute force (`Brute/10000`) | 94% | 96% | 95% | 96% | the lane loop | yes | grid |
+| Barnes–Hut (`barnes_hut_f64/theta_0.5/4096`) | 94% | 97% | 96% | 97% | the tree walk (`accel_on`, inlined; `barnes_hut.rs:181`, `:109`, `:90`) | no | ? |
+| broadphase (`broadphase_f64/4096`) | 58% sort | 58% sort | 67% sort | 70% sort | sorting the `(i64, i64, usize)` keys and pairs; then `candidate_pairs` | no | ? |
+| sand (`sand_step/busy/1920x1080`) | 95% | 97% | 97% | 97% | `Grid::step`, the per-cell rules (`rules.rs:60`, the neighbour loop `grid.rs:76`) | no | chunked = full |
+| ants (`swarm_models/ants`) | 85% | 81% | 81% | 83% | `Field::diffuse_counted`: the 3 × 3 blur, an edge test per cell (`field.rs:158`) | no | ? |
+| Physarum (`swarm_models/physarum`) | 96% | 99% | 81% + 17% `floorf` | 99% | the agents' sensing and turning (inlined; `physarum.rs:204`) and `Slime::cell`; on x86 also the wrap's `floor` (`physarum.rs:72`), a library call at the SSE2 baseline | no | ? |
+| Vicsek (`swarm_models/vicsek`) | 92% | 94% | 92% | 96% | `Vicsek::step`'s neighbour loop, scalar and branchy (`vicsek.rs:349`–`364`) | no | ? |
+| piano voices (`piano_16_voices_x3_strings/128`) | 86% | 81% | 87% | 83% | `Waveguide::step`: the dispersion allpass cascade (`bridge.rs:121`), one serial filter chain per string | no | ? |
+| piano design (`piano_design_88_keys`, `stiff_waveguide_new/*`) | ~80% | ~80% | ~90% | ~87% | `libm`'s `atan` (31% M4, 61% Zen 5), `sin`, `cos` in `dispersion::refine` (inlined into `Voicing::coefficients` in the wasm); key 69 takes 27 ms against 1.8 ms for key 60 | no | ? |
+| FFT (`fft_f32/16384`) | 96% | 99% | 99% | 99% | radix-2 butterflies (`fft.rs:87`–`94`) | no | ? |
+
+### Candidates (from the profiles; floors to come)
+
+1. **Sorted boids' leftovers.** The page's default mode spends about a
+   third of its step in the scalar path for each span's last < 16
+   candidates: likely why 16 lanes cost sorted 20–34% natively. A
+   vector path for the tail (a partial block, masked) would change
+   bits (the leftovers' order), so it goes behind a setting first.
+2. **The piano's dispersion cascade.** The audio thread's hot loop: 48
+   strings, each a serial chain of allpass filters, so no vector
+   within a chain, but the chains are independent (vectorize across
+   strings). Real-time: its margin decides how many voices fit.
+3. **The piano design's trigonometry,** and key 69's 15× outlier. Runs
+   when the piano model is chosen (175 ms for 88 keys natively).
+4. **Ants' diffusion:** the interior without the per-cell edge test,
+   which should then vectorize.
+5. **Vicsek's and Physarum's inner loops,** Barnes–Hut's walk, sand's
+   rules: branchy, scalar; worth a read of the asm before anything.
+6. **Physarum's wrap on x86:** `floor` is a library call at x86's SSE2
+   baseline (no rounding instruction until SSE4.1): 17% of the step on
+   Zen 5 natively, none on the M4 or in wasm, which have one. Native x86
+   isn't shipped, so low; a wrap without `floor` would help all three.
+7. **Broadphase's sort:** known (TASKS, 2026-11-14: kept, since the
+   collision scenes have at most about 60 balls).
 
 ### Findings
 
@@ -79,9 +110,9 @@ a profile on each target.
 
 ## Plan
 
-1. **Measure (no code changes).** Profile every bench group on the M4
-   (`cargo xtask profile`, samply) and on `llm` (the sweep's `--perf`),
-   and the wasm through `bench-wasm`; fill the kernel table's shares.
+1. **Measure (no code changes).** Profile every bench group natively
+   and in V8 (`experiments/perf-audit/profile.py`; the M4 done
+   2026-11-17, both machines); fill the kernel table's shares.
    For the top kernels, a back-of-envelope floor (operations ÷ the
    machine's throughput, as for the boids) and the measured fraction of
    it. Output: the kernels ranked by share × gap to floor.
