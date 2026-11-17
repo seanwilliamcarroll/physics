@@ -85,6 +85,28 @@ fn biquad_delay(r: f64, th: f64, w: f64) -> f64 {
     (2.0 * w + 2.0 * (factor(th) + factor(-th))) / w
 }
 
+/// [`biquad_delay`]'s derivatives in `r` and `th` at `w`, in closed form:
+/// each factor is `atan2(y, x)` with `y = −r sin a`, `x = 1 − r cos a`
+/// (`a` the factor's angle less `w`), whose derivatives are `−sin a / q`
+/// in `r` and `(r² − r cos a) / q` in `a`, `q = x² + y² = 1 − 2r cos a +
+/// r²`. The same `sin` and `cos` as the delay, and no `atan2`: what the
+/// refinement's Jacobian needs, without a second evaluation per
+/// parameter.
+fn biquad_delay_gradient(r: f64, th: f64, w: f64) -> (f64, f64) {
+    let parts = |angle: f64| {
+        let (s, c) = (libm::sin(angle - w), libm::cos(angle - w));
+        let q = 1.0 - 2.0 * r * c + r * r;
+        (-s / q, (r * r - r * c) / q)
+    };
+    let (dr_plus, da_plus) = parts(th);
+    let (dr_minus, da_minus) = parts(-th);
+    // The second factor's angle is −θ: its derivative in θ changes sign.
+    (
+        2.0 * (dr_plus + dr_minus) / w,
+        2.0 * (da_plus - da_minus) / w,
+    )
+}
+
 /// A partial to design for: its frequency (rad/sample), the extra delay it
 /// needs over the fundamental, and the weight turning a delay error into
 /// cents.
