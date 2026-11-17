@@ -21,9 +21,12 @@ pub(crate) fn solve(m: &mut [Vec<f64>]) -> Option<Vec<f64>> {
         if lead == 0.0 {
             return None;
         }
+        let tail = row.get(c..).unwrap_or_default();
         for other in rest {
             let f = other.get(c).copied().unwrap_or(0.0) / lead;
-            for (o, &v) in other.iter_mut().zip(row.iter()).skip(c) {
+            // Over the slices from column c on, not `zip(…).skip(c)`: a
+            // known length, so the loop vectorizes (it didn't).
+            for (o, &v) in other.get_mut(c..).unwrap_or_default().iter_mut().zip(tail) {
                 *o -= f * v;
             }
         }

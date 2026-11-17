@@ -80,31 +80,58 @@ impl Dispersion {
 /// its phase lag is `2w + 2[arg(1 − p e^{−jw}) + arg(1 − p* e^{−jw})]`,
 /// computed per pole so it never wraps (each factor stays within ±π/2).
 fn biquad_delay(r: f64, th: f64, w: f64) -> f64 {
-    let factor =
-        |angle: f64| libm::atan2(-r * libm::sin(angle - w), 1.0 - r * libm::cos(angle - w));
-    (2.0 * w + 2.0 * (factor(th) + factor(-th))) / w
+    Angles::new(th, w).delay(r, w)
 }
 
-/// [`biquad_delay`]'s derivatives in `r` and `th` at `w`, in closed form:
-/// each factor is `atan2(y, x)` with `y = −r sin a`, `x = 1 − r cos a`
-/// (`a` the factor's angle less `w`), whose derivatives are `−sin a / q`
-/// in `r` and `(r² − r cos a) / q` in `a`, `q = x² + y² = 1 − 2r cos a +
-/// r²`. The same `sin` and `cos` as the delay, and no `atan2`: what the
-/// refinement's Jacobian needs, without a second evaluation per
-/// parameter.
+/// [`biquad_delay`]'s derivatives in `r` and `th` at `w` ([`Angles::gradient`]).
+#[cfg(test)]
 fn biquad_delay_gradient(r: f64, th: f64, w: f64) -> (f64, f64) {
-    let parts = |angle: f64| {
-        let (s, c) = (libm::sin(angle - w), libm::cos(angle - w));
-        let q = 1.0 - 2.0 * r * c + r * r;
-        (-s / q, (r * r - r * c) / q)
-    };
-    let (dr_plus, da_plus) = parts(th);
-    let (dr_minus, da_minus) = parts(-th);
-    // The second factor's angle is −θ: its derivative in θ changes sign.
-    (
-        2.0 * (dr_plus + dr_minus) / w,
-        2.0 * (da_plus - da_minus) / w,
-    )
+    Angles::new(th, w).gradient(r, w)
+}
+
+/// What a biquad's delay and its derivatives at `w` need from its pole
+/// angle `θ`: `sin` and `cos` of `θ − w` and of `−θ − w` (`sincos`: one
+/// range reduction for both). Kept by the refinement, so the Jacobian at
+/// the parameters a step just reached reuses the residuals' (trig is
+/// most of the design's cost).
+#[derive(Clone, Copy)]
+pub(crate) struct Angles {
+    plus: (f64, f64),
+    minus: (f64, f64),
+}
+
+impl Angles {
+    fn new(th: f64, w: f64) -> Self {
+        Self {
+            plus: libm::sincos(th - w),
+            minus: libm::sincos(-th - w),
+        }
+    }
+
+    /// The biquad's phase delay at `w` with pole radius `r`.
+    fn delay(self, r: f64, w: f64) -> f64 {
+        let factor = |(s, c): (f64, f64)| libm::atan2(-r * s, 1.0 - r * c);
+        (2.0 * w + 2.0 * (factor(self.plus) + factor(self.minus))) / w
+    }
+
+    /// The delay's derivatives in `r` and `θ`, in closed form: each factor
+    /// is `atan2(y, x)` with `y = −r sin a`, `x = 1 − r cos a` (`a` the
+    /// factor's angle less `w`), whose derivatives are `−sin a / q` in `r`
+    /// and `(r² − r cos a) / q` in `a`, `q = x² + y² = 1 − 2r cos a + r²`.
+    /// The same `sin` and `cos` as the delay, and no `atan2`.
+    fn gradient(self, r: f64, w: f64) -> (f64, f64) {
+        let parts = |(s, c): (f64, f64)| {
+            let q = 1.0 - 2.0 * r * c + r * r;
+            (-s / q, (r * r - r * c) / q)
+        };
+        let (dr_plus, da_plus) = parts(self.plus);
+        let (dr_minus, da_minus) = parts(self.minus);
+        // The second factor's angle is −θ: its derivative in θ changes sign.
+        (
+            2.0 * (dr_plus + dr_minus) / w,
+            2.0 * (da_plus - da_minus) / w,
+        )
+    }
 }
 
 /// A partial to design for: its frequency (rad/sample), the extra delay it

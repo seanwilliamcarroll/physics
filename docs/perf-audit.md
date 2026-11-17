@@ -240,10 +240,46 @@ ranges as an order of magnitude.
   and while a short loop's pole count is being chosen (33 keys refit
   2–4 times) the refits are short (10 iterations), the final count
   fitted in full. Iterations 6,748 → 5,267. M4 68 → 51 ms (−25%); V8
-  93 → 68 ms, wasmtime 84 → 62. **Since the start: 174 → 51 ms
-  natively, 231 → 68 ms in V8 (−71%).** Next for this item (TASKS): the
-  asm on each platform, algebraic adds, `std` trig natively, and the 11
-  keys over 1 cent.
+  93 → 68 ms, wasmtime 84 → 62.
+- **Piano design, step 3 (2026-11-17): the asm, and algebraic adds.**
+  Read on all five paths (M4, x86 at the baseline and x86-64-v3, the
+  wasm through Cranelift and V8). Nothing in the fit was vectorized: the
+  trig is `libm` calls, one value at a time; the normal equations' dot
+  products are one running sum; the elimination's update (`solve.rs`)
+  wasn't vectorized either, though it isn't a reduction (`zip().skip(c)`
+  hid its length). Measured on the M4, each alone:
+  - `libm::sincos` for `sin` and `cos` of one angle (one range
+    reduction): −14%.
+  - JᵀJ and Jᵀr only when a step is taken (a rejected step re-damps and
+    re-solves), JᵀJ's lower half only: −8%. Bit-identical.
+  - The elimination over slices: vectorized on all five (M4 `fmul.2d`
+    unrolled 4×, x86 `mulpd`, v3 `ymm`, `f64x2` through Cranelift and
+    V8): −9%. Bit-identical.
+  - The residuals' `sin` and `cos` kept for the next Jacobian
+    (`Angles`): −12%.
+  - **Algebraic adds: tried twice, no gain.** The dot products, once
+    cached, run too rarely (−0.5%); the elimination update, once
+    vectorized, gains nothing from fused multiply–adds (+0.04%). Not
+    kept.
+  - **`std`'s math instead of `libm`** (every call in the crates
+    switched, measured, not kept): `libm` earns its place. `std` has no
+    fused `sincos` (its `sin_cos` is a `sin` and a `cos`, two range
+    reductions), so the piano design was **20% slower in V8** (40.4 →
+    48.6 ms) and 5% faster natively on the M4; and `libm` is Rust that
+    LTO inlines into hot loops, where `std` calls the platform's
+    library: Vicsek was **13% slower natively** with `std` (1.22 → 1.38
+    ms), unchanged in V8. The rest moved a few per cent either way
+    (ants, Physarum −2 to −4%; piano voices −7% native, +2% V8). Each
+    `std` function on wasm is the same port as `libm`'s; the difference
+    is `sincos` and inlining. Zen 5 natively not measured: x86 native
+    isn't shipped.
+
+  Every key's worst partial within 0.00001 cent of before, the same
+  biquad counts and iterations. M4 51 → 30 ms; V8 69 → 40 ms; wasmtime
+  63 → 35 ms. **Since the start: 174 → 30 ms natively, 231 → 40 ms in V8
+  (−83%).** What's left is the trig, about half: vectorizing it (a
+  polynomial `sincos` and `atan` over the ~25 target frequencies at once)
+  would be the next step, and a bigger one.
 
 ### Findings
 
