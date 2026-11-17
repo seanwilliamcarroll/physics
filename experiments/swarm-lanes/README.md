@@ -120,3 +120,11 @@ SIMD pipes, not the stack. Grouping costs the passes' fixed work, which
 sorted's short spans (one cell's boids) pay most. Not adopted, and the
 code removed: `lanes-16` stays the loop.
 
+## Per target (2026-11-17)
+
+With golden hashes gone (#301), the lane count is now per target and per
+search (`crates/swarm/src/rules/tuning.rs`), from this sweep's tables:
+sorted 8 lanes natively, 16 in wasm; brute force 16 in wasm, with
+AVX-512 and at SSE2, 8 on aarch64 and with AVX2. `SWARM_LANES` overrides
+both.
+

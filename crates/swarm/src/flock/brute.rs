@@ -2,7 +2,7 @@
 //! every other.
 
 use super::Flock;
-use crate::rules::{Ranges, Seen, finish};
+use crate::rules::{BRUTE_LANES, Ranges, Seen, finish};
 
 impl Flock {
     /// Every boid's next state into `next`, every other boid a candidate:
@@ -17,7 +17,7 @@ impl Flock {
         for i in 0..cur.len() {
             let Some(me) = cur.get(i) else { continue };
             let mut seen = Seen::default();
-            seen.add_span(ranges, me, &cur.x, &cur.y, &cur.vx, &cur.vy);
+            seen.add_span::<BRUTE_LANES>(ranges, me, &cur.x, &cur.y, &cur.vx, &cur.vy);
             self.next.set(i, finish(p, arena, predator, me, &seen));
         }
     }

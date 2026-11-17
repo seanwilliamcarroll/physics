@@ -294,6 +294,24 @@ ranges as an order of magnitude.
   `f32` unchanged. The two loops are tested bit for bit against each
   other at 1, 4, 8 and 16 lanes, and against the plain loop to rounding.
 
+- **The boids' lane counts per target and search (2026-11-17):** the
+  same structure (`swarm/src/rules/tuning.rs`), from the lane sweep:
+  sorted 8 lanes natively everywhere (short spans: fewer leftovers,
+  cheaper reductions), 16 in wasm (LLVM compiles 8 badly there); brute
+  force 16 in wasm, with AVX-512 and at SSE2, 8 on aarch64 and with AVX2.
+  M4: sorted −18% at 10k, −23% at 100k, −27% at 1k; brute force −2%;
+  wasm unchanged. `llm` confirmed pairwise's table: `f64` −8% at SSE2,
+  −9% in V8, every other row within 0.4%
+  (`experiments/gravity-vectorize/results/llm-kernels`).
+- **Checking what each target compiled (2026-11-17):**
+  `experiments/perf-audit/kernels.py` builds pairwise's and the boids'
+  kernels for the M4, x86 at SSE2, AVX2 and AVX-512, and wasm, and
+  reports each one's hottest loops: register width, vector and scalar
+  float ops, square roots, stack traffic, shuffles. Every target got the
+  kernel its table names (e.g. AVX-512: brute force's loop in `zmm`,
+  sorted's in `ymm`; wasm: the boids' loop all `f32x4`, no lane moves).
+  Run it after any tuning change.
+
 ### Findings
 
 | # | § | Severity | Finding | Remediation |

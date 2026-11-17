@@ -77,10 +77,11 @@ impl Seen {
     }
 
     /// Candidates given as the same span of four arrays: whole blocks of
-    /// [`LANES`] through the lane loop (`rules/lanes.rs`: without
-    /// branches, into `LANES` partial sums), the rest one at a time. The
+    /// `L` through the lane loop (`rules/lanes.rs`: without branches,
+    /// into `L` partial sums; `L` per target and search, `tuning.rs`), the
+    /// rest one at a time. The
     /// sums round differently from [`Self::add`]'s, as any order does.
-    pub(crate) fn add_span(
+    pub(crate) fn add_span<const L: usize>(
         &mut self,
         r: Ranges,
         me: Boid,
@@ -90,10 +91,10 @@ impl Seen {
         vy: &[f32],
     ) {
         let ((cx, rx), (cy, ry), (cvx, rvx), (cvy, rvy)) = (
-            x.as_chunks::<LANES>(),
-            y.as_chunks::<LANES>(),
-            vx.as_chunks::<LANES>(),
-            vy.as_chunks::<LANES>(),
+            x.as_chunks::<L>(),
+            y.as_chunks::<L>(),
+            vx.as_chunks::<L>(),
+            vy.as_chunks::<L>(),
         );
         lanes::add_blocks(self, r, me, cx, cy, cvx, cvy);
         for (((&x, &y), &vx), &vy) in rx.iter().zip(ry).zip(rvx).zip(rvy) {
@@ -104,8 +105,9 @@ impl Seen {
 
 mod knobs;
 mod lanes;
+mod tuning;
 
-pub(crate) use knobs::LANES;
+pub(crate) use tuning::{BRUTE_LANES, SORTED_LANES};
 
 /// How close the predator must be to be fled, pixels (our choice: a
 /// little over twice the visual range, so a flock parts ahead of it).
