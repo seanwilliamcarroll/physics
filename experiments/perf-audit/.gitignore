@@ -2,3 +2,4 @@
 results/*/native/
 results/*/v8/
 __pycache__/
+.work/
