@@ -299,8 +299,10 @@ tolerances, and native and wasm needn't agree to the bit. In order:
 2. **Per-architecture kernels:** pairwise gravity done (this PR:
    `force/pairwise/tuning.rs`, a kernel per target and scalar; `f64`
    in V8 −17%, on the M4 −6%; Zen 5's x86 levels to confirm on `llm`).
-   Next: the boids' lane loop the same way (a lane count per target and
-   per mode, from the lane sweeps).
+   The boids' lane loop the same way (this PR: `rules/tuning.rs`, a
+   lane count per target and per search; sorted −18% on the M4).
+   `experiments/perf-audit/kernels.py` checks what each target compiled
+   the tables to: run it after any tuning change.
 3. **Exact-bit tests to tolerances:** go through the tests that demand
    identical bits (the two gravity loops, substep equivalence, the
    repeatability hashes) and decide each: a tolerance where exact bits
