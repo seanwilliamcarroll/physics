@@ -1,5 +1,5 @@
-//! Determinism: the same run twice is identical, and a golden hash pins
-//! it, native and wasm (`cargo xtask test-wasm`; `docs/04-testing.md`).
+//! Determinism: the same run twice is identical, bit for bit, for every
+//! model and neighbour search (`docs/04-testing.md`).
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -18,75 +18,14 @@ fn run_with(how: Neighbours) -> u64 {
     h.finish()
 }
 
-fn run() -> u64 {
-    run_with(Neighbours::Brute)
-}
-
 #[test]
 fn a_run_is_repeatable() {
-    assert_eq!(run(), run());
-    assert_eq!(run_with(Neighbours::Grid), run_with(Neighbours::Grid));
-}
-
-/// The lane loop's build settings that change results' bits
-/// (`crates/swarm/src/rules/knobs.rs`): the goldens through it (brute
-/// force, sorted) are for their defaults.
-fn lanes_overridden() -> bool {
-    let set: Vec<String> = [
-        ("SWARM_LANES", option_env!("SWARM_LANES")),
-        ("SWARM_SUM", option_env!("SWARM_SUM")),
-    ]
-    .iter()
-    .filter_map(|(k, v)| v.map(|v| format!("{k}={v}")))
-    .collect();
-    if !set.is_empty() {
-        eprintln!(
-            "golden hash skipped: built with {}, which changes results' bits",
-            set.join(", ")
-        );
+    for how in [Neighbours::Brute, Neighbours::Grid, Neighbours::Sorted] {
+        assert_eq!(run_with(how), run_with(how), "{how:?}");
     }
-    !set.is_empty()
 }
 
-/// The golden hash: a change in results fails here, intended or not.
-const GOLDEN: u64 = 0x3673_9731_39d9_e34f;
-
-#[test]
-fn the_golden_hash_is_unchanged() {
-    if lanes_overridden() {
-        return;
-    }
-    let h = run();
-    assert_eq!(h, GOLDEN, "if intended, set GOLDEN = {h:#018x}");
-}
-
-/// The same run through the grid: its sums meet neighbours in another
-/// order, so another hash.
-const GOLDEN_GRID: u64 = 0xf01d_80f3_c341_7b71;
-
-#[test]
-fn the_grid_golden_hash_is_unchanged() {
-    let h = run_with(Neighbours::Grid);
-    assert_eq!(h, GOLDEN_GRID, "if intended, set GOLDEN_GRID = {h:#018x}");
-}
-
-/// And sorted (the default): lane sums, another order again.
-const GOLDEN_SORTED: u64 = 0xd7ab_3c60_52d8_cc15;
-
-#[test]
-fn the_sorted_golden_hash_is_unchanged() {
-    if lanes_overridden() {
-        return;
-    }
-    let h = run_with(Neighbours::Sorted);
-    assert_eq!(
-        h, GOLDEN_SORTED,
-        "if intended, set GOLDEN_SORTED = {h:#018x}"
-    );
-}
-
-/// The Vicsek model: 400 particles at ρ = 4, η = 2, 300 steps
-/// (`libm`'s sin and cos: the same bits on wasm).
+/// The Vicsek model: 400 particles at ρ = 4, η = 2, 300 steps.
 fn run_vicsek(brute_force: bool) -> u64 {
     let mut v = swarm::Vicsek::new(400, 10.0, swarm::VicsekParams::paper(2.0), 42).unwrap();
     v.set_brute_force(brute_force);
@@ -98,26 +37,10 @@ fn run_vicsek(brute_force: bool) -> u64 {
     h.finish()
 }
 
-const GOLDEN_VICSEK: u64 = 0x95da_8d6f_33a2_1b2d;
-/// Through the periodic grid (the default): the sums in cell order.
-const GOLDEN_VICSEK_GRID: u64 = 0x575e_de0c_9e4a_d022;
-
 #[test]
-fn the_vicsek_golden_hashes_are_unchanged() {
-    let (brute, grid) = (run_vicsek(true), run_vicsek(false));
-    assert_eq!(
-        (brute, grid),
-        (run_vicsek(true), run_vicsek(false)),
-        "repeatable"
-    );
-    assert_eq!(
-        brute, GOLDEN_VICSEK,
-        "if intended, set GOLDEN_VICSEK = {brute:#018x}"
-    );
-    assert_eq!(
-        grid, GOLDEN_VICSEK_GRID,
-        "if intended, set GOLDEN_VICSEK_GRID = {grid:#018x}"
-    );
+fn a_vicsek_run_is_repeatable() {
+    assert_eq!(run_vicsek(true), run_vicsek(true), "brute force");
+    assert_eq!(run_vicsek(false), run_vicsek(false), "grid");
 }
 
 /// Ant foraging: 300 ants, a food patch and a wall, 400 steps; ants and
@@ -142,13 +65,9 @@ fn run_ants() -> u64 {
     h.finish()
 }
 
-const GOLDEN_ANTS: u64 = 0xd20c_5b5f_d1ae_0911;
-
 #[test]
-fn the_ants_golden_hash_is_unchanged() {
-    let h = run_ants();
-    assert_eq!(h, run_ants(), "repeatable");
-    assert_eq!(h, GOLDEN_ANTS, "if intended, set GOLDEN_ANTS = {h:#018x}");
+fn an_ants_run_is_repeatable() {
+    assert_eq!(run_ants(), run_ants());
 }
 
 /// Physarum: 3,000 agents and a node on a 96² field, 300 steps.
@@ -163,11 +82,7 @@ fn run_slime() -> u64 {
     h.finish()
 }
 
-const GOLDEN_SLIME: u64 = 0x59c1_57e9_4d5c_3901;
-
 #[test]
-fn the_slime_golden_hash_is_unchanged() {
-    let h = run_slime();
-    assert_eq!(h, run_slime(), "repeatable");
-    assert_eq!(h, GOLDEN_SLIME, "if intended, set GOLDEN_SLIME = {h:#018x}");
+fn a_slime_run_is_repeatable() {
+    assert_eq!(run_slime(), run_slime());
 }

@@ -25,8 +25,7 @@ fn nan_has_no_direction<S: Scalar>() {
 for_each_scalar!(nan_has_no_direction);
 
 /// Each component divided by the length (correctly rounded), not
-/// multiplied by `1 / len`: bit-identical to the `d / len` it replaces,
-/// so golden hashes don't move.
+/// multiplied by `1 / len`: bit-identical to the `d / len` it replaces.
 fn divides_componentwise<S: Scalar>() {
     let d = v::<S>(1.0, 2.0);
     let len = d.length();

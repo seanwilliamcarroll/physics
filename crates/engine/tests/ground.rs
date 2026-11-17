@@ -182,8 +182,7 @@ fn static_particles_below_the_ground_are_not_moved() {
 
 /// No ground changes nothing: setting one and removing it, or setting one
 /// nothing reaches (the bob swings no lower than 1 m below the pin), steps
-/// bit-identically to never having one. (The goldens in `determinism.rs`
-/// cover the default.)
+/// bit-identically to never having one.
 #[test]
 fn no_ground_or_an_unreached_one_changes_nothing() {
     const FAR_BELOW: f64 = -2.0;

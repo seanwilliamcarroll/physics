@@ -188,7 +188,7 @@ struct Gains<S> {
 /// rigid `Δλ = −(Jv + (β/h) C) / w`; compliant (Catto's soft form)
 /// `Δλ = −(Jv + C/h + α̃ λ) / (w + α̃)`. Two branches rather than the soft
 /// formula with α = 0: adding `0 · λ` can flip a zero's sign, and the
-/// rigid path must stay bit-identical to M3 (goldens). Skipped when the
+/// rigid path stays bit-identical to M3's. Skipped when the
 /// gradient is undefined or neither body can move.
 fn solve_velocity<S: Scalar, C: Constraint<S>>(
     p: &mut Particles<S>,

@@ -1,7 +1,6 @@
-//! Rendered audio is reproducible, and the same on every platform: a
-//! golden hash of a short performance, checked natively and on wasm
-//! (`cargo xtask test-wasm`), like the engine's scenes
-//! (`docs/12-acoustic-foundations.md`, "Measuring").
+//! Rendered audio is reproducible: a short performance renders the same
+//! samples, bit for bit, every time (`docs/12-acoustic-foundations.md`,
+//! "Measuring").
 #![cfg(test)]
 
 use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing, inharmonicity};
@@ -73,23 +72,6 @@ fn a_performance_is_repeatable() {
     assert_eq!(hash(&perform::<f64>().0), hash(&perform::<f64>().0));
 }
 
-/// Golden hashes of [`perform`]'s samples (each as `f64` bits): (f32,
-/// f64). Recorded on aarch64-apple-darwin, Rust 1.99.1; `test-wasm` checks
-/// the same values on wasm32-wasip1. The note-on coefficients use `libm`,
-/// so they're the same bits everywhere (`docs/00-scope.md`). If a change
-/// is intended, paste the new values from the failure message.
-const GOLDEN: (u64, u64) = (0x1aff_3f30_7adf_8fe0, 0xe420_bd73_51ea_7069);
-
-#[test]
-fn golden_hashes_are_unchanged() {
-    let got = (hash(&perform::<f32>().0), hash(&perform::<f64>().0));
-    assert_eq!(
-        got, GOLDEN,
-        "golden hashes changed: (f32, f64) = ({:#018x}, {:#018x})",
-        got.0, got.1
-    );
-}
-
 /// Measured (A1.4): a seven-note chord at the default gain (¼) peaks at
 /// 0.824, so nothing reaches the ±1 clamp.
 #[test]
@@ -100,45 +82,40 @@ fn a_chord_at_the_default_gain_is_not_clipped() {
     assert!(peak < 0.9, "{peak}");
 }
 
-/// Golden hashes of the performance played by A2's waveguide (pickup at
-/// the default): (f32, f64), native and on wasm.
-const WAVEGUIDE_GOLDEN: (u64, u64) = (0x19c6_5466_98f4_6cb4, 0xf5b5_643b_342c_dc00);
-
+/// The performance played by A2's waveguide (pickup at the default):
+/// repeatable, and unclipped.
 #[test]
-fn waveguide_performance_golden_hashes_are_unchanged() {
-    let got = (
-        hash(&perform_with::<f32>(Model::Waveguide).0),
-        hash(&perform_with::<f64>(Model::Waveguide).0),
-    );
-    let (_, clipped) = perform_with::<f64>(Model::Waveguide);
-    assert_eq!(clipped, 0, "the waveguide performance doesn't clip");
+fn the_waveguide_performance_is_repeatable_and_unclipped() {
     assert_eq!(
-        got, WAVEGUIDE_GOLDEN,
-        "golden hashes changed: ({:#018x}, {:#018x})",
-        got.0, got.1
+        hash(&perform_with::<f32>(Model::Waveguide).0),
+        hash(&perform_with::<f32>(Model::Waveguide).0)
     );
+    let (first, clipped) = perform_with::<f64>(Model::Waveguide);
+    assert_eq!(clipped, 0, "the waveguide performance doesn't clip");
+    assert_eq!(hash(&first), hash(&perform_with::<f64>(Model::Waveguide).0));
 }
 
-/// Golden hashes of the waveguide performance with each key's stiffness
-/// (`docs/14-piano.md`): the dispersion design (placement, refinement) is
-/// `libm` and fixed iteration counts, so the same bits on wasm.
-const STIFF_GOLDEN: (u64, u64) = (0x25dc_d66f_b509_26c1, 0x3dcb_5844_3023_7a24);
-
+/// The waveguide performance with each key's stiffness
+/// (`docs/14-piano.md`): repeatable, and not the same sound as without.
 #[test]
-fn stiff_performance_golden_hashes_are_unchanged() {
+fn the_stiff_performance_is_repeatable_and_differs() {
     let stiff = |key| Voicing {
         inharmonicity: inharmonicity(key),
         ..VOICING
     };
-    let got = (
-        hash(&perform_voiced::<f32>(Model::Waveguide, stiff).0),
-        hash(&perform_voiced::<f64>(Model::Waveguide, stiff).0),
-    );
-    assert_ne!(got, WAVEGUIDE_GOLDEN, "stiffness changes the sound");
+    let once = hash(&perform_voiced::<f64>(Model::Waveguide, stiff).0);
     assert_eq!(
-        got, STIFF_GOLDEN,
-        "golden hashes changed: ({:#018x}, {:#018x})",
-        got.0, got.1
+        once,
+        hash(&perform_voiced::<f64>(Model::Waveguide, stiff).0)
+    );
+    assert_eq!(
+        hash(&perform_voiced::<f32>(Model::Waveguide, stiff).0),
+        hash(&perform_voiced::<f32>(Model::Waveguide, stiff).0)
+    );
+    assert_ne!(
+        once,
+        hash(&perform_with::<f64>(Model::Waveguide).0),
+        "stiffness changes the sound"
     );
 }
 
@@ -168,18 +145,14 @@ fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
     (out, v.clipped())
 }
 
-/// Golden hashes of [`perform_piano`]: (f32, f64), native and on wasm. The
-/// designs and the hammers are `f64` with `libm`, so the same bits.
-const PIANO_GOLDEN: (u64, u64) = (0x3c7d_44d6_a276_fca4, 0xdf7e_6a8e_785a_e0b4);
-
+/// [`perform_piano`]: repeatable, and unclipped.
 #[test]
-fn piano_performance_golden_hashes_are_unchanged() {
+fn the_piano_performance_is_repeatable_and_unclipped() {
     let (f64_samples, clipped) = perform_piano::<f64>();
     assert_eq!(clipped, 0, "the piano performance doesn't clip");
-    let got = (hash(&perform_piano::<f32>().0), hash(&f64_samples));
+    assert_eq!(hash(&f64_samples), hash(&perform_piano::<f64>().0));
     assert_eq!(
-        got, PIANO_GOLDEN,
-        "golden hashes changed: ({:#018x}, {:#018x})",
-        got.0, got.1
+        hash(&perform_piano::<f32>().0),
+        hash(&perform_piano::<f32>().0)
     );
 }

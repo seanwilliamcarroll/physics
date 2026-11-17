@@ -366,9 +366,8 @@ fn check_dts(root: &Path, pkg: &Path) -> Result<(), String> {
 }
 
 /// Runs the math, engine, acoustic, sand and swarm test suites compiled to `wasm32-wasip1`,
-/// executed by wasmtime (the runner set in `.cargo/config.toml`). The same
-/// golden hashes then have to match on wasm as natively: the cross-platform
-/// determinism check (`docs/04-testing.md`).
+/// executed by wasmtime (the runner set in `.cargo/config.toml`): the same
+/// tests pass on wasm as natively (`docs/04-testing.md`).
 fn test_wasm(root: &Path) -> Result<(), String> {
     // Fail with an install hint, not cargo's "cannot execute binary file".
     let found = process::Command::new("wasmtime")
@@ -409,7 +408,7 @@ fn test_wasm(root: &Path) -> Result<(), String> {
         // Test builds optimized: debug wasm under wasmtime took 88 s, this
         // 15 s. Overflow checks and debug assertions stay on (they're
         // separate settings), and optimization doesn't change float results
-        // in Rust (no fast-math), so the goldens still compare exactly.
+        // in Rust (no fast-math).
         .env("CARGO_PROFILE_TEST_OPT_LEVEL", "1")
         .status()
         .map_err(|e| format!("failed to run cargo: {e}"))?;

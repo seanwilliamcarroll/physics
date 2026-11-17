@@ -20,8 +20,8 @@ pub const DOUBLE_PENDULUM_MASS: f64 = 1.0;
 
 /// Where [`double_pendulum`] is released from (both rods in a line, at
 /// rest). Fixed starts rather than an angle: an arbitrary angle needs
-/// `sin`/`cos`, whose last bits differ by platform, and the golden hashes
-/// must match on wasm; both starts here need only `sqrt`.
+/// `sin`/`cos`, whose last bits differ by platform; both starts here need
+/// only `sqrt`, so the scene starts the same everywhere.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DoublePendulumStart {
     /// Both rods level with the pin (+x): the textbook start. Two copies
