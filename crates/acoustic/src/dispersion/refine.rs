@@ -5,7 +5,7 @@
 
 use core::f64::consts::PI;
 
-use super::{ANGLE_MARGIN, RADIUS_RANGE, Target, biquad_delay_gradient, cascade_delay};
+use super::{ANGLE_MARGIN, Angles, RADIUS_RANGE, Target};
 
 /// Iterations, and the damping's start and its factors.
 pub(super) const ITERATIONS: u32 = 80;
@@ -24,20 +24,40 @@ const CONVERGED: f64 = 1e-4;
 /// deterministic, the same inputs stop at the same iteration).
 const DAMPING_STOP: f64 = 1e8;
 
-/// Each target's error in cents for the cascade `params`.
-fn residuals(params: &[f64], w1: f64, targets: &[Target]) -> Vec<f64> {
-    let d1 = cascade_delay(params, w1);
-    targets
+/// Each target's error in cents for the cascade `params`, and each
+/// biquad's [`Angles`] at `w1` then at each target (for the Jacobian).
+/// The cascade's delay at a frequency is its biquads' in order, as
+/// [`cascade_delay`] adds them.
+fn residuals(params: &[f64], w1: f64, targets: &[Target]) -> (Vec<f64>, Vec<Vec<Angles>>) {
+    let ws: Vec<f64> = core::iter::once(w1)
+        .chain(targets.iter().map(|t| t.w))
+        .collect();
+    let pairs = params.as_chunks::<2>().0;
+    let angles: Vec<Vec<Angles>> = pairs
         .iter()
-        .map(|t| (cascade_delay(params, t.w) - d1 - t.want) * t.weight)
-        .collect()
+        .map(|&[_, th]| ws.iter().map(|&w| Angles::new(th, w)).collect())
+        .collect();
+    let delay = |at: usize, w: f64| {
+        pairs
+            .iter()
+            .zip(&angles)
+            .map(|(&[r, _], a)| a.get(at).map_or(0.0, |a| a.delay(r, w)))
+            .sum::<f64>()
+    };
+    let d1 = delay(0, w1);
+    let r = targets
+        .iter()
+        .enumerate()
+        .map(|(t, target)| (delay(t + 1, target.w) - d1 - target.want) * target.weight)
+        .collect();
+    (r, angles)
 }
 
 /// Damped Gauss–Newton (Levenberg–Marquardt) on `params` (radius, angle,
 /// …), minimizing the squared cents error, for at most `iterations`
 /// (stopping early once a step gains less than [`CONVERGED`] of the cost).
 pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterations: u32) {
-    let mut r = residuals(params, w1, targets);
+    let (mut r, mut angles) = residuals(params, w1, targets);
     let mut cost: f64 = r.iter().map(|x| x * x).sum();
     let mut damping = DAMPING_START;
     // JᵀJ and −Jᵀr at the current parameters: they change only when a step
@@ -47,18 +67,21 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterati
         let (jtj, jtr) = normal.get_or_insert_with(|| {
             // One column per parameter: a parameter moves only its own
             // biquad's delay, so its column is that biquad's derivative,
-            // in closed form (`biquad_delay_gradient`), the pole's (r, θ)
-            // pair together.
+            // in closed form (`Angles::gradient`, from the residuals'
+            // `sin` and `cos`), the pole's (r, θ) pair together.
             let jacobian: Vec<Vec<f64>> = params
                 .as_chunks::<2>()
                 .0
                 .iter()
-                .flat_map(|&[r, th]| {
-                    let (dr1, dth1) = biquad_delay_gradient(r, th, w1);
+                .zip(&angles)
+                .flat_map(|(&[r, _], at)| {
+                    let mut at = at.iter();
+                    let (dr1, dth1) = at.next().map_or((0.0, 0.0), |a| a.gradient(r, w1));
                     let (col_r, col_th): (Vec<f64>, Vec<f64>) = targets
                         .iter()
-                        .map(|t| {
-                            let (dr, dth) = biquad_delay_gradient(r, th, t.w);
+                        .zip(at)
+                        .map(|(t, a)| {
+                            let (dr, dth) = a.gradient(r, t.w);
                             ((dr - dr1) * t.weight, (dth - dth1) * t.weight)
                         })
                         .unzip();
@@ -96,12 +119,13 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterati
                 }
             })
             .collect();
-        let trial_r = residuals(&trial, w1, targets);
+        let (trial_r, trial_angles) = residuals(&trial, w1, targets);
         let trial_cost: f64 = trial_r.iter().map(|x| x * x).sum();
         if trial_cost < cost {
             let gain = cost - trial_cost;
             *params = trial;
             r = trial_r;
+            angles = trial_angles;
             cost = trial_cost;
             normal = None;
             damping *= DAMPING_DOWN;
