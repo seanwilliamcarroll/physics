@@ -2,7 +2,7 @@
 //! the boids moved into cell order.
 
 use super::Flock;
-use crate::rules::{Ranges, Seen, finish};
+use crate::rules::{Ranges, SORTED_LANES, Seen, finish};
 
 impl Flock {
     /// Every boid's next state into `next`, its candidates the 3 × 3
@@ -36,7 +36,7 @@ impl Flock {
                     cur.vx.get(span.clone()).unwrap_or_default(),
                     cur.vy.get(span).unwrap_or_default(),
                 );
-                seen.add_span(ranges, me, x, y, vx, vy);
+                seen.add_span::<SORTED_LANES>(ranges, me, x, y, vx, vy);
             }
             self.next.set(i, finish(p, arena, predator, me, &seen));
         }

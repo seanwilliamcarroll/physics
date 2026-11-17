@@ -1,26 +1,26 @@
 //! The lane loop: candidates without branches, each one's terms times 0 or
-//! 1, into `LANES` independent partial sums per quantity, so the loop runs
+//! 1, into `L` independent partial sums per quantity, so the loop runs
 //! as vector instructions (float addition isn't associative, so the
 //! compiler won't split one running sum into lanes by itself). Lane `i`
-//! adds candidates `i`, `i + LANES`, `i + 2·LANES`, … in that order, and
+//! adds candidates `i`, `i + L`, `i + 2·L`, … in that order, and
 //! the lanes are added in order at the end: that order is the results'
 //! bits. (A loop one pass per register's worth of lanes, the same bits
 //! without spills, was tried and dropped: `experiments/swarm-lanes/`.)
 
-use super::knobs::{LANES, SUM, Sum};
+use super::knobs::{SUM, Sum};
 use super::{Ranges, Seen};
 use crate::Boid;
 
-/// Every whole block of `LANES` candidates, into `seen`; the leftovers
-/// (fewer than `LANES`) are the caller's.
-pub(super) fn add_blocks(
+/// Every whole block of `L` candidates, into `seen`; the leftovers
+/// (fewer than `L`) are the caller's.
+pub(super) fn add_blocks<const L: usize>(
     seen: &mut Seen,
     r: Ranges,
     me: Boid,
-    x: &[[f32; LANES]],
-    y: &[[f32; LANES]],
-    vx: &[[f32; LANES]],
-    vy: &[[f32; LANES]],
+    x: &[[f32; L]],
+    y: &[[f32; L]],
+    vx: &[[f32; L]],
+    vy: &[[f32; L]],
 ) {
     let mut lanes = Lanes::new();
     for (((a, b), c), d) in x.iter().zip(y).zip(vx).zip(vy) {
@@ -57,39 +57,39 @@ fn unit(cond: bool) -> f32 {
     f32::from(u8::from(cond))
 }
 
-/// `LANES` lanes' partial sums of each quantity.
-struct Lanes {
-    sum_x: [f32; LANES],
-    sum_y: [f32; LANES],
-    sum_vx: [f32; LANES],
-    sum_vy: [f32; LANES],
-    count: [f32; LANES],
-    close_dx: [f32; LANES],
-    close_dy: [f32; LANES],
+/// `L` lanes' partial sums of each quantity.
+struct Lanes<const L: usize> {
+    sum_x: [f32; L],
+    sum_y: [f32; L],
+    sum_vx: [f32; L],
+    sum_vy: [f32; L],
+    count: [f32; L],
+    close_dx: [f32; L],
+    close_dy: [f32; L],
 }
 
-impl Lanes {
+impl<const L: usize> Lanes<L> {
     const fn new() -> Self {
         Self {
-            sum_x: [0.0; LANES],
-            sum_y: [0.0; LANES],
-            sum_vx: [0.0; LANES],
-            sum_vy: [0.0; LANES],
-            count: [0.0; LANES],
-            close_dx: [0.0; LANES],
-            close_dy: [0.0; LANES],
+            sum_x: [0.0; L],
+            sum_y: [0.0; L],
+            sum_vx: [0.0; L],
+            sum_vy: [0.0; L],
+            count: [0.0; L],
+            close_dx: [0.0; L],
+            close_dy: [0.0; L],
         }
     }
 
-    /// One block of `LANES` candidates, candidate `i` into lane `i`.
+    /// One block of `L` candidates, candidate `i` into lane `i`.
     fn add(
         &mut self,
         r: Ranges,
         me: Boid,
-        x: &[f32; LANES],
-        y: &[f32; LANES],
-        vx: &[f32; LANES],
-        vy: &[f32; LANES],
+        x: &[f32; L],
+        y: &[f32; L],
+        vx: &[f32; L],
+        vy: &[f32; L],
     ) {
         let sums = self
             .sum_x
@@ -120,7 +120,7 @@ impl Lanes {
 
     /// Adds the lanes, in order, into `seen`.
     fn into(self, seen: &mut Seen) {
-        let total = |a: [f32; LANES]| a.iter().sum::<f32>();
+        let total = |a: [f32; L]| a.iter().sum::<f32>();
         seen.sum_x += total(self.sum_x);
         seen.sum_y += total(self.sum_y);
         seen.sum_vx += total(self.sum_vx);

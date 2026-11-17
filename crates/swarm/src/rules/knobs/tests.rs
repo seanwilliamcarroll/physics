@@ -5,10 +5,10 @@ use super::{Sum, lanes, number, same, sum};
 
 #[test]
 fn the_settings_parse_and_default() {
-    assert_eq!(lanes(None), 16);
-    assert_eq!(lanes(Some("1")), 1);
-    assert_eq!(lanes(Some("16")), 16);
-    assert_eq!(lanes(Some("64")), 64);
+    assert_eq!(lanes(None), None);
+    assert_eq!(lanes(Some("1")), Some(1));
+    assert_eq!(lanes(Some("16")), Some(16));
+    assert_eq!(lanes(Some("64")), Some(64));
     assert_eq!(sum(None), Sum::Ordered);
     assert_eq!(sum(Some("ordered")), Sum::Ordered);
     assert_eq!(sum(Some("algebraic")), Sum::Algebraic);

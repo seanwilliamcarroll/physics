@@ -2,8 +2,9 @@
 //! compile time from the environment (cargo rebuilds when they change):
 //!
 //! - `SWARM_LANES`: how many partial sums each running sum is split into
-//!   (a power of two, 1 to 64; default 16). 1 is one running sum, the
-//!   loop as written without lanes.
+//!   (a power of two, 1 to 64), overriding each target's (`tuning.rs`)
+//!   for both neighbour searches. 1 is one running sum, the loop as
+//!   written without lanes.
 //! - `SWARM_SUM`: `ordered` (default) or `algebraic`. Algebraic adds with
 //!   `f32::algebraic_add`, which lets the compiler reorder them (and so
 //!   vectorize the sums however it likes).
@@ -12,7 +13,7 @@
 //! Swept in `experiments/swarm-lanes/`.
 
 /// Partial sums in the lane loop.
-pub(crate) const LANES: usize = lanes(option_env!("SWARM_LANES"));
+pub(crate) const LANES: Option<usize> = lanes(option_env!("SWARM_LANES"));
 
 /// How the lane loop adds.
 pub(crate) const SUM: Sum = sum(option_env!("SWARM_SUM"));
@@ -26,19 +27,17 @@ pub(crate) enum Sum {
     Algebraic,
 }
 
-const DEFAULT_LANES: usize = 16;
-
 /// `SWARM_LANES` as a number; a bad value fails the build.
-pub(crate) const fn lanes(setting: Option<&str>) -> usize {
+pub(crate) const fn lanes(setting: Option<&str>) -> Option<usize> {
     let Some(text) = setting else {
-        return DEFAULT_LANES;
+        return None;
     };
     let Some(n) = number(text) else {
         panic_at_build("SWARM_LANES: not a number")
     };
     assert!(n.is_power_of_two(), "SWARM_LANES: not a power of two");
     assert!(n <= 64, "SWARM_LANES: at most 64");
-    n
+    Some(n)
 }
 
 /// `SWARM_SUM` as a [`Sum`]; a bad value fails the build.
