@@ -306,6 +306,28 @@ against 128 without (+93%), Vicsek's step +10%, Physarum's +5%, the grid
 step +4%, while sorted (−21%) and brute force (−26%) gain. The render is
 the one worth a look.
 
+**A render bench (2026-11-17).** The demos moved from `swarm-web` into a
+library crate, `swarm-view`, so a criterion bench can link them
+(`benches/render.rs`, `bench-wasm`'s cases; a bench can't link a
+cdylib, and building `swarm-web` as a library too changed its `.wasm`:
+LTO can't inline what another crate might call). `swarm.wasm` from the
+split is the same code but for three small functions LLVM now inlines
+into the boids' step and two constructors; Node's timings match `main`
+(boids steps and renders within 1%), except the ants' step, 159 → 170
+µs, though `ant_advance` is the same code (one static's address moved):
+likely the heap's layout, as the data segment changed size. The render,
+µs, on the M4:
+
+| render | native | wasm (wasmtime) | wasm + `simd128` |
+|---|---|---|---|
+| boids, 10k at 1280 × 720 | 84 | 129 | 252 (+95%) |
+| Vicsek, N = 4000 at 720² | 44 | 65 | 109 (+68%) |
+| ants, 200 × 120 at 3 px | 202 | 284 | 267 (−6%) |
+| Physarum, 512² | 393 | 759 | 822 (+8%) |
+
+Boids and Vicsek share the dot drawing (`demo::DOT`, `hue`): that's
+where to look.
+
 **The lane loop's masks (2026-11-16).** Read on the M4 (`Seen::add_span`,
 annotated: every float instruction in the lane loop is vector; the
 scalar ones are the up-to-7 leftovers after the last block of 8, which
