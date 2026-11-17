@@ -59,12 +59,19 @@ const fn number(text: &str) -> Option<usize> {
     if digits.is_empty() {
         return None;
     }
-    let mut n = 0;
+    let mut n: usize = 0;
     while let [d, rest @ ..] = digits {
-        if !d.is_ascii_digit() || n > 1_000 {
+        if !d.is_ascii_digit() {
             return None;
         }
-        n = n * 10 + (*d - b'0') as usize;
+        // Checked: a long string is refused, not overflowed.
+        let Some(tens) = n.checked_mul(10) else {
+            return None;
+        };
+        let Some(next) = tens.checked_add((*d - b'0') as usize) else {
+            return None;
+        };
+        n = next;
         digits = rest;
     }
     if n > 1_000 { None } else { Some(n) }
@@ -87,3 +94,6 @@ const fn same(a: &[u8], b: &[u8]) -> bool {
 const fn panic_at_build(message: &str) -> ! {
     panic!("{}", message)
 }
+
+#[cfg(test)]
+mod tests;

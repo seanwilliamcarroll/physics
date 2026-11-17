@@ -1,5 +1,8 @@
-use super::knobs::{DEFAULT_PLAIN_BELOW, LANES, PairLoop, lanes, pair_loop, plain_below};
+use super::knobs::{
+    DEFAULT_PLAIN_BELOW, LANES, LOOP, PLAIN_BELOW, PairLoop, lanes, pair_loop, plain_below,
+};
 use super::{PairwiseGravity, plain};
+use crate::force::Force;
 use crate::params::kg;
 use crate::{Particles, Scalar, Softening, Vec2};
 
@@ -158,4 +161,59 @@ fn lanes_must_be_a_number() {
 #[should_panic(expected = "`two-pass` or `blocked`")]
 fn the_loop_must_be_one_of_the_two() {
     pair_loop(Some("fast"));
+}
+
+/// The plain loop below `PLAIN_BELOW` bodies, the vector loop from it on:
+/// at the threshold, bit for bit (the two differ in the last bits there,
+/// which the test checks first, or it would prove nothing).
+#[test]
+fn the_plain_loop_runs_below_the_threshold_only() {
+    // A build that moves the threshold far out (the sweeps') skips this:
+    // n² pairs at a million bodies is no test.
+    if PLAIN_BELOW < 2 || PLAIN_BELOW > 4096 {
+        return;
+    }
+    let g = PairwiseGravity::new(6.674e-11, Softening::new(0.05).unwrap());
+    for n in [PLAIN_BELOW - 1, PLAIN_BELOW] {
+        let p = world::<f64>(n, 5);
+        let mut plain_acc = start(n);
+        plain::accumulate(&g, &p, &mut plain_acc);
+        let vector = with(&g, LOOP, &p);
+        let differ = plain_acc
+            .iter()
+            .zip(&vector)
+            .any(|(a, b)| bits(a.x) != bits(b.x) || bits(a.y) != bits(b.y));
+        assert!(
+            differ,
+            "n {n}: the two loops agree to the bit, so this can't tell them apart"
+        );
+        let mut acc = start(n);
+        g.accumulate(&p, &mut acc);
+        let expected = if n < PLAIN_BELOW { &plain_acc } else { &vector };
+        for (k, (a, e)) in acc.iter().zip(expected).enumerate() {
+            assert!(
+                bits(a.x) == bits(e.x) && bits(a.y) == bits(e.y),
+                "n {n}, body {k}: {a:?}, expected {e:?}"
+            );
+        }
+    }
+}
+
+/// `number` takes up to a million; past it, a setting is refused, and a
+/// long one stops early rather than overflowing.
+#[test]
+fn the_threshold_reaches_a_million() {
+    assert_eq!(plain_below(Some("1000000")), 1_000_000);
+}
+
+#[test]
+#[should_panic(expected = "GRAVITY_PLAIN_BELOW: not a number")]
+fn the_threshold_stops_at_a_million() {
+    plain_below(Some("1000001"));
+}
+
+#[test]
+#[should_panic(expected = "GRAVITY_PLAIN_BELOW: not a number")]
+fn a_long_threshold_is_refused_not_overflowed() {
+    plain_below(Some("99999999999999999999999999"));
 }

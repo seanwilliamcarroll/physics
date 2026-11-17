@@ -29,9 +29,16 @@ fn a_record_round_trips_through_its_text() {
     let mut rows = vec![
         row("pairwise_f64/1024", 523_510.5),
         row("sand_step/busy", 1_515_489.0),
+        row("fft/4096", 20_000.0),
     ];
     rows[1].throughput = Some(Throughput::Elements(230_400.0));
+    rows[2].throughput = Some(Throughput::Bytes(65_536.0));
     rows[0].change = Some(0.2);
+    assert_eq!(
+        from_rows(&rows)["pairwise_f64/1024"].change,
+        None,
+        "a record keeps no changes"
+    );
     let m = meta("rustc 1.99.1", "0.8.2", "abc1234", "2026-11-15");
     let text = render(&from_rows(&rows), &m);
     assert!(
@@ -48,9 +55,13 @@ fn a_record_round_trips_through_its_text() {
     );
     let (back, back_meta) = parse(&text);
     assert_eq!(back_meta, m);
-    assert_eq!(back.len(), 2);
+    assert_eq!(back.len(), 3);
     let busy = &back["sand_step/busy"];
     assert_eq!(busy.throughput, Some(Throughput::Elements(230_400.0)));
+    assert_eq!(
+        back["fft/4096"].throughput,
+        Some(Throughput::Bytes(65_536.0))
+    );
     assert!((busy.spread - 0.01).abs() < 1e-12);
     assert_eq!(
         back["pairwise_f64/1024"].change, None,
