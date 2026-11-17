@@ -1,6 +1,6 @@
 //! Shared helpers for the workspace's integration tests: per-scalar
-//! tolerances and error laws, orbit measurements, the state hash behind the
-//! golden hashes, and `proptest` world generators.
+//! tolerances and error laws, orbit measurements, the state hash the
+//! repeatability tests compare, and `proptest` world generators.
 //!
 //! A dev-dependency only (`crates/engine/Cargo.toml`); it replaces the old
 //! `tests/common/mod.rs` (no `mod.rs` files, and as a real crate its `pub`

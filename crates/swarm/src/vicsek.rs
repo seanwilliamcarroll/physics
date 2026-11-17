@@ -324,7 +324,7 @@ impl Vicsek {
         sum / f64::from(window)
     }
 
-    /// The state's bytes for hashing (goldens).
+    /// The state's bytes for hashing (the repeatability tests).
     pub fn state_bytes(&self) -> impl Iterator<Item = u8> + '_ {
         self.particles()
             .flat_map(|p| [p.x, p.y, p.cos, p.sin])

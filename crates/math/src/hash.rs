@@ -1,10 +1,10 @@
-//! [`Fnv1a`]: the fixed, published hash behind every golden-hash test
-//! (the engine's particle states, the acoustic track's audio).
+//! [`Fnv1a`]: the fixed, published hash the repeatability tests compare
+//! runs with (the engine's particle states, the acoustic track's audio).
 
 /// FNV-1a, 64-bit: a tiny hash with published constants and fixed output,
 /// unlike `std`'s `DefaultHasher`, which may change between Rust versions.
-/// Golden hashes need output that never changes. Not for adversarial
-/// input (it isn't collision-resistant); fine for change detection.
+/// Not for adversarial input (it isn't collision-resistant); fine for
+/// telling two runs apart.
 pub struct Fnv1a(u64);
 
 impl Fnv1a {

@@ -1,4 +1,4 @@
-//! The particle-state hash behind the golden-hash tests (FNV-1a, from
+//! The particle-state hash the repeatability tests compare (FNV-1a, from
 //! `math`).
 
 use engine::{Particles, Scalar};

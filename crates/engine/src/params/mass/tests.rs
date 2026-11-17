@@ -4,8 +4,7 @@ use super::Mass;
 fn accepts_positive_finite_and_stores_the_inverse() {
     let m = Mass::new(4.0_f64).unwrap();
     assert_eq!((m.get(), m.inv()), (4.0, 0.25));
-    // Exactly `1 / m`, as `Particles::add` computed it before `Mass`:
-    // the golden hashes depend on these bits.
+    // Exactly `1 / m`, as `Particles::add` computed it before `Mass`.
     assert_eq!(Mass::new(3.0_f64).map(Mass::inv), Some(1.0 / 3.0));
     assert_eq!(Mass::new(3.0_f32).map(Mass::inv), Some(1.0 / 3.0));
 }

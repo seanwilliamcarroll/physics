@@ -327,7 +327,7 @@ impl Slime {
             + self.nodes.iter().map(|n| f64::from(n.2)).sum::<f64>()
     }
 
-    /// The state's bytes for hashing (goldens): agents, then the field.
+    /// The state's bytes for hashing (the repeatability tests): agents, then the field.
     #[must_use]
     pub fn state_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();

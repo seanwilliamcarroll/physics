@@ -36,7 +36,7 @@ crates/engine/
   tests/
     invariants.rs         // conservation and boundedness
     known_failures.rs     // methods that must misbehave
-    determinism.rs        // repeatability + golden hashes
+    determinism.rs        // repeatability
     properties.rs         // proptest
     barnes_hut.rs         // vs direct summation: accuracy, momentum
     properties.proptest-regressions  // committed: shrunk failures replay forever
@@ -158,41 +158,29 @@ The whole `01-solvers.md` table is also a regression suite
 
 ## Determinism
 
-**Repeatability (every scalar):** build a scenario, step N times, repeat,
-compare state bit for bit (`to_bits` for floats, raw integer for `Fixed`).
+**Repeatability (every scalar, every model):** build a scenario, step N
+times, repeat, compare state bit for bit (`to_bits` for floats, raw
+integer for `Fixed`), hashed with our own **FNV-1a** (`math::Fnv1a`;
+`std`'s `DefaultHasher` isn't stable across Rust versions). Each crate's
+`tests/determinism.rs`; `cargo xtask test-wasm` runs them on wasm too.
 
-**Golden hashes:** hash the final state of reference scenarios and commit
-the values. These act as change detectors: a refactor that alters results
-fails loudly, and you then decide whether the change is intended.
+**Not required: the same bits on every target, or over time.** Until
+2026-11-17 *golden hashes* pinned each reference run's final state, and
+`test-wasm` checked the same values on wasm, so native and wasm had to
+agree to the last bit. Dropped: correctness is the physics and property
+tests' job (energy bounds, conservation, error laws, the vector loops
+against their reference loops to rounding), and the hashes were blocking
+optimizations that move only the last bits on one target (a lane count
+per target, a reorderable sum; `perf-audit.md`). Where a change must keep
+results identical, a test comparing the old and new paths directly says
+so better than a stored hash (`force/pairwise/tests.rs`: the two loops,
+bit for bit). `Fixed`, when it exists, will need cross-platform equality
+and its own tests for it.
 
-Use our own **FNV-1a** over state bits, not `std::hash::DefaultHasher`, whose
-output is not guaranteed stable across Rust versions.
-
-**Cross-platform:** floats are expected (not promised) to match between
-native x86-64/ARM and wasm for phase 1 operations (`+ − × ÷ sqrt` are
-correctly rounded IEEE everywhere; Rust does not fuse multiply-adds
-implicitly). Treat a mismatch as an interesting bug, not a test failure,
-until `Fixed` exists, which **must** match everywhere.
-
-**As built (M1.4)** (`tests/determinism.rs`): five reference runs
-(fountain with respawn, cluster, orbit × 3 integrators) × 2 scalars. The
-hash covers position, velocity, and inverse mass as `to_f64()` bits (exact
-for f32). On mismatch the test prints paste-ready replacement lines.
-Keeping that guarantee meant scenarios avoid libm functions whose last bits
-vary by platform: rejection sampling instead of `sin`/`cos` in `cluster`,
-`q·√q` instead of `powf(1.5)` in `orbit`. M2.4 added `disk` and `collapse`
-(seven runs), built the same way (rejection sampling in an annulus, `sqrt`
-only); their hashes match on `wasm32-wasip1` too.
-
-**Cross-platform, confirmed (M1.7):** `cargo xtask test-wasm` (pre-push)
-runs the math and engine suites compiled to `wasm32-wasip1` under
-wasmtime, and the golden hashes recorded natively on aarch64-apple-darwin
-match bit for bit on wasm. (Verified the test binaries really are `.wasm`:
-without the runner, cargo can't execute them.)
-
-A useful property, seen when checking the goldens: a change smaller than
-f32's resolution (1 nm on a 1 cm softening) changes only the f64 hashes,
-because the f32 runs are genuinely identical.
+History: the goldens were introduced in M1.4 (seven runs × 2 scalars)
+and grew to every scene, model and performance; `libm` (`00-scope.md`)
+and the scenarios' `sqrt`-only constructions were chosen to keep them
+equal across targets.
 
 ## Property tests (proptest)
 
@@ -289,7 +277,8 @@ subprocesses, which WASI doesn't have, so the workspace uses
 failing test kills the process before libtest prints the output it
 captured, and the panic message would otherwise be lost.
 
-Golden-hash tests running on both targets give the cross-platform check above.
+The repeatability tests run on both targets: each target's runs repeat,
+though the targets needn't agree with each other ("Determinism").
 
 ## Benchmarks
 
@@ -474,13 +463,12 @@ does anything if `main` has moved since its last successful run.
 - **Strict:** `HOOKS_STRICT=1`, so a check whose tool is missing fails
   where locally it is skipped.
 - **Same toolchain:** `rustup toolchain install` reads
-  `rust-toolchain.toml`, so CI uses the pinned compiler and the goldens
-  are checked against it. The tools are pinned too
+  `rust-toolchain.toml`, so CI uses the pinned compiler. The tools are pinned too
   (`.github/actions/setup/action.yml`): nextest, machete,
   cargo-public-api, wasmtime.
-- **Determinism across machines:** the runner is Linux x86-64, while
-  local runs are macOS arm64, so the golden hashes are checked on a
-  second CPU architecture and OS every night `main` moves.
+- **A second architecture:** the runner is Linux x86-64, while local runs
+  are macOS arm64, so every test runs on a second CPU architecture and OS
+  every night `main` moves.
 - **Screenshots on failure:** the smoke test's `target/smoke/` is
   uploaded as an artifact when a step fails.
 - **By hand:** `gh workflow run Nightly` runs everything, whether or
@@ -620,15 +608,16 @@ health audit, then filled in):
   | Integrators | Free fall per integrator (`invariants.rs`); orbits' energy behavior (`invariants.rs`, `known_failures.rs`); convergence order per integrator, position and velocity (`convergence.rs`) |
   | Broadphase | Unit cases; brute-force superset over uniform, clustered and mixed scenes far from the origin, insertion order (`broadphase_properties.rs`) |
   | Narrowphase | Unit cases; swap, translation, well-formed contacts (`collision/narrowphase/properties.rs`, a unit test so the narrowphase stays crate-private) |
-  | Contact solver | Analytic head-on, momentum, energy, stacks, a bullet, fast circles, 1:1e6 (`contacts.rs`); simultaneous contacts, the break and the cradle (`impacts.rs`); goldens of the box, the break and the cradle |
+  | Contact solver | Analytic head-on, momentum, energy, stacks, a bullet, fast circles, 1:1e6 (`contacts.rs`); simultaneous contacts, the break and the cradle (`impacts.rs`); repeatable runs of the box, the break and the cradle |
   | Joints and constraints | Rod error bounds, chains, compliant and rigid pendulum periods, soft rods at several passes |
-  | World and API | The ABI property tests (`exports/tests/sequences.rs`, every wasm crate); goldens of every demo scene, native and wasm |
+  | World and API | The ABI property tests (`exports/tests/sequences.rs`, every wasm crate); repeatable runs of every demo scene, native and wasm |
 
 - **Not applicable:** mass properties and inertia (point particles and
   circles), polygon narrowphase, friction, sleeping, angular momentum.
 - **Outside the checklist:** the acoustic crate, tested in the same styles
   (analytic tuning and decay, FFT against a naive DFT, the bit-exact
-  loop-and-waveguide equivalence, energy accounting, goldens); `sand`
+  loop-and-waveguide equivalence, energy accounting, repeatable
+  performances); `sand`
   and `swarm`, in theirs (`11-falling-sand.md`, `15-swarm.md`).
 
 ## Test runner: nextest

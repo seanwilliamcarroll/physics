@@ -8,9 +8,8 @@
 //!   `f32::algebraic_add`, which lets the compiler reorder them (and so
 //!   vectorize the sums however it likes).
 //!
-//! Both change the order of additions, so the results' bits: the golden
-//! hashes are for the defaults, and skip when either is set. Experiments
-//! for now (`experiments/swarm-lanes/`).
+//! Both change the order of additions, so the results' last bits.
+//! Swept in `experiments/swarm-lanes/`.
 
 /// Partial sums in the lane loop.
 pub(crate) const LANES: usize = lanes(option_env!("SWARM_LANES"));

@@ -218,26 +218,22 @@ fn crossover_mixes_two_parents_gene_by_gene() {
     assert!(mixed >= 6, "{mixed} of 12 mixed");
 }
 
-/// The run itself, pinned: selection, crossover and mutation draw from one
-/// stream in a fixed order, and `libm` makes the deviates the same bits
-/// everywhere (this runs as wasm too).
-const GOLDEN_EVOLVE: u64 = 0x113b_67ac_6bd5_a405;
-
+/// The run itself is repeatable: selection, crossover and mutation draw
+/// from one stream in a fixed order.
 #[test]
-fn the_golden_hash_is_unchanged() {
-    let cfg = Evolve {
-        generations: 6,
-        ..cfg(1)
-    };
-    let mut h = math::Fnv1a::new();
-    for g in evolve(&genes(), &cfg, None, toy) {
-        for v in [g.best, g.mean].into_iter().chain(g.best_genome) {
-            h.write(&v.to_bits().to_le_bytes());
+fn a_run_is_repeatable() {
+    let run = || {
+        let cfg = Evolve {
+            generations: 6,
+            ..cfg(1)
+        };
+        let mut h = math::Fnv1a::new();
+        for g in evolve(&genes(), &cfg, None, toy) {
+            for v in [g.best, g.mean].into_iter().chain(g.best_genome) {
+                h.write(&v.to_bits().to_le_bytes());
+            }
         }
-    }
-    let h = h.finish();
-    assert_eq!(
-        h, GOLDEN_EVOLVE,
-        "if intended, set GOLDEN_EVOLVE = {h:#018x}"
-    );
+        h.finish()
+    };
+    assert_eq!(run(), run());
 }

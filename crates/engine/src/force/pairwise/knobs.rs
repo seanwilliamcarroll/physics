@@ -3,9 +3,7 @@
 //!
 //! - `GRAVITY_LANES`: how many partial sums body i's sum is split into (a
 //!   power of two, 1 to 64; default 16). It sets the order of additions,
-//!   so it **changes the results' bits**: the golden hashes are for the
-//!   default, and the same value must be used on every target that should
-//!   agree (native and wasm).
+//!   so it changes the results' last bits.
 //! - `GRAVITY_PLAIN_BELOW`: below this many bodies the plain loop runs
 //!   instead (default 64). Changes the bits of smaller
 //!   worlds, like `GRAVITY_LANES`.

@@ -12,7 +12,7 @@ pub const CLUSTER_RADIUS: f64 = 2.0;
 /// Total mass of [`cluster`], kg, whatever N: `G M` ≈ 13 m³/s². Fixed so
 /// the time scale doesn't change with N. Per-body mass ranges (as before
 /// M2.6) made N = 1024 collapse and fling every body out of view within
-/// 0.5 s, while N = 256 kept most. The value is the 16-body golden run's
+/// 0.5 s, while N = 256 kept most. The value is the 16-body reference run's
 /// former mean total (16 × 1.25 × 10¹⁰), so small clusters behave as
 /// before.
 pub const CLUSTER_TOTAL_MASS: f64 = 2.0e11;
@@ -52,8 +52,7 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 ///
 /// Positions use rejection sampling (`point_in_annulus` in `shared.rs`) rather than
 /// `r = R√u, θ = 2πv`: no `sin`/`cos`, whose last bits depend on the
-/// platform's libm, so the scene is bit-identical on every platform, which
-/// cross-platform golden hashes rely on.
+/// platform's libm, so the scene starts bit-identical on every platform.
 ///
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't:

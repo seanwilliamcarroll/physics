@@ -91,7 +91,10 @@ must therefore not assume `sqrt`, `recip`, or constants are free or exact.
   convenience: std's versions call each platform's math library (Apple's
   natively, musl's on wasm), which may differ in the last bit, and that
   would break the golden hash of rendered audio between native and wasm.
-  A pure-Rust port computes the same bits everywhere. The engine still
+  A pure-Rust port computes the same bits everywhere. (2026-11-17: the
+  golden hashes and the rule that native and wasm agree to the bit were
+  dropped, `04-testing.md`, "Determinism"; `libm` stays until a
+  measurement says `std`'s versions are worth switching to.) The engine still
   avoids transcendentals entirely (`docs/12-acoustic-foundations.md`).
 - `clap` 4.6.7 (`derive`; `clap-rs` org, the most widely used Rust CLI
   parser), **`xtask` only**: argument parsing for the dev CLI (typo

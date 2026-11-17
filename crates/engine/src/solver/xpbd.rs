@@ -139,7 +139,7 @@ fn settle<S: Scalar>(p: &mut Particles<S>, statics: Statics<'_, S>, c: &Contact<
 /// Damped (Macklin et al. 2016, eq. 26), with `γ = α̃ β̃ / h = α c / h`:
 /// `Δλ = (−C − α̃ λ − γ n · (Δx_b − Δx_a)) / ((1 + γ) w + α̃)`, where `Δx`
 /// is the motion since the substep began. Undamped keeps the M3 formula
-/// exactly (its own branch, so goldens are bit-identical).
+/// exactly (its own branch, so its results are bit-identical).
 fn project<S: Scalar, C: Constraint<S>>(
     p: &mut Particles<S>,
     prev: &[Vec2<S>],

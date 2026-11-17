@@ -567,7 +567,7 @@ impl Colony {
         self.painted
     }
 
-    /// The state's bytes for hashing (goldens): ants, then both fields.
+    /// The state's bytes for hashing (the repeatability tests): ants, then both fields.
     #[must_use]
     pub fn state_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();

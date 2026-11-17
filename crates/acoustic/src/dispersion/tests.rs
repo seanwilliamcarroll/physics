@@ -58,7 +58,7 @@ fn no_stiffness_no_filter() {
 #[test]
 fn the_design_is_reproducible() {
     // The same inputs give the same bits (libm, a fixed iteration count):
-    // the rendered audio's goldens rely on it.
+    // rendered audio is repeatable because of it.
     let a = design(FS, 261.63, 3.1e-4, 0.5, 1e9).unwrap();
     let b = design(FS, 261.63, 3.1e-4, 0.5, 1e9).unwrap();
     assert_eq!(a, b);

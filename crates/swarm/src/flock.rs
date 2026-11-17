@@ -292,7 +292,7 @@ impl Flock {
         (sx * sx + sy * sy).sqrt() / n
     }
 
-    /// The state's bytes for hashing (goldens): every component's bits,
+    /// The state's bytes for hashing (the repeatability tests): every component's bits,
     /// boid by boid.
     pub fn state_bytes(&self) -> impl Iterator<Item = u8> + '_ {
         self.boids()
