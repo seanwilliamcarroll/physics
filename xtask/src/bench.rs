@@ -4,20 +4,25 @@
 //! with the previous local run, or with a named local baseline. Then a
 //! table of the results (`table.rs`), and the benchmarks whose mean moved
 //! past a threshold. Only `--baseline NAME` fails on a regression; the
-//! others report. `--record` updates the record (`record.rs`).
+//! others report. `--record` updates the record (`record.rs`). `--level`
+//! picks the build (`level.rs`: the baseline, x86-64-v3, native, or v8 for
+//! the wasm in Node), each with its own record; `bench-all` runs every
+//! level this machine has, and with `--record` proposes them together.
 
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process;
 use std::time::SystemTime;
 
+pub(crate) mod level;
 mod record;
 mod store;
 mod table;
 
 use crate::bench_wasm::mean_point_estimate;
+use level::Level;
 
 /// What to compare with.
 pub(crate) enum Mode<'a> {
@@ -86,37 +91,102 @@ fn changes(criterion: &Path) -> Vec<Change> {
     out
 }
 
+/// One level's run, done: how many benchmarks got slower past the
+/// threshold, and with `--record`, the record's files and context.
+struct Run {
+    slower: usize,
+    record: Option<record::LevelRecord>,
+}
+
 /// Runs every bench (`cargo bench --workspace --bench '*'`, or those matching
-/// `filter`), compared as `mode` says; prints the table and what moved
-/// past `threshold_pct`; with `record`, updates this machine's record.
-/// Fails on a regression only with `--baseline NAME`.
+/// `filter`) at `level`, compared as `mode` says; prints the table and what
+/// moved past `threshold_pct`; with `record`, proposes this machine's
+/// record for the level. Fails on a regression only with `--baseline NAME`.
 pub(crate) fn bench(
     root: &Path,
     mode: &Mode<'_>,
     filter: Option<&str>,
     threshold_pct: f64,
     record: bool,
+    level: Level,
 ) -> Result<(), String> {
-    let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
-    let criterion: PathBuf = env::var_os("CARGO_TARGET_DIR")
-        .map_or_else(|| root.join("target"), |d| root.join(d))
-        .join("criterion");
     if record {
         crate::github::preflight(root, "bench")?;
     }
-    let machine = record::machine(root);
+    let run = run_level(root, mode, filter, threshold_pct, record, level)?;
+    if let Some(r) = run.record {
+        record::record(root, &[r])?;
+    }
+    let against = against(mode, true, &level.record_name(&record::machine(root)));
+    outcome(mode, run.slower, &against, threshold_pct)
+}
+
+/// `cargo xtask bench-all`: every level this machine has (`level.rs`),
+/// each compared with its record; with `record`, every level's record in
+/// one pull request.
+pub(crate) fn bench_all(
+    root: &Path,
+    filter: Option<&str>,
+    threshold_pct: f64,
+    record: bool,
+) -> Result<(), String> {
+    if record {
+        crate::github::preflight(root, "bench-all")?;
+    }
+    let levels = level::available(level::host(root));
+    let names: Vec<&str> = levels.iter().map(|l| l.name()).collect();
+    println!("bench-all: {}", names.join(", "));
+    let mut runs = Vec::new();
+    let mut slower = Vec::new();
+    for l in levels {
+        println!("\n=== bench-all: {}", l.describe());
+        let run = run_level(root, &Mode::Default, filter, threshold_pct, record, l)?;
+        if run.slower > 0 {
+            slower.push(format!("{} ({})", l.name(), run.slower));
+        }
+        runs.extend(run.record);
+    }
+    if record {
+        record::record(root, &runs)?;
+    }
+    if slower.is_empty() {
+        println!("\nbench-all: nothing slower than its record by more than {threshold_pct}%");
+    } else {
+        println!(
+            "\nbench-all: slower than the record past {threshold_pct}%: {}",
+            slower.join(", ")
+        );
+    }
+    Ok(())
+}
+
+/// One level: build, run, table, report; the record's files if asked.
+fn run_level(
+    root: &Path,
+    mode: &Mode<'_>,
+    filter: Option<&str>,
+    threshold_pct: f64,
+    record: bool,
+    level: Level,
+) -> Result<Run, String> {
+    let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
+    let target =
+        env::var_os("CARGO_TARGET_DIR").map_or_else(|| root.join("target"), |d| root.join(d));
+    let target = level.target_dir(&target);
+    let criterion = target.join("criterion");
+    let name = level.record_name(&record::machine(root));
     let (recorded, recorded_meta) =
-        store::parse(&fs::read_to_string(root.join(store::path(&machine))).unwrap_or_default());
+        store::parse(&fs::read_to_string(root.join(store::path(&name))).unwrap_or_default());
     let use_record = matches!(mode, Mode::Default) && !recorded.is_empty();
     if matches!(mode, Mode::Default) && !use_record {
         println!(
-            "bench: no record for `{machine}` ({}): comparing with each benchmark's previous run",
-            store::path(&machine)
+            "bench: no record for `{name}` ({}): comparing with each benchmark's previous run",
+            store::path(&name)
         );
     }
     if use_record {
         println!(
-            "bench: comparing with the record for `{machine}` ({} benchmarks)",
+            "bench: comparing with the record for `{name}` ({} benchmarks)",
             recorded.len()
         );
         warn_if_toolchain_differs(root, &recorded_meta);
@@ -129,7 +199,17 @@ pub(crate) fn bench(
         }
     }
     let started = SystemTime::now();
-    run_criterion(root, &cargo, flag(mode), filter)?;
+    if level.is_wasm() {
+        if !matches!(mode, Mode::Default | Mode::Local) {
+            return Err(format!(
+                "bench: --save and --baseline aren't supported at `{}`: it compares with its record or its previous run",
+                level.name()
+            ));
+        }
+        run_wasm(root, &cargo, &target, &criterion, filter)?;
+    } else {
+        run_criterion(root, &cargo, &target, level, flag(mode), filter)?;
+    }
     let mut rows = table::collect(&criterion, started);
     if use_record {
         // The change from the recorded mean, not criterion's (which is
@@ -137,24 +217,26 @@ pub(crate) fn bench(
         store::compare(&mut rows, &recorded);
     }
     println!("\n{}", table::format(&mut rows));
-    let against = against(mode, use_record, &machine);
+    let against = against(mode, use_record, &name);
     println!(
         "Time: the mean per iteration; ±: half its 95% confidence interval; Change: from {against}."
     );
-    if record {
-        write_record(root, filter, &against, &recorded, &rows)?;
-    }
+    let files = record.then(|| record_files(root, filter, &against, &recorded, &rows, level));
     if let Mode::Save(name) = mode {
         println!(
             "bench: saved baseline `{name}` under {}",
             criterion.display()
         );
     }
-    if !compares(mode, use_record) {
-        return Ok(());
-    }
-    let slower = report(&rows, threshold_pct, &against);
-    outcome(mode, slower, &against, threshold_pct)
+    let slower = if compares(mode, use_record) {
+        report(&rows, threshold_pct, &against)
+    } else {
+        0
+    };
+    Ok(Run {
+        slower,
+        record: files,
+    })
 }
 
 /// The mode the command line asks for: `--save`, then `--baseline`, then
@@ -238,17 +320,19 @@ fn report(rows: &[table::Row], threshold_pct: f64, against: &str) -> usize {
     worse.len()
 }
 
-/// `--record`: this run merged into the machine's record (all of it
+/// `--record`: this run merged into the level's record (all of it
 /// replaced after a full run, the measured benchmarks after a filtered
-/// one), its table rebuilt from the merged record, and the whole proposed.
-fn write_record(
+/// one), and its table rebuilt from the merged record: the files to
+/// propose, with their context.
+fn record_files(
     root: &Path,
     filter: Option<&str>,
     against: &str,
     recorded: &store::Record,
     rows: &[table::Row],
-) -> Result<(), String> {
-    let ctx = record::context(root, filter, against);
+    level: Level,
+) -> record::LevelRecord {
+    let ctx = record::context(root, filter, against, level);
     let next = store::merge(recorded, &store::from_rows(rows), filter.is_none());
     let by_id = rows
         .iter()
@@ -261,19 +345,29 @@ fn write_record(
         store::criterion_version(&lock).unwrap_or("?"),
         &ctx.commit,
         &ctx.date,
+        level.name(),
+        level.rustflags().unwrap_or(""),
     );
     let files = record::changes(&ctx, &store::render(&next, &meta), &mut record_rows);
-    record::record(root, &ctx, &files)
+    (ctx, files)
 }
 
-/// `cargo bench --workspace --bench '*' -- [FLAG NAME] [FILTER]`.
+/// `cargo bench --workspace --bench '*' -- [FLAG NAME] [FILTER]`, built
+/// in `target` with the level's `RUSTFLAGS` (and none inherited: a record
+/// says what it was built with).
 fn run_criterion(
     root: &Path,
     cargo: &OsString,
+    target: &Path,
+    level: Level,
     flag: Option<(&str, &str)>,
     filter: Option<&str>,
 ) -> Result<(), String> {
     let mut cmd = process::Command::new(cargo);
+    cmd.env("CARGO_TARGET_DIR", target).env_remove("RUSTFLAGS");
+    if let Some(flags) = level.rustflags() {
+        cmd.env("RUSTFLAGS", flags);
+    }
     // `--bench '*'`: the benches/ targets only. `--benches` also runs each
     // library's own tests in bench mode, whose harness rejects criterion's
     // options (`--save-baseline` and `--baseline` never worked with it).
@@ -293,6 +387,55 @@ fn run_criterion(
     } else {
         Err(format!("cargo bench failed ({status})"))
     }
+}
+
+/// The wasm level: every bench built for wasm32-wasip1 (`simd128` from
+/// `.cargo/config.toml`) in `target`, then each run in Node
+/// (`experiments/sweep/wasi-node.mjs`: the program sees only `criterion`,
+/// as `/criterion`), so criterion's files land where the table reads them.
+fn run_wasm(
+    root: &Path,
+    cargo: &OsString,
+    target: &Path,
+    criterion: &Path,
+    filter: Option<&str>,
+) -> Result<(), String> {
+    let built = process::Command::new(cargo)
+        .current_dir(root)
+        .env("CARGO_TARGET_DIR", target)
+        .env_remove("RUSTFLAGS")
+        .args(["bench", "--workspace", "--bench", "*", "--no-run"])
+        .args(["--target", "wasm32-wasip1", "--message-format=json"])
+        .output()
+        .map_err(|e| format!("failed to build the benches for wasm: {e}"))?;
+    if !built.status.success() {
+        return Err(format!(
+            "building the benches for wasm failed:\n{}",
+            String::from_utf8_lossy(&built.stderr)
+        ));
+    }
+    fs::create_dir_all(criterion)
+        .map_err(|e| format!("failed to create {}: {e}", criterion.display()))?;
+    let shim = root.join("experiments").join("sweep").join("wasi-node.mjs");
+    for exe in level::executables(&String::from_utf8_lossy(&built.stdout)) {
+        let mut cmd = process::Command::new("node");
+        cmd.current_dir(root)
+            .arg("--no-warnings")
+            .arg(&shim)
+            .arg(&exe)
+            .arg(criterion)
+            .arg("--bench");
+        if let Some(f) = filter {
+            cmd.arg(f);
+        }
+        let status = cmd
+            .status()
+            .map_err(|e| format!("failed to run node: {e}"))?;
+        if !status.success() {
+            return Err(format!("{} failed in Node ({status})", exe.display()));
+        }
+    }
+    Ok(())
 }
 
 /// A record measured with another compiler or criterion doesn't compare

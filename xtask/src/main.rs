@@ -109,6 +109,23 @@ enum Command {
         /// table, `docs/bench/<machine>.md`), in a pull request if gh is logged in
         #[arg(long)]
         record: bool,
+        /// The build to measure: baseline (no target-cpu), x86-64-v3,
+        /// native, or v8 (the wasm in Node); each has its own record
+        #[arg(long, default_value = "baseline", value_parser = parse_level)]
+        level: bench::level::Level,
+    },
+    /// Run the benchmarks at every level this machine has (baseline; x86-64-v3
+    /// with AVX2; native with AVX-512; v8 with Node), each compared with its
+    /// record; --record proposes every level's record in one pull request
+    BenchAll {
+        /// The change in a mean that counts, whole percent
+        #[arg(long, default_value_t = 10)]
+        threshold: u32,
+        /// Run only benchmarks whose names contain this (criterion's filter)
+        filter: Option<String>,
+        /// Also update each level's record, together, in one pull request
+        #[arg(long)]
+        record: bool,
     },
     /// Time the modules in Node: the engine's cluster, compared with the
     /// native criterion results (run cargo bench -p engine --bench step first),
@@ -218,6 +235,7 @@ fn run(cmd: Command) -> Result<(), String> {
             compare_local,
             filter,
             record,
+            level,
         } => {
             let mode = bench::mode(save.as_deref(), baseline.as_deref(), compare_local);
             bench::bench(
@@ -226,8 +244,14 @@ fn run(cmd: Command) -> Result<(), String> {
                 filter.as_deref(),
                 f64::from(threshold),
                 record,
+                level,
             )
         }
+        Command::BenchAll {
+            threshold,
+            filter,
+            record,
+        } => bench::bench_all(&root, filter.as_deref(), f64::from(threshold), record),
         Command::BenchWasm { budget_ms } => bench_wasm::bench_wasm(&root, budget_ms),
         Command::Profile {
             package,
@@ -436,3 +460,11 @@ fn install_hooks(root: &Path) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests;
+
+/// `--level`'s value.
+fn parse_level(text: &str) -> Result<bench::level::Level, String> {
+    bench::level::Level::parse(text).ok_or_else(|| {
+        let names: Vec<&str> = bench::level::Level::ALL.iter().map(|l| l.name()).collect();
+        format!("one of {}", names.join(", "))
+    })
+}

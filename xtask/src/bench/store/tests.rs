@@ -39,7 +39,14 @@ fn a_record_round_trips_through_its_text() {
         None,
         "a record keeps no changes"
     );
-    let m = meta("rustc 1.99.1", "0.8.2", "abc1234", "2026-11-15");
+    let m = meta(
+        "rustc 1.99.1",
+        "0.8.2",
+        "abc1234",
+        "2026-11-15",
+        "baseline",
+        "",
+    );
     let text = render(&from_rows(&rows), &m);
     assert!(
         text.starts_with("# rustc=rustc 1.99.1\n# criterion=0.8.2\n"),
@@ -111,9 +118,18 @@ fn rows_come_from_the_record_with_this_run_s_changes() {
 
 #[test]
 fn meta_round_trips_and_criterion_s_version_is_read_from_the_lock() {
-    let m = meta("rustc 1.99.1", "0.8.2", "abc1234", "2026-11-13");
+    let m = meta(
+        "rustc 1.99.1",
+        "0.8.2",
+        "abc1234",
+        "2026-11-13",
+        "native",
+        "-C target-cpu=native",
+    );
     assert_eq!(meta_value(&m, "rustc"), Some("rustc 1.99.1"));
     assert_eq!(meta_value(&m, "criterion"), Some("0.8.2"));
+    assert_eq!(meta_value(&m, "level"), Some("native"));
+    assert_eq!(meta_value(&m, "rustflags"), Some("-C target-cpu=native"));
     assert_eq!(meta_value(&m, "nope"), None);
     let lock = "[[package]]\nname = \"criterion\"\nversion = \"0.8.2\"\nsource = \"x\"\n";
     assert_eq!(criterion_version(lock), Some("0.8.2"));

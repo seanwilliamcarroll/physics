@@ -1,4 +1,5 @@
-//! A machine's benchmark record: `docs/bench/<machine>.tsv`, one line per
+//! A machine's benchmark record, per level: `docs/bench/<name>.tsv`
+//! (`level.rs`), one line per
 //! benchmark (its id, mean and half its 95% confidence interval in ns, and
 //! its declared throughput), after `#` lines saying the toolchain, commit
 //! and date. `docs/bench/<machine>.md` is its table.
@@ -16,9 +17,9 @@ use super::table::{Row, Throughput};
 /// A record: each benchmark's row, by id (its change unset).
 pub(crate) type Record = BTreeMap<String, Row>;
 
-/// `docs/bench/<machine>.tsv`, relative to the workspace.
-pub(crate) fn path(machine: &str) -> String {
-    format!("docs/bench/{machine}.tsv")
+/// `docs/bench/<name>.tsv`, relative to the workspace.
+pub(crate) fn path(name: &str) -> String {
+    format!("docs/bench/{name}.tsv")
 }
 
 const HEADER: &str = "id\tmean_ns\tci_half_ns\tthroughput";
@@ -136,9 +137,19 @@ pub(crate) fn rows(record: &Record, changes: &BTreeMap<String, f64>) -> Vec<Row>
         .collect()
 }
 
-/// The meta lines: `key=value`.
-pub(crate) fn meta(rustc: &str, criterion: &str, commit: &str, date: &str) -> String {
-    format!("rustc={rustc}\ncriterion={criterion}\ncommit={commit}\ndate={date}\n")
+/// The meta lines: `key=value`, the level and its `RUSTFLAGS` last
+/// (records made before levels have neither: their baseline).
+pub(crate) fn meta(
+    rustc: &str,
+    criterion: &str,
+    commit: &str,
+    date: &str,
+    level: &str,
+    rustflags: &str,
+) -> String {
+    format!(
+        "rustc={rustc}\ncriterion={criterion}\ncommit={commit}\ndate={date}\nlevel={level}\nrustflags={rustflags}\n"
+    )
 }
 
 /// One value from the meta lines.
