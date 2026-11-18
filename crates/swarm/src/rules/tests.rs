@@ -1,3 +1,4 @@
+use super::knobs::Tail;
 use super::{FLEE, PREDATOR_RANGE, Ranges, Seen, clamp_speed, steer};
 use crate::{Arena, Boid, Params};
 
@@ -261,7 +262,10 @@ fn every_span_edge_setting_sums_the_same_candidates() {
         }
     }
     assert!(reference.count > 10.0, "the data must have neighbours");
-    for settings in [(false, false), (true, false), (false, true), (true, true)] {
+    for settings in [false, true]
+        .into_iter()
+        .flat_map(|b| [Tail::Scalar, Tail::Masked, Tail::Table].map(|t| (b, t)))
+    {
         let mut seen = Seen::default();
         super::lanes::add_spans::<L>(
             &mut seen,

@@ -1,7 +1,7 @@
 //! The build settings' parsing: run at compile time in the build, so here
 //! as plain calls (a bad setting's panic is the build error).
 
-use super::{Mask, Sum, choice, lanes, mask, number, same, sum};
+use super::{Mask, Sum, Tail, choice, lanes, mask, number, same, sum, tail};
 
 #[test]
 fn the_settings_parse_and_default() {
@@ -25,16 +25,36 @@ fn the_settings_parse_and_default() {
 }
 
 #[test]
-fn two_way_settings_parse_and_default_off() {
-    assert!(!choice(None, "SWARM_TAIL", b"scalar", b"masked"));
-    assert!(!choice(Some("scalar"), "SWARM_TAIL", b"scalar", b"masked"));
-    assert!(choice(Some("masked"), "SWARM_TAIL", b"scalar", b"masked"));
+fn two_way_settings_parse_and_default_unset() {
+    assert_eq!(choice(None, "SWARM_SPAN", b"per-span", b"per-boid"), None);
+    assert_eq!(
+        choice(Some("per-span"), "SWARM_SPAN", b"per-span", b"per-boid"),
+        Some(false)
+    );
+    assert_eq!(
+        choice(Some("per-boid"), "SWARM_SPAN", b"per-span", b"per-boid"),
+        Some(true)
+    );
+}
+
+#[test]
+#[should_panic(expected = "SWARM_SPAN")]
+fn a_two_way_setting_must_be_one_of_its_two() {
+    choice(Some("both"), "SWARM_SPAN", b"per-span", b"per-boid");
+}
+
+#[test]
+fn the_tail_parses() {
+    assert_eq!(tail(None), None);
+    assert_eq!(tail(Some("scalar")), Some(Tail::Scalar));
+    assert_eq!(tail(Some("masked")), Some(Tail::Masked));
+    assert_eq!(tail(Some("table")), Some(Tail::Table));
 }
 
 #[test]
 #[should_panic(expected = "SWARM_TAIL")]
-fn a_two_way_setting_must_be_one_of_its_two() {
-    choice(Some("both"), "SWARM_TAIL", b"scalar", b"masked");
+fn the_tail_must_be_one_of_the_three() {
+    tail(Some("vector"));
 }
 
 #[test]

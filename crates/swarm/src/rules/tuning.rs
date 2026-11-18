@@ -14,7 +14,7 @@
 //! order, so targets differ in the last bits (allowed:
 //! `docs/04-testing.md`).
 
-use super::knobs::Mask;
+use super::knobs::{Mask, Tail};
 
 /// Brute force's lanes, then sorted's, on this target; in brackets the
 /// sweep's time at 10,000 boids against the other count.
@@ -76,4 +76,41 @@ const TARGET_MASK: Mask = if cfg!(target_arch = "wasm32") {
 pub(crate) const GRID_MASK: Mask = match super::knobs::MASK {
     Some(m) => m,
     None => TARGET_MASK,
+};
+
+/// Sorted's span edges: one set of lanes per boid, the leftovers' form,
+/// and the grid's cell lookup truncating, from the edge sweep
+/// (`experiments/sorted-edges/results/{llm,m4}`, 2026-11-18; Sorted at
+/// 10,000 and 100,000 boids, against the code as it was). Natively the
+/// first two together: Zen 5 −39%/−38% (AVX-512), −30%/−31% (AVX2),
+/// −14%/−20% at SSE2 (−21%/−26% with the third); the M4 −16% from the
+/// first alone. The masked block takes the scalar leftovers' branches
+/// (Zen 5's branch misses 3.6% → 0.3%). At 1,000 boids, about one boid a
+/// span, the block is mostly masked out: 1–13% faster on Zen 5 with the
+/// three, +1% at SSE2. In wasm neither helps in V8 (−4% to +4%): spans
+/// of about 12 against 16 lanes, the mask's constants rebuilt every
+/// block; the code as it was. Truncating gives the same cells and saves
+/// x86's baseline a `floorf` call: on everywhere.
+const TARGET_EDGES: (bool, Tail, bool) = if cfg!(target_arch = "wasm32") {
+    (false, Tail::Scalar, true)
+} else {
+    (true, Tail::Masked, true)
+};
+
+/// Whether Sorted adds one set of lanes per boid, after its three spans.
+pub(crate) const PER_BOID: bool = match super::knobs::PER_BOID {
+    Some(b) => b,
+    None => TARGET_EDGES.0,
+};
+
+/// How Sorted adds a span's leftovers.
+pub(crate) const TAIL: Tail = match super::knobs::TAIL {
+    Some(t) => t,
+    None => TARGET_EDGES.1,
+};
+
+/// Whether the grid's cell coordinates truncate instead of `floor`.
+pub(crate) const TRUNCATE_CELL: bool = match super::knobs::TRUNCATE_CELL {
+    Some(b) => b,
+    None => TARGET_EDGES.2,
 };
