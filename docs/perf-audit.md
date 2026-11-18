@@ -325,6 +325,12 @@ ranges as an order of magnitude.
   natively (Zen 5 at SSE2 −17%). Grid stays scalar by design: its
   candidates are gathers through an index; Sorted is its vectorized
   form.
+- **Vicsek in V8 on x86 (2026-11-18, open):** 2.3× slower in llm's V8
+  than natively (2.29 against 0.95 ms at 4,000; the M4's V8 is level).
+  Not the trig (97% of V8's time in `Vicsek::step` itself) and not the
+  masks: making its tests branchless lost 10–30% everywhere, llm's V8
+  included (`experiments/swarm-mask/README.md`, round 2). Parked at
+  ~1.3 ms a step; next would be V8's x86 code against the wasm.
 
 ### Findings
 

@@ -7,7 +7,6 @@ use math::SplitMix64;
 use math::convert::f64_to_f32;
 
 use crate::grid::Grid;
-use crate::rules::{MASK, Mask, unit};
 
 /// The most particles a system holds (as [`MAX_BOIDS`](crate::MAX_BOIDS)).
 pub const MAX_PARTICLES: usize = 1 << 18;
@@ -336,9 +335,7 @@ impl Vicsek {
 /// Adds to `sum` the headings of the `candidates` within `r` of `me`
 /// (minimum image), `me` included if it's among them. Called once per
 /// cell on the grid: the sum carries on from cell to cell, in the same
-/// order as one pass over them all. Without branches in the target's mask
-/// form (`rules/tuning.rs`, as the grid's boids): in range or not is hard
-/// to predict, and in wasm V8 on x86 turns float selects into branches.
+/// order as one pass over them all.
 fn add_headings(
     sum: &mut (f32, f32),
     s: &State,
@@ -352,46 +349,22 @@ fn add_headings(
     for j in candidates {
         let Some(o) = s.get(j) else { continue };
         let (dx, dy) = (image(me.x - o.x, side), image(me.y - o.y, side));
-        let near = dx * dx + dy * dy < r_sq;
-        match MASK {
-            Mask::Branch => {
-                if near {
-                    sc += o.cos;
-                    ss += o.sin;
-                }
-            }
-            Mask::Value => {
-                sc += if near { o.cos } else { 0.0 };
-                ss += if near { o.sin } else { 0.0 };
-            }
-            Mask::Convert | Mask::Select | Mask::Bits => {
-                let m = unit(near);
-                sc += m * o.cos;
-                ss += m * o.sin;
-            }
+        if dx * dx + dy * dy < r_sq {
+            sc += o.cos;
+            ss += o.sin;
         }
     }
     *sum = (sc, ss);
 }
 
 /// `d` as the minimum image in a box of side `l`: in `[−l/2, l/2]`.
-/// Without branches in the target's mask form: `d − l·[d > l/2] +
-/// l·[d < −l/2]`, the same values (the terms masked out add zero; at
-/// most a zero's sign differs).
 fn image(d: f32, l: f32) -> f32 {
-    let h = 0.5 * l;
-    match MASK {
-        Mask::Branch => {
-            if d > h {
-                d - l
-            } else if d < -h {
-                d + l
-            } else {
-                d
-            }
-        }
-        Mask::Value => d - (if d > h { l } else { 0.0 }) + (if d < -h { l } else { 0.0 }),
-        Mask::Convert | Mask::Select | Mask::Bits => d - l * unit(d > h) + l * unit(d < -h),
+    if d > 0.5 * l {
+        d - l
+    } else if d < -0.5 * l {
+        d + l
+    } else {
+        d
     }
 }
 
