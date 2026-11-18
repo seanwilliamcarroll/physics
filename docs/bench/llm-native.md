@@ -1,11 +1,11 @@
 # Benchmarks, 2026-11-17, llm-native
 
-- **Commit:** `ac13749` (xtask bench --record: the pull request leads with what moved past the threshold against the previous record, every level, slower first (#311))
+- **Commit:** `ceb9064` (swarm bench: every case steps the same warmed state (a clone per iteration, untimed), not one model on and on (a moving target: ±9-16% where everything else was ±1%; now ±0.1%); developed warm-ups (flocks 1,000 steps, Vicsek 3,000, ants 1,000, Physarum 300) (#315))
 - **Machine:** Linux x86_64, 16 CPUs; rustc 1.99.1 (58cf8f9c3 2026-10-13)
 - **Level:** native (`-C target-cpu=native`)
-- **Run:** `cargo xtask bench --level native`
+- **Run:** `cargo xtask bench --level native swarm_`
 
-Time: the mean per iteration; ±: half its 95% confidence interval; Change: from each benchmark's previous run. Recorded by `cargo xtask bench --record` (`docs/benchmarks.md`).
+Time: the mean per iteration; ±: half its 95% confidence interval; Change: from the record for `llm-native`. Recorded by `cargo xtask bench --record` (`docs/benchmarks.md`).
 
 | Benchmark | Time | ± | Throughput | Change |
 |---|---:|---:|---:|---:|
@@ -69,20 +69,20 @@ Time: the mean per iteration; ±: half its 95% confidence interval; Change: from
 | `stiff_waveguide_new/60` | 140.6 µs | 0.1% |  |  |
 | `stiff_waveguide_new/69` | 3.10 ms | 0.2% |  |  |
 | `stiff_waveguide_new/84` | 493.5 µs | 0.1% |  |  |
-| `swarm_models/ants/200x120_500` | 211.9 µs | 0.7% |  |  |
-| `swarm_models/physarum/512_100k` | 2.89 ms | 1.0% |  |  |
-| `swarm_models/vicsek/4000` | 1.04 ms | 7.1% |  |  |
-| `swarm_step/Brute/1000` | 161.7 µs | 0.1% | 6.2 Melem/s |  |
-| `swarm_step/Brute/10000` | 13.13 ms | 0.1% | 761.4 Kelem/s |  |
-| `swarm_step/Brute/300` | 23.8 µs | 0.3% | 12.6 Melem/s |  |
-| `swarm_step/Brute/3000` | 1.26 ms | 0.2% | 2.4 Melem/s |  |
-| `swarm_step/Grid/1000` | 587.8 µs | 3.6% | 1.7 Melem/s |  |
-| `swarm_step/Grid/10000` | 6.04 ms | 9.2% | 1.7 Melem/s |  |
-| `swarm_step/Grid/100000` | 40.46 ms | 1.6% | 2.5 Melem/s |  |
-| `swarm_step/Grid/300` | 132.7 µs | 0.7% | 2.3 Melem/s |  |
-| `swarm_step/Grid/3000` | 1.65 ms | 8.6% | 1.8 Melem/s |  |
-| `swarm_step/Sorted/1000` | 94.3 µs | 0.3% | 10.6 Melem/s |  |
-| `swarm_step/Sorted/10000` | 978.8 µs | 5.3% | 10.2 Melem/s |  |
-| `swarm_step/Sorted/100000` | 9.74 ms | 3.1% | 10.3 Melem/s |  |
-| `swarm_step/Sorted/300` | 26.9 µs | 1.4% | 11.2 Melem/s |  |
-| `swarm_step/Sorted/3000` | 283.4 µs | 1.1% | 10.6 Melem/s |  |
+| `swarm_models/ants/200x120_500` | 182.4 µs | 0.1% |  | -14.0% |
+| `swarm_models/physarum/512_100k` | 3.05 ms | 0.0% |  | +5.3% |
+| `swarm_models/vicsek/4000` | 913.4 µs | 0.0% |  | -11.9% |
+| `swarm_step/Brute/1000` | 157.1 µs | 0.0% | 6.4 Melem/s | -2.8% |
+| `swarm_step/Brute/10000` | 13.09 ms | 0.0% | 763.7 Kelem/s | -0.3% |
+| `swarm_step/Brute/300` | 19.3 µs | 0.4% | 15.6 Melem/s | -19.1% |
+| `swarm_step/Brute/3000` | 1.25 ms | 0.0% | 2.4 Melem/s | -0.7% |
+| `swarm_step/Grid/1000` | 266.7 µs | 0.1% | 3.7 Melem/s | -54.6% |
+| `swarm_step/Grid/10000` | 4.30 ms | 0.1% | 2.3 Melem/s | -28.7% |
+| `swarm_step/Grid/100000` | 51.96 ms | 0.1% | 1.9 Melem/s | +28.4% |
+| `swarm_step/Grid/300` | 38.9 µs | 0.1% | 7.7 Melem/s | -70.7% |
+| `swarm_step/Grid/3000` | 1.09 ms | 0.0% | 2.7 Melem/s | -33.7% |
+| `swarm_step/Sorted/1000` | 58.5 µs | 0.1% | 17.1 Melem/s | -38.0% |
+| `swarm_step/Sorted/10000` | 940.9 µs | 0.0% | 10.6 Melem/s | -3.9% |
+| `swarm_step/Sorted/100000` | 10.34 ms | 0.1% | 9.7 Melem/s | +6.2% |
+| `swarm_step/Sorted/300` | 16.8 µs | 0.1% | 17.8 Melem/s | -37.3% |
+| `swarm_step/Sorted/3000` | 190.0 µs | 0.1% | 15.8 Melem/s | -33.0% |
