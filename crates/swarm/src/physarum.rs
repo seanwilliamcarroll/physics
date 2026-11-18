@@ -82,8 +82,8 @@ fn wrap_cell(v: f32, side: usize) -> usize {
     f64_to_usize(c).unwrap_or(0).min(side - 1)
 }
 
-/// Position `v` wrapped into `[0, l)`: `v.rem_euclid(l)`, and exactly
-/// what it returns (`fmod` is exact; `v − l` is exact for `v` in
+/// Position `v` wrapped into `[0, l)`: `v.rem_euclid(l)` (today exactly
+/// what it returns: `fmod` is exact; `v − l` is exact for `v` in
 /// `[l, 2l)`; below zero `rem_euclid` itself adds `l`), without the call
 /// when `v` is within one `l` outside. A sum that rounds up to `l`
 /// becomes 0.

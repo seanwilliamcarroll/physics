@@ -66,7 +66,7 @@ impl<S: Scalar> PairwiseGravity<S> {
     }
 
     /// A vector loop at `L` lanes, whichever the target didn't choose too
-    /// (the tests run both): at the same lanes they give the same bits.
+    /// (the tests check both against the plain loop, to rounding).
     fn accumulate_with<const L: usize>(
         &self,
         pair_loop: PairLoop,

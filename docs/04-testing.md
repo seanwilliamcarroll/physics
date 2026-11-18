@@ -165,17 +165,25 @@ engine's particles): no hash in between (until 2026-11-17 an FNV-1a
 hash, `math::Fnv1a`, which only the goldens needed). Each crate's
 `tests/determinism.rs`; `cargo xtask test-wasm` runs them on wasm too.
 
-**Exact bits, reviewed (2026-11-17):** with the goldens gone, the tests
-that still compare bits are all of four kinds, where exact is the point:
-repeatability (a tolerance would hide nondeterminism); two paths built to
-do the same arithmetic (the two gravity loops at equal lanes, sand's
-chunked and full updates, substeps, the waveguide and its loop, a
-removed ground, a refused ABI call changing nothing: a tolerance would let
-a divergence through; when one path's arithmetic changes on purpose, its
-test becomes a tolerance then); a value against the same expression (a
-demo's energy against the diagnostics'); IEEE identities and fixed
-outputs (`math`'s properties, the PRNG's known values, a static particle
-staying put). None compares bits where they're incidental.
+**Exact bits, reviewed (2026-11-17):** a test compares bits only where
+any difference at all is the failure:
+- **repeatability** (the same build run twice: a tolerance would hide
+  nondeterminism);
+- **"changes nothing"** (a removed or unreached ground, a static
+  particle, a refused ABI call against a shadow that never got it,
+  switching integrator before the first step, `diffuse` against the
+  `diffuse_counted` it calls): any effect, however small, is the bug;
+- **identities and fixed values** (`math`'s IEEE properties, the PRNG's
+  known outputs, a value against the same expression);
+- **integers** (sand's chunked and full updates: cells, not floats);
+- **telling which path ran** (gravity's plain-loop threshold).
+
+Two paths built to do the same arithmetic compare **to rounding**, so
+either can be reordered or retuned on its own (lanes, FMA, `algebraic_*`):
+the gravity loops against the plain one, substeps against smaller steps,
+the waveguide against Karplus–Strong, Physarum's `wrap_position` against
+`rem_euclid`. (They agree bit for bit today; the tests no longer require
+it.)
 
 **Not required: the same bits on every target, or over time.** Until
 2026-11-17 *golden hashes* pinned each reference run's final state, and
