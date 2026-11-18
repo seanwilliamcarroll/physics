@@ -41,6 +41,10 @@ pub(crate) struct Chunks {
     pub(crate) down: usize,
     pub(crate) now: Vec<bool>,
     pub(crate) next: Vec<bool>,
+    /// Chunks that already woke their neighbourhood since the last
+    /// [`advance`](Self::advance): flags only go up until then, so a second
+    /// wake from the same chunk would change nothing.
+    woke: Vec<bool>,
     /// Off: every cell every step (the reference the chunked update is
     /// tested against).
     pub(crate) enabled: bool,
@@ -55,6 +59,7 @@ impl Chunks {
             // Everything starts awake: nothing is known to be still.
             now: vec![true; across * down],
             next: vec![false; across * down],
+            woke: vec![false; across * down],
             enabled: true,
         }
     }
@@ -70,9 +75,25 @@ impl Chunks {
     }
 
     /// Wakes the chunk holding `(x, y)` and its eight neighbours, this step
-    /// and the next.
+    /// and the next: once per chunk per step. `now` and `next` only go up
+    /// until [`advance`](Self::advance), so a chunk that already woke them
+    /// has nothing left to do; a busy step's later moves (hundreds a chunk)
+    /// cost one flag each instead of eighteen writes (`docs/perf-audit.md`:
+    /// the 3 × 3 wakes were about a third of a busy step on both machines).
     pub(crate) fn wake(&mut self, x: usize, y: usize) {
         let (cx, cy) = (x / CHUNK, y / CHUNK);
+        match self.woke.get_mut(cy * self.across + cx) {
+            Some(w) if !*w => *w = true,
+            _ => return,
+        }
+        self.wake_around(cx, cy);
+    }
+
+    /// The 3 × 3 chunks around chunk `(cx, cy)`, this step and the next:
+    /// once per chunk per step, so out of line (the scan stays small).
+    #[cold]
+    #[inline(never)]
+    fn wake_around(&mut self, cx: usize, cy: usize) {
         for ny in cy.saturating_sub(1)..=(cy + 1).min(self.down - 1) {
             for nx in cx.saturating_sub(1)..=(cx + 1).min(self.across - 1) {
                 let i = ny * self.across + nx;
@@ -96,6 +117,7 @@ impl Chunks {
     pub(crate) fn advance(&mut self) {
         core::mem::swap(&mut self.now, &mut self.next);
         self.next.fill(false);
+        self.woke.fill(false);
     }
 }
 
