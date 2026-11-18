@@ -1,0 +1,8 @@
+# criterion's raw data (thousands of files); results.csv has the means
+results/*/*/*/criterion/
+results/*/*/*/criterion-profile/
+# The asm is committed here (the point of the experiment: a few
+# functions); perf output and logs stay on the machine that made them.
+results/*/perf/
+results/*/run.log
+results/*/asm/.v8-*

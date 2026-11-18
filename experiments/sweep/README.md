@@ -10,6 +10,7 @@ folder has a short driver, `run.py`, that describes it and runs it.
 |---|---|
 | `experiments/gravity-vectorize/` | pairwise gravity: `GRAVITY_LOOP`, `GRAVITY_LANES`, `GRAVITY_PLAIN_BELOW` (`crates/engine/src/force/pairwise/knobs.rs`) |
 | `experiments/swarm-lanes/` | the boids' lane loop: `SWARM_LANES`, `SWARM_SUM` (`crates/swarm/src/rules/knobs.rs`) |
+| `experiments/swarm-mask/` | the grid's candidate masks: `SWARM_MASK`; also captures V8's machine code |
 
 | File | What |
 |---|---|
@@ -35,7 +36,11 @@ SUITE = Suite(
 )
 ```
 
-Optional: `presets` (named lists for `--experiments`), `scalars` (what
+Optional: `v8_functions` and `v8_filter` (V8's optimized machine code
+for those wasm functions at the v8 levels, from a short run of the
+filter's benches with `node --print-wasm-code`: `<level>--<name>--<short>.v8.s`),
+a third element in a `functions` entry (which copy, when cargo asm finds
+several), `presets` (named lists for `--experiments`), `scalars` (what
 `{s}` in a symbol becomes, e.g. `("f64", "f32")`), `pairs` (bench sizes
 are body counts: per-pair perf columns). Give it a `.gitignore` like
 the others' (only summaries are committed) and a README with the
@@ -64,7 +69,7 @@ On the compute node, in tmux (a tmux command runs in a non-interactive
 shell, so nvm is loaded by hand; `nvm install` reads `.nvmrc`):
 
 ```sh
-tmux new -s sweep 'cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && experiments/EXPERIMENT/run.py --perf --experiments sweep --out experiments/EXPERIMENT/results/llm 2>&1 | tee ~/sweep.log; exec bash'
+tmux new -s sweep 'cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && experiments/EXPERIMENT/run.py --perf --experiments sweep --out ~/sweep-results/EXPERIMENT/llm 2>&1 | tee ~/sweep.log; exec bash'
 ```
 
 On a Mac, with `caffeinate` keeping it awake (`-i`: no idle sleep; `-s`:
@@ -72,8 +77,15 @@ no system sleep on mains power; closing the lid still sleeps it). Leave
 the machine alone meanwhile:
 
 ```sh
-cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/EXPERIMENT/run.py --experiments sweep --out experiments/EXPERIMENT/results/m4 2>&1 | tee ~/sweep.log
+cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/EXPERIMENT/run.py --experiments sweep --out ~/sweep-results/EXPERIMENT/m4 2>&1 | tee ~/sweep.log
 ```
+
+Results go **outside the repository** (`~/sweep-results/`), then are
+copied into `experiments/EXPERIMENT/results/<machine>/` and committed
+(`rsync -a llm:sweep-results/EXPERIMENT/llm/ experiments/EXPERIMENT/results/llm/`).
+Written into the checkout, they'd be untracked files there, and the
+next `git pull` that brings the committed copies refuses to overwrite
+them.
 
 `--quick`, `--levels`, `--experiments` and `--filter` narrow a run
 (`run.py --help` shows the experiment's defaults). Each run

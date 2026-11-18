@@ -2,6 +2,7 @@
 //! "The model"): ECE 4760's pseudocode, in its order.
 
 use crate::{Arena, Boid, Params};
+use knobs::Mask;
 
 /// `me` one step on, given `others`: every boid that might be within the
 /// visual range (more is fine: each is checked). Separation from those
@@ -80,14 +81,35 @@ impl Seen {
     /// (as the lane loop does it, one candidate at a time). The same values
     /// (adding a masked-out 0 changes no sum; tested); faster where the
     /// branch is hard to predict, as in a big flock's candidates: the
-    /// grid's step (`steer`), 37% faster at 100,000 boids on the M4, 35% in
-    /// V8. Slower where it's easy (a small flock's), so sorted's leftovers
-    /// keep [`Self::add`].
+    /// grid's step (`steer`): at 100,000 boids, 18–37% faster natively on
+    /// the M4 and Zen 5. Slower where it's easy (a small flock's), so
+    /// sorted's leftovers keep [`Self::add`]. The masks' form is the
+    /// target's (`tuning::GRID_MASK`: natively a select, in wasm a
+    /// converted integer, which V8 on x86 doesn't turn into branches).
     pub(crate) fn add_masked(&mut self, r: Ranges, me: Boid, o: Boid) {
         let (dx, dy) = (me.x - o.x, me.y - o.y);
         let d_sq = dx * dx + dy * dy;
-        let close = lanes::unit(d_sq < r.protected_sq);
-        let near = lanes::unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
+        let is_close = d_sq < r.protected_sq;
+        let is_near = d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0;
+        // The target's form (`tuning.rs`), or the build setting's.
+        let unit: fn(bool) -> f32 = match GRID_MASK {
+            Mask::Convert => |c| f32::from(u8::from(c)),
+            Mask::Select => |c| if c { 1.0 } else { 0.0 },
+            Mask::Bits => |c| f32::from_bits(1.0_f32.to_bits() & u32::from(c).wrapping_neg()),
+            Mask::Value => {
+                let pick = |c: bool, x: f32| if c { x } else { 0.0 };
+                self.close_dx += pick(is_close, dx);
+                self.close_dy += pick(is_close, dy);
+                self.sum_x += pick(is_near, o.x);
+                self.sum_y += pick(is_near, o.y);
+                self.sum_vx += pick(is_near, o.vx);
+                self.sum_vy += pick(is_near, o.vy);
+                self.count += pick(is_near, 1.0);
+                return;
+            }
+            Mask::Branch => return self.add(r, me, o),
+        };
+        let (close, near) = (unit(is_close), unit(is_near));
         self.close_dx += close * dx;
         self.close_dy += close * dy;
         self.sum_x += near * o.x;
@@ -128,7 +150,7 @@ mod knobs;
 mod lanes;
 mod tuning;
 
-pub(crate) use tuning::{BRUTE_LANES, SORTED_LANES};
+pub(crate) use tuning::{BRUTE_LANES, GRID_MASK, SORTED_LANES};
 
 /// How close the predator must be to be fled, pixels (our choice: a
 /// little over twice the visual range, so a flock parts ahead of it).

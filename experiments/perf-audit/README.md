@@ -6,7 +6,7 @@ bench built for wasm32-wasip1 with `simd128`, under `node --cpu-prof`).
 A profile measures shares of a run, so the machine needn't be idle.
 
 ```sh
-experiments/perf-audit/profile.py --out experiments/perf-audit/results/<machine>
+experiments/perf-audit/profile.py --out ~/sweep-results/perf-audit/<machine>  # then copied into results/<machine>
 experiments/perf-audit/profile.py --only swarm     # a subset
 ```
 
