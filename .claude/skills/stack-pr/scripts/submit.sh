@@ -20,7 +20,14 @@ set -euo pipefail
 dir=${PR_BODIES:-${TMPDIR:-/tmp}/pr-bodies}
 attribution='🤖 Generated with [Claude Code](https://claude.com/claude-code)'
 
-gh stack submit --auto --open 2>&1 | grep -E "Pushed|Created|Updated|✗|rror" || true
+# A failed push (usually the pre-push hook) stops here, with the hook's
+# last lines, before any PR is touched.
+if ! out=$(gh stack submit --auto --open 2>&1) || printf '%s\n' "$out" | grep -q "✗"; then
+  printf '%s\n' "$out" | tail -n 25
+  echo "submit.sh: push failed; nothing else done" >&2
+  exit 1
+fi
+printf '%s\n' "$out" | grep -E "Pushed|Created|Updated" || true
 
 branches=$(gh stack view --json | jq -r '.branches[] | select(.isMerged | not) | .name')
 tmp=$(mktemp)
