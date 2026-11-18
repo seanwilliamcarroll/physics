@@ -15,6 +15,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 
+pub(crate) mod report;
+
 /// Jobs when none are given: the compute node's 8.
 const DEFAULT_JOBS: &str = "8";
 
