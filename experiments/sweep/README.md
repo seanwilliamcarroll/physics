@@ -69,7 +69,7 @@ On the compute node, in tmux (a tmux command runs in a non-interactive
 shell, so nvm is loaded by hand; `nvm install` reads `.nvmrc`):
 
 ```sh
-tmux new -s sweep 'cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && experiments/EXPERIMENT/run.py --perf --experiments sweep --out experiments/EXPERIMENT/results/llm 2>&1 | tee ~/sweep.log; exec bash'
+tmux new -s sweep 'cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && experiments/EXPERIMENT/run.py --perf --experiments sweep --out ~/sweep-results/EXPERIMENT/llm 2>&1 | tee ~/sweep.log; exec bash'
 ```
 
 On a Mac, with `caffeinate` keeping it awake (`-i`: no idle sleep; `-s`:
@@ -77,8 +77,15 @@ no system sleep on mains power; closing the lid still sleeps it). Leave
 the machine alone meanwhile:
 
 ```sh
-cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/EXPERIMENT/run.py --experiments sweep --out experiments/EXPERIMENT/results/m4 2>&1 | tee ~/sweep.log
+cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/EXPERIMENT/run.py --experiments sweep --out ~/sweep-results/EXPERIMENT/m4 2>&1 | tee ~/sweep.log
 ```
+
+Results go **outside the repository** (`~/sweep-results/`), then are
+copied into `experiments/EXPERIMENT/results/<machine>/` and committed
+(`rsync -a llm:sweep-results/EXPERIMENT/llm/ experiments/EXPERIMENT/results/llm/`).
+Written into the checkout, they'd be untracked files there, and the
+next `git pull` that brings the committed copies refuses to overwrite
+them.
 
 `--quick`, `--levels`, `--experiments` and `--filter` narrow a run
 (`run.py --help` shows the experiment's defaults). Each run
