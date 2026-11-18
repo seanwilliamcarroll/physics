@@ -16,3 +16,7 @@ site/demos/*/*.js.map
 # pre-push hook's (mutants.out/pre-push/)
 mutants.out*/
 mutants_*.out/
+
+# Claude Code: agents' worktrees and per-user settings (.claude/skills is tracked)
+.claude/worktrees/
+.claude/settings.local.json
