@@ -8,6 +8,16 @@
 //! - `SWARM_SUM`: `ordered` (default) or `algebraic`. Algebraic adds with
 //!   `f32::algebraic_add`, which lets the compiler reorder them (and so
 //!   vectorize the sums however it likes).
+//! - `SWARM_SPAN`, `SWARM_TAIL`, `SWARM_CELL`: Sorted's span edges, for
+//!   `experiments/sorted-edges/`. `SWARM_SPAN`: `per-span` (default: each
+//!   span's lanes added into the sums at its end) or `per-boid` (one set
+//!   of lanes for a boid's three spans, added once). `SWARM_TAIL`:
+//!   `scalar` (default: a span's last few candidates one at a time,
+//!   branching) or `masked` (one more block, its lanes outside the
+//!   leftovers masked out). `SWARM_CELL`: `floor` (default) or
+//!   `truncate` (the grid's cell coordinates without `floor`: the same
+//!   for the non-negative values it takes; x86's baseline has no float
+//!   rounding instruction, so `floor` is a call).
 //! - `SWARM_MASK`: how the grid's scalar candidate test (`Seen::add_masked`)
 //!   writes its masks: `convert` (a bool converted to a float), `select`
 //!   (`if c { 1.0 } else { 0.0 }`), `bits` (the bits of `1.0`, masked by the
@@ -23,6 +33,31 @@ pub(crate) const LANES: Option<usize> = lanes(option_env!("SWARM_LANES"));
 
 /// How the lane loop adds.
 pub(crate) const SUM: Sum = sum(option_env!("SWARM_SUM"));
+
+/// How Sorted adds a boid's spans' lanes into its sums (`SWARM_SPAN`).
+pub(crate) const PER_BOID: bool = choice(
+    option_env!("SWARM_SPAN"),
+    "SWARM_SPAN",
+    b"per-span",
+    b"per-boid",
+);
+
+/// Whether Sorted's leftovers are a masked block (`SWARM_TAIL`).
+pub(crate) const MASKED_TAIL: bool = choice(
+    option_env!("SWARM_TAIL"),
+    "SWARM_TAIL",
+    b"scalar",
+    b"masked",
+);
+
+/// Whether the grid's cell coordinates truncate instead of `floor`
+/// (`SWARM_CELL`).
+pub(crate) const TRUNCATE_CELL: bool = choice(
+    option_env!("SWARM_CELL"),
+    "SWARM_CELL",
+    b"floor",
+    b"truncate",
+);
 
 /// How the grid's candidate test masks, if set.
 pub(crate) const MASK: Option<Mask> = mask(option_env!("SWARM_MASK"));
@@ -92,6 +127,17 @@ pub(crate) const fn mask(setting: Option<&str>) -> Option<Mask> {
         Some(Mask::Branch)
     } else {
         panic_at_build("SWARM_MASK: `convert`, `select`, `bits`, `value` or `branch`")
+    }
+}
+
+/// A two-way setting: unset or `off` is `false`, `on` is `true`; anything
+/// else fails the build, naming `name`.
+pub(crate) const fn choice(setting: Option<&str>, name: &str, off: &[u8], on: &[u8]) -> bool {
+    match setting {
+        None => false,
+        Some(text) if same(text.as_bytes(), off) => false,
+        Some(text) if same(text.as_bytes(), on) => true,
+        Some(_) => panic_at_build(name),
     }
 }
 

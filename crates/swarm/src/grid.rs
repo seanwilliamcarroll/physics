@@ -114,7 +114,15 @@ impl Grid {
 
     fn coords(&self, x: f32, y: f32) -> (usize, usize) {
         let along = |v: f32, n: usize| {
-            let k = f64_to_usize(f64::from((v * self.inv_cell).floor().max(0.0))).unwrap_or(0);
+            // Non-negative after `max`, so truncating is the floor: the
+            // `floor` is kept unless the build says otherwise (`SWARM_CELL`).
+            let scaled = (v * self.inv_cell).max(0.0);
+            let cell = if crate::rules::TRUNCATE_CELL {
+                scaled
+            } else {
+                scaled.floor()
+            };
+            let k = f64_to_usize(f64::from(cell)).unwrap_or(0);
             k.min(n.saturating_sub(1))
         };
         (along(x, self.cols), along(y, self.rows))

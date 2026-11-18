@@ -1,7 +1,7 @@
 //! The build settings' parsing: run at compile time in the build, so here
 //! as plain calls (a bad setting's panic is the build error).
 
-use super::{Mask, Sum, lanes, mask, number, same, sum};
+use super::{Mask, Sum, choice, lanes, mask, number, same, sum};
 
 #[test]
 fn the_settings_parse_and_default() {
@@ -22,6 +22,19 @@ fn the_settings_parse_and_default() {
     ] {
         assert_eq!(mask(Some(text)), Some(m));
     }
+}
+
+#[test]
+fn two_way_settings_parse_and_default_off() {
+    assert!(!choice(None, "SWARM_TAIL", b"scalar", b"masked"));
+    assert!(!choice(Some("scalar"), "SWARM_TAIL", b"scalar", b"masked"));
+    assert!(choice(Some("masked"), "SWARM_TAIL", b"scalar", b"masked"));
+}
+
+#[test]
+#[should_panic(expected = "SWARM_TAIL")]
+fn a_two_way_setting_must_be_one_of_its_two() {
+    choice(Some("both"), "SWARM_TAIL", b"scalar", b"masked");
 }
 
 #[test]
