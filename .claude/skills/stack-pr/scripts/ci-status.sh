@@ -87,7 +87,11 @@ amplify() {
       echo "  $name: $st"
       [ "$url" != None ] || continue
       curl -fsS -o "$dir/$name.log" "$url" || continue
-      grep -n -i -E "warn|error" "$dir/$name.log" | cut -c1-220 | head -n 20 | sed 's/^/    /'
+      # Amplify tags all of nvm's stderr [WARNING] (the download, its
+      # progress bar, the checksum), and tool summaries say "0 errors".
+      grep -n -i -E "warn|error" "$dir/$name.log" |
+        grep -v -E '#{5,}|[0-9.]+%$|Downloading https://nodejs|[Cc]hecksum|\b0 (errors|warnings)\b' |
+        cut -c1-220 | head -n 20 | sed 's/^/    /'
     done
   echo "full logs: $dir"
   [ "$status" = SUCCEED ]
