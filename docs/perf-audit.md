@@ -331,6 +331,13 @@ ranges as an order of magnitude.
   masks: making its tests branchless lost 10–30% everywhere, llm's V8
   included (`experiments/swarm-mask/README.md`, round 2). Parked at
   ~1.3 ms a step; next would be V8's x86 code against the wasm.
+- **Sand chunk waking (2026-11-18):** profiled first, waking was ~35% of
+  a busy step on the M4 and ~31% on Zen 5 (`Chunks::wake`'s 3 × 3 loop,
+  36 flag writes a move). Now once per chunk per step (a `woke` flag;
+  exact, as flags only go up until the step ends), the loop out of line.
+  Busy 1920 × 1080: M4 14.6 → 8.5 ms (−42%), V8 17.7 → 11.3 (−36%).
+  Next in the profiles: `index()` and `is_moved` (~16% M4, ~25% Zen 5),
+  recomputing `y·width + x` with bounds checks at every read.
 
 ### Findings
 

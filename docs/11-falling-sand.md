@@ -186,6 +186,14 @@ with; only awake chunks need it, if the cost shows.
   frame busy with room to spare; 1920 × 1080 busy is near the budget, and
   the step budget slows it rather than freezing it. Wasm: "The page as
   built", below.
+- **Waking once (2026-11-18):** every move woke the 3 × 3 chunks around
+  both its cells, 36 flag writes, almost all of a chunk's hundred-odd
+  moves rewriting flags already set: about a third of a busy step on
+  both machines (`docs/perf-audit.md`). A chunk now wakes its
+  neighbourhood once a step (flags only go up until the step ends), its
+  later moves one flag check; the 3 × 3 loop is out of line (`#[cold]`).
+  Busy 1920 × 1080: 14.6 → 8.5 ms natively on the M4 (−42%), 17.7 →
+  11.3 in V8 (−36%); every-cell settled steps a little faster too.
 
 ## Lava and steam as built (M9.4)
 
