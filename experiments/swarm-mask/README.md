@@ -84,3 +84,32 @@ Grid at 100,000 boids, ms (`results/{llm,m4}/results.csv`; `select` and
   and wasm dumps are criterion's wrapper; `run.py` now picks the
   function.)
 
+
+## Round 2: Vicsek (2026-11-18): branches win
+
+Vicsek's step is 2.3× slower in llm's V8 than the M4's (2.25 ms against
+0.98 at 4,000), level natively. Profiled (`experiments/perf-audit/profile.py
+--only vicsek`), 97% of V8's time is `Vicsek::step` itself, not the trig
+calls; its wasm has 24 float `select`s (the minimum image, `image`, and
+the in-range test in `add_headings`), and llm's V8 code has 117
+conditional branches against the M4's 98. Grid's cause, it looked like,
+so `SWARM_MASK` drove Vicsek's two tests too, on a branch since reverted
+(`swarm/vicsek-masks`). Vicsek at 4,000, ms (`results/{llm,m4}-vicsek/`):
+
+| | convert | select | bits | value | branch (the code) |
+|---|---|---|---|---|---|
+| llm SSE2 | 1.277 | 1.477 | 1.276 | 1.303 | **1.172** |
+| llm AVX2 | 1.198 | 1.100 | 1.199 | 1.217 | **0.932** |
+| llm AVX-512 | 1.215 | 1.064 | 1.212 | 1.126 | **0.954** |
+| llm V8 | 2.863 | 3.040 | 2.895 | 2.911 | **2.290** |
+| M4 native | 1.250 | 1.085 | 1.242 | 1.021 | **0.984** |
+| M4 V8 | 1.284 | 1.104 | 1.272 | 1.110 | **0.999** |
+
+- **The branches win everywhere**, by 10–30%: they predict well (few
+  pairs wrap across the box, and neighbours come in runs), so masks add
+  work to every pair and save no mispredictions. The code keeps them.
+- **llm's V8 gap is not the masks** and stays open: 2.29 ms with the
+  branching code against 0.95 natively on the same CPU, where the M4's
+  V8 is level with its native code. Finding it means reading V8's x86
+  code (`results/llm/asm/v8-simd128--branch--vicsek_step.v8.s`) against
+  the wasm; at ~1.3 ms a step, parked.
