@@ -8,8 +8,9 @@
 //! - `SWARM_SUM`: `ordered` (default) or `algebraic`. Algebraic adds with
 //!   `f32::algebraic_add`, which lets the compiler reorder them (and so
 //!   vectorize the sums however it likes).
-//! - `SWARM_MASK`: how the grid's scalar candidate test (`Seen::add_masked`)
-//!   writes its masks: `convert` (a bool converted to a float), `select`
+//! - `SWARM_MASK`: how the scalar candidate tests (the grid's
+//!   `Seen::add_masked`, Vicsek's `add_headings` and `image`) write their
+//!   masks: `convert` (a bool converted to a float), `select`
 //!   (`if c { 1.0 } else { 0.0 }`), `bits` (the bits of `1.0`, masked by the
 //!   bool's all-ones), `value` (each term selected, no multiply) or
 //!   `branch` (the branching `Seen::add`). Unset, the target's (`tuning.rs`).

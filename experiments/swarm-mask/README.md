@@ -84,3 +84,15 @@ Grid at 100,000 boids, ms (`results/{llm,m4}/results.csv`; `select` and
   and wasm dumps are criterion's wrapper; `run.py` now picks the
   function.)
 
+
+## Round 2: Vicsek (2026-11-18)
+
+Vicsek's step is 2.3× slower in llm's V8 than the M4's (2.25 ms against
+0.98 at 4,000), level natively. Profiled (`experiments/perf-audit/profile.py
+--only vicsek`), 97% of V8's time is `Vicsek::step` itself, not the trig
+calls; its wasm has 24 float `select`s, from the minimum image
+(`image`) and the in-range test (`add_headings`), and llm's V8 code has
+117 conditional branches against the M4's 98. The same cause as Grid's,
+so `SWARM_MASK` now drives both, and the target's form
+(`rules/tuning.rs`, `MASK`) is Vicsek's default too: `branch` is the
+code before. Rerun with `--filter '^swarm_models/vicsek/4000$'`.

@@ -56,7 +56,8 @@ pub(crate) const SORTED_LANES: usize = match super::knobs::LANES {
 
 const _: () = assert!(BRUTE_LANES.is_power_of_two() && SORTED_LANES.is_power_of_two());
 
-/// The grid's mask form (`Seen::add_masked`), from the mask sweep
+/// The scalar masks' form (the grid's `Seen::add_masked`, Vicsek's
+/// `add_headings` and `image`), from the mask sweep
 /// (`experiments/swarm-mask/results/{llm,m4}`, 2026-11-18; Grid at
 /// 100,000 boids). Natively, a select: the M4 35.7 ms against 37.7
 /// converted, Zen 5 at SSE2 36.1 against 43.4 (−17%), at AVX2 42.7
@@ -72,8 +73,8 @@ const TARGET_MASK: Mask = if cfg!(target_arch = "wasm32") {
     Mask::Select
 };
 
-/// The grid's mask form on this target.
-pub(crate) const GRID_MASK: Mask = match super::knobs::MASK {
+/// The scalar masks' form on this target.
+pub(crate) const MASK: Mask = match super::knobs::MASK {
     Some(m) => m,
     None => TARGET_MASK,
 };
