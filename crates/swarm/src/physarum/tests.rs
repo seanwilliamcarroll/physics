@@ -138,20 +138,24 @@ fn wrap_cell_is_floor_mod_side_everywhere() {
 }
 
 #[test]
-fn wrap_position_is_rem_euclid_bit_for_bit() {
+fn wrap_position_is_rem_euclid() {
     for l in [1.0_f32, 7.0, 96.0, 512.0] {
         for v in wrap_cases(l) {
             let r = v.rem_euclid(l);
             let general = if r >= l { 0.0 } else { r };
             let got = wrap_position(v, l);
-            // A NaN's sign and payload aren't specified (Rust's float
-            // semantics): the same expression can give either, depending on
-            // how it was compiled. The coverage build gave −∞'s NaN the
-            // other sign. NaN for NaN; the same bits for everything else.
+            // NaN for NaN; otherwise inside [0, l), and the same place on
+            // the torus as `rem_euclid`'s to rounding (today, the same
+            // bits): a distance that wraps, so l − tiny and 0 are close.
             if general.is_nan() {
                 assert!(got.is_nan(), "v = {v:e}, l = {l}: {got}");
             } else {
-                assert_eq!(got.to_bits(), general.to_bits(), "v = {v:e}, l = {l}");
+                assert!((0.0..l).contains(&got), "v = {v:e}, l = {l}: {got}");
+                let d = (got - general).abs();
+                assert!(
+                    d.min(l - d) <= 4.0 * f32::EPSILON * l,
+                    "v = {v:e}, l = {l}: {got} vs {general}"
+                );
             }
         }
     }

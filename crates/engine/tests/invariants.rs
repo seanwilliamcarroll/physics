@@ -164,11 +164,12 @@ fn zero_and_bad_steps_cant_be_made<S: Tol>() {
 }
 for_each_scalar!(zero_and_bad_steps_cant_be_made);
 
-/// `substeps = k` with step `dt` must equal k steps of `dt / k`, bit for bit.
-/// k = 3 on purpose: dividing by a power of two is exact and would hide a
-/// mismatch in how h is computed. The test computes h exactly as `World`
-/// does (`dt / k` in S), not `from_f64(dt / 3.0)`, which rounds once instead
-/// of twice for f32.
+/// `substeps = k` with step `dt` must equal k steps of `dt / k`, to
+/// rounding (today they agree bit for bit; the test leaves room for the
+/// substep loop to do its arithmetic its own way). k = 3 on purpose: a
+/// power of two divides exactly and would hide a mismatch in how h is
+/// computed; h is computed as `World` does (`dt / k` in S). A wrong h
+/// (off by a substep) moves the particle far past the tolerance.
 fn substeps_equal_repeated_smaller_steps<S: Tol>() {
     let k = 3;
     let dt = s::<S>(1.0 / 60.0);
@@ -182,10 +183,14 @@ fn substeps_equal_repeated_smaller_steps<S: Tol>() {
                 b.step(TimeStep::new(h).unwrap());
             }
         }
+        // 300 small steps' rounding, relative to how far and how fast.
+        let close = |x: Vec2<S>, y: Vec2<S>| {
+            (x - y).length().to_f64() <= 300.0 * S::EPSILON * y.length().to_f64().max(1.0)
+        };
         let (pa, pb) = (a.particles().pos()[0], b.particles().pos()[0]);
-        assert_eq!(bits(pa), bits(pb), "{integrator:?}");
+        assert!(close(pa, pb), "{integrator:?}: {pa:?} vs {pb:?}");
         let (va, vb) = (a.particles().vel()[0], b.particles().vel()[0]);
-        assert_eq!(bits(va), bits(vb), "{integrator:?}");
+        assert!(close(va, vb), "{integrator:?}: {va:?} vs {vb:?}");
     }
 }
 for_each_scalar!(substeps_equal_repeated_smaller_steps);

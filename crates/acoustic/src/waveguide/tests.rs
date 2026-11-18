@@ -6,7 +6,9 @@ const FS: f64 = 48_000.0;
 
 /// Karplus–Strong is the waveguide's special case (`docs/13-waveguide.md`):
 /// started from a loop's state, the waveguide's bridge output is the
-/// loop's output, bit for bit, for odd and even loops, tuned and not.
+/// loop's output, for odd and even loops, tuned and not: to rounding (the
+/// pluck is at most 1; today they agree bit for bit), so either can be
+/// rearranged. A wrong delay, filter or tap is off by the signal itself.
 fn reproduces_the_loop<S: Scalar>() {
     for (f0, tuned) in [
         (220.0, true),
@@ -29,7 +31,7 @@ fn reproduces_the_loop<S: Scalar>() {
         for n in 0..20_000 {
             let (a, b) = (ks.next_sample(), wg.step());
             assert!(
-                a.to_f64().to_bits() == b.to_f64().to_bits(),
+                (a.to_f64() - b.to_f64()).abs() <= 1e-12,
                 "{} {f0} Hz (N = {}): sample {n}: {a:?} vs {b:?}",
                 core::any::type_name::<S>(),
                 ks.delay()

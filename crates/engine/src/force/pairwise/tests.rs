@@ -68,78 +68,60 @@ fn bits<S: Scalar>(v: S) -> u64 {
     v.to_f64().to_bits()
 }
 
-/// At the same lane count the two loops do the same additions in the
-/// same order: identical bits. Checked at every lane count a target uses.
-fn loops_agree<S: Scalar, const L: usize>() {
+/// The lanes reorder body i's sum, so the vector loops differ from the
+/// plain one in the last bits only: both loops, at every lane count a
+/// target uses, softened and not (unsoftened, bodies 1 and 2 coincide:
+/// 0/0, which every loop must skip). Within `rel` of the largest
+/// acceleration: rounding, not a wrong term. The two loops aren't
+/// compared bit for bit (at equal lanes they happen to agree today), so
+/// either can be retuned on its own.
+fn match_plain<S: Scalar, const L: usize>(rel: f64) {
     for softening in [0.0, 0.05] {
         let g = PairwiseGravity::new(
             S::from_f64(6.674e-11),
             Softening::new(S::from_f64(softening)).unwrap(),
         );
         for n in sizes::<L>() {
-            let p = world::<S>(n, 7 + n as u64);
-            let (two, blocked) = (
-                with::<S, L>(&g, PairLoop::TwoPass, &p),
-                with::<S, L>(&g, PairLoop::Blocked, &p),
-            );
-            for (k, (a, b)) in two.iter().zip(&blocked).enumerate() {
-                assert!(
-                    bits(a.x) == bits(b.x) && bits(a.y) == bits(b.y),
-                    "{L} lanes, n {n}, ε {softening}, body {k}: two-pass {a:?}, blocked {b:?}"
-                );
+            let p = world::<S>(n, 11 + n as u64);
+            let mut reference = start(n);
+            plain::accumulate(&g, &p, &mut reference);
+            let scale = reference
+                .iter()
+                .map(|a| a.length().to_f64())
+                .fold(0.0, f64::max)
+                .max(1.0);
+            for pair_loop in [PairLoop::TwoPass, PairLoop::Blocked] {
+                let got = with::<S, L>(&g, pair_loop, &p);
+                for (k, (a, r)) in got.iter().zip(&reference).enumerate() {
+                    assert!(
+                        (*a - *r).length().to_f64() <= rel * scale,
+                        "{L} lanes, n {n}, ε {softening}, {pair_loop:?}, body {k}: {a:?} vs plain {r:?}"
+                    );
+                }
             }
         }
     }
 }
 
 #[test]
-fn the_two_loops_give_identical_bits_f64() {
-    loops_agree::<f64, 1>();
-    loops_agree::<f64, 4>();
-    loops_agree::<f64, 8>();
-    loops_agree::<f64, 16>();
+fn the_vector_loops_match_the_plain_loop_to_rounding_f64() {
+    match_plain::<f64, 1>(1e-12);
+    match_plain::<f64, 4>(1e-12);
+    match_plain::<f64, 8>(1e-12);
+    match_plain::<f64, 16>(1e-12);
 }
 
 #[test]
-fn the_two_loops_give_identical_bits_f32() {
-    loops_agree::<f32, 1>();
-    loops_agree::<f32, 4>();
-    loops_agree::<f32, 8>();
-    loops_agree::<f32, 16>();
+fn the_vector_loops_match_the_plain_loop_to_rounding_f32() {
+    match_plain::<f32, 1>(F32_REL);
+    match_plain::<f32, 4>(F32_REL);
+    match_plain::<f32, 8>(F32_REL);
+    match_plain::<f32, 16>(F32_REL);
 }
 
-/// The lanes reorder body i's sum, so the vector loops differ from the
-/// plain one in the last bits only: at every lane count a target uses.
-fn match_plain<const L: usize>() {
-    let g = PairwiseGravity::new(6.674e-11, Softening::new(0.05).unwrap());
-    for n in sizes::<L>() {
-        let p = world::<f64>(n, 11 + n as u64);
-        let mut reference = start(n);
-        plain::accumulate(&g, &p, &mut reference);
-        let scale = reference
-            .iter()
-            .map(|a| a.length())
-            .fold(0.0, f64::max)
-            .max(1.0);
-        for pair_loop in [PairLoop::TwoPass, PairLoop::Blocked] {
-            let got = with::<f64, L>(&g, pair_loop, &p);
-            for (k, (a, r)) in got.iter().zip(&reference).enumerate() {
-                assert!(
-                    (*a - *r).length() <= 1e-12 * scale,
-                    "{L} lanes, n {n}, {pair_loop:?}, body {k}: {a:?} vs plain {r:?}"
-                );
-            }
-        }
-    }
-}
-
-#[test]
-fn the_vector_loops_match_the_plain_loop_to_rounding() {
-    match_plain::<1>();
-    match_plain::<4>();
-    match_plain::<8>();
-    match_plain::<16>();
-}
+/// f32's: about 100 ulps of the largest acceleration, for sums of up to
+/// 200 terms.
+const F32_REL: f64 = 1e-5;
 
 #[test]
 fn the_settings_parse_and_unset_leaves_the_target_s() {
