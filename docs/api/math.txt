@@ -6,13 +6,6 @@ pub fn math::convert::f64_to_usize(f64) -> core::option::Option<usize>
 pub fn math::convert::samples(f64, f64) -> core::option::Option<usize>
 pub const fn math::convert::u64_to_f64(u64) -> f64
 pub const fn math::convert::usize_to_f64(usize) -> f64
-pub struct math::Fnv1a(_)
-impl math::Fnv1a
-pub const fn math::Fnv1a::finish(&self) -> u64
-pub const fn math::Fnv1a::new() -> Self
-pub fn math::Fnv1a::write(&mut self, &[u8])
-impl core::default::Default for math::Fnv1a
-pub fn math::Fnv1a::default() -> Self
 pub struct math::SplitMix64(_)
 impl math::SplitMix64
 pub const fn math::SplitMix64::new(u64) -> Self

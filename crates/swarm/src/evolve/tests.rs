@@ -227,13 +227,13 @@ fn a_run_is_repeatable() {
             generations: 6,
             ..cfg(1)
         };
-        let mut h = math::Fnv1a::new();
+        let mut bits = Vec::new();
         for g in evolve(&genes(), &cfg, None, toy) {
             for v in [g.best, g.mean].into_iter().chain(g.best_genome) {
-                h.write(&v.to_bits().to_le_bytes());
+                bits.push(v.to_bits());
             }
         }
-        h.finish()
+        bits
     };
     assert_eq!(run(), run());
 }

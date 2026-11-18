@@ -2,12 +2,11 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-use math::Fnv1a;
 use sand::{Grid, Material};
 
 /// A scripted scene: a stone floor and a shelf, sand and water poured from
 /// two spouts for 300 steps, then 300 more: falling, piling, levelling.
-fn run() -> u64 {
+fn run() -> Vec<u8> {
     let (w, h) = (96, 64);
     let mut g = Grid::new(w, h, 42).unwrap();
     for x in 0..w {
@@ -23,19 +22,17 @@ fn run() -> u64 {
         }
         g.step();
     }
-    let mut hash = Fnv1a::new();
-    hash.write(g.cells());
-    hash.finish()
+    g.cells().to_vec()
 }
 
 #[test]
 fn a_run_is_repeatable() {
-    assert_eq!(run(), run());
+    assert!(run() == run(), "two runs differ");
 }
 
 /// Lava poured onto a water pool for 200 steps, then 400 more: reactions,
 /// steam rising and condensing, slow lava.
-fn run_lava() -> u64 {
+fn run_lava() -> Vec<u8> {
     let (w, h) = (80, 48);
     let mut g = Grid::new(w, h, 7).unwrap();
     for x in 0..w {
@@ -52,12 +49,10 @@ fn run_lava() -> u64 {
         }
         g.step();
     }
-    let mut hash = Fnv1a::new();
-    hash.write(g.cells());
-    hash.finish()
+    g.cells().to_vec()
 }
 
 #[test]
 fn the_lava_run_is_repeatable() {
-    assert_eq!(run_lava(), run_lava());
+    assert!(run_lava() == run_lava(), "two runs differ");
 }

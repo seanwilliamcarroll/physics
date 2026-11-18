@@ -45,8 +45,7 @@ physics/
 │   │       ├── vec2.rs
 │   │       ├── unit_vec2.rs # UnitVec2: a direction, length 1 by construction
 │   │       ├── convert.rs  # checked numeric conversions (lint-policy.md)
-│   │       ├── rng.rs      # SplitMix64, the seeded PRNG
-│   │       └── hash.rs     # Fnv1a, the goldens' hash
+│   │       └── rng.rs      # SplitMix64, the seeded PRNG
 │   │
 │   ├── engine/
 │   │   ├── src/
