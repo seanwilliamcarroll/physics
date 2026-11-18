@@ -202,7 +202,7 @@ enum Command {
     MutantsReport {
         /// The run's directory (holding missed.txt, or mutants.out/)
         dir: PathBuf,
-        /// The commit the run was made on: marks [gone] each mutant whose
+        /// The commit the run was made on: marks as gone each mutant whose
         /// line is no longer in its file at HEAD
         #[arg(long)]
         commit: Option<String>,
