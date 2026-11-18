@@ -197,6 +197,26 @@ enum Command {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
+    /// A cargo mutants output directory (e.g. one copied from the node) as
+    /// a triage list: totals, then missed and timed-out mutants by file
+    MutantsReport {
+        /// The run's directory (holding missed.txt, or mutants.out/)
+        dir: PathBuf,
+        /// The commit the run was made on: marks as gone each mutant whose
+        /// line is no longer in its file at HEAD
+        #[arg(long)]
+        commit: Option<String>,
+        /// An earlier run's directory: list what's newly missed and what
+        /// no longer is
+        #[arg(long)]
+        previous: Option<PathBuf>,
+        /// Only files whose path contains this
+        #[arg(long)]
+        file: Option<String>,
+        /// Per-file counts only, not each mutant
+        #[arg(long)]
+        summary: bool,
+    },
     /// The slow tier, not in any hook: every test with property tests at
     /// 10 000 cases, then the long `slow_*` runs (ignored by `cargo test`),
     /// built optimized with overflow checks kept
@@ -273,6 +293,22 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::Slow { cases } => slow::slow(&root, cases),
         Command::Api { check } => api::api(&root, check),
         Command::Mutants { args } => mutants::mutants(&root, &args),
+        Command::MutantsReport {
+            dir,
+            commit,
+            previous,
+            file,
+            summary,
+        } => mutants::report::report(
+            &root,
+            &dir,
+            previous.as_deref(),
+            &mutants::report::View {
+                commit: commit.as_deref(),
+                file: file.as_deref(),
+                summary,
+            },
+        ),
     }
 }
 

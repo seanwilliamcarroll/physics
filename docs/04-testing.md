@@ -799,6 +799,17 @@ still passed.
     (`.config/nextest.toml`): a test it kills fails the mutant, so the
     mutant counts as caught, where cargo-mutants' own timeout would
     have called it a timeout. Both count as detected.
+- **`cargo xtask mutants-report DIR`** reads a finished run (one copied
+  back from the node, say `mutants_llm_<sha>.out/`) as a triage list:
+  the totals, then the missed and timed-out mutants by file, the file
+  with the most first. `--commit SHA` (the commit the run was made on)
+  marks `[gone]` each mutant whose source line is no longer in its file
+  at `HEAD`: rewritten since, so not worth a test. `--previous DIR` adds
+  what's newly missed and what no longer is, matched by file and
+  description since lines move. `--summary` prints the per-file counts
+  only (a full run lists hundreds of mutants); `--file TEXT` narrows to
+  the files whose path contains `TEXT`. Triage is usually `--summary`
+  first, then `--file` for each file worked on.
 - **Pre-push (opt-in, informational, never a gate):** without
   `MUTANTS=1` the hook only counts the mutants in the push's changed
   lines and prints the `cargo xtask mutants --in-diff …` command. With
