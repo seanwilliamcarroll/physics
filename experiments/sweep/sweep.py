@@ -44,7 +44,7 @@ class Suite:
     experiments: dict           # name -> Experiment
     reference: str              # the experiment tables compare against
     results: Path               # default --out is results/<host>
-    functions: tuple = ()       # dumped for every experiment: (short, symbol)
+    functions: tuple = ()       # dumped for every experiment: (short, symbol[, index])
     presets: dict = field(default_factory=dict)  # name -> [experiment names]
     filter: str = "."           # criterion's default filter
     perf_benches: str = ""      # default --perf-benches
@@ -52,6 +52,12 @@ class Suite:
     # Whether a bench id's last part is a body count n with n(n-1)/2 pairs:
     # the perf table's per-pair columns.
     pairs: bool = False
+    # V8's machine code (TurboFan's, the optimized tier) for these wasm
+    # functions at the v8 levels: (short, a substring of the function's
+    # name in the wasm, which is its mangled symbol), captured from a short
+    # run of v8_filter's benches (they must run the functions hot).
+    v8_functions: tuple = ()
+    v8_filter: str = ""
 
 
 # CPU level -> RUSTFLAGS. "default" is the target's baseline (x86-64: SSE2,
@@ -134,17 +140,52 @@ def dump_asm(suite, tree, env, name, level, asm_dir):
     """Save each hot function's assembly; return per-file instruction counts."""
     counts = {}
     for s in suite.scalars:
-        for short, fn in tuple(suite.functions) + tuple(suite.experiments[name].functions):
+        for short, fn, *pick in tuple(suite.functions) + tuple(suite.experiments[name].functions):
+            # (short, symbol[, index]): the index picks one of several
+            # copies of a symbol (cargo asm lists them and stops otherwise).
             symbol = fn.format(s=s)
             dest = asm_dir / f"{level}--{name}--{short}-{s}.s"
             style = [] if is_wasm(level) else ["--intel"]
             result = run(["cargo", "asm", "-p", suite.package, "--bench", "step"]
-                         + target_args(level) + style + [symbol], cwd=tree, env=env,
+                         + target_args(level) + style + [symbol] + [str(i) for i in pick],
+                         cwd=tree, env=env,
                          capture=True, check=False)
             asm = only(result.stdout, symbol)
             dest.write_text(asm)
             counts[dest.name] = count_ops(asm) if result.returncode == 0 else None
     return counts
+
+
+def v8_code(suite, tree, env, name, level, asm_dir):
+    """Save V8's optimized machine code for the suite's v8_functions: a short
+    run of v8_filter's benches with --print-wasm-code (every function's
+    code, both tiers; the index filter is ignored), cut down to each
+    function's TurboFan listing (the last, if it was compiled again)."""
+    if not suite.v8_functions:
+        return
+    exe = bench_exe(suite, tree, env, level)
+    crit = asm_dir / ".v8-criterion"
+    crit.mkdir(exist_ok=True)
+    dump = asm_dir / ".v8-dump.txt"
+    with dump.open("w") as f:
+        subprocess.run(["node", "--no-warnings", "--print-wasm-code",
+                        str(HERE / "wasi-node.mjs"), exe, str(crit), "--bench",
+                        suite.v8_filter, "--noplot", "--warm-up-time", "1",
+                        "--measurement-time", "2"],
+                       cwd=tree, env=env, stdout=f, stderr=subprocess.STDOUT, check=False)
+    listings = {}
+    for block in dump.read_text(errors="replace").split("--- WebAssembly code ---"):
+        if "\ncompiler: TurboFan" not in block:
+            continue
+        head = block.split("\n", 2)[1]  # "name: <symbol>"
+        for short, needle in suite.v8_functions:
+            if head.startswith("name: ") and needle in head:
+                listings[short] = block.split("--- End code ---")[0].strip() + "\n"
+    for short, _ in suite.v8_functions:
+        dest = asm_dir / f"{level}--{name}--{short}.v8.s"
+        dest.write_text(listings.get(short, "(no TurboFan code: the function never got hot)\n"))
+    dump.unlink()
+    shutil.rmtree(crit, ignore_errors=True)
 
 
 def only(asm, symbol):
@@ -495,8 +536,11 @@ def main(suite, doc=None):
                     env.pop(knob, None)
             print(f"\n=== {name} at {level} ===", flush=True)
             results[(level, name)] = bench(suite, REPO, env, level, out / level / name, args)
-            if not is_v8(level):  # same wasm as the wasm level's
+            # The wasm text once: at the wasm level, or at v8's if that's unswept.
+            if not is_v8(level) or level.replace("v8", "wasm") not in levels:
                 counts.update(dump_asm(suite, REPO, env, name, level, out / "asm"))
+            if is_v8(level):
+                v8_code(suite, REPO, env, name, level, out / "asm")
             # perf can't name wasmtime's generated code, so no wasm.
             if args.perf and not is_wasm(level):
                 perf[(level, name)] = perf_run(suite, REPO, env, name, level, out, args)

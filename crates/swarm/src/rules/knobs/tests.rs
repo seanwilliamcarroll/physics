@@ -1,7 +1,7 @@
 //! The build settings' parsing: run at compile time in the build, so here
 //! as plain calls (a bad setting's panic is the build error).
 
-use super::{Sum, lanes, number, same, sum};
+use super::{Mask, Sum, lanes, mask, number, same, sum};
 
 #[test]
 fn the_settings_parse_and_default() {
@@ -12,6 +12,22 @@ fn the_settings_parse_and_default() {
     assert_eq!(sum(None), Sum::Ordered);
     assert_eq!(sum(Some("ordered")), Sum::Ordered);
     assert_eq!(sum(Some("algebraic")), Sum::Algebraic);
+    assert_eq!(mask(None), None);
+    for (text, m) in [
+        ("convert", Mask::Convert),
+        ("select", Mask::Select),
+        ("bits", Mask::Bits),
+        ("value", Mask::Value),
+        ("branch", Mask::Branch),
+    ] {
+        assert_eq!(mask(Some(text)), Some(m));
+    }
+}
+
+#[test]
+#[should_panic(expected = "SWARM_MASK")]
+fn the_mask_must_be_one_of_the_five() {
+    mask(Some("fast"));
 }
 
 /// Every digit counts, in place: a wrong operator or place value gives

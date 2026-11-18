@@ -14,6 +14,7 @@ impl Flock {
     /// predict; 37% faster at 100,000 on the M4). Copying the candidates
     /// into one run for the lane loop instead was slower (+27%): the copy
     /// cost more than the vector arithmetic saved.
+    #[inline(never)] // its own function in profiles and listings (once a step)
     pub(super) fn step_grid(&mut self) {
         let (cur, p, arena, predator) = (&self.cur, &self.params, self.arena, self.predator);
         let grid = &mut self.grid;

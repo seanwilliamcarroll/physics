@@ -8,15 +8,39 @@
 //! - `SWARM_SUM`: `ordered` (default) or `algebraic`. Algebraic adds with
 //!   `f32::algebraic_add`, which lets the compiler reorder them (and so
 //!   vectorize the sums however it likes).
+//! - `SWARM_MASK`: how the grid's scalar candidate test (`Seen::add_masked`)
+//!   writes its masks: `convert` (a bool converted to a float), `select`
+//!   (`if c { 1.0 } else { 0.0 }`), `bits` (the bits of `1.0`, masked by the
+//!   bool's all-ones), `value` (each term selected, no multiply) or
+//!   `branch` (the branching `Seen::add`). Unset, the target's (`unit`).
 //!
-//! Both change the order of additions, so the results' last bits.
-//! Swept in `experiments/swarm-lanes/`.
+//! The first two change the order of additions, so the results' last
+//! bits; the mask forms give the same values. Swept in
+//! `experiments/swarm-lanes/` and `experiments/swarm-mask/`.
 
 /// Partial sums in the lane loop.
 pub(crate) const LANES: Option<usize> = lanes(option_env!("SWARM_LANES"));
 
 /// How the lane loop adds.
 pub(crate) const SUM: Sum = sum(option_env!("SWARM_SUM"));
+
+/// How the grid's candidate test masks, if set.
+pub(crate) const MASK: Option<Mask> = mask(option_env!("SWARM_MASK"));
+
+/// The forms of `Seen::add_masked`'s masks (`SWARM_MASK`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Mask {
+    /// `f32::from(u8::from(c))`: an integer converted.
+    Convert,
+    /// `if c { 1.0 } else { 0.0 }`: a select.
+    Select,
+    /// `f32::from_bits(1.0_f32.to_bits() & u32::from(c).wrapping_neg())`.
+    Bits,
+    /// Each term selected (`if c { x } else { 0.0 }`), no multiply.
+    Value,
+    /// The branching `Seen::add`.
+    Branch,
+}
 
 /// The lane loop's additions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,6 +71,27 @@ pub(crate) const fn sum(setting: Option<&str>) -> Sum {
         Some(text) if same(text.as_bytes(), b"ordered") => Sum::Ordered,
         Some(text) if same(text.as_bytes(), b"algebraic") => Sum::Algebraic,
         Some(_) => panic_at_build("SWARM_SUM: `ordered` or `algebraic`"),
+    }
+}
+
+/// `SWARM_MASK` as a [`Mask`]; a bad value fails the build.
+pub(crate) const fn mask(setting: Option<&str>) -> Option<Mask> {
+    let Some(text) = setting else {
+        return None;
+    };
+    let t = text.as_bytes();
+    if same(t, b"convert") {
+        Some(Mask::Convert)
+    } else if same(t, b"select") {
+        Some(Mask::Select)
+    } else if same(t, b"bits") {
+        Some(Mask::Bits)
+    } else if same(t, b"value") {
+        Some(Mask::Value)
+    } else if same(t, b"branch") {
+        Some(Mask::Branch)
+    } else {
+        panic_at_build("SWARM_MASK: `convert`, `select`, `bits`, `value` or `branch`")
     }
 }
 

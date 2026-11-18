@@ -2,6 +2,7 @@
 //! "The model"): ECE 4760's pseudocode, in its order.
 
 use crate::{Arena, Boid, Params};
+use knobs::Mask;
 
 /// `me` one step on, given `others`: every boid that might be within the
 /// visual range (more is fine: each is checked). Separation from those
@@ -86,8 +87,28 @@ impl Seen {
     pub(crate) fn add_masked(&mut self, r: Ranges, me: Boid, o: Boid) {
         let (dx, dy) = (me.x - o.x, me.y - o.y);
         let d_sq = dx * dx + dy * dy;
-        let close = lanes::unit(d_sq < r.protected_sq);
-        let near = lanes::unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
+        let is_close = d_sq < r.protected_sq;
+        let is_near = d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0;
+        // The build setting's form (an experiment), else the target's.
+        let unit: fn(bool) -> f32 = match knobs::MASK {
+            None => lanes::unit,
+            Some(Mask::Convert) => |c| f32::from(u8::from(c)),
+            Some(Mask::Select) => |c| if c { 1.0 } else { 0.0 },
+            Some(Mask::Bits) => |c| f32::from_bits(1.0_f32.to_bits() & u32::from(c).wrapping_neg()),
+            Some(Mask::Value) => {
+                let pick = |c: bool, x: f32| if c { x } else { 0.0 };
+                self.close_dx += pick(is_close, dx);
+                self.close_dy += pick(is_close, dy);
+                self.sum_x += pick(is_near, o.x);
+                self.sum_y += pick(is_near, o.y);
+                self.sum_vx += pick(is_near, o.vx);
+                self.sum_vy += pick(is_near, o.vy);
+                self.count += pick(is_near, 1.0);
+                return;
+            }
+            Some(Mask::Branch) => return self.add(r, me, o),
+        };
+        let (close, near) = (unit(is_close), unit(is_near));
         self.close_dx += close * dx;
         self.close_dy += close * dy;
         self.sum_x += near * o.x;
