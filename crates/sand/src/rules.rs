@@ -57,7 +57,14 @@ impl Grid {
         if self.is_moved(x, y) {
             return;
         }
-        let target = match self.material_at(x, y) {
+        let here = self.material_at(x, y);
+        // Empty, most cells, on its own branch before the rules' dispatch
+        // (a jump table, one indirect jump a cell): a conditional branch,
+        // predicted apart from which rule a grain takes.
+        if here == Material::Empty {
+            return;
+        }
+        let target = match here {
             Material::Sand => self.sand_target(x, y),
             Material::Water => self.water_target(x, y),
             Material::Lava => {
