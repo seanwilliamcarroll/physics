@@ -15,22 +15,35 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "sweep"))
 from sweep import Experiment, Suite, main  # noqa: E402
 
+# Every knob set in every build: unset, each is the target's (tuning.rs),
+# which since round 1 differs between native and wasm.
+BEFORE = {"SWARM_SPAN": "per-span", "SWARM_TAIL": "scalar", "SWARM_CELL": "floor"}
 SPAN = {"SWARM_SPAN": "per-boid"}
 TAIL = {"SWARM_TAIL": "masked"}
 CELL = {"SWARM_CELL": "truncate"}
+ALL = {**SPAN, **TAIL, **CELL}
+TABLE = {**ALL, "SWARM_TAIL": "table"}
+# 8 lanes in wasm (16 by default there; natively Sorted already has 8, so
+# these match `all` and `table` there).
+EIGHT = {"SWARM_LANES": "8"}
 EXPERIMENTS = {
-    "base": Experiment({}),
-    "cell": Experiment(CELL),
-    "span": Experiment(SPAN),
-    "tail": Experiment(TAIL),
-    "span-tail": Experiment({**SPAN, **TAIL}),
-    "all": Experiment({**SPAN, **TAIL, **CELL}),
+    # Round 1: the 2 x 2 of span and tail, the cell alone, all three.
+    "base": Experiment(BEFORE),
+    "cell": Experiment({**BEFORE, **CELL}),
+    "span": Experiment({**BEFORE, **SPAN}),
+    "tail": Experiment({**BEFORE, **TAIL}),
+    "span-tail": Experiment({**BEFORE, **SPAN, **TAIL}),
+    "all": Experiment(ALL),
+    # Round 2: the mask from a table, and 8 lanes (for wasm).
+    "table": Experiment(TABLE),
+    "all-8": Experiment({**ALL, **EIGHT}),
+    "table-8": Experiment({**TABLE, **EIGHT}),
 }
 
 SUITE = Suite(
     title="Boids Sorted's span edges",
     package="swarm",
-    knobs=("SWARM_SPAN", "SWARM_TAIL", "SWARM_CELL"),
+    knobs=("SWARM_SPAN", "SWARM_TAIL", "SWARM_CELL", "SWARM_LANES"),
     experiments=EXPERIMENTS,
     reference="base",
     results=HERE / "results",
@@ -40,7 +53,7 @@ SUITE = Suite(
                   ("grid_fill", "4Grid4fill")),
     v8_filter="^swarm_step/Sorted/10000$",
     filter="^swarm_step/Sorted/(1000|10000|100000)$",
-    perf_benches="swarm_step/Sorted/10000",
+    perf_benches="swarm_step/Sorted/10000,swarm_step/Sorted/100000",
 )
 
 if __name__ == "__main__":
