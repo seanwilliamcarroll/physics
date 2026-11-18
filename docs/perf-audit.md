@@ -350,6 +350,18 @@ ranges as an order of magnitude.
   path). Neither merged: busy steps with chunks on are the page's case.
   The line profile had charged reads with work that is the rules'
   branching, folded together with them by the compiler.
+- **Sand's dispatch (2026-11-18):** `perf record` on Zen 5 (instructions,
+  branch misses, cycles; `perf stat`: IPC 2.44, 62 instructions a cell,
+  1.5 branch misses a moving grain, no cache misses): ~45% of samples
+  land where the per-cell `match` on the material (a jump table, one
+  indirect jump a cell) arrives; the random draws' hashing is 0.02%.
+  Empty cells now leave on their own branch before it: busy −1–6%
+  natively, −2.5% in V8 (merged). Skipping all-empty groups of eight
+  cells, read as one word, was exact but on the bench's busy scene (a
+  uniform 30% random fill: 6% of groups empty) +16% natively and +17%
+  in V8, though the every-cell settled scan was 26% faster; not merged.
+  Judging it needs a busy scene like the page's (brush blobs, streams,
+  piles), which the bench lacks.
 
 ### Findings
 
