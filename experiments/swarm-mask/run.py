@@ -27,8 +27,8 @@ SUITE = Suite(
     results=HERE / "results",
     # rustc's code natively, the wasm text at the v8 level.
     functions=(("step_grid", "<swarm::flock::Flock>::step_grid"),
-               # Two copies (the bench's and the library's): the first.
-               ("vicsek_step", "<swarm::vicsek::Vicsek>::step", 0)),
+               # The name also matches criterion's wrapper (0): the function is 1.
+               ("vicsek_step", "<swarm::vicsek::Vicsek>::step", 1)),
     # V8's code from that wasm (names in the wasm are mangled symbols).
     v8_functions=(("step_grid", "5Flock9step_grid"),
                   ("vicsek_step", "6Vicsek4step")),

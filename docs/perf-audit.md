@@ -311,6 +311,20 @@ ranges as an order of magnitude.
   kernel its table names (e.g. AVX-512: brute force's loop in `zmm`,
   sorted's in `ymm`; wasm: the boids' loop all `f32x4`, no lane moves).
   Run it after any tuning change.
+- **Boids Grid (2026-11-17/18, #320 and the mask sweep):** the
+  candidates through a branchless scalar test (`Seen::add_masked`):
+  18–37% faster natively and on the M4's V8 at 100,000 boids. On llm's
+  V8 it measured 43% *slower* (58.6 → 83.7 ms); the sweep
+  (`experiments/swarm-mask/`, rustc's code, the wasm and V8's code
+  captured for each form) found two causes. Inlined into `Flock::step`
+  with the other two searches, x86 V8 compiled Grid's loop about twice
+  as slow: `#[inline(never)]` on `step_grid`, 83.7 → 42.5 ms on llm's V8
+  (free natively and on the M4). And V8 compiles a wasm float `select`
+  to `fcsel` on arm64 but to a branch on x86, so the mask's form is per
+  target (`rules/tuning.rs`): a converted integer in wasm, a select
+  natively (Zen 5 at SSE2 −17%). Grid stays scalar by design: its
+  candidates are gathers through an index; Sorted is its vectorized
+  form.
 
 ### Findings
 

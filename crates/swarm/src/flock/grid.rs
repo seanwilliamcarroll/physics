@@ -14,7 +14,11 @@ impl Flock {
     /// predict; 37% faster at 100,000 on the M4). Copying the candidates
     /// into one run for the lane loop instead was slower (+27%): the copy
     /// cost more than the vector arithmetic saved.
-    #[inline(never)] // its own function in profiles and listings (once a step)
+    // Not inlined into `Flock::step` (called once a step: free). Inlined
+    // with the other two searches, the one large function compiled worse
+    // in V8 on x86: Grid 49–51% slower on Zen 5 (83.7 ms at 100,000 against
+    // 42.5), the same on the M4 (`experiments/swarm-mask/README.md`).
+    #[inline(never)]
     pub(super) fn step_grid(&mut self) {
         let (cur, p, arena, predator) = (&self.cur, &self.params, self.arena, self.predator);
         let grid = &mut self.grid;

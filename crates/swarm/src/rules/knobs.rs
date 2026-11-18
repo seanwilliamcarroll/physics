@@ -12,7 +12,7 @@
 //!   writes its masks: `convert` (a bool converted to a float), `select`
 //!   (`if c { 1.0 } else { 0.0 }`), `bits` (the bits of `1.0`, masked by the
 //!   bool's all-ones), `value` (each term selected, no multiply) or
-//!   `branch` (the branching `Seen::add`). Unset, the target's (`unit`).
+//!   `branch` (the branching `Seen::add`). Unset, the target's (`tuning.rs`).
 //!
 //! The first two change the order of additions, so the results' last
 //! bits; the mask forms give the same values. Swept in
