@@ -338,6 +338,18 @@ ranges as an order of magnitude.
   Busy 1920 × 1080: M4 14.6 → 8.5 ms (−42%), V8 17.7 → 11.3 (−36%).
   Next in the profiles: `index()` and `is_moved` (~16% M4, ~25% Zen 5),
   recomputing `y·width + x` with bounds checks at every read.
+- **Sand cell reads (2026-11-18, not merged):** both profiles charged
+  much of a busy step to reading cells (M4 ~25%, Zen 5 ~47% with the
+  decode). Two changes, each measured on both machines at every level:
+  computing each cell's index once and reaching neighbours by offset
+  (a `Pos` of x, y, index) made the every-cell settled scan 15–35%
+  faster but busy steps 1–3% slower natively and 6–7% slower in V8;
+  decoding the cell byte through a 256-entry table instead of the
+  `match` made busy steps 10–20% slower (the compiler already decoded
+  with a compare and a select; the table adds a load on the critical
+  path). Neither merged: busy steps with chunks on are the page's case.
+  The line profile had charged reads with work that is the rules'
+  branching, folded together with them by the compiler.
 
 ### Findings
 
