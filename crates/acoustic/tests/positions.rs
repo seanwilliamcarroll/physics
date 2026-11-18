@@ -6,7 +6,6 @@
 
 use acoustic::measure::{amplitude, partial};
 use acoustic::{Decay, Scalar, Voicing, Waveguide};
-use math::Fnv1a;
 use math::convert::f64_to_usize;
 
 const FS: f64 = 48_000.0;
@@ -145,8 +144,8 @@ fn harmonics_follow_the_prediction_f32() {
 }
 
 /// Half a second of three waveguide notes (plucked at 0.2, heard at 0.1),
-/// hashed: the same bits native and on wasm (`cargo xtask test-wasm`).
-fn waveguide_hash<S: Scalar>() -> u64 {
+/// as bits, compared whole.
+fn waveguide_bits<S: Scalar>() -> Vec<u64> {
     let mut all = Vec::new();
     for f0 in [110.0, 261.63, 659.26] {
         let mut wg = Waveguide::<S>::new(FS, f0, VOICING).unwrap();
@@ -156,15 +155,17 @@ fn waveguide_hash<S: Scalar>() -> u64 {
         wg.render(&mut out);
         all.extend(out);
     }
-    let mut h = Fnv1a::new();
-    for x in &all {
-        h.write(&x.to_f64().to_bits().to_le_bytes());
-    }
-    h.finish()
+    all.iter().map(|x| x.to_f64().to_bits()).collect()
 }
 
 #[test]
 fn a_waveguide_run_is_repeatable() {
-    assert_eq!(waveguide_hash::<f32>(), waveguide_hash::<f32>());
-    assert_eq!(waveguide_hash::<f64>(), waveguide_hash::<f64>());
+    assert!(
+        waveguide_bits::<f32>() == waveguide_bits::<f32>(),
+        "f32 runs differ"
+    );
+    assert!(
+        waveguide_bits::<f64>() == waveguide_bits::<f64>(),
+        "f64 runs differ"
+    );
 }

@@ -16,7 +16,6 @@ local tuples) are left out.
 | [`Vec2<S>`](../crates/math/src/vec2.rs) | The 2D vector everything is written in; `#[must_use]`, so a discarded result (`v.perp();`) is a compiler warning. |
 | [`UnitVec2<S>`](../crates/math/src/unit_vec2.rs) | A direction of length 1, only from `Vec2::normalized`/`length_and_direction` (`None` at zero or NaN), so every `x / \|x\|` handles the degenerate case: constraint gradients, spring axes, M6's contact normals. |
 | [`convert`](../crates/math/src/convert.rs) (functions) | Checked count ↔ measure conversions, each justified once instead of an `as` with a lint exemption at every site: exact where they say so, `None` or a named clamp where `as` would saturate silently (`docs/lint-policy.md`). |
-| [`Fnv1a`](../crates/math/src/hash.rs) | The fixed, published hash behind every golden: in `math` so the engine's tests and the acoustic track's share one. |
 | [`SplitMix64`](../crates/math/src/rng.rs) | A tiny in-house seeded PRNG: integer-only, so scenes, noise and random choices are bit-identical on every platform (`00-scope.md`, dependency policy). In `math` since A1.4, shared by every track. |
 
 ## `engine` — storage and identity
@@ -191,5 +190,5 @@ re-exported by [`scenarios.rs`](../crates/engine/src/scenarios.rs).
 | [`Tol`](../crates/test-support/src/tol.rs) | Per-scalar tolerances (`EPSILON`, …), so one generic test runs for f32 and f64 with the right bounds. |
 | [`BodySpec`](../crates/test-support/src/worlds.rs) | proptest's generated body, shrinkable to a minimal failing world. |
 | [`PendulumRun`](../crates/test-support/src/pendulum.rs) | What `01-solvers.md`'s table reports for one run (rod error, energy lost). |
-| [`state_hash`](../crates/test-support/src/hash.rs) (function) | The particle state through `math`'s `Fnv1a`, for the golden-hash determinism tests (native and wasm must match). |
+| [`state_bits`](../crates/test-support/src/state.rs) (function) | The particle state as bits (positions, velocities, inverse masses), for the repeatability tests: two runs compared whole. |
 | [`Command`](../xtask/src/main.rs) | `cargo xtask` subcommands (clap derive), so `--help`, typos, and ranges are checked. |

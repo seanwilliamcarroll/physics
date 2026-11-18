@@ -3,19 +3,16 @@
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
-use math::Fnv1a;
 use swarm::{Arena, Flock, Neighbours, Params};
 
 /// 200 boids, 300 steps, neighbours found `how`.
-fn run_with(how: Neighbours) -> u64 {
+fn run_with(how: Neighbours) -> Vec<u8> {
     let mut f = Flock::new(200, Arena::new(640.0, 480.0).unwrap(), Params::ECE4760, 42).unwrap();
     f.set_neighbours(how);
     for _ in 0..300 {
         f.step();
     }
-    let mut h = Fnv1a::new();
-    h.write(&f.state_bytes().collect::<Vec<u8>>());
-    h.finish()
+    f.state_bytes().collect::<Vec<u8>>()
 }
 
 #[test]
@@ -26,15 +23,13 @@ fn a_run_is_repeatable() {
 }
 
 /// The Vicsek model: 400 particles at ρ = 4, η = 2, 300 steps.
-fn run_vicsek(brute_force: bool) -> u64 {
+fn run_vicsek(brute_force: bool) -> Vec<u8> {
     let mut v = swarm::Vicsek::new(400, 10.0, swarm::VicsekParams::paper(2.0), 42).unwrap();
     v.set_brute_force(brute_force);
     for _ in 0..300 {
         v.step();
     }
-    let mut h = Fnv1a::new();
-    h.write(&v.state_bytes().collect::<Vec<u8>>());
-    h.finish()
+    v.state_bytes().collect::<Vec<u8>>()
 }
 
 #[test]
@@ -44,8 +39,8 @@ fn a_vicsek_run_is_repeatable() {
 }
 
 /// Ant foraging: 300 ants, a food patch and a wall, 400 steps; ants and
-/// both fields hashed.
-fn run_ants() -> u64 {
+/// both fields compared.
+fn run_ants() -> Vec<u8> {
     let mut c = swarm::Colony::new(
         120,
         80,
@@ -60,9 +55,7 @@ fn run_ants() -> u64 {
     for _ in 0..400 {
         c.step();
     }
-    let mut h = Fnv1a::new();
-    h.write(&c.state_bytes());
-    h.finish()
+    c.state_bytes()
 }
 
 #[test]
@@ -71,15 +64,13 @@ fn an_ants_run_is_repeatable() {
 }
 
 /// Physarum: 3,000 agents and a node on a 96² field, 300 steps.
-fn run_slime() -> u64 {
+fn run_slime() -> Vec<u8> {
     let mut s = swarm::Slime::new(96, 3000, swarm::SlimeParams::DEFAULT, 42).unwrap();
     s.add_node(20, 20, 4.0);
     for _ in 0..300 {
         s.step();
     }
-    let mut h = Fnv1a::new();
-    h.write(&s.state_bytes());
-    h.finish()
+    s.state_bytes()
 }
 
 #[test]

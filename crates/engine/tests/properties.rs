@@ -11,7 +11,7 @@ use engine::{Integrator, Scalar, Vec2, World};
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
 use test_support::{
-    BodySpec, Tol, build_world, momentum_drift_bound, momentum_scale, proptest_config, state_hash,
+    BodySpec, Tol, build_world, momentum_drift_bound, momentum_scale, proptest_config, state_bits,
     time_step, world_spec,
 };
 
@@ -134,8 +134,8 @@ fn every_integrator_is_deterministic<S: Tol>(bodies: &[BodySpec]) -> Result<(), 
         let a = run(build_world::<S>(bodies, integrator));
         let b = run(build_world::<S>(bodies, integrator));
         prop_assert_eq!(
-            state_hash(a.particles()),
-            state_hash(b.particles()),
+            state_bits(a.particles()),
+            state_bits(b.particles()),
             "{:?}",
             integrator
         );

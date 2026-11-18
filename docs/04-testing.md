@@ -159,10 +159,23 @@ The whole `01-solvers.md` table is also a regression suite
 ## Determinism
 
 **Repeatability (every scalar, every model):** build a scenario, step N
-times, repeat, compare state bit for bit (`to_bits` for floats, raw
-integer for `Fixed`), hashed with our own **FNV-1a** (`math::Fnv1a`;
-`std`'s `DefaultHasher` isn't stable across Rust versions). Each crate's
+times, repeat, compare the whole state bit for bit (`to_bits` for
+floats, raw integer for `Fixed`; `test_support::state_bits` for the
+engine's particles): no hash in between (until 2026-11-17 an FNV-1a
+hash, `math::Fnv1a`, which only the goldens needed). Each crate's
 `tests/determinism.rs`; `cargo xtask test-wasm` runs them on wasm too.
+
+**Exact bits, reviewed (2026-11-17):** with the goldens gone, the tests
+that still compare bits are all of four kinds, where exact is the point:
+repeatability (a tolerance would hide nondeterminism); two paths built to
+do the same arithmetic (the two gravity loops at equal lanes, sand's
+chunked and full updates, substeps, the waveguide and its loop, a
+removed ground, a refused ABI call changing nothing: a tolerance would let
+a divergence through; when one path's arithmetic changes on purpose, its
+test becomes a tolerance then); a value against the same expression (a
+demo's energy against the diagnostics'); IEEE identities and fixed
+outputs (`math`'s properties, the PRNG's known values, a static particle
+staying put). None compares bits where they're incidental.
 
 **Not required: the same bits on every target, or over time.** Until
 2026-11-17 *golden hashes* pinned each reference run's final state, and

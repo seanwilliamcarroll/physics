@@ -8,7 +8,7 @@ use engine::scenarios::{
     jelly, orbit, pendulum, pool_break,
 };
 use engine::{Integrator, Scalar, Solver};
-use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, state_hash, time_step};
+use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, state_bits, time_step};
 
 /// One step: a 60 Hz frame, as the demos use.
 const DT: f64 = 1.0 / 60.0;
@@ -91,8 +91,8 @@ const RUNS: [Run; 25] = [
     Run::PoolBreak(Solver::Impulse),
 ];
 
-/// Builds the run's world, steps it, and hashes the final state.
-fn run<S: Scalar>(r: Run) -> u64 {
+/// Builds the run's world, steps it, and returns the final state's bits.
+fn run<S: Scalar>(r: Run) -> Vec<u64> {
     match r {
         Run::Fountain => {
             let mut scene = Fountain::new(1);
@@ -101,7 +101,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
                 w.step(time_step(DT));
                 scene.respawn_fallen(&mut w);
             }
-            state_hash(w.particles())
+            state_bits(w.particles())
         }
         Run::Cluster | Run::Disk | Run::Collapse => {
             let build = match r {
@@ -122,7 +122,7 @@ fn run<S: Scalar>(r: Run) -> u64 {
             for _ in 0..300 {
                 j.world.step(time_step(DT));
             }
-            state_hash(j.world.particles())
+            state_bits(j.world.particles())
         }
         Run::Pendulum(solver) => {
             let mut w = pendulum::<S>(solver, nonzero(4)).unwrap();
@@ -173,18 +173,18 @@ fn run<S: Scalar>(r: Run) -> u64 {
     }
 }
 
-/// Steps `w` `steps` times at [`DT`] and hashes the final state.
-fn stepped<S: Scalar>(w: &mut engine::World<S>, steps: usize) -> u64 {
+/// Steps `w` `steps` times at [`DT`]; the final state's bits.
+fn stepped<S: Scalar>(w: &mut engine::World<S>, steps: usize) -> Vec<u64> {
     for _ in 0..steps {
         w.step(time_step(DT));
     }
-    state_hash(w.particles())
+    state_bits(w.particles())
 }
 
 /// Repeatability: the same run twice is bit-identical, for every scalar.
 fn every_run_is_repeatable<S: Tol>() {
     for r in RUNS {
-        assert_eq!(run::<S>(r), run::<S>(r), "{r:?}");
+        assert!(run::<S>(r) == run::<S>(r), "{r:?}: two runs differ");
     }
 }
 for_each_scalar!(every_run_is_repeatable);

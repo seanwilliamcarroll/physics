@@ -4,7 +4,6 @@
 #![cfg(test)]
 
 use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing, inharmonicity};
-use math::Fnv1a;
 use math::convert::usize_to_f64;
 
 const FS: f64 = 48_000.0;
@@ -57,19 +56,15 @@ fn perform_voiced<S: Scalar>(model: Model, voicing: impl Fn(u8) -> Voicing) -> (
     (out, v.clipped())
 }
 
-/// FNV-1a (`math`) of every sample's `f64` bits, little-endian.
-fn hash<S: Scalar>(samples: &[S]) -> u64 {
-    let mut h = Fnv1a::new();
-    for x in samples {
-        h.write(&x.to_f64().to_bits().to_le_bytes());
-    }
-    h.finish()
+/// Every sample's `f64` bits, in order.
+fn bits<S: Scalar>(samples: &[S]) -> Vec<u64> {
+    samples.iter().map(|x| x.to_f64().to_bits()).collect()
 }
 
 #[test]
 fn a_performance_is_repeatable() {
-    assert_eq!(hash(&perform::<f32>().0), hash(&perform::<f32>().0));
-    assert_eq!(hash(&perform::<f64>().0), hash(&perform::<f64>().0));
+    assert_eq!(bits(&perform::<f32>().0), bits(&perform::<f32>().0));
+    assert_eq!(bits(&perform::<f64>().0), bits(&perform::<f64>().0));
 }
 
 /// Measured (A1.4): a seven-note chord at the default gain (¼) peaks at
@@ -87,12 +82,12 @@ fn a_chord_at_the_default_gain_is_not_clipped() {
 #[test]
 fn the_waveguide_performance_is_repeatable_and_unclipped() {
     assert_eq!(
-        hash(&perform_with::<f32>(Model::Waveguide).0),
-        hash(&perform_with::<f32>(Model::Waveguide).0)
+        bits(&perform_with::<f32>(Model::Waveguide).0),
+        bits(&perform_with::<f32>(Model::Waveguide).0)
     );
     let (first, clipped) = perform_with::<f64>(Model::Waveguide);
     assert_eq!(clipped, 0, "the waveguide performance doesn't clip");
-    assert_eq!(hash(&first), hash(&perform_with::<f64>(Model::Waveguide).0));
+    assert_eq!(bits(&first), bits(&perform_with::<f64>(Model::Waveguide).0));
 }
 
 /// The waveguide performance with each key's stiffness
@@ -103,18 +98,18 @@ fn the_stiff_performance_is_repeatable_and_differs() {
         inharmonicity: inharmonicity(key),
         ..VOICING
     };
-    let once = hash(&perform_voiced::<f64>(Model::Waveguide, stiff).0);
+    let once = bits(&perform_voiced::<f64>(Model::Waveguide, stiff).0);
     assert_eq!(
         once,
-        hash(&perform_voiced::<f64>(Model::Waveguide, stiff).0)
+        bits(&perform_voiced::<f64>(Model::Waveguide, stiff).0)
     );
     assert_eq!(
-        hash(&perform_voiced::<f32>(Model::Waveguide, stiff).0),
-        hash(&perform_voiced::<f32>(Model::Waveguide, stiff).0)
+        bits(&perform_voiced::<f32>(Model::Waveguide, stiff).0),
+        bits(&perform_voiced::<f32>(Model::Waveguide, stiff).0)
     );
     assert_ne!(
         once,
-        hash(&perform_with::<f64>(Model::Waveguide).0),
+        bits(&perform_with::<f64>(Model::Waveguide).0),
         "stiffness changes the sound"
     );
 }
@@ -150,9 +145,9 @@ fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
 fn the_piano_performance_is_repeatable_and_unclipped() {
     let (f64_samples, clipped) = perform_piano::<f64>();
     assert_eq!(clipped, 0, "the piano performance doesn't clip");
-    assert_eq!(hash(&f64_samples), hash(&perform_piano::<f64>().0));
+    assert_eq!(bits(&f64_samples), bits(&perform_piano::<f64>().0));
     assert_eq!(
-        hash(&perform_piano::<f32>().0),
-        hash(&perform_piano::<f32>().0)
+        bits(&perform_piano::<f32>().0),
+        bits(&perform_piano::<f32>().0)
     );
 }

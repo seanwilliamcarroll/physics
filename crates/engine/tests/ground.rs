@@ -6,7 +6,7 @@
 
 use engine::scenarios::{pendulum, pendulum_gravity};
 use engine::{DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
-use test_support::{for_each_scalar, kg, nonzero, pendulum_energy, s, state_hash, time_step, v};
+use test_support::{for_each_scalar, kg, nonzero, pendulum_energy, s, state_bits, time_step, v};
 
 const DT: f64 = 1.0 / 60.0;
 /// The pages' substeps.
@@ -196,10 +196,10 @@ fn no_ground_or_an_unreached_one_changes_nothing() {
             for _ in 0..STEPS {
                 w.step(time_step(DT));
             }
-            state_hash(w.particles())
+            state_bits(w.particles())
         };
         let never = run(None);
-        assert_eq!(run(Some(None)), never, "{solver:?}: set then removed");
-        assert_eq!(run(Some(Some(FAR_BELOW))), never, "{solver:?}: unreached");
+        assert!(run(Some(None)) == never, "{solver:?}: set then removed");
+        assert!(run(Some(Some(FAR_BELOW))) == never, "{solver:?}: unreached");
     }
 }

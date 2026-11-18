@@ -303,10 +303,12 @@ tolerances, and native and wasm needn't agree to the bit. In order:
    lane count per target and per search; sorted −18% on the M4).
    `experiments/perf-audit/kernels.py` checks what each target compiled
    the tables to: run it after any tuning change.
-3. **Exact-bit tests to tolerances:** go through the tests that demand
-   identical bits (the two gravity loops, substep equivalence, the
-   repeatability hashes) and decide each: a tolerance where exact bits
-   aren't the point; hashing dropped altogether if nothing needs it.
+3. ~~**Exact-bit tests to tolerances.**~~ Reviewed (2026-11-17): every
+   remaining exact-bit test is one where exact is the point
+   (repeatability, two paths built to do the same arithmetic, a value
+   against the same expression, IEEE identities): `docs/04-testing.md`,
+   "Exact bits, reviewed". Hashing removed: the repeatability tests
+   compare whole states (`math::Fnv1a` gone; `state_hash` → `state_bits`).
 4. **The audit's ranking, continued:** the boids' Grid mode (100k: 42
    ms, scalar), Brute force and Sorted (lane counts per target and per
    mode; Sorted's span edges), sand's chunk waking, pairwise, Barnes–Hut,
