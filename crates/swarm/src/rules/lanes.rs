@@ -47,13 +47,13 @@ fn accumulate(a: &mut f32, x: f32) {
 /// x86 compiles that well already, and the select made its loop longer
 /// (Brute 2.6% slower on Zen 5); wasm gets the same code either way.
 #[cfg(target_arch = "aarch64")]
-fn unit(cond: bool) -> f32 {
+pub(super) fn unit(cond: bool) -> f32 {
     if cond { 1.0 } else { 0.0 }
 }
 
 /// 1.0 if `cond`, else 0.0 (see the `aarch64` version).
 #[cfg(not(target_arch = "aarch64"))]
-fn unit(cond: bool) -> f32 {
+pub(super) fn unit(cond: bool) -> f32 {
     f32::from(u8::from(cond))
 }
 

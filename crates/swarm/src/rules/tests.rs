@@ -1,4 +1,4 @@
-use super::{FLEE, PREDATOR_RANGE, clamp_speed, steer};
+use super::{FLEE, PREDATOR_RANGE, Ranges, Seen, clamp_speed, steer};
 use crate::{Arena, Boid, Params};
 
 const P: Params = Params::ECE4760;
@@ -177,4 +177,51 @@ fn at_zero_speed_an_off_axis_heading_is_kept() {
     // (3, 4) is speed 5: min speed 3 along it.
     let (x, y) = clamp_speed(&P, (0.0, 0.0), (3.0, 4.0));
     assert!((x - 1.8).abs() < 1e-6 && (y - 2.4).abs() < 1e-6, "{x} {y}");
+}
+
+/// The masked form gives the same values as the branching one, for every
+/// kind of candidate: too close, in range, out of range, and the boid
+/// itself (at distance 0).
+#[test]
+fn the_masked_add_matches_the_branching_one() {
+    let r = Ranges::of(&P);
+    let others = [
+        Boid {
+            x: ME.x + 1.0,
+            y: ME.y,
+            vx: 1.0,
+            vy: 0.5,
+        },
+        Boid {
+            x: ME.x - 10.0,
+            y: ME.y + 20.0,
+            vx: -1.0,
+            vy: 2.0,
+        },
+        Boid {
+            x: ME.x + 500.0,
+            y: ME.y,
+            vx: 3.0,
+            vy: 3.0,
+        },
+        ME,
+        Boid {
+            x: ME.x,
+            y: ME.y - P.protected_range,
+            vx: 0.0,
+            vy: -1.0,
+        },
+        Boid {
+            x: ME.x + P.visual_range,
+            y: ME.y,
+            vx: 0.25,
+            vy: 0.0,
+        },
+    ];
+    let (mut branching, mut masked) = (Seen::default(), Seen::default());
+    for o in others {
+        branching.add(r, ME, o);
+        masked.add_masked(r, ME, o);
+        assert_eq!(branching, masked, "after {o:?}");
+    }
 }

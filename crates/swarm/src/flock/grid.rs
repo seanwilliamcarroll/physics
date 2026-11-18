@@ -9,7 +9,11 @@ impl Flock {
     /// the 3 × 3 cells around it: the grid (`crate::grid`, a counting sort
     /// by cell, cells at least the visual range wide) is rebuilt from the
     /// current positions, and each boid's candidates are read through its
-    /// index, one at a time, by the scalar rules (`steer`).
+    /// index, one at a time, by the scalar rules (`steer`), without
+    /// branches (`Seen::add_masked`: in a big flock the branch was hard to
+    /// predict; 37% faster at 100,000 on the M4). Copying the candidates
+    /// into one run for the lane loop instead was slower (+27%): the copy
+    /// cost more than the vector arithmetic saved.
     pub(super) fn step_grid(&mut self) {
         let (cur, p, arena, predator) = (&self.cur, &self.params, self.arena, self.predator);
         let grid = &mut self.grid;
