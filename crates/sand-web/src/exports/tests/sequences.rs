@@ -32,10 +32,10 @@ fn call() -> impl Strategy<Value = Call> {
     prop_oneof![
         4 => hostile_f64().prop_map(Call::Advance),
         4 => (-10_i32..80, -10_i32..60, prop_oneof![0_u32..6, Just(abi::MAX_BRUSH + 1), any::<u32>()], prop_oneof![0_u32..8, any::<u32>()])
-            .prop_map(|(x, y, r, c)| Call::Paint(x, y, r, c)),
+            .prop_map(|(x, y, radius, code)| Call::Paint(x, y, radius, code)),
         1 => prop_oneof![0_u32..300, any::<u32>()].prop_map(Call::Rate),
         1 => prop_oneof![0_u32..300, any::<u32>()].prop_map(Call::Cap),
-        1 => any::<u32>().prop_map(|c| Call::Chunked(c % 4)),
+        1 => any::<u32>().prop_map(|value| Call::Chunked(value % 4)),
         1 => Just(Call::Render),
     ]
 }
@@ -43,35 +43,40 @@ fn call() -> impl Strategy<Value = Call> {
 /// Every material's count, summed: always the grid's size.
 ///
 /// # Safety
-/// `d` must be a live handle.
-unsafe fn total(d: *const SandDemo) -> u32 {
+/// `demo` must be a live handle.
+unsafe fn total(demo: *const SandDemo) -> u32 {
     // SAFETY: per this function's contract.
-    (0..6).map(|c| unsafe { sand_count(d, c) }).sum()
+    (0..6).map(|code| unsafe { sand_count(demo, code) }).sum()
 }
 
-fn run(w: u32, h: u32, calls: &[Call]) -> Result<(), TestCaseError> {
-    let d = sand_new(w, h, 7);
-    prop_assert!(!d.is_null());
-    // SAFETY: `d` is live until freed at the end, once.
+fn run(width: u32, height: u32, calls: &[Call]) -> Result<(), TestCaseError> {
+    let demo = sand_new(width, height, 7);
+    prop_assert!(!demo.is_null());
+    // SAFETY: `demo` is live until freed at the end, once.
     unsafe {
-        let size = sand_width(d) * sand_height(d);
-        for c in calls {
-            match *c {
-                Call::Advance(t) => {
-                    prop_assert!(sand_advance(d, t) <= abi::MAX_RATE_HZ / 4 + 1);
+        let cell_count = sand_width(demo) * sand_height(demo);
+        for call in calls {
+            match *call {
+                Call::Advance(elapsed) => {
+                    prop_assert!(sand_advance(demo, elapsed) <= abi::MAX_RATE_HZ / 4 + 1);
                 }
-                Call::Paint(x, y, r, code) => {
-                    let n = sand_paint(d, x, y, r, code);
-                    prop_assert!(n <= size);
+                Call::Paint(x, y, radius, code) => {
+                    let painted = sand_paint(demo, x, y, radius, code);
+                    prop_assert!(painted <= cell_count);
                 }
-                Call::Rate(hz) => prop_assert!(sand_set_rate(d, hz) <= 1),
-                Call::Cap(n) => prop_assert!(sand_set_step_cap(d, n) <= 1),
-                Call::Chunked(on) => prop_assert!(sand_set_chunked(d, on) <= 1),
-                Call::Render => prop_assert!(!sand_render(d).is_null()),
+                Call::Rate(rate_hz) => prop_assert!(sand_set_rate(demo, rate_hz) <= 1),
+                Call::Cap(max_steps) => prop_assert!(sand_set_step_cap(demo, max_steps) <= 1),
+                Call::Chunked(on) => prop_assert!(sand_set_chunked(demo, on) <= 1),
+                Call::Render => prop_assert!(!sand_render(demo).is_null()),
             }
-            prop_assert_eq!(total(d), size, "the counts cover the grid after {:?}", c);
+            prop_assert_eq!(
+                total(demo),
+                cell_count,
+                "the counts cover the grid after {:?}",
+                call
+            );
         }
-        sand_free(d);
+        sand_free(demo);
     }
     Ok(())
 }
@@ -80,7 +85,7 @@ proptest! {
     #![proptest_config(test_support::proptest_config())]
 
     #[test]
-    fn any_call_sequence_is_safe(w in 1_u32..70, h in 1_u32..50, calls in prop::collection::vec(call(), 0..30)) {
-        run(w, h, &calls)?;
+    fn any_call_sequence_is_safe(width in 1_u32..70, height in 1_u32..50, calls in prop::collection::vec(call(), 0..30)) {
+        run(width, height, &calls)?;
     }
 }

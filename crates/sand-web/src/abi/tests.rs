@@ -39,7 +39,7 @@ fn material_codes_are_the_automatons() {
         (MATERIAL_STEAM, Material::Steam),
     ];
     assert_eq!(codes.len(), Material::ALL.len());
-    for (code, m) in codes {
-        assert_eq!(u32::from(m.code()), code);
+    for (code, material) in codes {
+        assert_eq!(u32::from(material.code()), code);
     }
 }

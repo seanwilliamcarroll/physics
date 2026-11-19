@@ -1,4 +1,4 @@
-//! Wasm shell for the falling-sand automaton (M9): raw `extern "C"`
+//! Wasm shell for the falling-sand automaton: raw `extern "C"`
 //! exports over a [`SandDemo`](demo::SandDemo). Logic lives in `demo`,
 //! tested natively; `exports` is the boundary, as in `engine-web` and
 //! `acoustic-web`. The panic hook and `FixedStep` come from `web-common`.
