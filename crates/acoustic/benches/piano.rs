@@ -16,7 +16,6 @@ use criterion::{Criterion, criterion_group, criterion_main};
 
 const SAMPLE_RATE: f64 = 48_000.0;
 const QUANTUM: usize = 128;
-/// Three-string keys (from A2 up), spread over the keyboard.
 const FIRST_TRIO: u8 = 45;
 const SPACING: u8 = 4;
 

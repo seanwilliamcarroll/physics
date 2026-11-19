@@ -1,6 +1,4 @@
-//! The hammer on the waveguide (`docs/14-piano.md`, "The hammer"):
-//! contact times against the measured ones, brighter and louder when
-//! harder, and no energy from nowhere.
+//! The hammer on the waveguide (`docs/14-piano.md`, "The hammer").
 #![cfg(test)]
 
 use acoustic::hammer::{self, FORTISSIMO, Hammer, PIANISSIMO, STRIKE};
@@ -14,18 +12,14 @@ const SAMPLE_RATE: f64 = 48_000.0;
 const KEYS: [u8; 8] = [21, 33, 45, 60, 72, 84, 96, 108];
 /// pp to ff, geometrically: mf is the middle one.
 const VELOCITIES: [f64; 5] = [PIANISSIMO, 0.9, 1.581_138_830_084_189_7, 2.8, FORTISSIMO];
-/// How long each strike renders, s, and when the spectrum's window starts
-/// (after the contact, before much decay).
+/// Render length, s, and where the spectrum's window starts.
 const RENDER: f64 = 0.3;
 const SETTLE: f64 = 0.02;
-/// The partials measured for brightness: up to 30, below this share of
-/// the rate.
+/// Brightness partials: up to 30, below this share of the rate.
 const PARTIALS: u32 = 30;
 const BAND: f64 = 0.4;
 
-/// A strike, rendered: when the felt last pushed, the string's and the
-/// hammer's energy when it retired, its energy at impact, and the force on
-/// the bridge (`2Z v` of the arriving wave: what drives a soundboard).
+/// A rendered strike; `bridge_force` is `2Z v` of the arriving wave.
 struct Blow {
     contact: f64,
     string_energy: f64,
@@ -80,8 +74,7 @@ fn strike<S: Scalar>(key: u8, velocity: f64, stiff: bool) -> Blow {
     }
 }
 
-/// The bridge force's spectral centroid over the stiff string's partials
-/// (Hz), and its RMS (N), after the contact.
+/// The bridge force's spectral centroid (Hz) and RMS (N) after the contact.
 fn brightness_and_level(key: u8, blow: &Blow) -> (f64, f64) {
     let (fundamental_hz, inharmonicity) = (frequency(key), inharmonicity(key));
     let tail = &blow.bridge_force[f64_to_usize(SETTLE * SAMPLE_RATE).unwrap()..];
@@ -146,13 +139,10 @@ fn contact_shortens_with_velocity_and_matches_the_measurements() {
     assert!(strike::<f64>(108, VELOCITIES[2], true).contact < TOP_CONTACT);
 }
 
-/// Brighter and louder when harder, where the mf blow is shorter than a
-/// period (bass to C5). Higher (C6 up), the contact outlasts a period: the
-/// string takes 0.2–13 % of the hammer's energy and every partial sits in
-/// the force pulse's spectral sidelobes, so neither rises reliably
-/// (measured: C6's centroid 1100 → 1049 Hz pp → ff; C8's level 0.128,
-/// 0.169, 0.138 N at pp to mf). A known gap of our treble (`TASKS.md`),
-/// printed, not required.
+/// Required only where the mf blow is shorter than a period (bass to C5).
+/// From C6 up neither rises reliably (measured: C6's centroid 1100 → 1049 Hz
+/// pp → ff; C8's level 0.128, 0.169, 0.138 N at pp to mf): a known treble
+/// gap (`TASKS.md`), printed only.
 #[test]
 fn harder_is_brighter_and_louder() {
     for key in KEYS {
@@ -189,19 +179,14 @@ fn harder_is_brighter_and_louder() {
     }
 }
 
-/// Measured: at most 1.0000 at retirement (none from nowhere: the scheme
-/// conserves the hammer's and felt's energy exactly), and at least 0.966
-/// (C4 pp). The shortfall is the rails' measure, not a leak: after
-/// retirement the string's energy wobbles by ~1–3 % (C4: 0.9875 to
-/// 1.0000) as the waves pass through the bridge's filters and odd sample,
-/// which `energy` doesn't see.
+/// Measured: at most 1.0000 at retirement, at least 0.966 (C4 pp). The
+/// shortfall isn't a leak: the string's energy wobbles ~1–3 % afterwards
+/// (C4: 0.9875 to 1.0000) in the bridge's filters, which `energy` doesn't see.
 const ENERGY_ABOVE: f64 = 0.005;
 const ENERGY_BELOW: f64 = 0.05;
 
-/// The string's energy when the hammer leaves, plus what the hammer keeps,
-/// is the hammer's energy at impact: none from nowhere, and (the scheme
-/// conserves energy) none lost but to the string's own losses. Without
-/// stiffness, so the bridge holds a sample of the string, not a third.
+/// String plus hammer energy at retirement against the impact's, without
+/// stiffness (so the bridge holds a sample of the string, not a third).
 #[test]
 fn no_energy_from_nowhere() {
     for key in KEYS {
@@ -219,8 +204,7 @@ fn no_energy_from_nowhere() {
     }
 }
 
-/// The same strike in `f32` (the worklet's) and `f64`: the hammer works
-/// in `f64` either way, so only the rails' rounding differs.
+/// The hammer works in `f64` either way, so only the rails' rounding differs.
 #[test]
 fn f32_strikes_like_f64() {
     for key in KEYS {

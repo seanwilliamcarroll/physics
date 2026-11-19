@@ -1,66 +1,50 @@
 //! How a string is voiced at note on: its tuning and decay, turned into
 //! the loop's coefficients (`docs/12-acoustic-foundations.md`, "Tuning"
-//! and "Decay"). All in `f64`, once per note, with `libm` so the
-//! coefficients are bit-identical on every platform.
+//! and "Decay"): `f64` and `libm`, so they're bit-identical everywhere.
 
 use core::f64::consts::PI;
 use math::convert::f64_to_usize;
 
-/// How the string decays.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Decay {
-    /// A fixed loss `ρ ∈ (0, 1]` per trip round the loop, with the classic
-    /// average (`S = ½`): Karplus & Strong's original, high notes dying
-    /// fast.
+    /// A fixed loss `ρ ∈ (0, 1]` per trip with the classic average
+    /// (`S = ½`): Karplus & Strong's original, high notes dying fast.
     Loss(f64),
-    /// The fundamental's 60 dB decay time, seconds: ρ shortens it where
-    /// the classic loop rings too long, decay stretching (`S < ½`)
-    /// lengthens it where it dies too fast (Jaffe & Smith 1983).
+    /// The fundamental's 60 dB decay time, seconds: `ρ` shortens it, stretching
+    /// (`S < ½`) lengthens it (Jaffe & Smith 1983).
     T60(f64),
 }
 
-/// A string's tuning and decay.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Voicing {
-    /// With the allpass fractional delay (exactly in tune at `f₀`), or the
-    /// integer loop (the nearest `N`).
+    /// Allpass fractional delay (exactly in tune), or the integer loop.
     pub tuned: bool,
     pub decay: Decay,
-    /// The string's inharmonicity coefficient `B` (`docs/14-piano.md`): 0
-    /// is A1/A2's ideal string; above, a dispersion cascade at the bridge
-    /// makes partial `k` run at `k F₀ √(1 + B k²)`, the key's pitch being
-    /// the lowest partial.
+    /// The inharmonicity coefficient `B` (`docs/14-piano.md`): 0 is an ideal
+    /// string; above, partial `k` runs at `k F₀ √(1 + B k²)`.
     pub inharmonicity: f64,
 }
 
-/// The loop's coefficients for one note.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) struct Coefficients {
-    /// Delay line length, samples.
     pub(crate) n: usize,
-    /// Loss per trip.
     pub(crate) rho: f64,
     /// The lowpass `(1 − S) + S z⁻¹`'s `S`.
     pub(crate) stretch: f64,
     /// The allpass coefficient `C`, if tuned.
     pub(crate) allpass: Option<f64>,
-    /// The dispersion cascade, if the string is stiff.
     pub(crate) dispersion: Option<crate::dispersion::Dispersion>,
-    /// The pitch the loop plays, Hz.
     pub(crate) pitch: f64,
 }
 
-/// The smallest fractional delay the allpass is asked for, samples: as
-/// `Δ → 0`, `C → 1`, and its pole (at `z = −C`) nears the unit circle and
-/// rings (Jaffe & Smith).
+/// The smallest fractional delay asked of the allpass, samples: as `Δ → 0`
+/// its pole (at `z = −C`) nears the unit circle and rings.
 const MIN_FRACTION: f64 = 0.1;
 
-/// The shortest loop, samples.
 const MIN_DELAY: f64 = 2.0;
 
-/// The longest decay asked of stretching: `S` can only reach 0 (no
-/// lowpass, no loss) in the limit, so `T₆₀` is capped where `S` would
-/// fall below this.
+/// `T₆₀` is capped where stretching's `S` would fall below this (`S = 0`
+/// is only a limit).
 const MIN_STRETCH: f64 = 1e-3;
 
 impl Voicing {
@@ -79,9 +63,7 @@ impl Voicing {
     }
 
     /// The dispersion cascade [`coefficients`](Self::coefficients) would
-    /// design for this note: what the piano designs once per key, at
-    /// start (`docs/14-piano.md`). `None` without stiffness, or for
-    /// settings `coefficients` refuses.
+    /// design: `None` without stiffness, or for refused settings.
     pub(crate) fn design(
         self,
         sample_rate: f64,
@@ -90,10 +72,9 @@ impl Voicing {
         self.coefficients(sample_rate, fundamental_hz)?.dispersion
     }
 
-    /// As [`coefficients`](Self::coefficients), with the dispersion
-    /// cascade from `design(stretch, room)`: `stretch` is the lowpass's
-    /// `S`, `room` the most delay it may take at the fundamental. A stored
-    /// design skips the design's cost (milliseconds) at note on.
+    /// As [`coefficients`](Self::coefficients), with the cascade from
+    /// `design(stretch, room)`: the lowpass's `S`, and the most delay the
+    /// cascade may take. A stored design skips its cost (milliseconds).
     pub(crate) fn coefficients_designed(
         self,
         sample_rate: f64,
@@ -132,8 +113,8 @@ impl Voicing {
             )
         } else {
             let length = libm::round(period - lowpass);
-            // The loop's own pitch: its phase delay at the new frequency,
-            // which for `S = ½` is exactly ½ at every frequency.
+            // The loop's own pitch; the lowpass's delay for `S = ½` is
+            // exactly ½ at every frequency.
             (length, None, sample_rate / (length + lowpass))
         };
         if length < MIN_DELAY || !length.is_finite() {

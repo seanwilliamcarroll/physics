@@ -1,6 +1,4 @@
-//! The piano in the voices (`docs/14-piano.md`, "The piano in the
-//! synth"): the design table, strikes with velocity, the stiffness toggle,
-//! the strike trace, and the body on the summed bridge force.
+//! The piano in the voices (`docs/14-piano.md`, "The piano in the synth").
 
 use super::{Model, PIANO_BLOCK, Voices};
 use crate::Scalar;
@@ -8,24 +6,19 @@ use crate::Waveguide;
 use crate::piano::{self, Designs};
 
 impl<S: Scalar> Voices<S> {
-    /// Designs the piano's keys, if not yet.
     pub(super) fn prepare_piano(&mut self) {
         if self.designs.is_none() {
             self.designs = Some(Designs::new(self.sample_rate));
         }
     }
 
-    /// Whether the piano's strings are stiff, from the next strike (off:
-    /// the ideal strings, harmonic partials).
+    /// Stiff strings (inharmonic partials) or ideal ones, from the next strike.
     pub const fn set_stiffness(&mut self, stiff: bool) {
         self.stiff = stiff;
     }
 
-    /// Strikes piano key `key` at `velocity` m/s (the hammer's speed:
-    /// [`hammer::PIANISSIMO`](crate::hammer::PIANISSIMO) to
-    /// [`FORTISSIMO`](crate::hammer::FORTISSIMO)), whatever the model new
-    /// notes play. Designs the keys first if the piano wasn't chosen yet
-    /// (the one-time pause). `false`, playing nothing, off the keyboard or
+    /// Strikes piano key `key` at hammer speed `velocity` m/s, whatever the
+    /// model new notes play. `false`, playing nothing, off the keyboard or
     /// for a velocity the hammer can't take.
     pub fn strike(&mut self, key: u8, velocity: f64) -> bool {
         self.prepare_piano();
@@ -50,18 +43,16 @@ impl<S: Scalar> Voices<S> {
         struck
     }
 
-    /// The latest strike's hammer force on its middle string, N, a sample
-    /// at a time from impact: up to [`TRACE_SECONDS`](super::TRACE_SECONDS)
-    /// of it, as rendered so far. Empty before any strike.
+    /// The latest strike's hammer force on its middle string, N, per sample
+    /// from impact, up to [`TRACE_SECONDS`](super::TRACE_SECONDS).
     #[must_use]
     pub fn strike_trace(&self) -> &[f64] {
         &self.trace
     }
 
-    /// Adds the piano voices to `out`: their bridge forces summed a block at
-    /// a time, through the one body (linear, so one on the sum is one per
-    /// voice). It runs once the piano has played, so a released note's ring
-    /// fades through it too.
+    /// Adds the piano voices to `out`: bridge forces summed per block through
+    /// one body (linear, so one on the sum equals one per voice). Runs once
+    /// the piano has played, so releases fade through it too.
     pub(super) fn render_piano(&mut self, out: &mut [S]) {
         if self.designs.is_none() {
             return;

@@ -11,7 +11,6 @@ use std::time::Duration;
 use acoustic::fft::{Fft, Spectrum};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
-/// The page's size, and one each side.
 const SIZES: [usize; 3] = [1024, 4096, 16384];
 
 fn fft(criterion: &mut Criterion) {

@@ -1,26 +1,19 @@
 //! The piano's keys (`docs/14-piano.md`): each key's voicing, and the
-//! table of dispersion designs the voices strike from.
-//!
-//! Designing a key's dispersion takes milliseconds, far past a render
-//! block, so the piano designs all 88 once (`Designs::new`, when the
-//! synth first plays the piano) and every note on looks its key up. A
-//! design depends on the loop lowpass's stretch, which the decay sets, so
-//! the piano's decay is a fixed curve per key, not a setting.
+//! table of dispersion designs the voices strike from. Designing takes
+//! milliseconds, so all 88 are designed once, and the decay is a fixed curve
+//! per key (a design depends on it).
 
 use crate::dispersion::Dispersion;
 use crate::{Decay, Voicing, inharmonicity};
 
-/// The keyboard, MIDI: A0 to C8.
 pub const FIRST_KEY: u8 = 21;
 pub const LAST_KEY: u8 = 108;
 const KEYS: usize = (LAST_KEY - FIRST_KEY + 1) as usize;
 
-/// The fundamental's decay, s, at A0 and at C8: **our choice**, a long bass
-/// falling to a short treble as on a piano (geometric between), not a
-/// measured curve.
+/// The fundamental's decay, s, at A0 and C8, geometric between: **our
+/// choice**, not measured.
 const DECAY: (f64, f64) = (20.0, 1.5);
 
-/// Key `midi`'s fundamental decay time, s (clamped to the keyboard).
 #[must_use]
 pub fn t60(midi: u8) -> f64 {
     let fraction =
@@ -28,14 +21,12 @@ pub fn t60(midi: u8) -> f64 {
     DECAY.0 * libm::pow(DECAY.1 / DECAY.0, fraction)
 }
 
-/// Key `midi`'s equal-tempered pitch, Hz (A4 = 440).
 #[must_use]
 pub fn frequency(midi: u8) -> f64 {
     440.0 * libm::exp2((f64::from(midi) - 69.0) / 12.0)
 }
 
-/// How key `midi`'s strings are voiced: tuned, its decay, and its stiffness
-/// (`stiff`), or none (A2's ideal string, the page's toggle).
+/// Key `midi`'s voicing: tuned, its decay, and its stiffness if `stiff`.
 #[must_use]
 pub fn voicing(midi: u8, stiff: bool) -> Voicing {
     Voicing {
@@ -45,16 +36,14 @@ pub fn voicing(midi: u8, stiff: bool) -> Voicing {
     }
 }
 
-/// Every key's dispersion design at one sample rate. A key's strings,
-/// detuned by a cent, share it: their tuning allpass absorbs the cent, and
-/// the design's partials move by a cent too (far inside its accuracy).
+/// Every key's dispersion design at one sample rate; a key's strings share
+/// it (a cent of detuning is far inside its accuracy).
 #[derive(Clone, Debug)]
 pub(crate) struct Designs {
     designs: Vec<Option<Dispersion>>,
 }
 
 impl Designs {
-    /// Designs all 88 keys at `sample_rate` Hz (about 200 ms natively).
     pub(crate) fn new(sample_rate: f64) -> Self {
         let designs = (FIRST_KEY..=LAST_KEY)
             .map(|key| voicing(key, true).design(sample_rate, frequency(key)))

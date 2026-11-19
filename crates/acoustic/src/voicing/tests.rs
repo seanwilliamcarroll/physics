@@ -1,6 +1,5 @@
 use super::{allpass_coefficient, phase_delay_lowpass};
 
-/// The allpass's phase delay at `omega`, from its frequency response.
 fn allpass_delay(coefficient: f64, omega: f64) -> f64 {
     // H = (C + e^{−jω}) / (1 + C e^{−jω}); delay = −arg H / ω.
     let (numerator_re, numerator_im) = (coefficient + omega.cos(), -omega.sin());

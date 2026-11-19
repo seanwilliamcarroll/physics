@@ -18,15 +18,12 @@ const T60: f64 = 1000.0;
 const WINDOW_PERIODS: f64 = 16.0;
 const HOP: f64 = 0.05;
 const SKIP: f64 = 0.1;
-/// Beat periods rendered.
 const BEATS: f64 = 3.0;
 /// The envelope's frequency is searched from `SEARCH.0` to `SEARCH.1` of
 /// the expected beat, in this many steps.
 const SEARCH: (f64, f64) = (0.5, 2.0);
 const SEARCH_STEPS: u32 = 600;
 
-/// The rate the group's envelope swells and fades at, Hz: the strongest
-/// frequency of the fundamental's amplitude over time.
 fn beat_rate(key: u8, expected: f64) -> f64 {
     let voicing = Voicing {
         tuned: true,
@@ -73,9 +70,6 @@ fn beat_rate(key: u8, expected: f64) -> f64 {
 /// resolution over three beats). ~2.5x.
 const BEAT_TOL: f64 = 0.05;
 
-/// A pair (G♯2) and a trio (C5) beat at their neighbors' detuning, `Δf =
-/// f (2^(c / 1200) − 1)`: for three strings evenly spread, the envelope
-/// `|1 + 2 cos(2π Δf t)|` repeats at `Δf` too.
 #[test]
 fn a_group_beats_at_its_detuning() {
     for key in [44_u8, 72] {

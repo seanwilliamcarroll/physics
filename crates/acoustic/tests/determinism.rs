@@ -8,7 +8,6 @@ use math::convert::usize_to_f64;
 
 const SAMPLE_RATE: f64 = 48_000.0;
 const BLOCK: usize = 128;
-/// Blocks in the 1 s performance: 48000 / 128.
 const BLOCKS: usize = 375;
 const VOICING: Voicing = Voicing {
     tuned: true,
@@ -16,19 +15,14 @@ const VOICING: Voicing = Voicing {
     inharmonicity: 0.0,
 };
 
-/// A short performance, 1 s: a seven-note chord (noise), a
-/// triangle-plucked melody note, a release, and one more note. Returns
-/// the samples and how many were clipped.
 fn perform<S: Scalar>() -> (Vec<S>, u64) {
     perform_with::<S>(Model::Loop)
 }
 
-/// The same performance played by `model`.
 fn perform_with<S: Scalar>(model: Model) -> (Vec<S>, u64) {
     perform_voiced::<S>(model, |_| VOICING)
 }
 
-/// The same performance, each key voiced by `voicing`.
 fn perform_voiced<S: Scalar>(model: Model, voicing: impl Fn(u8) -> Voicing) -> (Vec<S>, u64) {
     let mut voices = Voices::<S>::new(SAMPLE_RATE, 7).unwrap();
     voices.set_model(model);
@@ -56,7 +50,6 @@ fn perform_voiced<S: Scalar>(model: Model, voicing: impl Fn(u8) -> Voicing) -> (
     (out, voices.clipped())
 }
 
-/// Every sample's `f64` bits, in order.
 fn bits<S: Scalar>(samples: &[S]) -> Vec<u64> {
     samples
         .iter()
@@ -82,8 +75,6 @@ fn a_chord_at_the_default_gain_is_not_clipped() {
     assert!(peak < 0.9, "{peak}");
 }
 
-/// The performance played by the waveguide (pickup at the default):
-/// repeatable, and unclipped.
 #[test]
 fn the_waveguide_performance_is_repeatable_and_unclipped() {
     assert_eq!(
@@ -95,8 +86,6 @@ fn the_waveguide_performance_is_repeatable_and_unclipped() {
     assert_eq!(bits(&first), bits(&perform_with::<f64>(Model::Waveguide).0));
 }
 
-/// The waveguide performance with each key's stiffness
-/// (`docs/14-piano.md`): repeatable, and not the same sound as without.
 #[test]
 fn the_stiff_performance_is_repeatable_and_differs() {
     let stiff = |key| Voicing {
@@ -119,8 +108,6 @@ fn the_stiff_performance_is_repeatable_and_differs() {
     );
 }
 
-/// The piano's performance: the chord struck at mixed velocities, a
-/// melody note ff, a release, one more note pp; through the body.
 fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
     let mut voices = Voices::<S>::new(SAMPLE_RATE, 7).unwrap();
     voices.set_model(Model::Piano);
@@ -145,7 +132,6 @@ fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
     (out, voices.clipped())
 }
 
-/// [`perform_piano`]: repeatable, and unclipped.
 #[test]
 fn the_piano_performance_is_repeatable_and_unclipped() {
     let (f64_samples, clipped) = perform_piano::<f64>();

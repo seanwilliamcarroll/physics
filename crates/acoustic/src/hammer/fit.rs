@@ -1,14 +1,7 @@
 //! Fitting the hammers offline (`docs/14-piano.md`): each key's mass and
 //! felt stiffness for which the cheap model ([`contact_time`]) gives the
-//! key's contact time at mf **and** the measured spread from pp to ff.
-//! Two measurements, two unknowns: fitting the stiffness alone drove the
-//! tenor's felt nearly rigid (its target sits near the string's own
-//! floor), and then velocity barely changed the sound.
-//!
-//! The per-key fit is jagged (the near return is a whole number of
-//! samples, and the fit hops between branches where a contact pulse
-//! appears), so the piano uses a smooth cubic through it in `log M` and
-//! `log K`, [`smooth`].
+//! key's contact time at mf **and** the measured pp-to-ff spread. The
+//! per-key fit is jagged, so the piano uses a smooth cubic, [`smooth`].
 
 use super::contact::contact_within;
 use super::keys::{
@@ -33,7 +26,6 @@ const MASS_FROM: f64 = 0.5e-3;
 const MASS_STEPS: i32 = 13;
 const MASS_BISECTIONS: u32 = 20;
 
-/// The felt's stiffness giving contact `target` at mf for hammer mass `mass`.
 fn stiffness_for(
     sample_rate: f64,
     fundamental_hz: f64,
@@ -77,8 +69,6 @@ fn stiffness_for(
     Some(libm::pow(10.0, upper))
 }
 
-/// For hammer mass `mass`: the stiffness hitting the mf target, and the
-/// resulting pp-to-ff spread.
 fn spread_for(
     sample_rate: f64,
     fundamental_hz: f64,
@@ -188,7 +178,6 @@ const DEGREE: usize = 3;
 /// [`key_coordinate`]: coefficients, constant term first.
 pub(super) fn smooth(fits: &[(u8, Felt)]) -> Option<([f64; DEGREE + 1], [f64; DEGREE + 1])> {
     let cubic = |value: &dyn Fn(Felt) -> f64| -> Option<[f64; DEGREE + 1]> {
-        // The normal equations, one augmented row per coefficient.
         let mut system = vec![vec![0.0; DEGREE + 2]; DEGREE + 1];
         for &(key, felt) in fits {
             let coordinate = key_coordinate(key);

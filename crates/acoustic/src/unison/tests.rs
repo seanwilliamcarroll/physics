@@ -53,8 +53,7 @@ const SAME_AS_ONE_TOL: f64 = 2e-3;
 /// The window compared, s: past the contact.
 const EARLY: f64 = 0.006;
 
-/// A hammer per string: a group of three, in its first milliseconds, is
-/// three times one string (the middle one, in tune) under one hammer.
+/// In its first milliseconds a group of three is three times one string.
 #[test]
 fn a_group_is_n_strings_struck_alike() {
     let key = 60;
@@ -91,8 +90,6 @@ fn a_group_is_n_strings_struck_alike() {
     assert!(worst / peak < SAME_AS_ONE_TOL);
 }
 
-/// The strings' energy plus the hammers', once they've all left, is at
-/// most what the hammers brought: `N` strikes, no energy from nowhere.
 #[test]
 fn a_group_makes_no_energy() {
     for key in [21_u8, 36, 60] {
@@ -125,9 +122,6 @@ fn a_group_makes_no_energy() {
     }
 }
 
-/// The fastest strike accepted stays finite in `f32` across the keyboard
-/// (a far faster one once overflowed the rails and panicked); one faster
-/// is refused.
 #[test]
 fn the_fastest_strike_stays_finite_and_faster_is_refused() {
     for key in [21_u8, 48, 60, 108] {
@@ -141,14 +135,10 @@ fn the_fastest_strike_stays_finite_and_faster_is_refused() {
             Unison::<f32>::new(SAMPLE_RATE, key, voicing(key), 2.5e51).is_none(),
             "the test's case"
         );
-        // Up to twice ff: 9 m/s plays (`2 + ff` = 7 m/s would pass the
-        // checks above).
+        // Up to twice ff: 9 m/s plays.
         assert!(Unison::<f32>::new(SAMPLE_RATE, key, voicing(key), 9.0).is_some());
     }
 }
-
-// The group's read-backs (empty, pitches, hammers, energy, the middle
-// string) are tested directly.
 
 #[test]
 fn an_unstruck_group_is_empty_and_silent() {
@@ -169,8 +159,6 @@ fn a_struck_group_reads_back_its_strings() {
         assert_eq!(unison.hammers().count(), count);
         let pitches: Vec<f64> = unison.pitches().collect();
         assert_eq!(pitches.len(), count);
-        // The middle string is the one `count / 2` in, the in-tune one for
-        // an odd count (offsets ∓½ cent for a pair).
         let middle = unison.middle().unwrap().pitch();
         assert_eq!(middle.to_bits(), pitches[count / 2].to_bits(), "key {key}");
         for _ in 0..480 {

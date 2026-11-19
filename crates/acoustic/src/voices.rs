@@ -11,10 +11,7 @@ use crate::unison::Unison;
 use crate::{Excitation, KsString, Scalar, Voicing, Waveguide};
 
 /// How many notes sound at once; one more steals the oldest. The Entertainer
-/// has three-note chords in both hands and needs 11 at its busiest
-/// (counting releases), and stealing a still-ringing voice restarts its
-/// delay line mid-note. A voice is one preallocated line (~7 KB at 48 kHz),
-/// and only sounding ones cost time.
+/// needs 11 at its busiest (counting releases); a voice is ~7 KB at 48 kHz.
 pub const VOICES: usize = 16;
 
 /// The lowest note a voice is sized for, Hz: A0, the piano's bottom key.
@@ -28,10 +25,8 @@ pub const DEFAULT_GAIN: f64 = 0.25;
 /// of stopping dead (a click).
 pub const RELEASE_T60: f64 = 0.1;
 
-/// How long the release's damper takes to come in, s (ours): a damper
-/// applied in one sample clicked on the piano, which sounds the change in
-/// its bridge's reflected wave (a step about 8× the note's own). Over
-/// 10 ms the extra change per sample is far under the note's.
+/// How long the release's damper takes to come in, s (ours): applied in one
+/// sample it clicked on the piano (a step about 8× the note's own).
 pub const RELEASE_RAMP: f64 = 0.01;
 
 /// The piano's output per newton of bridge force (the strings' summed
@@ -39,8 +34,6 @@ pub const RELEASE_RAMP: f64 = 0.01;
 /// clamp at the default gain (`tests/determinism.rs` measures it).
 pub(crate) const PIANO_SCALE: f64 = 0.014;
 
-/// The piano's body runs over blocks of at most this many samples
-/// (preallocated, so `render` of any length never allocates).
 const PIANO_BLOCK: usize = 256;
 
 /// How long the latest strike's hammer force is recorded, s: past the
@@ -55,18 +48,13 @@ const RELEASE_FREE_FACTOR: f64 = 80.0 / 60.0;
 /// two models").
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum Model {
-    /// The Karplus–Strong loop.
     #[default]
     Loop,
-    /// The waveguide: two traveling waves, a pluck and a pickup position.
     Waveguide,
-    /// The piano (`docs/14-piano.md`): stiff strings, 1–3 a key, struck by
-    /// fitted hammers, through a body.
     Piano,
 }
 
-/// One string and what it's playing. All three models are allocated up front,
-/// so a note can use any without allocating; `model` says which one
+/// One voice: all three models are allocated up front; `model` is the one
 /// this note plays.
 #[derive(Clone, Debug)]
 struct Voice<S> {
@@ -74,22 +62,18 @@ struct Voice<S> {
     guide: Waveguide<S>,
     piano: Unison<S>,
     model: Model,
-    /// MIDI key, while sounding.
     key: Option<u8>,
     /// The pitch asked for, Hz (the string's own pitch differs from it
     /// when the loop is untuned).
     target: f64,
     /// Note-on order: the smallest is the oldest, stolen first.
     started: u64,
-    /// Samples left before a released voice is free.
     releasing: Option<usize>,
 }
 
-/// A pool of [`VOICES`] strings at one sample rate, summed into one
-/// output. Every string is allocated at construction, sized for
-/// [`LOWEST_HZ`], so playing notes never allocates (the audio thread's
-/// rule). Noise comes from one seeded generator, so a sequence of notes is
-/// reproducible.
+/// A pool of [`VOICES`] strings summed into one output. Everything is
+/// allocated at construction, so playing never allocates; noise comes from
+/// one seeded generator, so a sequence of notes is reproducible.
 #[derive(Clone, Debug)]
 pub struct Voices<S> {
     pool: Vec<Voice<S>>,
@@ -97,34 +81,20 @@ pub struct Voices<S> {
     gain: S,
     rng: SplitMix64,
     notes: u64,
-    /// Output samples clamped to ±1 so far.
     clipped: u64,
-    /// The voice last played: what the page draws.
     latest: Option<usize>,
-    /// The model new notes play.
     model: Model,
-    /// Every waveguide's pickup, from the bridge.
     pickup: f64,
-    /// Every key's dispersion design: built when the piano is first
-    /// chosen (milliseconds a key), then looked up at every note on.
     designs: Option<Designs>,
-    /// Whether the piano's strings are stiff (the page's toggle).
     stiff: bool,
-    /// The piano's body, on its voices' summed bridge force, and the block
-    /// that sum gathers in.
     body: Body<S>,
     piano_block: Vec<S>,
     piano_scale: S,
-    /// The latest strike's middle-string hammer force, N, one per sample
-    /// from impact (allocated once, [`TRACE_SECONDS`] long), and its voice.
     trace: Vec<f64>,
     traced: Option<usize>,
 }
 
 impl<S: Scalar> Voices<S> {
-    /// A silent pool at `sample_rate` Hz with noise seeded by `seed`.
-    /// `None` if the rate can't play [`LOWEST_HZ`] (not positive and
-    /// finite).
     #[must_use]
     pub fn new(sample_rate: f64, seed: u64) -> Option<Self> {
         let probe = Voicing {
@@ -168,9 +138,8 @@ impl<S: Scalar> Voices<S> {
         })
     }
 
-    /// The model new notes play (ringing notes keep theirs). The first
-    /// switch to [`Model::Piano`] designs every key's dispersion (about
-    /// 200 ms natively): a one-time pause, before the piano plays.
+    /// The model new notes play (ringing notes keep theirs). The first switch
+    /// to [`Model::Piano`] designs every key's dispersion (~200 ms natively).
     pub fn set_model(&mut self, model: Model) {
         if model == Model::Piano {
             self.prepare_piano();
@@ -178,8 +147,6 @@ impl<S: Scalar> Voices<S> {
         self.model = model;
     }
 
-    /// The slot a new note on `key` takes: the voice already playing it,
-    /// else a free one, else the oldest.
     fn slot(&self, key: u8) -> Option<usize> {
         self.pool
             .iter()
@@ -194,8 +161,6 @@ impl<S: Scalar> Voices<S> {
             })
     }
 
-    /// Marks the voice at `slot` as playing `key` at `fundamental_hz`, the
-    /// newest note.
     fn started(&mut self, slot: usize, key: u8, fundamental_hz: f64, model: Model) {
         self.notes += 1;
         let notes = self.notes;
@@ -209,8 +174,6 @@ impl<S: Scalar> Voices<S> {
         self.latest = Some(slot);
     }
 
-    /// Moves every waveguide's pickup to `position` (from the bridge, 0 to
-    /// 1), live: a ringing note's timbre changes as it moves.
     pub fn set_pickup(&mut self, position: f64) {
         self.pickup = position.clamp(0.0, 1.0);
         for voice in &mut self.pool {
@@ -218,10 +181,9 @@ impl<S: Scalar> Voices<S> {
         }
     }
 
-    /// Starts MIDI `key` (equal temperament, A4 = 440 Hz) with `voicing`
-    /// and `excitation`: on the voice already playing that key, else a free
-    /// one, else the oldest. `false`, playing nothing, for a key the
-    /// voicing can't play here (below [`LOWEST_HZ`], or too high).
+    /// Starts MIDI `key` on the voice already playing it, else a free one,
+    /// else the oldest. `false`, playing nothing, for a key the voicing can't
+    /// play (below [`LOWEST_HZ`], or too high).
     pub fn note_on(&mut self, key: u8, voicing: Voicing, excitation: Excitation) -> bool {
         if self.model == Model::Piano {
             return self.strike(key, crate::hammer::mezzo_forte());
@@ -254,8 +216,6 @@ impl<S: Scalar> Voices<S> {
         true
     }
 
-    /// Releases MIDI `key`: it fades over about [`RELEASE_T60`] and its
-    /// voice frees. Nothing if it isn't sounding (or is already released).
     pub fn note_off(&mut self, key: u8) {
         let sample_rate = self.sample_rate;
         // At least one sample, whatever the rate.
@@ -295,7 +255,6 @@ impl<S: Scalar> Voices<S> {
                         *sample += voice.guide.next_sample();
                     }
                 }
-                // Below, through the body.
                 Model::Piano => {}
             }
         }
@@ -326,24 +285,20 @@ impl<S: Scalar> Voices<S> {
         }
     }
 
-    /// Sets the output gain (applied before the clamp).
     pub fn set_gain(&mut self, gain: S) {
         self.gain = gain;
     }
 
-    /// Output samples clamped to ±1 so far.
     #[must_use]
     pub const fn clipped(&self) -> u64 {
         self.clipped
     }
 
-    /// How many voices are sounding (including releases).
     #[must_use]
     pub fn sounding(&self) -> usize {
         self.pool.iter().filter(|voice| voice.key.is_some()).count()
     }
 
-    /// The keys sounding, by voice (`None` for a free voice).
     pub fn keys(&self) -> impl Iterator<Item = Option<u8>> + '_ {
         self.pool.iter().map(|voice| voice.key)
     }
@@ -374,10 +329,8 @@ impl<S: Scalar> Voices<S> {
         Some(CENTS_PER_OCTAVE * libm::log2(pitch / voice.target))
     }
 
-    /// Appends what the page draws of the last note to `out`: the loop's
-    /// delay line, or the waveguide's shape, cell by cell from the bridge.
-    /// Nothing before any note. `out` should have room for the longest (it
-    /// doesn't allocate then).
+    /// Appends the last note's loop or waveguide shape to `out` (reserve the
+    /// longest to avoid allocating). Nothing before any note.
     pub fn latest_shape(&self, out: &mut Vec<S>) {
         let Some(voice) = self.latest.and_then(|slot| self.pool.get(slot)) else {
             return;

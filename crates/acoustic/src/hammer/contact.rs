@@ -1,9 +1,6 @@
 //! The cheap model of a blow (`docs/14-piano.md`): the hammer against the
-//! string's near end only. The wave launched toward the nut comes back
-//! inverted after `STRIKE / f₀` (the round trip over an eighth of the
-//! string), which is what throws the hammer off in the bass (4.5 ms at
-//! A0). The far end's return comes later than any contact. `fit` fits the
-//! hammers on it; the tests measure the full waveguide's contacts.
+//! string's near end only, whose inverted return after `STRIKE / f₀` throws
+//! the hammer off in the bass (4.5 ms at A0). `fit` fits hammers on it.
 
 use super::keys::STRIKE;
 use super::{Felt, Hammer};
@@ -12,10 +9,8 @@ use math::convert::{f64_to_usize, samples, usize_to_f64};
 /// The longest blow simulated, s: past every measured contact.
 const LONGEST: f64 = 0.05;
 
-/// How long a hammer with `felt`, at `velocity`, stays on a string of
-/// impedance `string_impedance` and pitch `fundamental_hz` with only its
-/// near end, s: from the first touch to the last separation, interpolated
-/// within the sample. `None` if it hasn't left within 50 ms.
+/// Contact time, s, from first touch to last separation (interpolated
+/// within the sample). `None` if the hammer hasn't left within 50 ms.
 #[must_use]
 pub(crate) fn contact_time(
     sample_rate: f64,
@@ -34,8 +29,6 @@ pub(crate) fn contact_time(
     )
 }
 
-/// [`contact_time`], giving up (`None`) once the blow outlasts `longest`
-/// s: the fit only asks whether a blow is short enough.
 pub(super) fn contact_within(
     sample_rate: f64,
     fundamental_hz: f64,
@@ -47,11 +40,8 @@ pub(super) fn contact_within(
     let mut hammer = Hammer::new(felt, string_impedance, sample_rate, velocity)?;
     let lag = f64_to_usize(libm::round(STRIKE * sample_rate / fundamental_hz))?.max(1);
     let steps = samples(longest, sample_rate)? + 1;
-    // What was launched toward the nut, `lag` samples back: a ring.
     let mut history = vec![0.0; lag];
     let mut last_separation = 0.0;
-    // The compression at the end of the last sample, if the felt was
-    // still compressed then (else 0).
     let mut previous = 0.0_f64;
     for step in 0..steps {
         let slot = step % lag;
@@ -62,11 +52,8 @@ pub(super) fn contact_within(
         }
         let compression = hammer.compression();
         let sample = usize_to_f64(step);
-        // Separated during this sample: where the compression crossed 0.
-        // The compression, not `force() > 0`: the force is the sample's
-        // mean, still positive in the sample where the compression crosses
-        // 0, so testing it never interpolated. A blow always ends here: the
-        // hammer retires only once the felt is uncompressed.
+        // Separation: where the compression crossed 0 (not `force() > 0`,
+        // the sample's mean, which stays positive through the crossing).
         if compression <= 0.0 && previous > 0.0 {
             last_separation = sample + previous / (previous - compression);
         }

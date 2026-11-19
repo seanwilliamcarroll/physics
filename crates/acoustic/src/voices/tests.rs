@@ -63,8 +63,7 @@ fn keys_below_a0_are_refused_and_the_top_plays() {
         "below A0: longer than the line"
     );
     assert_eq!(voices.sounding(), 0);
-    // MIDI 127 (G9, 12.5 kHz) is a 3.8-sample loop at 48 kHz: N = 3 plus
-    // the allpass. Every MIDI key from A0 up is playable.
+    // MIDI 127 is a 3.8-sample loop at 48 kHz: every key from A0 up plays.
     assert!(voices.note_on(127, VOICING, Excitation::Noise));
 }
 
@@ -96,11 +95,9 @@ fn a_note_keeps_its_model_and_the_pickup_moves_live() {
     voices.set_model(Model::Loop);
     let mut shape = Vec::new();
     voices.latest_shape(&mut shape);
-    // A3 at 48 kHz, tuned: a 217-sample loop (⌊218.18 − ½ − 0.1⌋), odd, so
-    // two rails of 108 cells and the bridge's extra sample (the loop's own
-    // line would be 217 long).
+    // A3's 217-sample loop is odd: two rails of 108 cells plus the bridge's
+    // extra sample.
     assert_eq!(shape.len(), 108, "still the waveguide");
-    // Moving the pickup changes the sound of the ringing note.
     let mut near = vec![0.0; 256];
     let mut far = vec![0.0; 256];
     let mut other = voices.clone();
@@ -116,7 +113,6 @@ fn a_note_keeps_its_model_and_the_pickup_moves_live() {
     );
 }
 
-/// A piano pool, the piano chosen (its keys designed).
 fn piano() -> Voices<f64> {
     let mut voices = pool();
     voices.set_model(Model::Piano);
@@ -129,8 +125,7 @@ fn render(voices: &mut Voices<f64>, seconds: f64) -> Vec<f64> {
     out
 }
 
-/// Measured: within 0.0027 cents (MIDI 84). The strings sit about the note
-/// (±½, or −1, 0, +1 cent), so their sum's fundamental is the note's. ~10x.
+/// Measured: within 0.0027 cents (MIDI 84). ~10x.
 const PIANO_TUNE_TOL_CENTS: f64 = 0.03;
 /// Periods in each DFT window, and the attack skipped, s.
 const PERIODS: f64 = 16.0;
@@ -178,8 +173,7 @@ fn harder_strikes_are_louder() {
     );
 }
 
-/// The stiffness toggle: off, C4's 10th partial is harmonic; on, it runs
-/// sharp by what `B` says (`f_k = k F₀ √(1 + B k²)`: about 26 cents).
+/// C4's 10th partial runs sharp by `f_k = k F₀ √(1 + B k²)` (~26 cents).
 #[test]
 fn the_stiffness_toggle_stretches_the_partials() {
     let key = 60;
@@ -233,7 +227,7 @@ fn a_released_piano_note_fades_and_frees() {
 }
 
 /// Measured: the loudest, a ff cluster of seven treble keys, peaks at 0.77
-/// at the default gain (the attack's spike); a ff chord at 0.46.
+/// at the default gain; a ff chord at 0.46.
 #[test]
 fn loud_piano_chords_stay_off_the_clamp() {
     for keys in [
@@ -263,8 +257,7 @@ fn off_the_keyboard_or_a_bad_velocity_is_refused() {
     assert_eq!(voices.sounding(), 0);
 }
 
-/// The strike trace: the latest strike's hammer force from impact, its
-/// contact inside it (C4 at mf: 1.9 ms), recorded without growing.
+/// C4 at mf: contact 1.9 ms, recorded without growing.
 #[test]
 fn the_latest_strike_is_traced() {
     let mut voices = piano();
@@ -287,13 +280,9 @@ fn the_latest_strike_is_traced() {
     );
 }
 
-// The counter that orders notes, the output gain and clamp, the piano's
-// detune readout and its design on selection are each tested directly.
-
 #[test]
 fn stealing_takes_the_oldest_even_after_a_replay() {
-    // Replaying 60 makes it the newest, so the oldest is 61: with a
-    // counter stuck at 0 every voice looks as old, and slot 0 (60) went.
+    // Replaying 60 makes it the newest, so the oldest is 61.
     let mut voices = pool();
     for key in 60..60 + u8::try_from(VOICES).unwrap() {
         assert!(voices.note_on(key, VOICING, Excitation::Noise));
@@ -319,8 +308,7 @@ fn chord(gain: f64) -> (Vec<f64>, u64) {
 
 #[test]
 fn the_gain_scales_the_output() {
-    // Low enough that nothing clips: halving the gain halves every
-    // sample, exactly (a power of two).
+    // Nothing clips, so halving the gain halves every sample exactly.
     let (sixteenth, clipped_sixteenth) = chord(0.0625);
     let (thirty_second, clipped_thirty_second) = chord(0.031_25);
     assert_eq!((clipped_sixteenth, clipped_thirty_second), (0, 0));
@@ -347,8 +335,6 @@ fn the_clamp_holds_both_signs_and_counts_what_it_clips() {
 
 #[test]
 fn the_piano_reads_its_strings_mean_detune() {
-    // The strings sit about the note (±½ cent, or −1, 0, +1), so their
-    // mean is the note: well within a cent.
     let mut voices = piano();
     assert!(voices.strike(60, mezzo_forte()));
     let cents = voices.latest_detune().unwrap();
@@ -368,8 +354,8 @@ fn choosing_the_piano_designs_its_keys_and_nothing_else_does() {
     );
 }
 
-/// The largest sample-to-sample step within 10 ms after `key`'s note off,
-/// over the largest in the 10 ms before it, for `model`.
+/// Largest sample-to-sample step in the 10 ms after note off over that in
+/// the 10 ms before.
 fn release_step_ratio(model: Model, key: u8) -> f64 {
     const BLOCK: usize = 128;
     let mut voices = pool();
@@ -402,9 +388,8 @@ fn release_step_ratio(model: Model, key: u8) -> f64 {
 
 #[test]
 fn releasing_a_note_doesnt_click() {
-    // The piano sounds the change in its bridge's reflected wave, so a
-    // damper applied in one sample (a 23 % drop at C4) was a step about
-    // seven times the note's own. The damper comes in over RELEASE_RAMP.
+    // A damper applied in one sample (a 23 % drop at C4) was a step about
+    // seven times the note's own; it now comes in over RELEASE_RAMP.
     for model in [Model::Loop, Model::Waveguide, Model::Piano] {
         for key in [33_u8, 60, 84] {
             let ratio = release_step_ratio(model, key);
@@ -418,8 +403,7 @@ fn releasing_a_note_doesnt_click() {
 
 #[test]
 fn a_refused_strike_leaves_the_ringing_note_alone() {
-    // A strike the hammer refuses (too fast) on a key that's ringing
-    // changes nothing: the output matches an undisturbed run, bit for bit.
+    // A refused strike leaves the output bit-identical to an undisturbed run.
     let run = |refused: bool| {
         let mut voices = piano();
         assert!(voices.strike(67, 0.1));

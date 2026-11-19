@@ -29,8 +29,7 @@ fn the_cubic_uses_the_fits_coordinate() {
     assert!(felt(20).is_none() && felt(109).is_none() && felt(60).is_some());
 }
 
-/// Against a rigid wall (an enormous `Z`, nothing incoming), a mass on a
-/// `K c^p` spring bounces elastically, and its contact has a closed form:
+/// Rigid wall (enormous `Z`): contact is
 /// `2 (c_max / v) √π Γ(1 + 1/n) / Γ(½ + 1/n)`, `n = p + 1`,
 /// `c_max = ((p + 1) M v² / 2K)^(1/n)` (energy: `½ M v² = K c_max^n / n`).
 #[test]
@@ -97,9 +96,6 @@ fn a_rigid_wall_bounce_is_elastic_and_hertzian() {
 const HERTZ_TOL: f64 = 0.01;
 const ELASTIC_TOL: f64 = 1e-6;
 
-/// The smoothed hammers in the model they were fitted on: each key's mf
-/// contact near its target, and the spread from pp to ff near the
-/// measured one.
 #[test]
 fn the_smoothed_hammers_meet_the_fit_targets() {
     for key in (21..=108_u8).step_by(9) {
@@ -137,12 +133,9 @@ fn the_smoothed_hammers_meet_the_fit_targets() {
 const FIT_TOL: f64 = 0.35;
 const FIT_SPREAD_TOL: f64 = 0.5;
 
-/// A linear felt (`p = 1`) on a string whose reflection is still far off
-/// is a damped oscillator, `c'' + (K/2Z) c' + (K/m) c = 0`, in contact
-/// for half its damped period, `π / √(K/m − (K/4Z)²)`: 1.6223 ms here.
-/// The blow converges on it at second order (the midpoint rule). Without
-/// interpolating the separation, every contact ran to the next whole
-/// sample (1.625 ms at every rate).
+/// A linear felt (`p = 1`) is in contact for half its damped period,
+/// `π / √(K/m − (K/4Z)²)`: 1.6223 ms here. Second-order convergence; without
+/// interpolated separation every contact was 1.625 ms at every rate.
 #[test]
 fn a_linear_blow_lasts_half_a_damped_period() {
     let felt = Felt {
@@ -163,8 +156,7 @@ fn a_linear_blow_lasts_half_a_damped_period() {
     assert!((order - 2.0).abs() < 0.2, "converges at order {order}");
 }
 
-/// Returning 1.0, or √(pp + ff), would pass every other test, and mf is
-/// the speed of every plain piano note on.
+/// Every plain piano note on plays at mf, and no other test pins it.
 #[test]
 fn mezzo_forte_is_the_geometric_mean_of_pp_and_ff() {
     assert_eq!(
@@ -173,11 +165,6 @@ fn mezzo_forte_is_the_geometric_mean_of_pp_and_ff() {
     );
     assert!((mezzo_forte() - 1.581).abs() < 1e-3);
 }
-
-// The mean force's two branches (the potential's difference quotient, and
-// the spring at the midpoint when the ends are too close for the quotient)
-// are tested directly: through whole blows, Newton's iteration hides a
-// wrong slope.
 
 const FELT: Felt = Felt {
     mass: 0.01,

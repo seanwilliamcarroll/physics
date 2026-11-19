@@ -9,20 +9,15 @@ use acoustic::{Decay, Scalar, Voicing, Waveguide};
 use math::convert::f64_to_usize;
 
 const SAMPLE_RATE: f64 = 48_000.0;
-/// 220 Hz: a 218-sample loop, 109 cells a rail.
 const FUNDAMENTAL_HZ: f64 = 220.0;
-/// A long decay, so the first harmonics are measured before they fade.
 const VOICING: Voicing = Voicing {
     tuned: true,
     decay: Decay::T60(10.0),
     inharmonicity: 0.0,
 };
-/// Skip the first periods, then measure over this long (many periods of
-/// every harmonic measured).
 const SKIP_SECONDS: f64 = 0.02;
 const WINDOW_SECONDS: f64 = 0.1;
 
-/// A triangle peaked at `beta` (from the bridge), unit height.
 fn triangle(beta: f64) -> impl Fn(f64) -> f64 {
     move |position| {
         if position < beta {
@@ -33,8 +28,6 @@ fn triangle(beta: f64) -> impl Fn(f64) -> f64 {
     }
 }
 
-/// The amplitudes of harmonics 1..=`count`, plucked at `beta` and heard
-/// at `pickup`.
 fn harmonics<S: Scalar>(beta: f64, pickup: f64, count: u32) -> Vec<f64> {
     let mut waveguide = Waveguide::<S>::new(SAMPLE_RATE, FUNDAMENTAL_HZ, VOICING).unwrap();
     let shape = triangle(beta);
@@ -55,10 +48,6 @@ fn harmonics<S: Scalar>(beta: f64, pickup: f64, count: u32) -> Vec<f64> {
     (1..=count)
         .map(|number| {
             let guess_hz = FUNDAMENTAL_HZ * f64::from(number);
-            // The partial's own frequency (the bridge filters stretch it a
-            // hair), then its amplitude there. Its window spans 8 periods
-            // of the *fundamental*, so neighbors 220 Hz away fall outside
-            // the Hann main lobe.
             let partial_hz = partial(&signal, SAMPLE_RATE, guess_hz, 8.0 * f64::from(number))
                 .unwrap_or(guess_hz);
             amplitude(&signal, SAMPLE_RATE, partial_hz)
@@ -144,8 +133,6 @@ fn harmonics_follow_the_prediction_f32() {
     harmonics_follow_the_prediction::<f32>();
 }
 
-/// Half a second of three waveguide notes (plucked at 0.2, heard at 0.1),
-/// as bits, compared whole.
 fn waveguide_bits<S: Scalar>() -> Vec<u64> {
     let mut all = Vec::new();
     for fundamental_hz in [110.0, 261.63, 659.26] {
