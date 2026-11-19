@@ -3,8 +3,7 @@
 
 use crate::{Scalar, Vec2};
 
-/// A circle that pots any ball whose centre enters it. A sensor: it
-/// pushes nothing, it only reports.
+/// A sensor circle that pots any ball whose centre enters it.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Pocket<S> {
     center: Vec2<S>,
@@ -27,7 +26,6 @@ impl<S: Scalar> Pocket<S> {
         self.radius
     }
 
-    /// Whether a ball centred at `x` is in.
     #[must_use]
     pub fn holds(self, x: Vec2<S>) -> bool {
         (x - self.center).length_sq() < self.radius * self.radius

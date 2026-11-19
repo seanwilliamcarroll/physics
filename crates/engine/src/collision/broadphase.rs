@@ -4,25 +4,20 @@
 use crate::sort_key::{SortKey, index_key, sort};
 use crate::{Scalar, Vec2};
 
-/// A circle's cell and index, sorted by cell: the engine's one sort key
-/// (`sort_key.rs`).
 type Key = SortKey;
 
-/// Neighbor offsets checked from each cell besides itself: four of the
-/// eight, so each neighboring pair of cells is visited once (the other
-/// four are visited from the other side).
+/// Four of the eight neighbor offsets: each pair of cells is visited once.
 const HALF_NEIGHBORS: [(i64, i64); 4] = [(1, 0), (-1, 1), (0, 1), (1, 1)];
 
 /// Writes into `out` (cleared first) every pair `(a, b)`, `a < b`, of
 /// circles (radius > 0) in the same or neighboring grid cells of size
 /// `cell_size` m, sorted. With `cell_size` at least the largest diameter
-/// (plus any margin), that's a superset of the pairs that overlap
-/// (`tests/broadphase_properties.rs`). Points (radius 0) never pair. A
-/// `cell_size` that isn't positive and finite gives no pairs.
+/// (plus any margin), that's a superset of the pairs that overlap. Points
+/// (radius 0) never pair; a `cell_size` that isn't positive and finite
+/// gives no pairs.
 ///
-/// A *sorted cell list* rather than a dense array: memory is proportional
-/// to the circles, not to the area they span, so one runaway particle
-/// can't make the grid huge, and the sort makes the output deterministic.
+/// A sorted cell list, not a dense array: memory follows the circles, not
+/// the area they span, so one runaway particle can't make the grid huge.
 pub fn candidate_pairs<S: Scalar>(
     positions: &[Vec2<S>],
     radii: &[S],
@@ -31,7 +26,6 @@ pub fn candidate_pairs<S: Scalar>(
 ) {
     out.clear();
     let cell_size = cell_size.to_f64();
-    // `cell_size > 0` is false for NaN too.
     let usable = cell_size > 0.0 && cell_size.is_finite();
     if !usable {
         return;
@@ -101,9 +95,8 @@ pub fn candidate_pairs<S: Scalar>(
     sort_pairs(out);
 }
 
-/// Sorts `pairs` by `(a, b)` through the shared key (`(a, b, b)`: the
-/// third field only carries `b` back), so no `(usize, usize)` sort is
-/// compiled.
+/// Sorts `pairs` through the shared key `(a, b, b)`, so no `(usize, usize)`
+/// sort is compiled.
 fn sort_pairs(pairs: &mut Vec<(usize, usize)>) {
     let mut keys: Vec<SortKey> = pairs
         .iter()
@@ -118,10 +111,8 @@ fn sort_pairs(pairs: &mut Vec<(usize, usize)>) {
     }));
 }
 
-/// The cell index of coordinate `coordinate` (m): `⌊coordinate / cell_size⌋`.
-/// Saturates at the `i64` range, and NaN goes to 0: a runaway or broken
-/// particle lands in some cell rather than panicking (its pairs are then
-/// the narrowphase's problem, which rejects NaN).
+/// `⌊coordinate / cell_size⌋`, saturating at the `i64` range, NaN to 0: a
+/// runaway particle lands in some cell rather than panicking.
 #[expect(
     clippy::cast_possible_truncation,
     reason = "saturating float-to-int: out-of-range coordinates share an edge cell, by design"
@@ -130,29 +121,21 @@ fn cell_of(coordinate: f64, cell_size: f64) -> i64 {
     (coordinate / cell_size).floor() as i64
 }
 
-/// An occupied cell `(cell_x, cell_y)` and where its run starts in the
-/// sorted keys (it ends where the next begins).
+/// An occupied cell and where its run starts in the sorted keys.
 type Run = (i64, i64, usize);
 
-/// The keys of run `run_index`, which starts at `start`.
 fn run_at<'a>(keys: &'a [Key], runs: &[Run], run_index: usize, start: usize) -> &'a [Key] {
     let end = runs.get(run_index + 1).map_or(keys.len(), |next| next.2);
     keys.get(start..end).unwrap_or_default()
 }
 
-/// The keys in cell `neighbor`: a contiguous run of the sorted `keys`,
-/// found through `runs` (the occupied cells in order); empty if the cell
-/// is.
+/// The keys in cell `neighbor`, found through `runs`; empty if the cell is.
 ///
-/// `cursor` is where the last search for this neighbor offset ended: the
-/// first run at or after its cell. Visiting cells in order, the next
-/// search's cell is later still, so the cursor walks forward to it. The
-/// one exception is at the edge of the `i64` range, where the offset
-/// saturates and a later cell's neighbor can be an earlier cell (after
-/// column `MAX − 1`, which no `f64` coordinate lands in: cells that far
-/// out are 1024 apart; handled all the same): seen as a run before the
-/// cursor that isn't before `neighbor`, and answered by binary search,
-/// leaving the cursor alone.
+/// `cursor` is where the last search for this neighbor offset ended; cells
+/// are visited in order, so it only walks forward. At the edge of the
+/// `i64` range the offset saturates and the neighbor can be an earlier
+/// cell: seen as a run before the cursor that isn't before `neighbor`, and
+/// answered by binary search, leaving the cursor alone.
 fn cell_run<'a>(
     keys: &'a [Key],
     runs: &[Run],

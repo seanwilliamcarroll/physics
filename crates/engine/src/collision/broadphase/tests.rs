@@ -10,7 +10,6 @@ fn pairs(positions: &[(f64, f64)], radii: &[f64], cell_size: f64) -> Vec<(usize,
 
 #[test]
 fn neighbors_pair_and_far_circles_dont() {
-    // 0 and 1 overlap across a cell boundary; 2 is far away.
     let got = pairs(&[(0.09, 0.0), (0.11, 0.0), (5.0, 5.0)], &[0.05; 3], 0.1);
     assert_eq!(got, vec![(0, 1)], "and `out` is cleared first");
 }
@@ -27,7 +26,6 @@ fn points_never_pair() {
 
 #[test]
 fn diagonal_and_negative_cells_are_neighbors() {
-    // Across the origin: cells (-1, -1) and (0, 0), and (-1, 0) and (0, -1).
     let got = pairs(
         &[(-0.01, -0.01), (0.01, 0.01), (-0.01, 0.01), (0.01, -0.01)],
         &[0.05; 4],
@@ -41,8 +39,6 @@ fn no_cell_size_means_no_pairs() {
     assert_eq!(pairs(&[(0.0, 0.0), (0.0, 0.0)], &[0.1, 0.1], 0.0), vec![]);
 }
 
-/// The reference the cursors are checked against: each neighbor cell found
-/// by two binary searches over all the keys.
 fn by_binary_search(
     positions: &[(f64, f64)],
     radii: &[f64],
@@ -87,7 +83,6 @@ fn by_binary_search(
 
 #[test]
 fn the_cursors_find_what_binary_search_did() {
-    // A fixed stream (an LCG): clusters, gaps, and negative cells.
     let mut state = 0x2545_f491_4f6c_dd1d_u64;
     let mut next = || {
         state = state
@@ -99,7 +94,6 @@ fn the_cursors_find_what_binary_search_did() {
         let positions: Vec<(f64, f64)> = (0..count)
             .map(|_| ((next() - 0.5) * span, (next() - 0.5) * span))
             .collect();
-        // One in eight a point: never pairs.
         let radii: Vec<f64> = (0..count)
             .map(|index| if index % 8 == 3 { 0.0 } else { 0.1 })
             .collect();
@@ -118,9 +112,6 @@ fn the_cursors_find_what_binary_search_did() {
     }
 }
 
-/// The definition, by brute force: every pair `a < b` of circles
-/// (radius > 0) whose cells are equal or adjacent, once each, sorted.
-/// Unlike a grid walk, nothing here can saturate.
 fn by_definition(positions: &[(f64, f64)], radii: &[f64], cell_size: f64) -> Vec<(usize, usize)> {
     let cells: Vec<(i128, i128)> = positions
         .iter()
@@ -184,7 +175,6 @@ fn a_neighbor_behind_the_cursor_is_still_found() {
         [(max, 0, 11), (max, 0, 12)]
     );
     assert_eq!(cursor, 2, "left alone");
-    // Forward again, past the end, and an empty cell between runs.
     assert_eq!(
         cell_run(&keys, &runs, &mut cursor, (max, 5)),
         [(max, 5, 13)]
@@ -200,14 +190,11 @@ fn a_neighbor_behind_the_cursor_is_still_found() {
 /// with itself.
 #[test]
 fn saturated_cells_pair_each_circle_once_and_never_with_itself() {
-    // Columns past 2^63: both saturate to `i64::MAX`.
     let far = 1e300;
     assert_eq!(
         pairs(&[(far, 0.0), (far, 0.25)], &[0.1, 0.1], 1.0),
         [(0, 1)]
     );
-    // One row apart, both in the last column: one pair, not two.
     assert_eq!(pairs(&[(far, 0.5), (far, 1.5)], &[0.1, 0.1], 1.0), [(0, 1)]);
-    // Alone at the edge: nothing.
     assert_eq!(pairs(&[(far, far)], &[0.1], 1.0), []);
 }

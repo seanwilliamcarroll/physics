@@ -3,11 +3,9 @@
 
 use crate::{Restitution, Scalar, UnitVec2, Vec2, Wall};
 
-/// A static segment from `start` to `end` (`docs/09-billiards.md`,
-/// "Cushions"). Circles collide with its closest point: along the segment,
-/// its side; past either end, the endpoint, so ends act as rounded corners
-/// (pocket jaws). Two-sided, and it carries its own restitution, so a
-/// cushion can be livelier or deader than the balls (`e_c` against `e_b`).
+/// A static two-sided segment (`docs/09-billiards.md`, "Cushions"). Circles
+/// collide with its closest point, so its ends are rounded corners. It
+/// carries its own restitution.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Segment<S> {
     start: Vec2<S>,
@@ -34,7 +32,6 @@ impl<S: Scalar> Segment<S> {
         self.restitution
     }
 
-    /// The point of the segment closest to `x`.
     pub fn closest(self, x: Vec2<S>) -> Vec2<S> {
         let along = self.end - self.start;
         let length_sq = along.dot(along);
@@ -52,11 +49,10 @@ impl<S: Scalar> Segment<S> {
         self.start + along * fraction
     }
 
-    /// The distance from the segment to `x`, m, and the unit direction
-    /// from `x` toward the segment (a contact's normal, circle to
-    /// segment). A centre exactly on the segment has no direction; it
-    /// gets the segment's left-hand normal (or `+x` for a point segment),
-    /// so it's pushed out deterministically, as coincident circles are.
+    /// The distance from the segment to `x`, m, and the unit direction from
+    /// `x` toward it. A centre exactly on the segment gets the segment's
+    /// left-hand normal (`+x` for a point), so it's pushed out
+    /// deterministically.
     pub fn toward(self, x: Vec2<S>) -> (S, UnitVec2<S>) {
         let closest = self.closest(x);
         (closest - x).length_and_direction().unwrap_or_else(|| {
@@ -69,8 +65,7 @@ impl<S: Scalar> Segment<S> {
     }
 }
 
-/// Everything static that circles collide with: half-plane walls and
-/// segments. Borrowed from the world for a substep.
+/// Everything static that circles collide with, borrowed for a substep.
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Statics<'a, S> {
     pub walls: &'a [Wall<S>],
@@ -78,7 +73,6 @@ pub(crate) struct Statics<'a, S> {
 }
 
 impl<S: 'static> Statics<'static, S> {
-    /// Nothing static.
     pub(crate) const NONE: Self = Statics {
         walls: &[],
         segments: &[],

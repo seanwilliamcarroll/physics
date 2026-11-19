@@ -12,9 +12,6 @@ fn contact(first: usize, second: Body) -> Contact<f64> {
     }
 }
 
-/// A contact's key must differ for every pair of bodies, or the warm start
-/// hands one contact another's impulse. Particles, walls and segments, by
-/// the same index.
 #[test]
 fn every_pair_of_bodies_has_its_own_key() {
     let mut keys = Vec::new();
@@ -43,9 +40,6 @@ fn clearing_forgets_the_contacts() {
     assert_eq!(contacts.list.len(), 0);
 }
 
-/// A contact's resting speed, below which it doesn't bounce, is
-/// `2 |a_rel| h` (the speed its relative acceleration gives over two
-/// substeps).
 #[test]
 fn a_contact_s_resting_speed_is_twice_its_acceleration_over_a_substep() {
     let floor = Wall::through(Vec2::ZERO, UnitVec2::Y);

@@ -1,8 +1,5 @@
-//! Narrowphase properties (`docs/numerical-testing-checklist.md` §2.5,
-//! circle–circle and circle–wall): a contact doesn't depend on which body
-//! is called `a`, or on where the pair sits, and every contact reported
-//! has a unit normal and a finite gap. A unit test, so the narrowphase
-//! can stay private to the crate (`docs/api-audit.md`).
+//! Narrowphase properties (`docs/numerical-testing-checklist.md` §2.5): symmetry,
+//! translation invariance, well-formed contacts.
 
 use proptest::prelude::*;
 use test_support::proptest_config;
@@ -12,7 +9,6 @@ use crate::collision::Statics;
 use crate::params::kg;
 use crate::{Particles, Radius, Vec2, Wall};
 
-/// One substep, s (the speculative margin's horizon).
 const SUBSTEP: f64 = 0.01;
 /// Translation leaves gaps and normals equal up to the rounding of moving
 /// positions by up to 1e3 m: a position there rounds by ~2e-13 m, so
@@ -53,7 +49,6 @@ fn contacts(particles: &Particles<f64>, walls: &[Wall<f64>]) -> Vec<Contact<f64>
     out
 }
 
-/// Every contact: a unit normal, a finite gap.
 fn well_formed(found: &[Contact<f64>]) -> Result<(), TestCaseError> {
     for contact in found {
         let normal = contact.normal.get();
@@ -87,7 +82,6 @@ proptest! {
         let here = contacts(&particles_from(&[a, b], (0.0, 0.0)), &[]);
         let there = contacts(&particles_from(&[a, b], offset), &[]);
         well_formed(&there)?;
-        // A pair right at the speculative threshold may round either way.
         if here.len() == there.len() {
             for (x, y) in here.iter().zip(&there) {
                 prop_assert!((x.gap - y.gap).abs() < MOVE_TOL, "gap {} vs {}", x.gap, y.gap);
@@ -98,7 +92,6 @@ proptest! {
 
     #[test]
     fn wall_contacts_are_well_formed(circles in prop::collection::vec(circle(), 0..8), angle in 0.0..std::f64::consts::TAU) {
-        // A wall through the origin, any orientation.
         let normal = Vec2::new(angle.cos(), angle.sin()).normalized().unwrap();
         let wall = Wall::through(Vec2::ZERO, normal);
         let found = contacts(&particles_from(&circles, (0.0, 0.0)), &[wall]);

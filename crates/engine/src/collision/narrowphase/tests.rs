@@ -6,7 +6,6 @@ use crate::{ParticleId, Particles, Radius, Restitution, UnitVec2, Vec2, Wall};
 const DT: f64 = 0.01;
 const RADIUS: f64 = 0.1;
 
-/// A circle's ((x, y), (vx, vy)).
 type Spec = ((f64, f64), (f64, f64));
 
 fn circles(specs: &[Spec]) -> Particles<f64> {
@@ -65,7 +64,6 @@ fn a_gap_counts_only_if_it_can_close_this_substep() {
 
 #[test]
 fn walls_push_along_their_normal() {
-    // A floor at y = 0; the ball overlaps it by 2 cm.
     let floor = Wall::through(Vec2::ZERO, UnitVec2::Y);
     let particles = circles(&[((3.0, 0.08), (0.0, 0.0))]);
     let found = contacts(&particles, &[floor]);
@@ -77,7 +75,6 @@ fn walls_push_along_their_normal() {
         "from the ball into the wall"
     );
     assert!((found[0].gap + 0.02).abs() < 1e-15);
-    // Well above and still: no contact.
     let high = circles(&[((3.0, 1.0), (0.0, 0.0))]);
     assert_eq!(contacts(&high, &[floor]).len(), 0);
 }
@@ -93,7 +90,6 @@ fn coincident_centers_separate_along_x() {
 #[test]
 fn immovable_pairs_and_points_make_no_contacts() {
     let mut particles = Particles::<f64>::new();
-    // Two static points and a point overlapping a circle: none collide.
     particles.add_static(Vec2::ZERO);
     particles.add_static(Vec2::ZERO);
     particles.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
@@ -108,8 +104,6 @@ fn immovable_pairs_and_points_make_no_contacts() {
 
 #[test]
 fn contacts_come_in_a_deterministic_order() {
-    // Three overlapping in a row and a floor under all: pairs first
-    // (sorted), then wall contacts by particle.
     let floor = Wall::through(Vec2::ZERO, UnitVec2::Y);
     let particles = circles(&[
         ((0.0, 0.05), (0.0, 0.0)),
@@ -134,17 +128,12 @@ fn contacts_come_in_a_deterministic_order() {
 
 #[test]
 fn resting_neighbors_within_the_margin_are_contacts() {
-    // Half a millimeter apart, not moving: inside CONTACT_MARGIN (1 mm).
     let near = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.2005, 0.0), (0.0, 0.0))]);
     assert_eq!(contacts(&near, &[]).len(), 1);
-    // Two millimeters: not.
     let far = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.202, 0.0), (0.0, 0.0))]);
     assert_eq!(contacts(&far, &[]).len(), 0);
 }
 
-/// `broadphase_cell` is public (the billiards page draws it) and a larger
-/// cell only costs time, so the superset tests would let any bigger
-/// formula through: pin it.
 #[test]
 fn the_cell_is_both_diameters_plus_the_fastest_travel_plus_the_margin() {
     let mut particles = Particles::<f64>::new();
@@ -160,7 +149,6 @@ fn the_cell_is_both_diameters_plus_the_fastest_travel_plus_the_margin() {
         kg(1.0),
         Radius::new(0.05).unwrap(),
     );
-    // A point's speed doesn't count: points never pair.
     particles.add(Vec2::ZERO, Vec2::new(100.0, 0.0), kg(1.0));
     let want = 2.0 * 0.1 + 2.0 * 4.0 * DT + CONTACT_MARGIN;
     assert!(
@@ -172,10 +160,8 @@ fn the_cell_is_both_diameters_plus_the_fastest_travel_plus_the_margin() {
 
 #[test]
 fn points_and_pins_make_no_wall_contacts() {
-    // Only circles that can move touch walls.
     let floor = Wall::through(Vec2::ZERO, UnitVec2::Y);
     let mut particles = Particles::<f64>::new();
-    // A moving point and a pin, both on the floor and heading into it.
     particles.add(Vec2::new(0.0, 0.0), Vec2::new(0.0, -1.0), kg(1.0));
     particles.add_static(Vec2::new(1.0, 0.0));
     assert_eq!(contacts(&particles, &[floor]).len(), 0);
@@ -183,7 +169,6 @@ fn points_and_pins_make_no_wall_contacts() {
 
 #[test]
 fn a_segment_contact_points_from_the_circle_to_the_segment() {
-    // A floor segment; the ball 2 cm into it, then one off its end.
     let segments = [Segment::new(
         Vec2::new(-1.0, 0.0),
         Vec2::new(1.0, 0.0),
@@ -214,8 +199,6 @@ fn a_glancing_pair_that_touches_mid_substep_is_a_contact() {
     assert_eq!(contacts(&far, &[]).len(), 0);
 }
 
-/// A pair with one pinned end (inverse mass 0) still touches; only two
-/// pinned ends don't. Either end pinned.
 #[test]
 fn a_circle_touches_a_pinned_circle() {
     for pinned in [0, 1] {

@@ -15,21 +15,16 @@ use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2};
 /// close. `Box2D` keeps a margin for the same reason.
 pub(crate) const CONTACT_MARGIN: f64 = 1e-3;
 
-/// What a contact's second body is.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum Body {
     Particle(ParticleId),
-    /// Index into the world's walls.
     Wall(usize),
-    /// Index into the world's segments.
     Segment(usize),
 }
 
-/// A contact for one substep: body `a` (a circle) touching, or about to
-/// touch, `b`. Signs follow `docs/08-collision.md`: `normal` points from
-/// `a` toward `b` (into the wall, for a wall), `gap` is
-/// `C = |x_b − x_a| − (r_a + r_b)` (negative when overlapping), and the
-/// normal velocity `n · (v_b − v_a)` is positive when separating.
+/// A contact for one substep: circle `a` touching, or about to touch, `b`.
+/// `normal` points from `a` toward `b`; `gap` is `|x_b − x_a| − (r_a + r_b)`,
+/// negative when overlapping (`docs/08-collision.md`).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) struct Contact<S> {
     pub a: ParticleId,
@@ -38,11 +33,9 @@ pub(crate) struct Contact<S> {
     pub gap: S,
 }
 
-/// The broadphase cell size, m, the narrowphase uses for a substep of
-/// `dt` s: any pair that can be a contact this substep is within both
-/// radii, plus what both can travel (at the fastest circle's speed), plus
-/// the contact margin (1 mm). Public so a page can draw the grid the
-/// engine uses.
+/// The broadphase cell size, m, for a substep of `dt` s: both diameters,
+/// plus what both can travel at the fastest speed, plus the contact
+/// margin. Public so a page can draw the grid.
 pub fn broadphase_cell<S: Scalar>(particles: &Particles<S>, dt: S) -> S {
     let two = S::ONE + S::ONE;
     let max_speed = particles
@@ -61,9 +54,8 @@ pub fn broadphase_cell<S: Scalar>(particles: &Particles<S>, dt: S) -> S {
 /// by particle, walls before segments. `pairs` is the broadphase's scratch.
 ///
 /// A contact is kept when its gap is at most what the pair can close in
-/// `dt` at their current approach speed (the speculative margin), plus
-/// [`CONTACT_MARGIN`]: touching or overlapping always counts. Pairs that
-/// can't move (both static) and points (radius 0) make none.
+/// `dt` (the speculative margin) plus [`CONTACT_MARGIN`]. Static pairs and
+/// points make none.
 pub(crate) fn find_contacts<S: Scalar>(
     particles: &Particles<S>,
     statics: Statics<'_, S>,
@@ -126,8 +118,6 @@ pub(crate) fn find_contacts<S: Scalar>(
     }
 }
 
-/// The contact between circles `first < second`, if they touch or can this
-/// substep.
 fn pair_contact<S: Scalar>(
     particles: &Particles<S>,
     first: usize,
@@ -173,8 +163,7 @@ fn pair_contact<S: Scalar>(
     })
 }
 
-/// Whether a `gap` closing at `normal_velocity` (negative = approaching)
-/// is a contact: `gap ≤ max(0, −normal_velocity) dt + margin`.
+/// `gap ≤ max(0, −normal_velocity) dt + margin`; negative velocity approaches.
 fn speculative<S: Scalar>(gap: S, normal_velocity: S, dt: S, margin: S) -> bool {
     gap <= max(S::ZERO, -normal_velocity) * dt + margin
 }
@@ -184,17 +173,14 @@ fn max<S: Scalar>(first: S, second: S) -> S {
 }
 
 /// When `|offset + velocity t| = reach` first, for `t` in `[0, dt]`: the
-/// unit `offset + velocity t` and the gap `(n · −velocity) t`. `None` if
-/// they don't touch this substep. `offset` and `velocity` are the second
-/// body's relative to the first's.
+/// unit `offset + velocity t` and the gap `(n · −velocity) t`; `None` if
+/// they don't touch this substep.
 pub(crate) fn pair_impact<S: Scalar>(
     offset: Vec2<S>,
     velocity: Vec2<S>,
     reach: S,
     dt: S,
 ) -> Option<(UnitVec2<S>, S)> {
-    // The smaller root of `a t² + b t + c = 0`, `|offset + velocity t|² =
-    // reach²`.
     let two = S::ONE + S::ONE;
     let quadratic_a = velocity.dot(velocity);
     let quadratic_b = two * offset.dot(velocity);
@@ -211,10 +197,8 @@ pub(crate) fn pair_impact<S: Scalar>(
     Some((normal, -normal.dot(velocity) * time))
 }
 
-/// Conservative advancement of a circle at `position`, `velocity` and
-/// `radius` toward a segment: step to where the gap along the current
-/// normal would close, re-measure, a few times. `None` if it doesn't touch
-/// within `dt`.
+/// Conservative advancement of a circle toward a segment: step to where the
+/// gap along the current normal would close, re-measure, a few times.
 pub(crate) fn segment_impact<S: Scalar>(
     segment: Segment<S>,
     position: Vec2<S>,

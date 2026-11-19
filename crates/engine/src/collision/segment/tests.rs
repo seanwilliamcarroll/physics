@@ -21,7 +21,6 @@ fn the_closest_point_is_on_the_side_or_an_end() {
 fn toward_points_from_the_circle_to_the_segment() {
     let (distance, normal) = seg().toward(Vec2::new(1.0, 0.5));
     assert_eq!((distance, normal.get()), (0.5, Vec2::new(0.0, -1.0)));
-    // Past an end: toward the endpoint, diagonally.
     let (distance, normal) = seg().toward(Vec2::new(3.0, 1.0));
     assert!((distance - 2.0_f64.sqrt()).abs() < 1e-15);
     assert!((normal.get() - Vec2::new(-1.0, -1.0) / 2.0_f64.sqrt()).length() < 1e-15);

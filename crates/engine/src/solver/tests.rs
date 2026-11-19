@@ -27,7 +27,6 @@ fn sweep_visits_each_constraint_once_in_order() {
     assert_eq!((seen.as_str(), lambdas), ("cba", [1, 1, 1]));
 }
 
-/// A pin and two bobs on rods, released horizontal: the smallest chain.
 fn two_link_chain(solver: Solver, order: Order) -> World<f64> {
     let mut world = World::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
     world.add_force(pendulum_gravity());
@@ -62,7 +61,6 @@ fn order_changes_a_chain_but_not_a_single_rod() {
             forward, reverse,
             "{solver:?}: order is part of Gauss-Seidel"
         );
-        // One constraint: nothing to reorder.
         let mut one = pendulum::<f64>(solver, NonZeroU32::MIN).unwrap();
         let mut other = pendulum::<f64>(solver, NonZeroU32::MIN).unwrap();
         other.set_order(Order::Reverse);
@@ -74,9 +72,6 @@ fn order_changes_a_chain_but_not_a_single_rod() {
     }
 }
 
-/// One step of a bob on a soft rod (stretched 0.2 m, α = 1e-3, damping
-/// `damping`) under `solver` with `iterations` passes; the bob's position and
-/// velocity.
 fn soft_rod(solver: Solver, damping: f64, iterations: u32) -> (Vec2<f64>, Vec2<f64>) {
     use crate::{Compliance, Damping};
     let mut world = World::new(Integrator::SymplecticEuler, NonZeroU32::MIN);

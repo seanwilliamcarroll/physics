@@ -31,11 +31,9 @@ fn between_rejects_one_body_twice_or_an_unknown_body() {
 fn evaluate_gives_stretch_and_the_direction_from_a_to_b() {
     let (p, a, b) = two_bodies();
     let c = DistanceConstraint::between(&p, a, b).unwrap();
-    // Stretched to 10 along the same 3-4-5 direction.
     let (value, grad) = c.evaluate(Vec2::new(1.0, 1.0), Vec2::new(7.0, 9.0));
     assert_eq!(value, 5.0);
     assert_eq!(grad.map(UnitVec2::get), Some(Vec2::new(0.6, 0.8)));
-    // Compressed: negative C, same direction.
     let (value, _) = c.evaluate(Vec2::new(1.0, 1.0), Vec2::new(2.5, 3.0));
     assert_eq!(value, -2.5);
 }
@@ -55,7 +53,6 @@ fn with_length_takes_an_explicit_length_and_compliance() {
     let soft = Compliance::new(0.01).unwrap();
     let c = DistanceConstraint::with_length(&p, a, b, 0.0, soft).unwrap();
     assert_eq!((c.length(), c.compliance()), (0.0, 0.01));
-    // Rest length 0, bodies 5 m apart: stretched by the full distance.
     assert_eq!(
         c.evaluate(*p.pos().first().unwrap(), *p.pos().last().unwrap())
             .0,

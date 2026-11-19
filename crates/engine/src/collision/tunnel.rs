@@ -1,13 +1,11 @@
-//! Counting tunnels: what passed through what in one substep
-//! (`docs/09-billiards.md`, "Tunneling"). A diagnostic: it changes
-//! nothing, it only reports.
+//! Counting tunnels (`docs/09-billiards.md`, "Tunneling"): a diagnostic
+//! that only reports.
 
 use super::{CONTACT_MARGIN, Statics, candidate_pairs};
 use crate::{Particles, Scalar, Vec2};
 
 /// How many things passed through each other between `before` and the
-/// positions now in `particles` (one substep, straight lines between the
-/// two):
+/// positions now in `particles` (one substep, straight lines):
 ///
 /// - two circles, whose centres came within **half** their reach
 ///   (`r_a + r_b`) between the ends without starting or ending that close:
@@ -15,8 +13,6 @@ use crate::{Particles, Scalar, Vec2};
 ///   the straight chord slightly inside, and mustn't count);
 /// - a circle and a segment, whose centre's path crossed it;
 /// - a circle and a wall, whose centre ended behind it.
-///
-/// `pairs` is the broadphase's scratch.
 pub(crate) fn count_tunnels<S: Scalar>(
     before: &[Vec2<S>],
     particles: &Particles<S>,
@@ -86,8 +82,8 @@ pub(crate) fn count_tunnels<S: Scalar>(
     count
 }
 
-/// Whether the relative path from `start` to `end` came within `depth` of
-/// the origin strictly between its ends, with both ends further out.
+/// Whether the path `start` to `end` came within `depth` of the origin
+/// strictly between its ends, with both ends further out.
 fn passed_through<S: Scalar>(start: Vec2<S>, end: Vec2<S>, depth: S) -> bool {
     let depth_sq = depth * depth;
     if start.length_sq() <= depth_sq || end.length_sq() <= depth_sq {
@@ -102,9 +98,8 @@ fn passed_through<S: Scalar>(start: Vec2<S>, end: Vec2<S>, depth: S) -> bool {
     fraction > S::ZERO && fraction < S::ONE && (start + step * fraction).length_sq() < depth_sq
 }
 
-/// Whether segment `first_start first_end` properly crosses segment
-/// `second_start second_end` (each one's ends strictly on opposite sides
-/// of the other's line).
+/// Whether the segments properly cross: each one's ends strictly on
+/// opposite sides of the other's line.
 fn crosses<S: Scalar>(
     first_start: Vec2<S>,
     first_end: Vec2<S>,

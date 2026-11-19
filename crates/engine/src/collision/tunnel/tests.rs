@@ -4,14 +4,10 @@ use crate::Vec2;
 #[test]
 fn passing_through_needs_a_deep_pass_between_the_ends() {
     let v = Vec2::new;
-    // Head-on through each other: yes.
     assert!(passed_through(v(-1.0, 0.0), v(1.0, 0.0), 0.05));
-    // A pass 0.04 off-centre, inside the half-reach 0.05: yes; 0.06: no.
     assert!(passed_through(v(-1.0, 0.04), v(1.0, 0.04), 0.05));
     assert!(!passed_through(v(-1.0, 0.06), v(1.0, 0.06), 0.05));
-    // Approaching and bouncing back the same side: no.
     assert!(!passed_through(v(-1.0, 0.0), v(-0.5, 0.0), 0.05));
-    // Ending inside isn't passing through (it's an overlap).
     assert!(!passed_through(v(-1.0, 0.0), v(0.0, 0.01), 0.05));
 }
 
@@ -50,8 +46,6 @@ use crate::{Mass, Particles, Radius, Restitution, UnitVec2};
 
 const RADIUS: f64 = 0.05;
 
-/// Circles at `after`, as if they'd moved there from `before` in one
-/// substep; returns the count against `walls` and `segments`.
 fn count(
     before: &[(f64, f64)],
     after: &[(f64, f64)],
@@ -78,9 +72,6 @@ fn count(
 
 #[test]
 fn a_pair_is_found_however_far_apart_it_started() {
-    // A starts 1 m from B (20 radii: far outside a cell of the diameters
-    // alone) and jumps clean through it: the cell grows by how far
-    // anything moved, so the pair is still a candidate.
     assert_eq!(
         count(
             &[(-1.0, 0.0), (0.0, 0.0)],
@@ -90,11 +81,9 @@ fn a_pair_is_found_however_far_apart_it_started() {
         ),
         1
     );
-    // Two such passes, far apart: two.
     let before = [(-1.0, 0.0), (0.0, 0.0), (-1.0, 5.0), (0.0, 5.0)];
     let after = [(1.0, 0.0), (0.0, 0.0), (1.0, 5.0), (0.0, 5.0)];
     assert_eq!(count(&before, &after, &[], &[]), 2);
-    // Stopping short isn't passing through.
     assert_eq!(
         count(
             &[(-1.0, 0.0), (0.0, 0.0)],
@@ -129,7 +118,6 @@ fn a_path_across_a_segment_counts_once() {
         0,
         "past its end"
     );
-    // Both ways round.
     assert_eq!(
         count(&[(0.3, -0.5)], &[(-0.3, 0.5)], &[], &cushion),
         1,
@@ -145,14 +133,12 @@ fn ending_behind_a_wall_by_more_than_the_radius_counts() {
         1,
         "behind it"
     );
-    // Overlapping by less than a radius is a contact, not a tunnel.
     assert_eq!(
         count(&[(0.0, 1.0)], &[(0.0, -0.5 * RADIUS)], &floor, &[]),
         0,
         "overlap"
     );
     assert_eq!(count(&[(0.0, 1.0)], &[(0.0, 0.5)], &floor, &[]), 0, "clear");
-    // Behind two walls: one count each.
     let corner = [floor[0], Wall::through(Vec2::ZERO, UnitVec2::X)];
     assert_eq!(count(&[(1.0, 1.0)], &[(-1.0, -1.0)], &corner, &[]), 2);
 }
@@ -160,7 +146,6 @@ fn ending_behind_a_wall_by_more_than_the_radius_counts() {
 #[test]
 fn statics_and_points_never_tunnel() {
     let floor = [Wall::through(Vec2::ZERO, UnitVec2::Y)];
-    // A static circle behind the wall (inverse mass 0): not counted.
     let mut particles = Particles::new();
     particles.add_circle(
         Vec2::new(0.0, -1.0),
@@ -177,7 +162,6 @@ fn statics_and_points_never_tunnel() {
         count_tunnels(&[Vec2::new(0.0, 1.0)], &particles, statics, &mut Vec::new()),
         0
     );
-    // A point (radius 0) behind it: not counted either.
     let mut particles = Particles::new();
     particles.add(Vec2::new(0.0, -1.0), Vec2::ZERO, Mass::new(1.0).unwrap());
     assert_eq!(
