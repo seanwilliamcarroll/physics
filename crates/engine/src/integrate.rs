@@ -9,13 +9,11 @@ use crate::{Force, Particles, Scalar, Vec2};
 /// rather than spreading across `World`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Integrator {
-    /// `v += a h; x += v h`: velocity first, then position with the *new*
-    /// velocity. First order, but symplectic: energy error stays bounded
-    /// instead of drifting.
+    /// `v += a h; x += v h`: first order, but symplectic: energy error
+    /// stays bounded instead of drifting.
     SymplecticEuler,
-    /// `x += v h; v += a h`: position with the *old* velocity. First order
-    /// and not symplectic: on an orbit, energy grows every step. The
-    /// cautionary tale.
+    /// `x += v h; v += a h`: first order and not symplectic: on an orbit,
+    /// energy grows every step.
     ExplicitEuler,
     /// `x += v h + ½ a h²; a' = a(x, v + a h); v += ½ (a + a') h`. Second
     /// order; for forces of position alone also symplectic and
@@ -38,7 +36,6 @@ pub enum Integrator {
 }
 
 impl Integrator {
-    /// Every integrator, for tests and side-by-side demos.
     pub const ALL: [Self; 3] = [
         Self::SymplecticEuler,
         Self::ExplicitEuler,
@@ -72,7 +69,7 @@ impl Integrator {
                 kick(particles, acc, time_step);
             }
             Self::VelocityVerlet => {
-                // Half the step by dividing by ONE + ONE: exact, and no from_f64.
+                // Divide by ONE + ONE: exact, and no from_f64.
                 let half_step = time_step / (S::ONE + S::ONE);
                 let dynamic = particles
                     .inv_mass
@@ -89,9 +86,8 @@ impl Integrator {
                         *x += vel * time_step + accel * (time_step * half_step);
                     }
                 }
-                // The second evaluation is at the predicted velocity
-                // `v + a h` (see the variant); the start's kept for the
-                // update.
+                // The second evaluation is at the predicted velocity `v + a h`;
+                // the start velocity is kept for the update.
                 vel_start.clear();
                 vel_start.extend_from_slice(&particles.vel);
                 kick(particles, acc, time_step);

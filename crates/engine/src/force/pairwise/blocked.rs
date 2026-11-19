@@ -1,8 +1,6 @@
 //! The blocked loop (`PairLoop::Blocked`): one pass per body i, in blocks
-//! of `L` pairs, body i's lanes updated as it goes. Each step of a
-//! block is one operation on `[S; L]`, so the compiler packs a block
-//! into vector instructions; no scratch arrays, but at most `L` wide.
-//! The same arithmetic in the same order as the two-pass loop.
+//! of `L` pairs; each step is one operation on `[S; L]`, which the compiler
+//! packs into vectors. The same arithmetic as the two-pass loop.
 
 use super::{Bodies, PairwiseGravity, lane_total};
 use crate::{Scalar, Vec2};

@@ -1,8 +1,6 @@
 //! The two-pass loop (`PairLoop::TwoPass`): for each body i, pass 1
-//! computes every later pair's force (body j's share applied, the force
-//! kept in scratch arrays) with nothing summed across pairs, so the
-//! compiler vectorizes it at whatever width the target has; pass 2 sums
-//! the kept forces into `L` lanes.
+//! computes every later pair's force (summing nothing, so it vectorizes at
+//! the target's full width); pass 2 sums the kept forces into `L` lanes.
 
 use super::{Bodies, PairwiseGravity, lane_total};
 use crate::{Scalar, Vec2};

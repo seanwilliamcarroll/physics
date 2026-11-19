@@ -60,7 +60,6 @@ impl<S: Scalar> Spring<S> {
         })
     }
 
-    /// The two particles.
     #[must_use]
     pub const fn ends(&self) -> [ParticleId; 2] {
         self.ends
@@ -73,7 +72,6 @@ impl<S: Scalar> Spring<S> {
         self.rest
     }
 
-    /// The same spring with a different stiffness.
     #[must_use]
     pub const fn with_stiffness(self, stiffness: Stiffness<S>) -> Self {
         Self { stiffness, ..self }
@@ -104,7 +102,6 @@ impl<S: Scalar> SpringForce<S> {
         &self.springs
     }
 
-    /// The same springs, each with a different stiffness.
     #[must_use]
     pub fn with_stiffness(&self, stiffness: Stiffness<S>) -> Self {
         Self::new(
@@ -115,7 +112,6 @@ impl<S: Scalar> SpringForce<S> {
         )
     }
 
-    /// The same springs, each with a different damper.
     #[must_use]
     pub fn with_damping(&self, damping: Damping<S>) -> Self {
         Self::new(

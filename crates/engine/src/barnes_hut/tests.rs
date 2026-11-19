@@ -20,8 +20,6 @@ fn barnes_hut<S: Scalar>(softening_meters: f64, theta: f64) -> BarnesHut<S> {
     )
 }
 
-/// A small irregular cloud: 40 bodies, plus one static particle in the
-/// middle.
 fn cloud<S: Scalar>() -> Particles<S> {
     let mut p = Particles::new();
     let mut rng = SplitMix64::new(7);
@@ -96,7 +94,6 @@ fn distant_cluster_acts_as_its_center_of_mass() {
         (a - expect).length() <= 1e-12 * expect.length(),
         "{a:?} vs {expect:?}"
     );
-    // And it is an approximation: direct summation differs (by ~(s/d)²).
     let direct = accel(&p, &PairwiseGravity::new(G, softening(SOFTENING)))[0];
     assert!((a - direct).length() > 1e-12 * direct.length());
 }
@@ -154,7 +151,6 @@ fn adds_into_acc_rather_than_overwrite() {
     p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0e10));
     let mut acc = vec![Vec2::new(1.0, 2.0)];
     barnes_hut(SOFTENING, 0.5).accumulate(&p, &mut acc);
-    // A lone body feels nothing (no self-force), and acc is kept.
     assert_eq!(acc, [Vec2::new(1.0, 2.0)]);
 }
 

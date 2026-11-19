@@ -16,13 +16,11 @@ fn two_dynamic_one_static() -> Particles<f64> {
 
 #[test]
 fn momentum_sums_m_v_over_dynamic_particles() {
-    // 2*(3,4) + 4*(-1,0.5) = (6,8) + (-4,2) = (2,10)
     assert_eq!(momentum(&two_dynamic_one_static()), Vec2::new(2.0, 10.0));
 }
 
 #[test]
 fn kinetic_energy_sums_half_m_v_squared() {
-    // ½*2*25 + ½*4*1.25 = 25 + 2.5
     assert_eq!(kinetic_energy(&two_dynamic_one_static()), 27.5);
 }
 
@@ -144,7 +142,6 @@ fn constraint_error_is_max_and_rms_of_c() {
         DistanceConstraint::between(&p, a, c).unwrap(),
     ];
     assert_eq!(constraint_error(&p, &rods), Some((0.0, 0.0)));
-    // Stretch the first rod by 3 cm and compress the second by 4 cm.
     p.pos[1] = Vec2::new(1.03, 0.0);
     p.pos[2] = Vec2::new(0.0, 1.96);
     let (max, rms) = constraint_error(&p, &rods).unwrap();
@@ -176,7 +173,6 @@ fn constraint_potential_is_half_c_squared_over_alpha_for_soft_rods_only() {
     assert_eq!(constraint_potential(&p, &[rigid]), 0.0);
     let all = [soft[0], rigid, soft[1]];
     assert!((constraint_potential(&p, &all) - 2.625).abs() < 1e-12);
-    // Bodies not in `p` (a mismatched set): skipped.
     assert_eq!(constraint_potential(&Particles::<f64>::new(), &soft), 0.0);
 }
 
@@ -208,6 +204,5 @@ fn rotational_energy_skips_statics_and_points() {
         Vec2::new(1.0, 0.0),
         Vec2::new(1.0, 0.0),
     ];
-    // 2 kg × 0.25 m² × 25 / 5.
     assert_eq!(rotational_energy(&p, &spin), 2.5);
 }

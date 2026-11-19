@@ -29,11 +29,9 @@ use crate::{Particles, Scalar, Softening, Vec2};
 /// Static particles (`inv_mass = 0`) have no defined mass, so they neither
 /// pull nor are pulled.
 ///
-/// The pair loop is built to vectorize across pairs: body i's sum over the
-/// later bodies is kept in partial sums (lanes; pair j in lane j mod the
-/// lane count) added in a fixed order. Which loop and how many lanes, per
-/// scalar, and below how many bodies a plain loop runs instead, are each
-/// target's own (`tuning.rs`), so targets differ in the last bits.
+/// Body i's sum is kept in partial sums (lanes) added in a fixed order, so
+/// the loop vectorizes; each target picks its own loop and lane count
+/// (`tuning.rs`), so targets differ in the last bits.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PairwiseGravity<S> {
     gravitational_constant: S,
@@ -128,11 +126,8 @@ impl<S: Scalar> Bodies<S> {
 }
 
 /// Body i's lanes added as a tree, halves first: `(l0 + l1) + (l2 + l3)`
-/// for four, the same shape for any power of two. The order is in the
-/// source, so it doesn't depend on whether the target adds in vectors.
-/// Level by level (adjacent pairs, then pairs of pairs), not recursively:
-/// the same order, and a loop of known length the compiler unrolls, where
-/// recursion would be a chain of calls per body.
+/// for four. Level by level, not recursively: the same order, and a loop of
+/// known length the compiler unrolls.
 fn lane_total<S: Scalar, const L: usize>(lanes: &[S; L]) -> S {
     let mut level = *lanes;
     let mut width = L;

@@ -49,8 +49,7 @@ impl<S: Scalar> BarnesHut<S> {
     }
 
     /// The tree approximation of `exact`: same G and softening, opening
-    /// angle `theta`. How a scene switches its force to Barnes–Hut while
-    /// keeping `exact` for energy readouts.
+    /// angle `theta`.
     #[must_use]
     pub fn approximating(exact: &PairwiseGravity<S>, theta: OpeningAngle<S>) -> Self {
         Self {
@@ -76,10 +75,9 @@ impl<S: Scalar> BarnesHut<S> {
     /// from the tree in `nodes` (postorder: see [`Node`]).
     fn accel_on(&self, nodes: &[Node<S>], x: Vec2<S>, key: u64, index: usize) -> Vec2<S> {
         let mut acceleration = Vec2::ZERO;
-        // One past the next node to visit; the root is last. Reading the
-        // postorder array backwards is a preorder walk: "open" moves one
-        // node down, "accept" skips the node's whole subtree. Running off
-        // the front ends the walk.
+        // One past the next node to visit. Reading the postorder array
+        // backwards is a preorder walk: "open" moves one node down, "accept"
+        // skips the whole subtree.
         let mut cursor = nodes.len();
         while let Some(node) = cursor
             .checked_sub(1)
@@ -142,12 +140,9 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
             return; // no dynamic bodies: nothing pulls, nothing is pulled
         };
 
-        // Sort (key, index) pairs, then gather the bodies in that order.
-        // (key, index) is unique, so the order is fully determined by the
-        // input whatever the sort algorithm: unstable is safe, and doesn't
-        // allocate. Sorting the engine's one key type (`sort_key.rs`)
-        // keeps one copy of the sort in the `.wasm` for every scalar and
-        // every caller (sorting `Body<S>` compiled one per S, ~7 KB each).
+        // (key, index) is unique, so an unstable sort is deterministic. The
+        // engine's one key type (`sort_key.rs`) keeps one copy of the sort in
+        // the `.wasm` (sorting `Body<S>` compiled one per S, ~7 KB each).
         let mut order: Vec<SortKey> = dynamic()
             .map(|(index, (&position, _))| {
                 let (high, low) = u64_key(root.key(position));
@@ -172,9 +167,7 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
             })
             .collect();
 
-        // One leaf per body, and every stored cell has ≥ 2 children (path
-        // compression; buckets hold ≥ 2 bodies): at most 2n − 1 nodes, so
-        // this never regrows.
+        // One leaf per body, every cell ≥ 2 children: at most 2n − 1 nodes.
         let mut nodes = Vec::with_capacity(2 * bodies.len());
         let side = root.half_side + root.half_side;
         let _ = build(&bodies, 0, side, root.center, root.half, &mut nodes);

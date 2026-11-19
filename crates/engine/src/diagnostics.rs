@@ -52,8 +52,8 @@ pub fn rotational_energy<S: Scalar>(particles: &Particles<S>, spin: &[Vec2<S>]) 
 /// Mass-weighted mean position `Σ m x / Σ m` of the dynamic particles, or
 /// `None` if there are none (total mass 0, so the mean is undefined).
 ///
-/// Under internal forces alone (e.g. [`PairwiseGravity`])
-/// it moves in a straight line at `momentum / total mass`.
+/// Under internal forces alone (e.g. [`PairwiseGravity`]) it moves in a
+/// straight line at `momentum / total mass`.
 #[must_use]
 pub fn center_of_mass<S: Scalar>(particles: &Particles<S>) -> Option<Vec2<S>> {
     let (weighted, total_mass) = particles
@@ -75,10 +75,8 @@ pub fn center_of_mass<S: Scalar>(particles: &Particles<S>) -> Option<Vec2<S>> {
 ///
 /// The softened (Plummer) potential is the one whose gradient *is*
 /// [`PairwiseGravity`]'s softened force, so `kinetic_energy + this` is
-/// exactly conserved by the true dynamics. A mismatched potential would
-/// make an energy plot measure the mismatch instead of the integrator.
-/// Like the force: static particles are excluded, and a coincident pair
-/// with ε = 0 is skipped (its potential is −∞).
+/// conserved by the true dynamics. Static particles are excluded, and a
+/// coincident pair with ε = 0 is skipped (its potential is −∞).
 #[must_use]
 pub fn gravity_potential<S: Scalar>(particles: &Particles<S>, gravity: &PairwiseGravity<S>) -> S {
     let bodies: Vec<(Vec2<S>, S)> = particles

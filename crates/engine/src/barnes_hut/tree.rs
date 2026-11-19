@@ -55,13 +55,11 @@ pub(super) enum NodeKind<S> {
 pub(super) struct Root<S> {
     pub(super) center: Vec2<S>,
     pub(super) half_side: S,
-    /// ½, as `1 / (1 + 1)`: exact, and no `from_f64` (setup only) in the
-    /// force path, as in `integrate.rs`.
+    /// ½, as `1 / (1 + 1)`: exact, and no `from_f64` in the force path.
     pub(super) half: S,
 }
 
 impl<S: Scalar> Root<S> {
-    /// The smallest square containing every point, or `None` if empty.
     pub(super) fn around(points: impl Iterator<Item = Vec2<S>>, half: S) -> Option<Self> {
         let (min_corner, max_corner) =
             points.fold(None, |bounds: Option<(Vec2<S>, Vec2<S>)>, point| {

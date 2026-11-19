@@ -11,12 +11,9 @@
 /// The two vector loops (`two_pass.rs`, `blocked.rs`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum PairLoop {
-    /// Pass 1 computes every pair's force for body i into scratch arrays
-    /// (nothing summed across pairs, so the compiler vectorizes it at the
-    /// target's full width); pass 2 sums them in lanes.
+    /// Forces into scratch arrays, then summed in lanes: full target width.
     TwoPass,
-    /// One pass in blocks of `L` pairs, body i's lanes updated as it goes:
-    /// no scratch arrays, but at most `L` wide.
+    /// One pass in blocks of `L` pairs: no scratch arrays, at most `L` wide.
     Blocked,
 }
 

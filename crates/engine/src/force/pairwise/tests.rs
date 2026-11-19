@@ -11,7 +11,6 @@ use crate::{Particles, Scalar, Softening, Vec2};
 fn world<S: Scalar>(body_count: usize, seed: u64) -> Particles<S> {
     let mut state = seed;
     let mut next = move || {
-        // A 64-bit LCG (Knuth's MMIX constants): enough for test data.
         state = state
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1_442_695_040_888_963_407);
@@ -37,7 +36,6 @@ fn world<S: Scalar>(body_count: usize, seed: u64) -> Particles<S> {
     p
 }
 
-/// Starting accelerations that aren't zero, so adding into them is tested.
 fn start<S: Scalar>(body_count: usize) -> Vec<Vec2<S>> {
     (0..body_count)
         .map(|index| {
@@ -57,13 +55,10 @@ fn with<S: Scalar, const L: usize>(
     accelerations
 }
 
-/// Sizes around every block boundary of `L` lanes up to a few blocks, then
-/// longer runs.
 fn sizes<const L: usize>() -> impl Iterator<Item = usize> {
     (1..=40).chain([L * 4 - 1, L * 4, L * 4 + 1, 200])
 }
 
-/// The exact value (`to_f64` is lossless), as bits.
 fn bits<S: Scalar>(v: S) -> u64 {
     v.to_f64().to_bits()
 }
