@@ -1,0 +1,11 @@
+[
+  {
+    "id": "sorted-edges-r2",
+    "ref": "experiments/sorted-edges-r2",
+    "out": "sorted-edges-r2",
+    "cmd": {
+      "m4": "experiments/sorted-edges/run.py --experiments base,all,table,all-8,table-8 --out {out}",
+      "llm": "experiments/sorted-edges/run.py --experiments base,all,table,all-8,table-8 --perf --out {out}"
+    }
+  }
+]
