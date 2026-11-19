@@ -11,7 +11,10 @@ fn clock_60hz() -> FixedStep {
 /// Runs frames through a fresh clock; returns (total steps, clock).
 fn run(frames: impl IntoIterator<Item = f64>) -> (u32, FixedStep) {
     let mut clock = clock_60hz();
-    let steps = frames.into_iter().map(|e| clock.advance(e)).sum();
+    let steps = frames
+        .into_iter()
+        .map(|elapsed| clock.advance(elapsed))
+        .sum();
     (steps, clock)
 }
 
@@ -48,7 +51,7 @@ fn short_frames_accumulate_into_a_step() {
     let mut clock = clock_60hz();
     let per_frame: Vec<u32> = (0..8).map(|_| clock.advance(DT / 4.0)).collect();
     assert_eq!(per_frame.iter().sum::<u32>(), 2);
-    assert!(per_frame.iter().all(|&n| n <= 1));
+    assert!(per_frame.iter().all(|&steps| steps <= 1));
 }
 
 #[test]
@@ -58,9 +61,9 @@ fn irregular_frames_conserve_time() {
     let mut clock = clock_60hz();
     let (mut steps, mut total) = (0, 0.0);
     for _ in 0..100 {
-        for e in frames {
-            steps += clock.advance(e);
-            total += e;
+        for elapsed in frames {
+            steps += clock.advance(elapsed);
+            total += elapsed;
             // The accumulator invariant, after every frame:
             assert!((0.0..DT).contains(&clock.leftover()));
             let accounted = f64::from(steps) * DT + clock.leftover();

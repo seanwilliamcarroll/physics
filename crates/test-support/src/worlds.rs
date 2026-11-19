@@ -7,18 +7,12 @@ use proptest::test_runner::Config as ProptestConfig;
 
 use crate::{kg, s, v};
 
-/// Generated bodies sit in a ±10 m box: demo scale.
 pub const PROP_BOX_M: f64 = 10.0;
-/// Speeds up to 1 m/s per axis: slow next to the gravitational speeds below.
 pub const PROP_SPEED: f64 = 1.0;
-/// Mass range, kg: `G m` of 0.07–0.7 m³/s², so bodies a meter apart pull at
-/// up to ~0.7 m/s², and visibly interact within a 1 s run.
+/// Mass range, kg: `G m` of 0.07–0.7 m³/s², so bodies interact visibly within 1 s.
 pub const PROP_MASS_KG: (f64, f64) = (1.0e9, 1.0e10);
-/// Softening for property worlds, m: bounded kicks on close passes, so
-/// "any world" stays finite.
+/// Softening, m: bounds kicks on close passes so any world stays finite.
 pub const PROP_SOFTENING_M: f64 = 0.1;
-/// Cases per property when `PROPTEST_CASES` isn't set: quick enough for
-/// every `cargo test`; set the variable for longer runs.
 pub const PROP_DEFAULT_CASES: u32 = 64;
 
 /// One generated body; `mass: None` means static (`inv_mass = 0`).
@@ -29,7 +23,6 @@ pub struct BodySpec {
     pub mass: Option<f64>,
 }
 
-/// Bodies anywhere in the box; one in ten is static.
 pub fn body_spec() -> impl Strategy<Value = BodySpec> {
     let coord = -PROP_BOX_M..PROP_BOX_M;
     let speed = -PROP_SPEED..PROP_SPEED;
@@ -44,29 +37,27 @@ pub fn body_spec() -> impl Strategy<Value = BodySpec> {
     })
 }
 
-/// 2 to 12 bodies: enough for every pair interaction, small enough that
-/// shrinking finds minimal counterexamples quickly.
+/// 2 to 12 bodies: every pair interaction, quick shrinking.
 pub fn world_spec() -> impl Strategy<Value = Vec<BodySpec>> {
     prop::collection::vec(body_spec(), 2..=12)
 }
 
-/// A world of `bodies` under softened pairwise gravity.
 #[must_use]
 pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> World<S> {
-    let mut w = World::new(integrator, core::num::NonZeroU32::MIN);
-    w.add_force(newtonian(Softening::new(s::<S>(PROP_SOFTENING_M)).unwrap()));
-    for b in bodies {
-        let pos = v::<S>(b.pos.0, b.pos.1);
-        match b.mass {
-            Some(m) => {
-                w.add_particle(pos, v(b.vel.0, b.vel.1), kg(m));
+    let mut world = World::new(integrator, core::num::NonZeroU32::MIN);
+    world.add_force(newtonian(Softening::new(s::<S>(PROP_SOFTENING_M)).unwrap()));
+    for body in bodies {
+        let pos = v::<S>(body.pos.0, body.pos.1);
+        match body.mass {
+            Some(mass) => {
+                world.add_particle(pos, v(body.vel.0, body.vel.1), kg(mass));
             }
             None => {
-                w.add_static(pos);
+                world.add_static(pos);
             }
         }
     }
-    w
+    world
 }
 
 /// 64 cases by default (`PROP_DEFAULT_CASES`); `PROPTEST_CASES` overrides,
@@ -76,9 +67,7 @@ pub fn proptest_config() -> ProptestConfig {
     proptest_config_with(PROP_DEFAULT_CASES)
 }
 
-/// As [`proptest_config`], with `cases` on an ordinary run: for a property
-/// whose cases are each expensive. `PROPTEST_CASES` still overrides, so
-/// the slow tier runs it at full count.
+/// As [`proptest_config`], with `cases` by default, for expensive properties.
 #[must_use]
 pub fn proptest_config_with(cases: u32) -> ProptestConfig {
     let mut config = ProptestConfig::default();

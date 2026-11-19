@@ -7,20 +7,18 @@ use engine::scenarios::{orbit_gravity, orbit_period};
 use engine::{Scalar, World};
 use math::convert::f64_to_usize;
 
-/// Total energy of a `scenarios::orbit` world, under the scene's own force.
 #[must_use]
-pub fn orbit_energy<S: Scalar>(w: &World<S>) -> f64 {
-    total_energy(w.particles(), &orbit_gravity().unwrap()).to_f64()
+pub fn orbit_energy<S: Scalar>(world: &World<S>) -> f64 {
+    total_energy(world.particles(), &orbit_gravity().unwrap()).to_f64()
 }
 
-/// Distance between the two bodies of an orbit world, m.
+/// Distance between the two bodies, m.
 #[must_use]
-pub fn separation<S: Scalar>(w: &World<S>) -> f64 {
-    let p = w.particles().pos();
-    (p[1] - p[0]).length().to_f64()
+pub fn separation<S: Scalar>(world: &World<S>) -> f64 {
+    let positions = world.particles().pos();
+    (positions[1] - positions[0]).length().to_f64()
 }
 
-/// Steps of `dt` for `orbits` periods of the circular orbit (rounded).
 #[must_use]
 pub fn steps_for(orbits: f64, dt: f64) -> u32 {
     u32::try_from(f64_to_usize((orbits * orbit_period() / dt).round()).unwrap()).unwrap()
@@ -28,23 +26,28 @@ pub fn steps_for(orbits: f64, dt: f64) -> u32 {
 
 /// Runs `steps` steps of `dt`, returning the relative energy error
 /// `(E - E0) / |E0|` after each step and the separation's (min, max).
-pub fn energy_errors<S: Scalar>(w: &mut World<S>, dt: f64, steps: u32) -> (Vec<f64>, (f64, f64)) {
-    let e0 = orbit_energy(w);
-    let (mut lo, mut hi) = (f64::INFINITY, 0.0_f64);
+pub fn energy_errors<S: Scalar>(
+    world: &mut World<S>,
+    dt: f64,
+    steps: u32,
+) -> (Vec<f64>, (f64, f64)) {
+    let initial_energy = orbit_energy(world);
+    let (mut min_separation, mut max_separation) = (f64::INFINITY, 0.0_f64);
     let errors = (0..steps)
         .map(|_| {
-            w.step(time_step(dt));
-            let d = separation(w);
-            lo = lo.min(d);
-            hi = hi.max(d);
-            (orbit_energy(w) - e0) / e0.abs()
+            world.step(time_step(dt));
+            let distance = separation(world);
+            min_separation = min_separation.min(distance);
+            max_separation = max_separation.max(distance);
+            (orbit_energy(world) - initial_energy) / initial_energy.abs()
         })
         .collect();
-    (errors, (lo, hi))
+    (errors, (min_separation, max_separation))
 }
 
-/// Largest |value| in a slice (the error envelope).
 #[must_use]
 pub fn envelope(errors: &[f64]) -> f64 {
-    errors.iter().fold(0.0, |m, e| m.max(e.abs()))
+    errors
+        .iter()
+        .fold(0.0, |largest, error| largest.max(error.abs()))
 }
