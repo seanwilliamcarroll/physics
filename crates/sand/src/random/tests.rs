@@ -23,6 +23,6 @@ fn the_side_bit_is_fair() {
         .flat_map(|y| (0..200).map(move |x| (x, y)))
         .map(|(x, y)| u32::from(draw(7, 3, x, y, Purpose::Side) & 1 == 1))
         .sum();
-    let frac = f64::from(ones) / 40_000.0;
-    assert!((frac - 0.5).abs() < 0.01, "{frac}");
+    let fraction = f64::from(ones) / 40_000.0;
+    assert!((fraction - 0.5).abs() < 0.01, "{fraction}");
 }
