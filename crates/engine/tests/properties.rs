@@ -21,29 +21,31 @@ const DT: f64 = 1.0 / 60.0;
 /// Largest translation tried, m (each axis).
 const MAX_SHIFT_M: f64 = 100.0;
 
-fn run<S: Scalar>(mut w: World<S>) -> World<S> {
+fn run<S: Scalar>(mut world: World<S>) -> World<S> {
     for _ in 0..STEPS {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
-    w
+    world
 }
 
 fn momentum_is_conserved<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseError> {
-    let w0 = build_world::<S>(bodies, Integrator::SymplecticEuler);
-    let p0 = momentum(w0.particles());
-    let w = run(w0);
-    let drift = (momentum(w.particles()) - p0).length().to_f64();
-    let scale = momentum_scale(w.particles()).max(f64::MIN_POSITIVE);
+    let start_world = build_world::<S>(bodies, Integrator::SymplecticEuler);
+    let start_momentum = momentum(start_world.particles());
+    let world = run(start_world);
+    let drift = (momentum(world.particles()) - start_momentum)
+        .length()
+        .to_f64();
+    let scale = momentum_scale(world.particles()).max(f64::MIN_POSITIVE);
     let bound = momentum_drift_bound::<S>(STEPS, scale);
     prop_assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
     Ok(())
 }
 
 fn stays_finite<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseError> {
-    let w = run(build_world::<S>(bodies, Integrator::SymplecticEuler));
-    let finite = |v: &Vec2<S>| v.x.to_f64().is_finite() && v.y.to_f64().is_finite();
-    prop_assert!(w.particles().pos().iter().all(finite));
-    prop_assert!(w.particles().vel().iter().all(finite));
+    let world = run(build_world::<S>(bodies, Integrator::SymplecticEuler));
+    let finite = |vector: &Vec2<S>| vector.x.to_f64().is_finite() && vector.y.to_f64().is_finite();
+    prop_assert!(world.particles().pos().iter().all(finite));
+    prop_assert!(world.particles().vel().iter().all(finite));
     Ok(())
 }
 
@@ -54,17 +56,19 @@ fn translation_commutes_with_stepping<S: Tol>(
     let base = run(build_world::<S>(bodies, Integrator::SymplecticEuler));
     let moved: Vec<BodySpec> = bodies
         .iter()
-        .map(|b| BodySpec {
-            pos: (b.pos.0 + dx, b.pos.1 + dy),
-            ..b.clone()
+        .map(|body| BodySpec {
+            pos: (body.pos.0 + dx, body.pos.1 + dy),
+            ..body.clone()
         })
         .collect();
     let shifted = run(build_world::<S>(&moved, Integrator::SymplecticEuler));
-    for (p, q) in shifted.particles().pos().iter().zip(base.particles().pos()) {
-        let err = (p.x.to_f64() - dx - q.x.to_f64())
+    for (shifted_position, base_position) in
+        shifted.particles().pos().iter().zip(base.particles().pos())
+    {
+        let error = (shifted_position.x.to_f64() - dx - base_position.x.to_f64())
             .abs()
-            .max((p.y.to_f64() - dy - q.y.to_f64()).abs());
-        prop_assert!(err <= S::TRANSLATION_ABS, "off by {err:e} m");
+            .max((shifted_position.y.to_f64() - dy - base_position.y.to_f64()).abs());
+        prop_assert!(error <= S::TRANSLATION_ABS, "off by {error:e} m");
     }
     Ok(())
 }
@@ -81,22 +85,26 @@ fn translation_commutes_with_stepping<S: Tol>(
 /// at `+0.0` while rotating the base result gives `-0.0`. Equal values,
 /// different bits; `==` treats them as equal (and still fails on NaN).
 fn rotation_by_90_degrees_is_exact<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseError> {
-    let rot = |(x, y): (f64, f64)| (-y, x);
+    let rotate = |(x, y): (f64, f64)| (-y, x);
     let base = run(build_world::<S>(bodies, Integrator::SymplecticEuler));
     let turned: Vec<BodySpec> = bodies
         .iter()
-        .map(|b| BodySpec {
-            pos: rot(b.pos),
-            vel: rot(b.vel),
-            mass: b.mass,
+        .map(|body| BodySpec {
+            pos: rotate(body.pos),
+            vel: rotate(body.vel),
+            mass: body.mass,
         })
         .collect();
     let rotated = run(build_world::<S>(&turned, Integrator::SymplecticEuler));
-    for (p, q) in rotated.particles().pos().iter().zip(base.particles().pos()) {
-        prop_assert_eq!(*p, q.perp());
+    for (rotated_position, base_position) in
+        rotated.particles().pos().iter().zip(base.particles().pos())
+    {
+        prop_assert_eq!(*rotated_position, base_position.perp());
     }
-    for (p, q) in rotated.particles().vel().iter().zip(base.particles().vel()) {
-        prop_assert_eq!(*p, q.perp());
+    for (rotated_velocity, base_velocity) in
+        rotated.particles().vel().iter().zip(base.particles().vel())
+    {
+        prop_assert_eq!(*rotated_velocity, base_velocity.perp());
     }
     Ok(())
 }
@@ -110,32 +118,39 @@ fn permutation_changes_only_rounding<S: Tol>(
     shuffled: &[BodySpec],
 ) -> Result<(), TestCaseError> {
     let base = run(build_world::<S>(bodies, Integrator::SymplecticEuler));
-    let perm = run(build_world::<S>(shuffled, Integrator::SymplecticEuler));
-    for (i, b) in shuffled.iter().enumerate() {
+    let permuted = run(build_world::<S>(shuffled, Integrator::SymplecticEuler));
+    for (shuffled_index, shuffled_body) in shuffled.iter().enumerate() {
         // Generated positions are continuous, so bit-equal positions
         // identify the same body.
-        let j = bodies
+        let original_index = bodies
             .iter()
-            .position(|o| {
-                o.pos.0.to_bits() == b.pos.0.to_bits() && o.pos.1.to_bits() == b.pos.1.to_bits()
+            .position(|original| {
+                original.pos.0.to_bits() == shuffled_body.pos.0.to_bits()
+                    && original.pos.1.to_bits() == shuffled_body.pos.1.to_bits()
             })
             .unwrap();
-        let (p, q) = (perm.particles().pos()[i], base.particles().pos()[j]);
-        let err = (p.x.to_f64() - q.x.to_f64())
+        let (permuted_position, base_position) = (
+            permuted.particles().pos()[shuffled_index],
+            base.particles().pos()[original_index],
+        );
+        let error = (permuted_position.x.to_f64() - base_position.x.to_f64())
             .abs()
-            .max((p.y.to_f64() - q.y.to_f64()).abs());
-        prop_assert!(err <= S::PERMUTATION_ABS, "body {j} off by {err:e} m");
+            .max((permuted_position.y.to_f64() - base_position.y.to_f64()).abs());
+        prop_assert!(
+            error <= S::PERMUTATION_ABS,
+            "body {original_index} off by {error:e} m"
+        );
     }
     Ok(())
 }
 
 fn every_integrator_is_deterministic<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseError> {
     for integrator in Integrator::ALL {
-        let a = run(build_world::<S>(bodies, integrator));
-        let b = run(build_world::<S>(bodies, integrator));
+        let first = run(build_world::<S>(bodies, integrator));
+        let repeat = run(build_world::<S>(bodies, integrator));
         prop_assert_eq!(
-            state_bits(a.particles()),
-            state_bits(b.particles()),
+            state_bits(first.particles()),
+            state_bits(repeat.particles()),
             "{:?}",
             integrator
         );
@@ -176,7 +191,7 @@ proptest! {
     #[test]
     fn permutation_invariance(
         (bodies, shuffled) in world_spec()
-            .prop_flat_map(|w| (Just(w.clone()), Just(w).prop_shuffle())),
+            .prop_flat_map(|world| (Just(world.clone()), Just(world).prop_shuffle())),
     ) {
         permutation_changes_only_rounding::<f32>(&bodies, &shuffled)?;
         permutation_changes_only_rounding::<f64>(&bodies, &shuffled)?;

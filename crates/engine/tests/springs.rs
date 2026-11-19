@@ -9,28 +9,33 @@ use test_support::{kg, nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
 
-/// A 1 kg bob on a spring of stiffness `k` and damping `c` to a static
-/// anchor, rest length 1 m, released stretched by `stretch` (no gravity).
-fn bob_on_spring(k: f64, c: f64, substeps: u32, stretch: f64) -> (World<f64>, SpringForce<f64>) {
-    let mut w = World::new(Integrator::SymplecticEuler, nonzero(substeps));
-    let anchor = w.add_static(Vec2::ZERO);
-    let bob = w.add_particle(Vec2::new(1.0 + stretch, 0.0), Vec2::ZERO, kg(1.0));
+/// A 1 kg bob on a spring of `stiffness` and `damping` to a static anchor,
+/// rest length 1 m, released stretched by `stretch` (no gravity).
+fn bob_on_spring(
+    stiffness: f64,
+    damping: f64,
+    substeps: u32,
+    stretch: f64,
+) -> (World<f64>, SpringForce<f64>) {
+    let mut world = World::new(Integrator::SymplecticEuler, nonzero(substeps));
+    let anchor = world.add_static(Vec2::ZERO);
+    let bob = world.add_particle(Vec2::new(1.0 + stretch, 0.0), Vec2::ZERO, kg(1.0));
     let spring = Spring::with_rest(
-        w.particles(),
+        world.particles(),
         anchor,
         bob,
         1.0,
-        Stiffness::new(k).unwrap(),
-        Damping::new(c).unwrap(),
+        Stiffness::new(stiffness).unwrap(),
+        Damping::new(damping).unwrap(),
     )
     .unwrap();
     let force = SpringForce::new(vec![spring]);
-    w.add_force(force.clone());
-    (w, force)
+    world.add_force(force.clone());
+    (world, force)
 }
 
-fn energy(w: &World<f64>, f: &SpringForce<f64>) -> f64 {
-    kinetic_energy(w.particles()) + f.potential(w.particles())
+fn energy(world: &World<f64>, force: &SpringForce<f64>) -> f64 {
+    kinetic_energy(world.particles()) + force.potential(world.particles())
 }
 
 /// Undamped, k = 100 N/m, m = 1 kg: period 2π √(m/k) ≈ 0.628 s, measured
@@ -38,73 +43,80 @@ fn energy(w: &World<f64>, f: &SpringForce<f64>) -> f64 {
 /// mostly the 1/60 s sampling); bound 0.5%.
 #[test]
 fn spring_period_is_two_pi_root_m_over_k() {
-    let (mut w, _) = bob_on_spring(100.0, 0.0, 20, 0.01);
-    let (mut first, mut last, mut periods, mut prev) = (None, 0.0, -1.0_f64, 0.01);
-    for i in 1..=300_u32 {
-        w.step(time_step(DT));
-        let x = w.particles().pos()[1].x - 1.0;
-        if prev < 0.0 && x >= 0.0 {
-            let t = f64::from(i) * DT;
-            first.get_or_insert(t);
-            last = t;
+    let (mut world, _) = bob_on_spring(100.0, 0.0, 20, 0.01);
+    let (mut first_crossing, mut last_crossing, mut periods, mut previous_stretch) =
+        (None, 0.0, -1.0_f64, 0.01);
+    for step in 1..=300_u32 {
+        world.step(time_step(DT));
+        let stretch = world.particles().pos()[1].x - 1.0;
+        if previous_stretch < 0.0 && stretch >= 0.0 {
+            let time = f64::from(step) * DT;
+            first_crossing.get_or_insert(time);
+            last_crossing = time;
             periods += 1.0;
         }
-        prev = x;
+        previous_stretch = stretch;
     }
-    let got = (last - first.unwrap()) / periods;
-    let want = 2.0 * std::f64::consts::PI * 0.1;
-    assert!((got - want).abs() < 0.005 * want, "{got} vs {want}");
+    let measured = (last_crossing - first_crossing.unwrap()) / periods;
+    let expected = 2.0 * std::f64::consts::PI * 0.1;
+    assert!(
+        (measured - expected).abs() < 0.005 * expected,
+        "{measured} vs {expected}"
+    );
 }
 
 /// Damped: energy decays as e^(−c t / m) (amplitude as e^(−c t / 2m)).
 /// c = 0.4, m = 1: after 5 s, e^(−2) of the start.
 #[test]
 fn damped_spring_loses_energy_at_the_analytic_rate() {
-    let (mut w, f) = bob_on_spring(100.0, 0.4, 20, 0.05);
-    let e0 = energy(&w, &f);
+    let (mut world, force) = bob_on_spring(100.0, 0.4, 20, 0.05);
+    let start_energy = energy(&world, &force);
     for _ in 0..300 {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
-    let ratio = energy(&w, &f) / e0;
-    let want = (-2.0_f64).exp();
+    let ratio = energy(&world, &force) / start_energy;
+    let expected = (-2.0_f64).exp();
     // Measured 0.1342 vs 0.1353 (0.8%); bound ~10x.
-    assert!((ratio - want).abs() < 0.08 * want, "{ratio} vs {want}");
+    assert!(
+        (ratio - expected).abs() < 0.08 * expected,
+        "{ratio} vs {expected}"
+    );
 }
 
 /// Two free bodies on a damped spring: internal forces only, so momentum
 /// is conserved to rounding.
 #[test]
 fn spring_conserves_momentum() {
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(4));
-    let a = w.add_particle(Vec2::ZERO, Vec2::new(0.3, -1.0), kg(1.0));
-    let b = w.add_particle(Vec2::new(1.2, 0.0), Vec2::new(-0.1, 2.0), kg(2.0));
-    let s = Spring::with_rest(
-        w.particles(),
-        a,
-        b,
+    let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(4));
+    let light = world.add_particle(Vec2::ZERO, Vec2::new(0.3, -1.0), kg(1.0));
+    let heavy = world.add_particle(Vec2::new(1.2, 0.0), Vec2::new(-0.1, 2.0), kg(2.0));
+    let spring = Spring::with_rest(
+        world.particles(),
+        light,
+        heavy,
         1.0,
         Stiffness::new(50.0).unwrap(),
         Damping::new(0.5).unwrap(),
     )
     .unwrap();
-    w.add_force(SpringForce::new(vec![s]));
-    let p0 = momentum(w.particles());
+    world.add_force(SpringForce::new(vec![spring]));
+    let start_momentum = momentum(world.particles());
     for _ in 0..600 {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
-    let drift = (momentum(w.particles()) - p0).length();
+    let drift = (momentum(world.particles()) - start_momentum).length();
     // Measured 1.3e-14; bound ~10x.
     assert!(drift < 2e-13, "{drift}");
 }
 
-/// Max energy over 10 s relative to the start, for stiffness `k`.
-fn energy_growth(k: f64) -> f64 {
-    let (mut w, f) = bob_on_spring(k, 0.0, 1, 0.01);
-    let e0 = energy(&w, &f);
+/// Max energy over 10 s relative to the start, for `stiffness`.
+fn energy_growth(stiffness: f64) -> f64 {
+    let (mut world, force) = bob_on_spring(stiffness, 0.0, 1, 0.01);
+    let start_energy = energy(&world, &force);
     let mut worst = 1.0_f64;
     for _ in 0..600 {
-        w.step(time_step(DT));
-        worst = worst.max(energy(&w, &f) / e0);
+        world.step(time_step(DT));
+        worst = worst.max(energy(&world, &force) / start_energy);
     }
     worst
 }
@@ -121,9 +133,9 @@ fn energy_growth(k: f64) -> f64 {
 /// accurate. Bounds: below 1e3 at 0.9 (bounded), above 1e6 at 1.1.
 #[test]
 fn explicit_spring_diverges_above_critical_stiffness() {
-    let k_crit = 4.0 / (DT * DT);
-    let below = energy_growth(0.9 * k_crit);
-    let above = energy_growth(1.1 * k_crit);
+    let critical_stiffness = 4.0 / (DT * DT);
+    let below = energy_growth(0.9 * critical_stiffness);
+    let above = energy_growth(1.1 * critical_stiffness);
     assert!(below < 1e3, "0.9 k_crit: {below}");
     assert!(above > 1e6, "1.1 k_crit: {above}");
 }
@@ -132,33 +144,35 @@ fn explicit_spring_diverges_above_critical_stiffness() {
 /// force evaluation sees the predicted velocity `v + a h`, so the damper's
 /// end-of-step force is off by `O(h²)`, not `O(h)`. A bob on k = 4 N/m,
 /// c = 0.5 N·s/m, released 1 m stretched, against the exact underdamped
-/// solution at t = 5 s, at three step sizes. Measured (audit after A3):
-/// the error quarters with each halving (ratios 4.0); with the old
-/// velocity it only halved (2.0), 100× less accurate at h = 1/60.
+/// solution at t = 5 s, at three step sizes. Measured: the error quarters
+/// with each halving (ratios 4.0); with the old velocity it only halved
+/// (2.0), 100× less accurate at h = 1/60.
 #[test]
 fn verlet_is_second_order_with_damping() {
-    const K: f64 = 4.0;
-    const C: f64 = 0.5;
-    const T: f64 = 5.0;
+    const STIFFNESS: f64 = 4.0;
+    const DAMPING: f64 = 0.5;
+    const DURATION: f64 = 5.0;
     let exact = {
-        let w0 = K.sqrt();
-        let wd = w0 * (1.0 - (C / (2.0 * w0)).powi(2)).sqrt();
-        (-C / 2.0 * T).exp() * ((wd * T).cos() + C / 2.0 / wd * (wd * T).sin())
+        let natural_omega = STIFFNESS.sqrt();
+        let damped_omega = natural_omega * (1.0 - (DAMPING / (2.0 * natural_omega)).powi(2)).sqrt();
+        (-DAMPING / 2.0 * DURATION).exp()
+            * ((damped_omega * DURATION).cos()
+                + DAMPING / 2.0 / damped_omega * (damped_omega * DURATION).sin())
     };
     let error = |substeps: u32| {
-        let (mut w, _) = bob_on_spring(K, C, substeps, 1.0);
-        w.set_integrator(Integrator::VelocityVerlet);
-        for _ in 0..f64_to_usize(T / DT).unwrap() {
-            w.step(time_step(DT));
+        let (mut world, _) = bob_on_spring(STIFFNESS, DAMPING, substeps, 1.0);
+        world.set_integrator(Integrator::VelocityVerlet);
+        for _ in 0..f64_to_usize(DURATION / DT).unwrap() {
+            world.step(time_step(DT));
         }
-        (w.particles().pos()[1].x - 1.0 - exact).abs()
+        (world.particles().pos()[1].x - 1.0 - exact).abs()
     };
-    let (e1, e2, e4) = (error(1), error(2), error(4));
-    let (r1, r2) = (e1 / e2, e2 / e4);
-    println!("errors {e1:.3e} {e2:.3e} {e4:.3e}; ratios {r1:.2} {r2:.2}");
+    let (error_1, error_2, error_4) = (error(1), error(2), error(4));
+    let (ratio_1, ratio_2) = (error_1 / error_2, error_2 / error_4);
+    println!("errors {error_1:.3e} {error_2:.3e} {error_4:.3e}; ratios {ratio_1:.2} {ratio_2:.2}");
     assert!(
-        r1 > SECOND_ORDER_RATIO && r2 > SECOND_ORDER_RATIO,
-        "{r1} {r2}"
+        ratio_1 > SECOND_ORDER_RATIO && ratio_2 > SECOND_ORDER_RATIO,
+        "{ratio_1} {ratio_2}"
     );
 }
 
