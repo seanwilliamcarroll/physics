@@ -26,8 +26,7 @@ fn kinetic_energy_sums_half_m_v_squared() {
 
 #[test]
 fn static_particles_contribute_nothing_even_if_moving() {
-    // A static particle with velocity (set via vel_mut) has infinite mass
-    // in principle; it must be skipped, not divided by zero.
+    // A static particle with a velocity must be skipped, not divided by zero.
     let mut particles = Particles::<f64>::new();
     particles.add_static(Vec2::ZERO);
     particles.vel_mut()[0] = Vec2::new(1.0, 1.0);
@@ -80,8 +79,7 @@ fn potential_of_a_pair_is_the_softened_plummer_form() {
 
 #[test]
 fn potential_sums_every_pair_once() {
-    // Three unit-ish bodies at the corners of a 3-4-5 triangle,
-    // unsoftened: U = -G m² (1/3 + 1/4 + 1/5).
+    // A 3-4-5 triangle, unsoftened: U = -G m² (1/3 + 1/4 + 1/5).
     let mass = 1.0e10;
     let mut particles = Particles::new();
     for (x, y) in [(0.0, 0.0), (3.0, 0.0), (0.0, 4.0)] {
@@ -126,8 +124,7 @@ fn uniform_potential_is_m_g_h_over_dynamic_particles() {
     let mut particles_with_extra = particles.clone();
     particles_with_extra.add(Vec2::new(0.0, 3.0), Vec2::ZERO, kg(2.0));
     let gravity = UniformGravity::new(Vec2::new(0.0, -10.0));
-    // The first two sit at the origin (no potential), the static one is
-    // excluded, the new one is 2 kg at 3 m: 2 * 10 * 3 = 60 J.
+    // Only the new 2 kg body at 3 m counts: 2 * 10 * 3 = 60 J.
     assert_eq!(uniform_gravity_potential(&particles, &gravity), 0.0);
     assert_eq!(
         uniform_gravity_potential(&particles_with_extra, &gravity),
@@ -183,9 +180,7 @@ fn constraint_potential_is_half_c_squared_over_alpha_for_soft_rods_only() {
     assert_eq!(constraint_potential(&Particles::<f64>::new(), &soft), 0.0);
 }
 
-/// `m R² |ω|² / 5` over spinning circles; statics and points carry none
-/// (`&&` → `||` in the filter would divide a static circle's 0 by its
-/// inverse mass 0: NaN).
+/// `m R² |ω|² / 5` over spinning circles; statics and points carry none.
 #[test]
 fn rotational_energy_skips_statics_and_points() {
     let mut particles = Particles::new();

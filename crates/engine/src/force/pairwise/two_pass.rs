@@ -56,12 +56,10 @@ pub(super) fn accumulate<S: Scalar, const L: usize>(
     }
 }
 
-/// Body i against every later body j: the force, body j's share
-/// (`accelerations`), and the force kept for body i's sum (`force_x`,
-/// `force_y`). A function of its own so its slices are parameters: Rust
-/// tells the compiler that `&mut` parameters don't overlap, so the
-/// vectorized loop needs no runtime overlap checks (with local slices, it
-/// took a scalar path, 2× slower).
+/// Body i against every later body j: body j's share goes into
+/// `accelerations`, the force is kept in `force_x`/`force_y`. A function of
+/// its own so `&mut` parameters tell the compiler the slices don't overlap
+/// (with local slices it took a scalar path, 2× slower).
 #[inline(never)]
 fn pass_one<S: Scalar>(
     (x_i, y_i, gravity_times_mass_i, softening_sq): (S, S, S, S),

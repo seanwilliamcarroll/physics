@@ -1,13 +1,9 @@
 //! Physical measurements of a [`Particles`] set, shared by tests and demo
-//! plots so both measure exactly the same thing (`docs/04-testing.md`).
-//!
-//! Static particles (`inv_mass = 0`) are excluded: their mass is infinite in
-//! principle. Mass is recovered as `1 / inv_mass`, a division per particle;
-//! fine for once-per-frame readouts, which is what these are for.
+//! plots (`docs/04-testing.md`). Static particles (`inv_mass = 0`) are
+//! excluded; mass is `1 / inv_mass`, fine for once-per-frame readouts.
 
 use crate::{Constraint, PairwiseGravity, Particles, Scalar, UniformGravity, Vec2};
 
-/// Iterates `(velocity, inv_mass)` over dynamic particles only.
 fn dynamic<S: Scalar>(particles: &Particles<S>) -> impl Iterator<Item = (Vec2<S>, S)> + '_ {
     particles
         .vel()
@@ -32,8 +28,7 @@ pub fn kinetic_energy<S: Scalar>(particles: &Particles<S>) -> S {
 }
 
 /// Rotational kinetic energy `Σ ½ I |ω|²`, `I = (2/5) m R²`, over the
-/// balls (moving circles) in `particles` with spins `spin` (`World::spin`):
-/// a table's energy is this plus [`kinetic_energy`].
+/// balls (moving circles) in `particles` with spins `spin` (`World::spin`).
 #[must_use]
 pub fn rotational_energy<S: Scalar>(particles: &Particles<S>, spin: &[Vec2<S>]) -> S {
     let five = S::from_f64(5.0);
@@ -50,10 +45,7 @@ pub fn rotational_energy<S: Scalar>(particles: &Particles<S>, spin: &[Vec2<S>]) 
 }
 
 /// Mass-weighted mean position `Σ m x / Σ m` of the dynamic particles, or
-/// `None` if there are none (total mass 0, so the mean is undefined).
-///
-/// Under internal forces alone (e.g. [`PairwiseGravity`]) it moves in a
-/// straight line at `momentum / total mass`.
+/// `None` if there are none.
 #[must_use]
 pub fn center_of_mass<S: Scalar>(particles: &Particles<S>) -> Option<Vec2<S>> {
     let (weighted, total_mass) = particles
@@ -70,12 +62,8 @@ pub fn center_of_mass<S: Scalar>(particles: &Particles<S>) -> Option<Vec2<S>> {
     (total_mass != S::ZERO).then(|| weighted / total_mass)
 }
 
-/// Gravitational potential energy `Σ_{i<j} −G mᵢ mⱼ / √(|r|² + ε²)` of the
-/// dynamic particles under `gravity`.
-///
-/// The softened (Plummer) potential is the one whose gradient *is*
-/// [`PairwiseGravity`]'s softened force, so `kinetic_energy + this` is
-/// conserved by the true dynamics. Static particles are excluded, and a
+/// Gravitational potential energy `Σ_{i<j} −G mᵢ mⱼ / √(|r|² + ε²)`: the
+/// Plummer potential whose gradient is [`PairwiseGravity`]'s force. A
 /// coincident pair with ε = 0 is skipped (its potential is −∞).
 #[must_use]
 pub fn gravity_potential<S: Scalar>(particles: &Particles<S>, gravity: &PairwiseGravity<S>) -> S {
@@ -100,16 +88,15 @@ pub fn gravity_potential<S: Scalar>(particles: &Particles<S>, gravity: &Pairwise
     total
 }
 
-/// [`kinetic_energy`] + [`gravity_potential`]: conserved by the exact
-/// dynamics, so its drift measures an integrator's error.
+/// [`kinetic_energy`] + [`gravity_potential`]: its drift measures an
+/// integrator's error.
 #[must_use]
 pub fn total_energy<S: Scalar>(particles: &Particles<S>, gravity: &PairwiseGravity<S>) -> S {
     kinetic_energy(particles) + gravity_potential(particles, gravity)
 }
 
 /// Potential energy in uniform gravity, `Σ m (−g · x)`, J: zero at the
-/// origin, so `m g h` with `h` the height above it. With [`kinetic_energy`],
-/// conserved by a frictionless pendulum.
+/// origin, so `m g h` with `h` the height above it.
 #[must_use]
 pub fn uniform_gravity_potential<S: Scalar>(
     particles: &Particles<S>,
@@ -127,9 +114,7 @@ pub fn uniform_gravity_potential<S: Scalar>(
 
 /// Max and RMS of `|C|` over `constraints`, in the constraint's units (m
 /// for a rod: how far it is stretched or compressed). `None` with no
-/// constraints. A constraint whose bodies aren't in `particles` is skipped
-/// (worlds check ids when constraints are added, so that means a mismatched
-/// set).
+/// constraints; one whose bodies aren't in `particles` is skipped.
 #[must_use]
 pub fn constraint_error<S: Scalar, C: Constraint<S>>(
     particles: &Particles<S>,
@@ -158,8 +143,7 @@ pub fn constraint_error<S: Scalar, C: Constraint<S>>(
 
 /// Elastic energy stored in compliant constraints, `Σ ½ C² / α` over those
 /// with `α > 0`, J (a spring of stiffness `1/α` stretched by `C`). Rigid
-/// constraints store none: `C` is held at 0. Constraints whose bodies
-/// aren't in `particles` are skipped.
+/// constraints store none. Missing bodies are skipped.
 #[must_use]
 pub fn constraint_potential<S: Scalar, C: Constraint<S>>(
     particles: &Particles<S>,

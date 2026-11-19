@@ -12,12 +12,8 @@ use crate::{Particles, Scalar, Vec2};
 /// (`docs/02-core-types.md`, "Decision: `dyn Force<S>`").
 pub trait Force<S: Scalar> {
     /// Adds this force's acceleration into `accelerations` (one entry per
-    /// particle, zeroed by the world before the first force runs). Must
-    /// add, never overwrite, so multiple forces combine.
-    ///
-    /// Accelerations, not forces: static particles (`inv_mass = 0`) are
-    /// skipped, since a static has no mass to divide by or to pull with.
-    /// (`kick` and `drift` keep a static still whatever a force writes.)
+    /// particle, zeroed before the first force runs): add, never overwrite.
+    /// Static particles (`inv_mass = 0`) are skipped.
     fn accumulate(&self, particles: &Particles<S>, accelerations: &mut [Vec2<S>]);
 }
 

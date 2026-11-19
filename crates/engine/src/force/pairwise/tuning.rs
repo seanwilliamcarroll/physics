@@ -1,12 +1,7 @@
-//! What pairwise gravity runs on each target: per scalar, which vector loop
-//! and how many lanes, and below how many bodies the plain loop runs
-//! instead. Chosen at compile time, here and only here: this is the one
-//! place a target `cfg` appears (`docs/perf-code-audit-guide.md`, §1–3).
-//! The build settings (`knobs.rs`, `GRAVITY_*`) override it.
-//!
-//! The values come from `experiments/gravity-vectorize/results/` at 4,096
-//! bodies. A lane count sets the order of body i's sum, so targets differ
-//! in the last bits (allowed: `docs/04-testing.md`).
+//! Per target and scalar: which vector loop, how many lanes, and when the
+//! plain loop runs. The one place a target `cfg` appears
+//! (`docs/perf-code-audit-guide.md`, §1–3); `knobs.rs` overrides it. Values
+//! are from `experiments/gravity-vectorize/results/` at 4,096 bodies.
 
 /// The two vector loops (`two_pass.rs`, `blocked.rs`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -17,22 +12,19 @@ pub(super) enum PairLoop {
     Blocked,
 }
 
-/// One scalar's choice: the loop, and body i's partial sums (pair j in
-/// lane j mod `lanes`; a power of two).
+/// One scalar's choice: the loop, and the lane count (a power of two).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Kernel {
     pub(super) pair_loop: PairLoop,
     pub(super) lanes: usize,
 }
 
-/// A target's choices.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Tuning {
     pub(super) f64: Kernel,
     pub(super) f32: Kernel,
-    /// Below this many bodies, the plain loop: the vector loops' per-body
-    /// setup costs more than it saves on short rows. Measured at 16 and
-    /// 128 on every target (the plain loop wins at 16, loses at 128).
+    /// Below this many bodies, the plain loop (measured on every target:
+    /// wins at 16, loses at 128).
     pub(super) plain_below: usize,
 }
 
@@ -92,8 +84,7 @@ const TARGET: Tuning = if cfg!(target_arch = "wasm32") {
     }
 };
 
-/// The target's choices with the build settings applied (a setting
-/// applies to both scalars).
+/// The target's choices with the build settings applied.
 pub(super) const TUNING: Tuning = Tuning {
     f64: overridden(TARGET.f64),
     f32: overridden(TARGET.f32),
@@ -117,8 +108,7 @@ const fn overridden(kernel: Kernel) -> Kernel {
     }
 }
 
-/// `f64`'s and `f32`'s lane counts, as constants: a lane count is a const
-/// generic of the loops.
+/// Lane counts as constants: they are const generics of the loops.
 pub(super) const F64_LANES: usize = TUNING.f64.lanes;
 pub(super) const F32_LANES: usize = TUNING.f32.lanes;
 

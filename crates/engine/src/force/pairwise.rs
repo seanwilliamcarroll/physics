@@ -22,12 +22,9 @@ use crate::{Particles, Scalar, Softening, Vec2};
 /// F_ij = G m_i m_j r / (|r|² + ε²)^(3/2),   r = x_j - x_i
 /// ```
 ///
-/// Softening (Plummer) caps the force at short range: without it two close
-/// bodies get an enormous kick in one step and fling apart
-/// (`docs/02-core-types.md`). O(n²): each pair once.
-///
-/// Static particles (`inv_mass = 0`) have no defined mass, so they neither
-/// pull nor are pulled.
+/// Softening (Plummer) caps the force at short range
+/// (`docs/02-core-types.md`). O(n²). Static particles neither pull nor are
+/// pulled.
 ///
 /// Body i's sum is kept in partial sums (lanes) added in a fixed order, so
 /// the loop vectorizes; each target picks its own loop and lane count
@@ -41,9 +38,9 @@ pub struct PairwiseGravity<S> {
 }
 
 impl<S: Scalar> PairwiseGravity<S> {
-    /// `gravitational_constant`: the gravitational constant in the scene's units (SI:
-    /// [`crate::scenarios::GRAVITATIONAL_CONSTANT`]). `softening`: ε;
-    /// [`Softening::ZERO`] is allowed (pure 1/r²).
+    /// `gravitational_constant` in the scene's units (SI:
+    /// [`crate::scenarios::GRAVITATIONAL_CONSTANT`]); [`Softening::ZERO`] is
+    /// allowed (pure 1/r²).
     #[must_use]
     pub fn new(gravitational_constant: S, softening: Softening<S>) -> Self {
         Self {
@@ -83,8 +80,7 @@ impl<S: Scalar> Force<S> for PairwiseGravity<S> {
         if particles.len() < TUNING.plain_below {
             plain::accumulate(self, particles, accelerations);
         } else if size_of::<S>() == size_of::<f64>() {
-            // The scalar's kernel: a constant per instantiation, so only
-            // its branch is compiled in.
+            // A constant per instantiation: only one branch is compiled in.
             self.accumulate_with::<F64_LANES>(TUNING.f64.pair_loop, particles, accelerations);
         } else {
             self.accumulate_with::<F32_LANES>(TUNING.f32.pair_loop, particles, accelerations);
@@ -93,8 +89,7 @@ impl<S: Scalar> Force<S> for PairwiseGravity<S> {
 }
 
 /// What the vector loops read, one array per quantity, copied once per
-/// call: masses computed here (n divisions instead of n² in the loop;
-/// static particles get mass 0, so they exert no pull).
+/// call. Masses are computed here (n divisions, not n²); statics get mass 0.
 struct Bodies<S> {
     x: Vec<S>,
     y: Vec<S>,

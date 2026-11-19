@@ -55,7 +55,6 @@ struct Body<S> {
     gravity_times_mass: S,
 }
 
-/// What's left of the arrays: body i and the bodies after it.
 struct Remaining<'a, S> {
     x: &'a [S],
     y: &'a [S],
@@ -65,8 +64,6 @@ struct Remaining<'a, S> {
     acceleration_y: &'a mut [S],
 }
 
-/// The first body of a [`Remaining`]: its values, and its acceleration to
-/// add to.
 struct First<'a, S> {
     x: S,
     y: S,
@@ -107,8 +104,7 @@ impl<'a, S: Copy> Remaining<'a, S> {
     }
 }
 
-/// Lane by lane: `[f(a0, b0), f(a1, b1), ..]`. A fixed-length loop, so
-/// the compiler unrolls it.
+/// Lane by lane: `[f(a0, b0), f(a1, b1), ..]`.
 fn map2<S: Copy, const L: usize>(
     left: [S; L],
     right: [S; L],
@@ -121,11 +117,9 @@ fn map2<S: Copy, const L: usize>(
     out
 }
 
-/// Body `first` against every later body: each pair's force, subtracted
-/// from body j's acceleration (times its `inv_mass`) and added to body i's
-/// lanes (returned, to be multiplied by its `inv_mass`). The slices are
-/// parameters of a function that isn't inlined, so the compiler knows they
-/// don't overlap.
+/// Body `first` against every later body: each pair's force is subtracted
+/// from body j's acceleration and added to body i's lanes (returned). Not
+/// inlined, so the compiler knows the slice parameters don't overlap.
 #[inline(never)]
 fn sweep<S: Scalar, const L: usize>(
     first: Body<S>,

@@ -38,9 +38,8 @@ impl<S: Scalar> Spring<S> {
         )
     }
 
-    /// A spring of rest length `rest` (m, `≥ 0`). `None` if the length is
-    /// negative or NaN, the ends are the same particle, or either isn't in
-    /// `particles`.
+    /// A spring of rest length `rest` (m, `≥ 0`); `None` if it is negative or
+    /// NaN, or as for [`Spring::between`].
     #[must_use]
     pub fn with_rest(
         particles: &Particles<S>,
@@ -83,9 +82,8 @@ impl<S: Scalar> Spring<S> {
 /// rounding. Stepped by the integrator: past `k_crit = 4m/h²` symplectic
 /// Euler goes unstable (`docs/07-soft-bodies.md`).
 ///
-/// A spring's ends are checked against the particles it was built from, not
-/// the world it's added to (`World::add_force` can't see ids). One naming
-/// particles the world doesn't have is skipped: no crash, and no force.
+/// A spring naming particles the world doesn't have is skipped (ends are
+/// checked against the particles it was built from).
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpringForce<S> {
     springs: Vec<Spring<S>>,

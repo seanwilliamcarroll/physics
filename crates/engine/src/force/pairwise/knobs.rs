@@ -1,15 +1,10 @@
-//! Build settings for pairwise gravity, read at compile time from the
-//! environment (cargo rebuilds when they change). Unset, each target's own
-//! choice holds (`tuning.rs`); set, they override it for both scalars, for
-//! experiments (`experiments/gravity-vectorize/`):
+//! Build settings read from the environment at compile time; set, they
+//! override `tuning.rs` for both scalars (`experiments/gravity-vectorize/`):
 //!
-//! - `GRAVITY_LANES`: how many partial sums body i's sum is split into (a
-//!   power of two, 1 to 64). It sets the order of additions, so the
-//!   results' last bits.
-//! - `GRAVITY_PLAIN_BELOW`: below this many bodies the plain loop runs
-//!   instead.
-//! - `GRAVITY_LOOP`: `two-pass` or `blocked`. At the same lane count the
-//!   two give identical bits (tested); only speed differs.
+//! - `GRAVITY_LANES`: partial sums per body (a power of two, 1 to 64); sets
+//!   the order of additions, so the last bits.
+//! - `GRAVITY_PLAIN_BELOW`: below this many bodies the plain loop runs.
+//! - `GRAVITY_LOOP`: `two-pass` or `blocked` (same bits at equal lanes).
 
 use super::tuning::PairLoop;
 
@@ -35,7 +30,6 @@ pub(super) const fn lanes(setting: Option<&str>) -> Option<usize> {
     Some(lane_count)
 }
 
-/// `GRAVITY_PLAIN_BELOW` as a number; a bad value fails the build.
 pub(super) const fn plain_below(setting: Option<&str>) -> Option<usize> {
     let Some(text) = setting else {
         return None;
@@ -46,8 +40,7 @@ pub(super) const fn plain_below(setting: Option<&str>) -> Option<usize> {
     Some(threshold)
 }
 
-/// Decimal digits as a number, if that's all `text` is and it's at most a
-/// million (no setting here needs more).
+/// Decimal digits as a number, at most a million.
 const fn number(text: &str) -> Option<usize> {
     let mut remaining = text.as_bytes();
     if remaining.is_empty() {
@@ -90,7 +83,6 @@ pub(super) const fn pair_loop(setting: Option<&str>) -> Option<PairLoop> {
     }
 }
 
-/// Byte equality, usable in a `const fn`.
 const fn same(left: &[u8], right: &[u8]) -> bool {
     match (left, right) {
         ([], []) => true,

@@ -28,9 +28,8 @@ pub(super) fn accumulate<S: Scalar>(
         })
         .collect();
 
-    // Each pair once (i < j), without indexing: take the first body, pair
-    // it with every later one, continue with the rest. `mem::take` moves
-    // the slice out so its tail can replace it.
+    // Each pair once (i < j), without indexing: split off the first body,
+    // pair it with the rest. `mem::take` moves the slice out to replace it.
     let mut acceleration_rest = accelerations;
     let mut body_rest = bodies.as_slice();
     while let (
@@ -52,9 +51,7 @@ pub(super) fn accumulate<S: Scalar>(
                 // Coincident and unsoftened: no direction; skip, not 0/0.
                 continue;
             }
-            // One force vector per pair, applied +/-: equal and opposite by
-            // construction. Accelerations are F * inv_mass, so a static
-            // body isn't moved.
+            // One force per pair, applied +/-; times inv_mass, so statics stay put.
             let force = offset
                 * (gravity.gravitational_constant * mass_i * mass_j
                     / (distance_sq * distance_sq.sqrt()));

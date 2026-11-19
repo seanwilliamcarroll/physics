@@ -63,12 +63,9 @@ fn bits<S: Scalar>(v: S) -> u64 {
     v.to_f64().to_bits()
 }
 
-/// The lanes reorder body i's sum, so the vector loops differ from the
-/// plain one in the last bits only: both loops, at every lane count a
-/// target uses, softened and not (unsoftened, bodies 1 and 2 coincide:
-/// 0/0, which every loop must skip). Within `rel` of the largest
-/// acceleration: rounding, not a wrong term. The two loops aren't
-/// compared bit for bit, so either can be retuned on its own.
+/// Both vector loops agree with the plain one within `rel` of the largest
+/// acceleration (rounding, not a wrong term), softened and not (unsoftened,
+/// bodies 1 and 2 coincide: 0/0, which every loop must skip).
 fn match_plain<S: Scalar, const L: usize>(rel: f64) {
     for softening in [0.0, 0.05] {
         let gravity = PairwiseGravity::new(
@@ -162,9 +159,7 @@ fn the_loop_must_be_one_of_the_two() {
 }
 
 /// The plain loop below the threshold, the target's `f64` kernel from it
-/// on: at the threshold, bit for bit. Where the two give identical bits
-/// there (a one-lane kernel adds in the plain loop's order), which ran
-/// can't be told and doesn't matter.
+/// on, bit for bit.
 #[test]
 fn the_plain_loop_runs_below_the_threshold_only() {
     let below = TUNING.plain_below;
@@ -198,8 +193,7 @@ fn the_plain_loop_runs_below_the_threshold_only() {
     }
 }
 
-/// `number` takes up to a million; past it, a setting is refused, and a
-/// long one stops early rather than overflowing.
+/// Settings up to a million parse; past it, or overflowing, they are refused.
 #[test]
 fn the_threshold_reaches_a_million() {
     assert_eq!(plain_below(Some("1000000")), Some(1_000_000));

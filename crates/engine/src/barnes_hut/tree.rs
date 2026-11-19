@@ -3,11 +3,9 @@
 
 use crate::{Scalar, Vec2};
 
-/// Quadtree levels resolved by the Morton key: two bits per level in a
-/// `u64`. Bodies still sharing a cell at this depth (closer than
-/// `side / 2³²`, or coincident) form one bucket, summed directly: exact,
-/// so the limit costs time in pathological cases, never accuracy. Also
-/// bounds the build's recursion depth.
+/// Quadtree levels resolved by the Morton key (two bits each in a `u64`).
+/// Bodies still sharing a cell at this depth (closer than `side / 2³²`) form
+/// a bucket, summed directly: exact. Also bounds the build's recursion.
 pub(super) const MAX_DEPTH: u32 = u64::BITS / 2;
 
 /// A dynamic body, as the tree build sees it.
@@ -20,12 +18,9 @@ pub(super) struct Body<S> {
     pub(super) index: usize,
 }
 
-/// A tree node: a single body or a cell, with the monopole (total mass,
-/// center of mass) the walk needs.
-///
-/// Nodes are stored in postorder (children before parents), and `size`
-/// counts the node and all its descendants, so a node's subtree is the
-/// `size` entries ending at it.
+/// A tree node (single body or cell) with its total mass and center of
+/// mass. Stored in postorder; `size` counts the node and its descendants, so
+/// its subtree is the `size` entries ending at it.
 #[derive(Copy, Clone, Debug)]
 pub(super) struct Node<S> {
     pub(super) center_of_mass: Vec2<S>,
@@ -39,10 +34,8 @@ pub(super) enum NodeKind<S> {
     /// A leaf: one particle, at `center_of_mass` exactly.
     Body { index: usize },
     /// A cell of side `width` whose bodies have Morton keys in
-    /// `keys.0..=keys.1` (a contiguous range: the containment test), and
-    /// whose center of mass is `offset` from its geometric center (δ, for
-    /// the opening test: a lopsided cell must be farther away to be used
-    /// whole).
+    /// `keys.0..=keys.1` (the containment test), and whose center of mass is
+    /// `offset` (δ, for the opening test) from its geometric center.
     Cell {
         width: S,
         keys: (u64, u64),
@@ -79,11 +72,9 @@ impl<S: Scalar> Root<S> {
         })
     }
 
-    /// Z-order (Morton) key: the quadrant at each of [`MAX_DEPTH`]
-    /// levels, two bits per level, most significant first (bit 1 =
-    /// north, bit 0 = east). Built from comparisons against cell centers,
-    /// computed by the same operations for every body, so it is exact and
-    /// identical on every platform; no float-to-integer casts.
+    /// Z-order (Morton) key: the quadrant at each of [`MAX_DEPTH`] levels,
+    /// two bits each, most significant first (bit 1 = north, bit 0 = east).
+    /// Built from comparisons, so it is identical on every platform.
     pub(super) fn key(&self, point: Vec2<S>) -> u64 {
         let (mut cell_center, mut cell_half_side) = (self.center, self.half_side);
         let mut key = 0;
@@ -121,9 +112,8 @@ const fn quadrant(key: u64, level: u32) -> u64 {
     (key >> (2 * (MAX_DEPTH - 1 - level))) & 0b11
 }
 
-/// The center of `center`'s child in the quadrant given by `quadrant_bits`
-/// (its two key bits) for a cell of side `width`: a quarter of the side
-/// toward it, as [`Root::key`] steps.
+/// The center of `center`'s child in the quadrant `quadrant_bits`, for a
+/// cell of side `width`.
 fn child_center<S: Scalar>(center: Vec2<S>, width: S, half: S, quadrant_bits: u64) -> Vec2<S> {
     let quarter = width * half * half;
     let (east, north) = (quadrant_bits & 0b01 != 0, quadrant_bits & 0b10 != 0);
@@ -135,9 +125,7 @@ fn child_center<S: Scalar>(center: Vec2<S>, width: S, half: S, quadrant_bits: u6
 }
 
 /// Builds the subtree for `bodies` (sorted by key, all inside the cell at
-/// `level` of side `width` centered at `center`) into `nodes`, in
-/// postorder. Returns its total mass and `Σ m x`, for the parent's
-/// aggregate.
+/// `level`) into `nodes`, in postorder. Returns its mass and `Σ m x`.
 pub(super) fn build<S: Scalar>(
     bodies: &[Body<S>],
     mut level: u32,
@@ -158,9 +146,8 @@ pub(super) fn build<S: Scalar>(
         });
         return (first.mass, first.pos * first.mass);
     }
-    // Path compression: while every body falls in the same child, descend
-    // without storing a node. Sorted keys share a prefix iff the first and
-    // last do.
+    // Path compression: while every body falls in the same child (sorted
+    // keys share a prefix iff the first and last do), descend without a node.
     while level < MAX_DEPTH && quadrant(first.key, level) == quadrant(last.key, level) {
         center = child_center(center, width, half, quadrant(first.key, level));
         level += 1;

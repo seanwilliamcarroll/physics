@@ -10,20 +10,14 @@ mod tree;
 
 use tree::{Body, Node, NodeKind, Root, build};
 
-/// Same physics as [`PairwiseGravity`] (softened
-/// Newtonian gravity between dynamic particles), but a group of bodies far
-/// enough away is felt as one point mass at its center of mass.
+/// Same physics as [`PairwiseGravity`], but a group of bodies far enough
+/// away is felt as one point mass at its center of mass.
 ///
-/// "Far enough": a quadtree cell of side `s` whose center of mass is at
-/// distance `d`, and `δ` from the cell's geometric center, is used whole
-/// when `s / (d − δ) < θ`. The `δ` keeps a lopsided cell (its mass bunched
-/// on one side) from being accepted by a target just outside its *other*
-/// side, beside some of its bodies (Salmon & Warren 1994). θ = 0 never uses
-/// a cell, which is direct summation; larger θ is faster and less
-/// accurate. Forces aren't equal and opposite, so momentum is only
-/// conserved up to the force error.
-///
-/// Static particles (`inv_mass = 0`) neither pull nor are pulled.
+/// A quadtree cell of side `s`, center of mass at distance `d` and `δ` from
+/// the cell's center, is used whole when `s / (d − δ) < θ` (the `δ` rejects
+/// lopsided cells; Salmon & Warren 1994). θ = 0 is direct summation. Forces
+/// aren't equal and opposite, so momentum is conserved only up to the force
+/// error. Static particles neither pull nor are pulled.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BarnesHut<S> {
     gravitational_constant: S,
@@ -35,9 +29,8 @@ pub struct BarnesHut<S> {
 }
 
 impl<S: Scalar> BarnesHut<S> {
-    /// `g_const` and `softening` as for `PairwiseGravity::new`. `theta`:
-    /// the opening angle; 0 is exact direct summation, Barnes & Hut used
-    /// about 1.
+    /// `g_const` and `softening` as for `PairwiseGravity::new`. `theta`: the
+    /// opening angle; 0 is direct summation, Barnes & Hut used about 1.
     #[must_use]
     pub fn new(g_const: S, softening: Softening<S>, theta: OpeningAngle<S>) -> Self {
         Self {
@@ -71,13 +64,10 @@ impl<S: Scalar> BarnesHut<S> {
         offset * (self.gravitational_constant * mass / (softened_sq * softened_sq.sqrt()))
     }
 
-    /// Acceleration of a body at `x` (Morton key `key`, particle `index`)
-    /// from the tree in `nodes` (postorder: see [`Node`]).
     fn accel_on(&self, nodes: &[Node<S>], x: Vec2<S>, key: u64, index: usize) -> Vec2<S> {
         let mut acceleration = Vec2::ZERO;
-        // One past the next node to visit. Reading the postorder array
-        // backwards is a preorder walk: "open" moves one node down, "accept"
-        // skips the whole subtree.
+        // Reading the postorder array backwards is a preorder walk: "open"
+        // steps one node down, "accept" skips the subtree.
         let mut cursor = nodes.len();
         while let Some(node) = cursor
             .checked_sub(1)
@@ -140,9 +130,8 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
             return; // no dynamic bodies: nothing pulls, nothing is pulled
         };
 
-        // (key, index) is unique, so an unstable sort is deterministic. The
-        // engine's one key type (`sort_key.rs`) keeps one copy of the sort in
-        // the `.wasm` (sorting `Body<S>` compiled one per S, ~7 KB each).
+        // `sort_key.rs`'s one key type: sorting `Body<S>` compiled one copy
+        // per S, ~7 KB each in the `.wasm`. (key, index) is unique.
         let mut order: Vec<SortKey> = dynamic()
             .map(|(index, (&position, _))| {
                 let (high, low) = u64_key(root.key(position));
