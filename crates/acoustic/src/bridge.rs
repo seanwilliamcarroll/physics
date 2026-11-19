@@ -17,10 +17,7 @@ use crate::voicing::Coefficients;
 /// y[n] = C l[n] + l[n − 1] − C y[n − 1]      (tuned; else y[n] = l[n])
 /// ```
 ///
-/// The Karplus–Strong loop runs it on the sample leaving its delay line;
-/// the waveguide runs it at the bridge. One implementation, so that where
-/// the two models are equivalent they do the same arithmetic in the same
-/// order, and the equivalence test can be bit-exact.
+/// One implementation for both models, so the equivalence test is bit-exact.
 #[derive(Clone, Debug)]
 pub(crate) struct Bridge<S> {
     /// `ρ (1 − S)` and `ρ S`: the lowpass's taps with the loss folded in.
@@ -28,22 +25,19 @@ pub(crate) struct Bridge<S> {
     tap_previous: S,
     /// The previous input (`x[n − 1]`).
     previous_input: S,
-    /// The allpass coefficient `C`, if tuned, and its state (last input
-    /// and output).
+    /// The allpass coefficient `C`, if tuned, and its last input and output.
     allpass: Option<S>,
     allpass_input: S,
     allpass_output: S,
-    /// The dispersion cascade: each biquad's feedback coefficients
-    /// `(a1, a2)` and its last two inputs and outputs, `dispersion_count`
-    /// of them in use (fixed arrays: nothing allocates).
+    /// The dispersion cascade: each biquad's `(a1, a2)` and last two inputs
+    /// and outputs, `dispersion_count` in use.
     dispersion_coefficients: [(S, S); MAX_BIQUADS],
     dispersion_count: usize,
     dispersion_inputs: [(S, S); MAX_BIQUADS],
     dispersion_outputs: [(S, S); MAX_BIQUADS],
     /// The pitch the loop plays, Hz.
     pitch: f64,
-    /// A release coming in: the taps' per-sample factor, and the samples
-    /// left (see [`damp`](Self::damp)).
+    /// A release in progress: the taps' per-sample factor, samples left.
     ramp: Option<(S, usize)>,
 }
 
@@ -95,7 +89,6 @@ impl<S: Scalar> Bridge<S> {
         self.dispersion_outputs = [(S::ZERO, S::ZERO); MAX_BIQUADS];
     }
 
-    /// The loop filter's next output for `input`.
     pub(crate) fn process(&mut self, input: S) -> S {
         if let Some((factor, samples_left)) = self.ramp.as_mut() {
             self.tap_now = self.tap_now * *factor;
@@ -107,9 +100,7 @@ impl<S: Scalar> Bridge<S> {
         }
         let mut lowpassed = self.tap_now * input + self.tap_previous * self.previous_input;
         self.previous_input = input;
-        // The dispersion cascade (none for an ideal string).
-        // Each biquad: H = (a2 + a1 z⁻¹ + z⁻²) / (1 + a1 z⁻¹ + a2 z⁻²), in
-        // direct form I.
+        // Each biquad: H = (a2 + a1 z⁻¹ + z⁻²) / (1 + a1 z⁻¹ + a2 z⁻²), direct form I.
         let biquads = self
             .dispersion_coefficients
             .iter()
@@ -133,13 +124,9 @@ impl<S: Scalar> Bridge<S> {
         }
     }
 
-    /// Adds a loss so the fundamental falls 60 dB in about
-    /// `decay_time_60db` more seconds (the release); the pitch is
-    /// unchanged. Ignored unless `decay_time_60db > 0`.
-    ///
-    /// The loss comes in over `ramp` samples, as a damper settles on a
-    /// string. Applied in one sample it's a step in the reflected wave,
-    /// and the piano sounds that wave's change: a click on every release.
+    /// The release: the fundamental falls 60 dB in about `decay_time_60db`
+    /// more seconds; ignored unless positive. The loss comes in over `ramp`
+    /// samples: in one step it clicks on every release.
     pub(crate) fn damp(&mut self, decay_time_60db: f64, ramp: NonZeroUsize) {
         // `decay_time_60db > 0` is false for NaN too.
         let positive = decay_time_60db > 0.0;
@@ -147,8 +134,7 @@ impl<S: Scalar> Bridge<S> {
             return;
         }
         let total_gain = libm::exp10(-3.0 / (self.pitch * decay_time_60db));
-        // total_gain^(1/ramp) per sample: total_gain in all, after `ramp`
-        // samples.
+        // total_gain^(1/ramp) per sample reaches total_gain after `ramp`.
         let per_sample_factor =
             libm::pow(total_gain, 1.0 / math::convert::usize_to_f64(ramp.get()));
         self.ramp = Some((S::from_f64(per_sample_factor), ramp.get()));

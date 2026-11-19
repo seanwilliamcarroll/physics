@@ -5,15 +5,7 @@ use crate::bridge::Bridge;
 use crate::{DelayLine, Scalar, Voicing};
 
 /// A plucked string: a delay line of `N` samples fed back through the
-/// loop filter (the crate's `Bridge`: a loss `ρ`, a two-point lowpass
-/// `(1 − S) + S z⁻¹` with `S = ½` Karplus & Strong's average, and, when
-/// tuned, a first-order allpass for the fractional delay):
-///
-/// ```text
-/// y[n] = bridge(y[n − N])
-/// ```
-///
-/// The coefficients come from the [`Voicing`] at note on.
+/// loop filter (`Bridge`), `y[n] = bridge(y[n − N])`.
 #[derive(Clone, Debug)]
 pub struct KsString<S> {
     line: DelayLine<S>,
@@ -21,9 +13,8 @@ pub struct KsString<S> {
 }
 
 impl<S: Scalar> KsString<S> {
-    /// A silent string for pitch `fundamental_hz` at `sample_rate`, voiced
-    /// by `voicing`. `None` for settings it can't play (see [`Voicing`]): a
-    /// rate or pitch that isn't positive and finite, a pitch at or above
+    /// A silent string. `None` for settings it can't play (see [`Voicing`]):
+    /// a rate or pitch not positive and finite, a pitch at or above
     /// Nyquist, a loop under 2 samples, `ρ` outside `(0, 1]`, `T₆₀ ≤ 0`.
     #[must_use]
     pub fn new(sample_rate: f64, fundamental_hz: f64, voicing: Voicing) -> Option<Self> {
@@ -31,11 +22,9 @@ impl<S: Scalar> KsString<S> {
         Self::with_capacity(sample_rate, fundamental_hz, voicing, loop_length)
     }
 
-    /// As [`new`](Self::new), with room in the delay line for `capacity`
-    /// samples, so [`restring`](Self::restring) to any note up to that
-    /// length never allocates (the audio thread's rule: a voice is sized
-    /// once for its lowest note). `None` also if the note needs more than
-    /// `capacity` samples.
+    /// As [`new`](Self::new), with room for `capacity` samples so
+    /// [`restring`](Self::restring) up to it never allocates; `None` also
+    /// if the note needs more.
     #[must_use]
     pub fn with_capacity(
         sample_rate: f64,
@@ -50,9 +39,8 @@ impl<S: Scalar> KsString<S> {
         })
     }
 
-    /// Re-voices this string for a new note, silent, reusing its delay
-    /// line. `false`, changing nothing, for settings it can't play or a
-    /// note longer than the line's capacity.
+    /// Re-voices for a new note, silent; `false`, changing nothing, if it
+    /// can't be played or exceeds the capacity.
     pub fn restring(&mut self, sample_rate: f64, fundamental_hz: f64, voicing: Voicing) -> bool {
         let Some(coefficients) = voicing.coefficients(sample_rate, fundamental_hz) else {
             return false;
@@ -64,11 +52,9 @@ impl<S: Scalar> KsString<S> {
         true
     }
 
-    /// Adds a loss on top of the voicing's, so the note's fundamental falls
-    /// 60 dB in about `decay_time_60db` more seconds: the release at note
-    /// off. The pitch doesn't change (only the taps' gain does). Ignored
-    /// unless `decay_time_60db > 0`. The loss comes in over `ramp` samples:
-    /// see [`RELEASE_RAMP`](crate::RELEASE_RAMP).
+    /// The release at note off: the fundamental falls 60 dB in about
+    /// `decay_time_60db` more seconds (ignored unless positive), pitch
+    /// unchanged, over `ramp` samples ([`RELEASE_RAMP`](crate::RELEASE_RAMP)).
     pub fn damp(&mut self, decay_time_60db: f64, ramp: core::num::NonZeroUsize) {
         self.bridge.damp(decay_time_60db, ramp);
     }
@@ -90,8 +76,7 @@ impl<S: Scalar> KsString<S> {
     }
 
     /// Fills the delay line with `shape(slot, N)` for each `slot` (0 =
-    /// oldest): the excitation. `N` is passed so a shape can be laid out
-    /// across the line. Clears the filters' memory.
+    /// oldest), and clears the filters' memory.
     pub fn pluck(&mut self, mut shape: impl FnMut(usize, usize) -> S) {
         let loop_length = self.line.len();
         self.line.fill(|slot| shape(slot, loop_length));

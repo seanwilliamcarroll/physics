@@ -6,8 +6,6 @@ use crate::voicing::phase_delay_lowpass;
 
 const SAMPLE_RATE: f64 = 48_000.0;
 
-/// The worst partial error (cents) of a design for `lowest_partial_hz`,
-/// `inharmonicity` (stretch ½, room unlimited).
 fn worst_cents(lowest_partial_hz: f64, inharmonicity: f64) -> (usize, u32, f64) {
     let dispersion =
         design(SAMPLE_RATE, lowest_partial_hz, inharmonicity, 0.5, 1e9).expect("a design");
@@ -23,11 +21,9 @@ fn worst_cents(lowest_partial_hz: f64, inharmonicity: f64) -> (usize, u32, f64) 
     (dispersion.count, dispersion.partials, worst)
 }
 
-/// Each designed partial's error (cents, 2 and up, as magnitudes) for
-/// `dispersion`, predicted from the filters' phase delays: partial k needs
-/// `k fs / f_k` samples a round trip, `f_k = k F₀ √(1 + B k²)`, relative
-/// to the fundamental's, with the loss lowpass's (stretch `lowpass_stretch`)
-/// taken off.
+/// Each designed partial's error (cents, 2 and up), predicted from the
+/// filters' phase delays: partial k needs `k fs / f_k` samples a round
+/// trip, `f_k = k F₀ √(1 + B k²)`, less the loss lowpass's delay.
 fn errors(
     dispersion: &Dispersion,
     sample_rate: f64,
@@ -54,9 +50,8 @@ fn errors(
         .collect()
 }
 
-/// Key `key` as the piano designs it at `sample_rate`: its design and each
-/// partial's error, and the biquads it would have had with unlimited
-/// room (more than it has: the loop's room limited it).
+/// Key `key` as the piano designs it: the design, each partial's error, and
+/// the biquad count with unlimited room.
 fn as_the_piano_designs(sample_rate: f64, key: u8) -> (Dispersion, Vec<f64>, usize) {
     let key_voicing = voicing(key, true);
     let (lowest_partial_hz, inharmonicity) = (frequency(key), key_voicing.inharmonicity);
@@ -99,16 +94,12 @@ fn as_the_piano_designs(sample_rate: f64, key: u8) -> (Dispersion, Vec<f64>, usi
     (dispersion, partial_errors, unlimited)
 }
 
-/// Every key's partials, at both rates, as the piano designs them
-/// (`docs/14-piano.md`): with the room it wants, the worst partial 1.65
-/// cents (the band's top partial on a few bass keys, where a least-squares
-/// fit gives a little; key 92 at 48 kHz on partial 8). ~1.2x.
+/// With the room it wants, the worst partial is 1.65 cents (key 92 at
+/// 48 kHz, partial 8). ~1.2x.
 const ALL_KEYS_TOL_CENTS: f64 = 2.0;
 
-/// Where the loop's room (half the loop: more detunes the top keys'
-/// fundamentals) left fewer biquads than wanted: 2.73 cents (keys
-/// 98–100, partials 4–6, 7–16 kHz). Held to where mistuning starts to be
-/// heard (`tests/tuning.rs`, `AUDIBLE_CENTS`).
+/// Where the loop's room left fewer biquads than wanted: 2.73 cents (keys
+/// 98–100, partials 4–6). Held to `AUDIBLE_CENTS` (`tests/tuning.rs`).
 const ROOM_LIMITED_TOL_CENTS: f64 = 3.0;
 
 /// One biquad for three partials (MIDI 106 at 44.1 kHz, 107 at 48 kHz):
@@ -137,8 +128,7 @@ fn every_key_puts_its_partials_within_its_bound() {
     }
 }
 
-/// The placed-and-refined cascade puts the first 30 partials within a
-/// fraction of a cent across the keyboard. ~5x the worst measured.
+/// The first 30 partials land within a fraction of a cent. ~5x the worst.
 const DESIGN_TOL_CENTS: f64 = 1.0;
 
 #[test]
@@ -166,8 +156,6 @@ fn no_stiffness_no_filter() {
 
 #[test]
 fn the_design_is_reproducible() {
-    // The same inputs give the same bits (libm, a deterministic stop):
-    // rendered audio is repeatable because of it.
     let first = design(SAMPLE_RATE, 261.63, 3.1e-4, 0.5, 1e9).unwrap();
     let second = design(SAMPLE_RATE, 261.63, 3.1e-4, 0.5, 1e9).unwrap();
     assert_eq!(first, second);
@@ -175,8 +163,6 @@ fn the_design_is_reproducible() {
 
 #[test]
 fn a_short_loop_gets_a_smaller_filter() {
-    // The cascade's delay at the lowest partial may use at most `max_delay`
-    // samples.
     let full = design(SAMPLE_RATE, 1046.5, 2.85e-3, 0.5, 1e9).unwrap();
     let omega_lowest = TAU * 1046.5 / SAMPLE_RATE;
     let room = full.delay(omega_lowest) / 2.0;
@@ -196,9 +182,6 @@ fn a_short_loop_gets_a_smaller_filter() {
     assert_eq!(small.partials, full.partials, "the same targets");
 }
 
-/// The closed-form derivatives match central differences of the delay
-/// itself, over the radii and angles the design uses and frequencies
-/// across the band.
 #[test]
 fn the_delay_gradient_matches_central_differences() {
     let step = 1e-6;

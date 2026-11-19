@@ -6,11 +6,8 @@ use math::convert::f64_to_usize;
 
 const RATES: [f64; 2] = [44_100.0, 48_000.0];
 
-/// Samples skipped before measuring pitch (~43 ms): at least four periods,
-/// and long enough that a high note's fast-dying partials are gone. With
-/// four periods only, a 13.5-sample loop measured −0.30 cents (the
-/// waveform still changing shape across the window); with this, every
-/// note measured within 0.09 cents.
+/// Samples skipped before measuring pitch (~43 ms): four periods alone left
+/// a 13.5-sample loop at −0.30 cents; with this, every note is within 0.09.
 const ATTACK: usize = 2048;
 
 fn render<S: Scalar>(
@@ -31,8 +28,7 @@ fn render<S: Scalar>(
     (string, out.iter().map(|sample| sample.to_f64()).collect())
 }
 
-/// The integer loop plays `sample_rate / (N + ½)` exactly: measured within
-/// a small fraction of a cent, for notes across the keyboard, both rates.
+/// The integer loop plays `sample_rate / (N + ½)`: within 0.2 cents.
 fn integer_loop_pitch_is_sample_rate_over_n_plus_half<S: Scalar>() {
     for sample_rate in RATES {
         for fundamental_hz in [55.0, 220.0, 880.0, 3520.0] {
@@ -149,8 +145,7 @@ fn bad_settings_are_refused() {
 
 #[test]
 fn a_release_of_no_time_is_ignored() {
-    // `damp` needs a positive T60: at 0 the loss would be total (a decay
-    // factor of 10^−∞ = 0), so it's refused, not applied.
+    // At 0 the loss would be total (10^−∞), so it's refused.
     let voicing = Voicing {
         tuned: true,
         decay: Decay::T60(2.0),

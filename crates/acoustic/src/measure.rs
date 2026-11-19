@@ -3,37 +3,28 @@
 //! In `f64`, whatever scalar rendered the signal.
 
 use math::convert::{f64_to_usize, usize_to_f64};
-/// Cents in an octave: a cent is a hundredth of an equal-tempered
-/// semitone.
 pub const CENTS_PER_OCTAVE: f64 = 1200.0;
 
-/// `1200 · log₂(frequency / target)`: how far `frequency` is from
-/// `target`, in cents.
+/// How far `frequency` is from `target`, in cents.
 #[must_use]
 pub fn cents(frequency: f64, target: f64) -> f64 {
     CENTS_PER_OCTAVE * (frequency / target).log2()
 }
 
-/// Lags shorter than this are refined over several periods: interpolating
-/// one short period's autocorrelation peak is biased by a fraction of a
-/// sample (−0.85 cents at a 12.5-sample period), and measuring `m` periods
-/// at once divides that error by `m`.
+/// Shorter lags are refined over several periods: one short period's
+/// parabolic peak is biased (−0.85 cents at a 12.5-sample period), and `m`
+/// periods divide that by `m`.
 const MIN_LAG: f64 = 512.0;
 
 /// The refinement searches within this fraction of one period around `m`
 /// coarse periods: under half, so it can't land on `m ± 1` periods.
 const REFINE_HALF_WIDTH: f64 = 0.4;
 
-/// The fundamental of `signal` (sampled at `sample_rate`), Hz, by
-/// normalized autocorrelation, in two stages: the peak within `±search` (a
-/// fraction, e.g. 0.06) of `expected_hz`'s period, then a refinement at `m`
-/// periods (the fewest spanning 512 samples, `MIN_LAG`), searched within
-/// less than half a period of `m` coarse periods so it can't pick a
-/// neighboring multiple. Each peak is refined to a fraction of a sample by
-/// parabolic interpolation.
-///
-/// `None` if the signal is too short for a window of twice the longest
-/// lag, or silent. The caller skips the attack (pass `&signal[skip..]`).
+/// The fundamental of `signal`, Hz, by normalized autocorrelation: the peak
+/// within `±search` (a fraction, e.g. 0.06) of `expected_hz`'s period, then
+/// a refinement at `m` periods spanning `MIN_LAG`. `None` if the signal is
+/// too short for a window of twice the longest lag, or silent. The caller
+/// skips the attack.
 #[must_use]
 pub fn pitch(signal: &[f64], sample_rate: f64, expected_hz: f64, search: f64) -> Option<f64> {
     let period = sample_rate / expected_hz;
@@ -52,8 +43,6 @@ pub fn pitch(signal: &[f64], sample_rate: f64, expected_hz: f64, search: f64) ->
     Some(periods * sample_rate / lag)
 }
 
-/// The lag in `[first_lag, last_lag]` samples with the largest normalized
-/// autocorrelation, refined by a parabola through it and its neighbors.
 fn peak_lag(signal: &[f64], first_lag: f64, last_lag: f64) -> Option<f64> {
     let (first_lag, last_lag) = (
         f64_to_usize(first_lag.floor().max(1.0))?,
@@ -100,20 +89,12 @@ fn peak_lag(signal: &[f64], first_lag: f64, last_lag: f64) -> Option<f64> {
     Some(usize_to_f64(best) + offset)
 }
 
-/// The frequency of `signal`'s component near `estimate_hz`, refined from
-/// its phase: a Hann-windowed DFT at `estimate_hz` over `periods` periods,
-/// in two consecutive windows; the phase advances `2π f H / sample_rate`
-/// over the hop `H` (one window), so the difference from what the estimate
-/// predicts gives the error. Unambiguous while the estimate is within
-/// `sample_rate / (2H)` of the truth (`1 / (2 periods)` of a period: 3% at
-/// 16 periods).
-///
-/// Measures one partial, not the waveform's repetition: when the partials
-/// aren't exact multiples of the fundamental (a tuned, stretched string's
-/// filters delay each frequency differently), the autocorrelation
-/// ([`pitch`]) averages their drift, and this doesn't (−41 cents against
-/// this one's fraction of a cent, at C8). `None` if `signal` is shorter
-/// than two windows, or the component is silent.
+/// The frequency of `signal`'s component near `estimate_hz`, from the phase
+/// advance of a Hann-windowed DFT over two consecutive windows of `periods`
+/// periods; unambiguous within `1 / (2 periods)` of a period (3% at 16).
+/// Measures one partial, which [`pitch`] averages over a drifting waveform
+/// (−41 cents against a fraction of a cent, at C8). `None` if `signal` is
+/// shorter than two windows, or silent.
 #[must_use]
 pub fn partial(signal: &[f64], sample_rate: f64, estimate_hz: f64, periods: f64) -> Option<f64> {
     let window = f64_to_usize((periods * sample_rate / estimate_hz).round())?;
@@ -140,8 +121,6 @@ pub fn amplitude(signal: &[f64], sample_rate: f64, frequency: f64) -> f64 {
     })
 }
 
-/// The Hann-windowed DFT of `chunk` at `frequency` Hz: `(real,
-/// imaginary)`, or `None` if it's zero.
 fn dft_at(chunk: &[f64], sample_rate: f64, frequency: f64) -> Option<(f64, f64)> {
     let length = usize_to_f64(chunk.len());
     let omega = core::f64::consts::TAU * frequency / sample_rate;
@@ -155,16 +134,11 @@ fn dft_at(chunk: &[f64], sample_rate: f64, frequency: f64) -> Option<(f64, f64)>
     (real != 0.0 || imaginary != 0.0).then_some((real, imaginary))
 }
 
-/// The 60 dB decay time of `signal`'s component at `fundamental_hz`, s.
-///
-/// The fundamental's amplitude per window (a Hann-windowed DFT at
-/// `fundamental_hz`, one frequency bin, over `periods` periods), and a
-/// least-squares line through its level in dB against time, from `start`
-/// s to `end` s. Measuring one bin matters: a plucked string's higher
-/// partials decay faster than its fundamental, so the total RMS falls
-/// faster than the decay the loop formula predicts for the fundamental
-/// (6.2 s of RMS decay against the fundamental's 7.6 s). `None` if fewer
-/// than two windows fall in the span, or the level doesn't fall.
+/// The 60 dB decay time of `signal`'s component at `fundamental_hz`, s: a
+/// least-squares line through its per-window level in dB, from `start` to
+/// `end` s. One bin, not total RMS, which falls faster as higher partials
+/// decay (6.2 s against the fundamental's 7.6 s). `None` if fewer than two
+/// windows fall in the span, or the level doesn't fall.
 #[must_use]
 pub fn t60(
     signal: &[f64],

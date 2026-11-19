@@ -1,15 +1,13 @@
-//! [`Body`]: the instrument's body, as a few fixed resonances on the
-//! strings' bridge force (`docs/14-piano.md`, "The body"): the direct
-//! sound plus parallel bandpass biquads. Soundboard-like coloring, **our
-//! choice** of frequencies, Q and gains, not a measured soundboard.
+//! [`Body`]: the direct sound plus parallel bandpass resonances
+//! (`docs/14-piano.md`, "The body"). **Our choice** of frequencies, Q and
+//! gains, not a measured soundboard.
 
 use core::f64::consts::TAU;
 
 use crate::Scalar;
 
-/// The resonances: (frequency Hz, Q, gain), **our choice**: a soundboard's
-/// lowest modes sit near 50–100 Hz and get denser upward; a few broad
-/// peaks across the range stand in for them.
+/// (frequency Hz, Q, gain): a few broad peaks standing in for a soundboard's
+/// modes, which start near 50–100 Hz and thicken upward.
 const RESONANCES: [(f64, f64, f64); 5] = [
     (90.0, 4.0, 1.0),
     (200.0, 5.0, 0.8),
@@ -25,8 +23,7 @@ pub(crate) fn resonances() -> [f64; RESONANCE_COUNT] {
     RESONANCES.map(|(frequency, _, _)| frequency)
 }
 
-/// A biquad's coefficients `(b0, a1, a2)` (`b1 = 0`, `b2 = −b0`) and its
-/// last two inputs and outputs.
+/// A biquad with `b1 = 0`, `b2 = −b0`.
 #[derive(Copy, Clone, Debug)]
 struct Bandpass<S> {
     b0: S,
@@ -43,8 +40,7 @@ pub(crate) struct Body<S> {
 }
 
 impl<S: Scalar> Body<S> {
-    /// The body at `sample_rate`; `None` if a resonance isn't below
-    /// Nyquist.
+    /// `None` if a resonance isn't below Nyquist.
     #[must_use]
     pub(crate) fn new(sample_rate: f64) -> Option<Self> {
         let usable =
@@ -70,7 +66,6 @@ impl<S: Scalar> Body<S> {
         Some(Self { bands })
     }
 
-    /// The next output for `input`: the direct sound and each band.
     pub(crate) fn process(&mut self, input: S) -> S {
         let mut sum = input;
         for band in &mut self.bands {

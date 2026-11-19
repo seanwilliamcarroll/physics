@@ -1,7 +1,5 @@
 //! The refinement (`docs/14-piano.md`, "Dispersion in the loop"): damped
-//! Gauss–Newton (Levenberg–Marquardt) on every pole's radius and angle,
-//! against the partials' round-trip delays in cents, from where the
-//! placement put them.
+//! Gauss–Newton on every pole, against the partials' delays in cents.
 
 use core::f64::consts::PI;
 
@@ -9,25 +7,20 @@ use super::{ANGLE_MARGIN, Angles, RADIUS_RANGE, Target};
 
 /// Iterations, and the damping's start and its factors.
 pub(super) const ITERATIONS: u32 = 80;
-/// A refit's while the pole count is still being chosen: enough to
-/// estimate the delay that count's fit will have, not to converge.
+/// A refit while the pole count is still being chosen: estimates, no convergence.
 pub(super) const ESTIMATE_ITERATIONS: u32 = 10;
 const DAMPING_START: f64 = 1e-3;
 const DAMPING_DOWN: f64 = 0.3;
 const DAMPING_UP: f64 = 10.0;
-/// An accepted step that lowers the cost by less than this fraction of
-/// it: converged. Without it most keys ran all [`ITERATIONS`] for gains
-/// of no audible consequence; at 1e-4 no key's worst partial moved by
-/// 0.0001 cent (all 88 checked), at 1e-3 one moved 2.2.
+/// A step gaining less than this fraction of the cost: converged. At 1e-4
+/// no key's worst partial moved by 0.0001 cent (all 88 checked); at 1e-3 one
+/// moved 2.2.
 const CONVERGED: f64 = 1e-4;
-/// Past this, steps are ~1e-8 of a gradient step: stop early (still
-/// deterministic, the same inputs stop at the same iteration).
+/// Past this, steps are ~1e-8 of a gradient step: stop early.
 const DAMPING_STOP: f64 = 1e8;
 
-/// Each target's error in cents for the cascade `params`, and each
-/// biquad's [`Angles`] at `omega_lowest` then at each target (for the
-/// Jacobian). The cascade's delay at a frequency is its biquads' in order,
-/// as [`cascade_delay`](super::cascade_delay) adds them.
+/// Each target's error in cents for `params`, and each biquad's [`Angles`]
+/// at `omega_lowest` then at each target (for the Jacobian).
 fn residuals(
     params: &[f64],
     omega_lowest: f64,
@@ -68,9 +61,8 @@ fn residuals(
     (errors, angles)
 }
 
-/// Damped Gauss–Newton (Levenberg–Marquardt) on `params` (radius, angle,
-/// …), minimizing the squared cents error, for at most `iterations`
-/// (stopping early once a step gains less than [`CONVERGED`] of the cost).
+/// Minimizes the squared cents error of `params` (radius, angle, …) for at
+/// most `iterations`, stopping early at [`CONVERGED`].
 pub(super) fn refine(
     params: &mut Vec<f64>,
     omega_lowest: f64,
@@ -80,15 +72,11 @@ pub(super) fn refine(
     let (mut errors, mut angles) = residuals(params, omega_lowest, targets);
     let mut cost: f64 = errors.iter().map(|error| error * error).sum();
     let mut damping = DAMPING_START;
-    // JᵀJ and −Jᵀr at the current parameters: they change only when a step
-    // is taken. A rejected step just raises the damping and solves again.
+    // JᵀJ and −Jᵀr change only when a step is accepted.
     let mut normal: Option<(Vec<Vec<f64>>, Vec<f64>)> = None;
     for _ in 0..iterations {
         let (jtj, jtr) = normal.get_or_insert_with(|| {
-            // One column per parameter: a parameter moves only its own
-            // biquad's delay, so its column is that biquad's derivative,
-            // in closed form (`Angles::gradient`, from the residuals'
-            // `sin` and `cos`), the pole's (radius, angle) pair together.
+            // One column per parameter: it moves only its own biquad's delay.
             let jacobian: Vec<Vec<f64>> = params
                 .as_chunks::<2>()
                 .0
@@ -167,9 +155,7 @@ pub(super) fn refine(
     }
 }
 
-/// `JᵀJ` and `−Jᵀr` for the Jacobian's columns `jacobian` and the
-/// residuals `errors`. `JᵀJ` is symmetric: the lower half computed, the
-/// upper mirrored from it.
+/// `JᵀJ` (symmetric: lower half computed, upper mirrored) and `−Jᵀr`.
 fn normal_equations(jacobian: &[Vec<f64>], errors: &[f64]) -> (Vec<Vec<f64>>, Vec<f64>) {
     let dot = |left: &[f64], right: &[f64]| left.iter().zip(right).map(|(x, y)| x * y).sum::<f64>();
     let lower: Vec<Vec<f64>> = jacobian

@@ -4,15 +4,11 @@ use crate::Scalar;
 use math::convert::usize_to_f64;
 
 /// The last `len` samples written, oldest first: [`front`](Self::front)
-/// is the sample written `len` pushes ago (`y[n − N]`), and
-/// [`push`](Self::push) replaces it with the newest.
-///
-/// A ring buffer: a push overwrites one slot and advances an index, so a
-/// sample costs O(1) and never allocates (the audio thread's rule).
+/// is the sample written `len` pushes ago (`y[n − N]`). O(1) per push, and
+/// never allocates once built.
 #[derive(Clone, Debug)]
 pub(crate) struct DelayLine<S> {
     samples: Vec<S>,
-    /// The oldest sample's slot, which the next push overwrites.
     head: usize,
 }
 
@@ -32,8 +28,6 @@ impl<S: Scalar> DelayLine<S> {
         self.samples.len()
     }
 
-    /// The longest this line can [`reset`](Self::reset) to without
-    /// allocating.
     #[must_use]
     pub(crate) fn capacity(&self) -> usize {
         self.samples.capacity()
@@ -65,9 +59,8 @@ impl<S: Scalar> DelayLine<S> {
         }
     }
 
-    /// Adds `amount` to sample `offset` counting from the front (nothing
-    /// past the end): a force entering a string mid-rail
-    /// (`docs/14-piano.md`).
+    /// Adds `amount` to sample `offset` from the front (nothing past the
+    /// end): a force entering a string mid-rail.
     pub(crate) fn add_at(&mut self, offset: usize, amount: S) {
         let len = self.samples.len();
         if offset < len
@@ -95,10 +88,9 @@ impl<S: Scalar> DelayLine<S> {
         older.iter().chain(newer).copied()
     }
 
-    /// A line of `len` zeros with room for `capacity` samples, so
-    /// [`reset`](Self::reset) up to `capacity` never allocates (a voice's
-    /// line, sized once for its lowest note). `None` for `len == 0` or
-    /// `len > capacity`.
+    /// A line of `len` zeros with room for `capacity`, so
+    /// [`reset`](Self::reset) up to it never allocates. `None` for
+    /// `len == 0` or `len > capacity`.
     #[must_use]
     pub(crate) fn with_capacity(len: usize, capacity: usize) -> Option<Self> {
         if len == 0 || len > capacity {
@@ -109,9 +101,8 @@ impl<S: Scalar> DelayLine<S> {
         Some(Self { samples, head: 0 })
     }
 
-    /// Makes this a line of `len` zeros, reusing the buffer: no allocation
-    /// while `len` fits the capacity. `false`, changing nothing, for
-    /// `len == 0` or a `len` over the capacity.
+    /// Makes this `len` zeros, reusing the buffer; `false`, changing
+    /// nothing, for `len == 0` or over the capacity.
     pub(crate) fn reset(&mut self, len: usize) -> bool {
         if len == 0 || len > self.samples.capacity() {
             return false;
@@ -135,8 +126,6 @@ impl<S: Scalar> DelayLine<S> {
         }
     }
 
-    /// Sets every slot to `value_at(offset)` for its `offset` from the
-    /// front (0 = oldest): a pluck.
     pub(crate) fn fill(&mut self, mut value_at: impl FnMut(usize) -> S) {
         let len = self.samples.len();
         for (slot_index, slot) in self.samples.iter_mut().enumerate() {

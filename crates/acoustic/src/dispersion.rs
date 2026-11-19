@@ -1,21 +1,10 @@
 //! Dispersion: the delay a stiff string's loop needs so its partials run
 //! sharp (`docs/14-piano.md`, "Dispersion in the loop").
 //!
-//! A cascade of second-order allpasses, each a pole pair `r e^{±jθ}`: a
-//! biquad can put its delay where the band needs it, which a first-order
-//! section (delay peaking at DC) can't. Designed once per key, not at
-//! note on, in two steps:
-//!
-//! 1. **Placement** (Abel, Välimäki & Smith 2010; CCRMA's `adf.m`): one
-//!    biquad per 2π of the excess phase the string needs over a pure
-//!    delay, its pole where that phase reaches π, 3π, 5π, …, its radius
-//!    from the spacing to its neighbors.
-//! 2. **Refinement**: damped Gauss–Newton on every pole's angle and
-//!    radius against the partials' round-trip delays in cents. Placement
-//!    alone left partials 10–200 cents off; refined, under a cent.
-//!
-//! All `f64` with `libm`, and every stop decided by the numbers alone, so
-//! the same inputs give the same design.
+//! A cascade of allpass biquads, each a pole pair `r e^{±jθ}`, designed
+//! once per key by placement (Abel, Välimäki & Smith 2010) then refinement
+//! (placement alone: 10–200 cents off; refined: under a cent). Deterministic:
+//! `f64` with `libm`, stops decided by the numbers alone.
 
 use core::f64::consts::{PI, TAU};
 use math::convert::{clamped_index, usize_to_f64};
@@ -23,25 +12,22 @@ use math::convert::{clamped_index, usize_to_f64};
 use crate::measure::CENTS_PER_OCTAVE;
 use crate::voicing::phase_delay_lowpass;
 
-/// The most biquads a cascade may have (the bridge keeps state for this
-/// many, so nothing allocates).
+/// The most biquads a cascade may have (the bridge's fixed state size).
 pub(crate) const MAX_BIQUADS: usize = 16;
 
-/// Partials designed for: the first `DESIGN_PARTIALS`, those below
-/// `BAND_LIMIT` of the sample rate.
+/// Partials designed for: the first `DESIGN_PARTIALS` below `BAND_LIMIT` of
+/// the sample rate.
 const DESIGN_PARTIALS: u32 = 30;
 const BAND_LIMIT: f64 = 0.4;
-/// The design band reaches this far past the last partial.
 const BAND_MARGIN: f64 = 1.05;
 
 /// `adf.m`'s smoothing factor (its documented example value).
 const BETA: f64 = 0.85;
 
-/// Placement can yield very few poles for a weakly stiff note (C2 got 2,
-/// and refined to only 1.6 cents); start from at least this many.
+/// Placement can yield very few poles for a weakly stiff note (C2 got 2:
+/// 1.6 cents refined); start from at least this many.
 const MIN_BIQUADS: usize = 4;
 
-/// The poles' allowed range: radius, and how near 0 or π an angle may go.
 const RADIUS_RANGE: (f64, f64) = (0.05, 0.995);
 const ANGLE_MARGIN: f64 = 1e-3;
 
@@ -50,7 +36,6 @@ const ANGLE_MARGIN: f64 = 1e-3;
 pub(crate) struct Dispersion {
     pub(crate) poles: [(f64, f64); MAX_BIQUADS],
     pub(crate) count: usize,
-    /// How many partials it was designed for (the fundamental and up).
     pub(crate) partials: u32,
 }
 
@@ -72,9 +57,8 @@ impl Dispersion {
     }
 }
 
-/// The phase delay of the allpass with poles `r e^{±jθ}` at `omega`,
-/// samples: its phase lag is `2ω + 2[arg(1 − p e^{−jω}) + arg(1 − p* e^{−jω})]`,
-/// computed per pole so it never wraps (each factor stays within ±π/2).
+/// The phase delay, samples, of the allpass with poles `r e^{±jθ}`: computed
+/// per pole so the phase never wraps (each factor stays within ±π/2).
 fn biquad_delay(radius: f64, angle: f64, omega: f64) -> f64 {
     Angles::new(angle, omega).delay(radius, omega)
 }
@@ -84,11 +68,8 @@ fn biquad_delay_gradient(radius: f64, angle: f64, omega: f64) -> (f64, f64) {
     Angles::new(angle, omega).gradient(radius, omega)
 }
 
-/// What a biquad's delay and its derivatives at `omega` need from its pole
-/// angle `θ`: `sin` and `cos` of `θ − ω` and of `−θ − ω` (`sincos`: one
-/// range reduction for both). Kept by the refinement, so the Jacobian at
-/// the parameters a step just reached reuses the residuals' (trig is
-/// most of the design's cost).
+/// `sin` and `cos` of `θ − ω` and `−θ − ω`, kept by the refinement so the
+/// Jacobian reuses the residuals' trig (most of the design's cost).
 #[derive(Clone, Copy)]
 pub(crate) struct Angles {
     plus: (f64, f64),
@@ -108,11 +89,8 @@ impl Angles {
         (2.0 * omega + 2.0 * (factor(self.plus) + factor(self.minus))) / omega
     }
 
-    /// The delay's derivatives in radius and `θ`, in closed form: each
-    /// factor is `atan2(y, x)` with `y = −r sin a`, `x = 1 − r cos a` (`a`
-    /// the factor's angle less `ω`), whose derivatives are `−sin a / q` in
-    /// `r` and `(r² − r cos a) / q` in `a`, `q = x² + y² = 1 − 2r cos a + r²`.
-    /// The same `sin` and `cos` as the delay, and no `atan2`.
+    /// The delay's derivatives in radius and `θ`, in closed form from the
+    /// same `sin` and `cos` (each factor is `atan2(−r sin a, 1 − r cos a)`).
     fn gradient(self, radius: f64, omega: f64) -> (f64, f64) {
         let parts = |(sin, cos): (f64, f64)| {
             let q = 1.0 - 2.0 * radius * cos + radius * radius;
@@ -129,8 +107,7 @@ impl Angles {
 }
 
 /// A partial to design for: its frequency (rad/sample), the extra delay it
-/// needs over the fundamental, and the weight turning a delay error into
-/// cents.
+/// needs over the fundamental, and the weight turning delay error to cents.
 #[derive(Copy, Clone)]
 struct Target {
     omega: f64,
@@ -138,9 +115,7 @@ struct Target {
     weight: f64,
 }
 
-/// The cascade for a string whose lowest partial is `lowest_partial_hz` at
-/// `sample_rate`, with `inharmonicity` and the loop's lowpass stretch
-/// `lowpass_stretch`, using at most `max_delay` samples at that partial.
+/// The cascade using at most `max_delay` samples at the lowest partial.
 /// `None` without stiffness (`inharmonicity ≤ 0` or NaN), or with fewer
 /// than two partials in the band.
 pub(crate) fn design(
@@ -185,13 +160,8 @@ pub(crate) fn design(
         .flat_map(|&(radius, angle)| [radius, angle])
         .collect();
     refine::refine(&mut params, omega_lowest, &targets, refine::ITERATIONS);
-    // Too much delay at the lowest partial for this loop (a short treble
-    // loop): keep the count that fits at this design's delay per biquad,
-    // drop the highest poles, refit; repeat until it fits. A count's delay
-    // shifts as its fit converges, so this can take a few rounds (four for
-    // some keys): the rounds only estimate the delay (short fits), and the
-    // count that fits gets a full one, checked again in case its converged
-    // delay no longer fits.
+    // Too much delay for a short loop: drop the highest poles and refit
+    // until it fits (up to four rounds; short fits estimate, the last is full).
     let mut converged = true;
     loop {
         let delay = cascade_delay(&params, omega_lowest);
@@ -230,11 +200,9 @@ pub(crate) fn design(
     Some(dispersion)
 }
 
-/// Abel, Välimäki & Smith's placement (`adf.m`, verbatim in `f64`): up to
-/// [`MAX_BIQUADS`] pole pairs `(radius, angle)` for a band of `band_hz`.
-/// The symbols are `adf.m`'s: `tau0` the delay at the fundamental, `pd0`
-/// and `mu0` the band-edge phase delay and group delay, `phi0` the excess
-/// phase over the band, `theta` the pole angles in Hz.
+/// Abel, Välimäki & Smith's placement (CCRMA's `adf.m` in `f64`, with its
+/// symbols): up to [`MAX_BIQUADS`] pole pairs `(radius, angle)` for a band
+/// of `band_hz`.
 fn place(
     sample_rate: f64,
     fundamental_hz: f64,
@@ -275,8 +243,7 @@ fn place(
         .collect()
 }
 
-/// Brings `poles` up to [`MIN_BIQUADS`] with poles spread across the band
-/// (`band` rad/sample), for the refinement to place.
+/// Pads `poles` to [`MIN_BIQUADS`], spread across the band (rad/sample).
 fn pad(poles: &mut Vec<(f64, f64)>, band: f64) {
     let have = poles.len();
     for index in have..MIN_BIQUADS {

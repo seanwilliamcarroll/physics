@@ -5,49 +5,32 @@ use crate::hammer::Hammer;
 use crate::{DelayLine, Scalar, Voicing};
 use math::convert::{clamped_index, usize_to_f64};
 
-/// A string with fixed ends, as two delay lines ("rails") of `M` samples:
-/// `right`, the wave traveling toward the bridge, and `left`, the wave
-/// traveling toward the nut. Each sample every value moves one cell; at
-/// each end the arriving wave reflects inverted, and at the bridge it also
-/// passes the loop filter (`Bridge`, from the note's [`Voicing`]).
-///
-/// The loop is `N` samples, split `⌊N/2⌋` per rail; when `N` is odd the
-/// extra sample is a one-sample delay inside the bridge.
-///
-/// Positions are fractions of the *effective* length measured from the
-/// bridge: the bridge's filters delay the reflection by `τ_b` samples a
-/// round trip, so the string reaches `τ_b / 2` cells past cell 0. The
-/// effective length is half the loop's period, `sample_rate / (2 f₀)`
-/// cells, and cell `c` (0 nearest the bridge) is at
-/// `s = (c + ½ + τ_b / 2) / (sample_rate / 2f₀)`. The right rail's front
-/// is cell 0; the left rail's front is cell `M − 1`. The displacement at a
-/// cell is the sum of the two rails there.
+/// A string with fixed ends as two delay lines ("rails") of `M` samples,
+/// `right` toward the bridge and `left` toward the nut; ends reflect
+/// inverted, the bridge also filters ([`Voicing`]). An odd loop `N` puts
+/// its extra sample in the bridge. Positions are fractions of the
+/// effective length `sample_rate / 2f₀` from the bridge: cell `c` is at
+/// `(c + ½ + τ_b / 2) / length`, `τ_b` the bridge's round-trip delay.
 #[derive(Clone, Debug)]
 pub struct Waveguide<S> {
     right: DelayLine<S>,
     left: DelayLine<S>,
     bridge: Bridge<S>,
-    /// The bridge's extra sample when the loop is odd: its filter output,
-    /// waiting one step to enter the left rail.
+    /// The bridge's extra sample when the loop is odd, waiting one step.
     odd_sample: Option<S>,
-    /// Where the output is read, from the bridge.
     pickup: f64,
     /// The effective length, cells (`sample_rate / 2f₀`).
     length: f64,
     /// How far cell 0's center is from the effective bridge (`½ + τ_b / 2`).
     first_cell_offset: f64,
-    /// A hammer on the string, and the cell its junction follows (it sits
-    /// between that cell and the next).
+    /// A hammer on the string, and the cell its junction follows.
     hammer: Option<(Hammer, usize)>,
 }
 
-/// Where a new string's pickup sits, from the bridge.
 pub(crate) const DEFAULT_PICKUP: f64 = 0.1;
 
 impl<S: Scalar> Waveguide<S> {
-    /// A silent string for pitch `fundamental_hz` at `sample_rate`, voiced
-    /// by `voicing`; `None` for settings it can't play (as
-    /// [`KsString`](crate::KsString)).
+    /// A silent string; `None` for settings it can't play.
     #[must_use]
     pub fn new(sample_rate: f64, fundamental_hz: f64, voicing: Voicing) -> Option<Self> {
         let loop_length = voicing.coefficients(sample_rate, fundamental_hz)?.n;
@@ -79,9 +62,8 @@ impl<S: Scalar> Waveguide<S> {
         })
     }
 
-    /// Re-voices this string for a new note, silent, reusing its rails.
-    /// `false`, changing nothing, for settings it can't play or a note
-    /// longer than the capacity.
+    /// Re-voices for a new note, silent; `false`, changing nothing, if it
+    /// can't be played or exceeds the capacity.
     pub fn restring(&mut self, sample_rate: f64, fundamental_hz: f64, voicing: Voicing) -> bool {
         self.restring_from(
             sample_rate,
@@ -89,8 +71,7 @@ impl<S: Scalar> Waveguide<S> {
         )
     }
 
-    /// As [`restring`](Self::restring), with a stored dispersion design
-    /// (the piano's table): no design at note on.
+    /// As [`restring`](Self::restring), with a stored dispersion design.
     pub(crate) fn restring_designed(
         &mut self,
         sample_rate: f64,
@@ -149,12 +130,9 @@ impl<S: Scalar> Waveguide<S> {
         self.bridge.damp(decay_time_60db, ramp);
     }
 
-    /// Plucks the string into `shape(position)` (from the bridge, 0 to 1),
-    /// at rest: a displacement with zero velocity is two equal traveling
-    /// waves, each half the shape. `shape` is called once per cell and both
-    /// rails take that value, so a random shape (noise) is still at rest.
-    /// The loop then holds `R` and `−L`, which cancel: no DC to remove.
-    /// Clears the bridge's memory.
+    /// Plucks into `shape(position)` (from the bridge, 0 to 1), at rest:
+    /// both rails take half the shape (called once per cell, so noise is
+    /// still at rest) and cancel in the loop: no DC to remove.
     pub fn pluck(&mut self, mut shape: impl FnMut(f64) -> S) {
         let rail_length = self.right.len();
         let (length, first_cell_offset) = (self.length, self.first_cell_offset);
@@ -172,8 +150,6 @@ impl<S: Scalar> Waveguide<S> {
         self.hammer = None;
     }
 
-    /// Advances one sample and returns the bridge's output (the loop
-    /// filter's).
     pub fn step(&mut self) -> S {
         let at_bridge = self.right.front();
         let at_nut = self.left.front();
@@ -187,8 +163,7 @@ impl<S: Scalar> Waveguide<S> {
         self.left.push(-out);
         if let Some((hammer, junction_cell)) = self.hammer.as_mut() {
             let rail_length = self.right.len();
-            // After the move, the right rail's junction cell and the left
-            // rail's next cell hold the waves that just crossed the junction.
+            // These two cells hold the waves that just crossed the junction.
             let (right_cell, left_cell) = (*junction_cell, rail_length - 2 - *junction_cell);
             let incoming = self.right.at(right_cell) + self.left.at(left_cell);
             let launched = S::from_f64(hammer.step(incoming.to_f64()));
@@ -202,7 +177,6 @@ impl<S: Scalar> Waveguide<S> {
         self.pickup = position.clamp(0.0, 1.0);
     }
 
-    /// The displacement at the pickup, read between cells linearly.
     #[must_use]
     pub fn displacement(&self) -> S {
         let rail_length = self.right.len();
@@ -242,10 +216,8 @@ impl<S: Scalar> Waveguide<S> {
         (0..self.right.len()).map(|cell| self.cell(cell))
     }
 
-    /// Lays out a Karplus–Strong loop's delay line (oldest first) on this
-    /// string so the bridge sees the same samples in the same order: its
-    /// first `M` on the right rail, the next `M` negated on the left (the
-    /// nut inverts them on the way), the last in the bridge when odd.
+    /// Lays out a Karplus–Strong loop (oldest first): the first `M` on the
+    /// right rail, the next `M` negated on the left, the last in the bridge.
     #[cfg(test)]
     pub(crate) fn load_loop(&mut self, line: &[S]) {
         let rail_length = self.right.len();
@@ -278,10 +250,8 @@ impl<S: Scalar> Waveguide<S> {
     }
 }
 
-/// The effective length in cells, `sample_rate / 2·pitch` (half the loop's
-/// period), and cell 0's center's distance from the effective bridge: the
-/// length minus the rail's own cells, plus half a cell. Falls back to the
-/// bare rail (`rail_length`, `½`) for a pitch that isn't positive.
+/// The effective length in cells, `sample_rate / 2·pitch`, and cell 0's
+/// distance from the effective bridge; the bare rail for a non-positive pitch.
 fn geometry(sample_rate: f64, pitch: f64, rail_length: usize) -> (f64, f64) {
     let rail_cells = usize_to_f64(rail_length);
     let length = sample_rate / (2.0 * pitch);

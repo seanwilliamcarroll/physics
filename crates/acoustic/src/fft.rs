@@ -1,5 +1,4 @@
-//! [`Fft`]: a radix-2 FFT we write ourselves, and [`Spectrum`], which turns
-//! a block of samples into dB magnitudes (`docs/13-waveguide.md`, "The
+//! A radix-2 [`Fft`] and a dB [`Spectrum`] (`docs/13-waveguide.md`, "The
 //! spectrum").
 
 use core::f64::consts::TAU;
@@ -7,14 +6,10 @@ use math::convert::usize_to_f64;
 
 use crate::Scalar;
 
-/// A forward FFT of one power-of-two size: radix-2 Cooley–Tukey (1965),
-/// in place and iterative (a bit-reversal permutation, then `log₂ n`
-/// passes of butterflies).
-///
-/// Everything size-dependent (twiddle factors, the bit-reversal table) is
-/// computed once in [`new`](Self::new), so [`forward`](Self::forward)
-/// never allocates: the audio thread's rule. Twiddles come from `libm`, so
-/// they're the same bits on every platform.
+/// A forward in-place radix-2 FFT of one power-of-two size. Twiddles and
+/// the bit-reversal table are built in [`new`](Self::new), so
+/// [`forward`](Self::forward) never allocates; they come from `libm`, the
+/// same bits on every platform.
 #[derive(Clone, Debug)]
 pub struct Fft<S> {
     size: usize,
@@ -25,8 +20,6 @@ pub struct Fft<S> {
 }
 
 impl<S: Scalar> Fft<S> {
-    /// An FFT of `size` points; `None` unless `size` is a power of two, at
-    /// least 2.
     #[must_use]
     pub fn new(size: usize) -> Option<Self> {
         if size < 2 || !size.is_power_of_two() {
@@ -111,9 +104,7 @@ impl<S: Scalar> Fft<S> {
 pub(crate) const FLOOR_DB: f64 = -200.0;
 
 /// Turns `n` samples into `n / 2` magnitudes in dB (0 dB = a full-scale
-/// sine in its bin): a Hann window, an [`Fft`], and the single-sided
-/// amplitude, `|X| · 2 / (n · ½)` (the window's average is ½). All its
-/// buffers are allocated in [`new`](Self::new).
+/// sine in its bin) with a Hann window; buffers are allocated in `new`.
 #[derive(Clone, Debug)]
 pub struct Spectrum<S> {
     fft: Fft<S>,
@@ -124,7 +115,6 @@ pub struct Spectrum<S> {
 }
 
 impl<S: Scalar> Spectrum<S> {
-    /// An analyzer for `size` samples (a power of two, at least 2).
     #[must_use]
     pub fn new(size: usize) -> Option<Self> {
         let fft = Fft::new(size)?;

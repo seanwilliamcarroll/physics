@@ -10,12 +10,8 @@ use math::convert::{clamped_index, usize_to_f64};
 impl<S: Scalar> Waveguide<S> {
     /// Strikes the silenced string with `hammer` at `position` (from the
     /// bridge, so a piano's eighth from the nut is `1 − 1/8`), at a junction
-    /// between two cells (`docs/14-piano.md`, "The hammer"). Each sample
-    /// after the waves move, the two that just crossed the junction are
-    /// the hammer's incoming displacement, and each gets what the hammer
-    /// launched, `I / 2Z`: for good, so the step it launched stays on the
-    /// string (it cancels at the ends). A string needs two cells for a
-    /// junction; `false`, changing nothing, with fewer.
+    /// between two cells; each wave gets what the hammer launched, `I / 2Z`.
+    /// `false`, changing nothing, with fewer than two cells.
     pub fn strike(&mut self, hammer: Hammer, position: f64) -> bool {
         let rail_length = self.right.len();
         if rail_length < 2 {
@@ -46,11 +42,8 @@ impl<S: Scalar> Waveguide<S> {
         self.hammer.as_ref().map(|(hammer, _)| hammer)
     }
 
-    /// The string's energy, J, for wave impedance `impedance` (kg/s) at
-    /// `sample_rate`, with the rails in metres: each wave carries power
-    /// `Z v²`, and a cell holds `1 / sample_rate` of it. `v` is how a
-    /// cell's value changes in a sample (the next cell's value, plus what
-    /// the hammer adds where it crosses the junction).
+    /// The string's energy, J, for wave impedance `impedance` (kg/s), rails
+    /// in metres: each wave carries power `Z v²`, a cell `1 / sample_rate` of it.
     #[must_use]
     pub fn energy(&self, impedance: f64, sample_rate: f64) -> f64 {
         let rail_length = self.right.len();

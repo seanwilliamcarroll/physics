@@ -13,10 +13,7 @@ fn lossless_untuned() -> Voicing {
 }
 
 /// Karplus–Strong is the waveguide's special case (`docs/13-waveguide.md`):
-/// started from a loop's state, the waveguide's bridge output is the
-/// loop's output, for odd and even loops, tuned and not: to rounding (the
-/// pluck is at most 1; they agree bit for bit). A wrong delay, filter or
-/// tap is off by the signal itself.
+/// from a loop's state the outputs agree (bound 1e-12; in fact bit for bit).
 fn reproduces_the_loop<S: Scalar>() {
     for (fundamental_hz, tuned) in [
         (220.0, true),
@@ -75,7 +72,6 @@ fn odd_and_even_loops_split_their_rails() {
 #[test]
 fn a_pluck_puts_its_shape_on_the_string_split_between_the_rails() {
     let mut waveguide = Waveguide::<f64>::new(SAMPLE_RATE, 400.0, lossless_untuned()).unwrap();
-    // A triangle peaked a quarter of the way from the bridge.
     waveguide.pluck(|position| {
         if position < 0.25 {
             position / 0.25
@@ -97,7 +93,6 @@ fn a_pluck_puts_its_shape_on_the_string_split_between_the_rails() {
             "cell {cell}: {value} vs {want}"
         );
     }
-    // The pickup reads the same shape between cells (linearly).
     waveguide.set_pickup(0.25);
     let at_pickup = waveguide.displacement();
     assert!((at_pickup - 0.99).abs() < 0.02, "{at_pickup}");
@@ -105,8 +100,6 @@ fn a_pluck_puts_its_shape_on_the_string_split_between_the_rails() {
 
 #[test]
 fn the_ends_reflect_inverted() {
-    // One right-going pulse next to the bridge, lossless and untuned: it
-    // comes back on the left rail upside down.
     let mut waveguide = Waveguide::<f64>::new(SAMPLE_RATE, 400.0, lossless_untuned()).unwrap();
     waveguide.load_rails(&[1.0], &[]);
     let first = waveguide.step();
@@ -117,9 +110,7 @@ fn the_ends_reflect_inverted() {
 
 #[test]
 fn positions_span_the_effective_length() {
-    // 48000 / 400 = 120 samples: the untuned classic loop is N = 120 with
-    // the average's half sample, so P = 120.5 and the effective length is
-    // 60.25 cells; cell 0's center is 0.25 + ½ cells from the bridge.
+    // N = 120 plus the average's half sample: 60.25 cells, cell 0 at 0.75.
     let waveguide = Waveguide::<f64>::new(SAMPLE_RATE, 400.0, lossless_untuned()).unwrap();
     let length = SAMPLE_RATE / (2.0 * waveguide.pitch());
     assert!((length - 60.25).abs() < 1e-12, "{length}");
@@ -132,9 +123,6 @@ fn positions_span_the_effective_length() {
 
 #[test]
 fn a_random_pluck_starts_at_rest() {
-    // Noise as a shape: each cell drawn once, both rails take it, so the
-    // two traveling waves are equal (zero velocity) and the loop's content
-    // (the right rail, then the left negated) sums to zero.
     let mut waveguide = Waveguide::<f64>::new(SAMPLE_RATE, 440.0, lossless_untuned()).unwrap();
     let mut draws = 0;
     waveguide.pluck(|_| {
@@ -163,8 +151,7 @@ fn guide(fundamental_hz: f64) -> Waveguide<f64> {
 fn the_pickup_reads_between_cells_linearly() {
     let mut guide = guide(220.0);
     let rail_length = guide.right.len();
-    // Cell c holds c (all on the right rail), so the pickup reads its own
-    // cell coordinate: on a center, exactly; between two, their mean.
+    // Cell c holds c, so the pickup reads its own cell coordinate.
     let ramp: Vec<f64> = (0..rail_length).map(math::convert::usize_to_f64).collect();
     guide.load_rails(&ramp, &vec![0.0; rail_length]);
     for x in [3.0, 3.5, 10.25] {
@@ -175,8 +162,7 @@ fn the_pickup_reads_between_cells_linearly() {
             guide.displacement()
         );
     }
-    // At the ends the coordinate passes the outer centers (it reaches
-    // rail_length − ½ at the far end), so it's clamped onto the end cells.
+    // Past the outer centers it clamps onto the end cells.
     let last = math::convert::usize_to_f64(rail_length - 1);
     for (pickup, cell_value) in [(0.0, 0.0), (1.0, last)] {
         guide.set_pickup(pickup);
@@ -201,8 +187,7 @@ fn restringing_refuses_a_note_too_long_for_the_rails() {
         !guide.restring(SAMPLE_RATE, 110.0, voicing),
         "longer than the rails were made for"
     );
-    // (A rail of no cells can't be asked for: the coefficients refuse any
-    // loop under 2 samples, so `rail_length > 0` there is defensive.)
+    // (`rail_length > 0` is defensive: coefficients refuse loops under 2.)
 }
 
 #[test]
@@ -233,8 +218,6 @@ fn hammer() -> crate::hammer::Hammer {
 fn a_strike_lands_on_the_junction_nearest_its_point() {
     let mut guide = guide(220.0);
     let rail_length = guide.right.len();
-    // The junction after cell c (between c and c + 1) is at
-    // (c + ½ + offset) / length along the string.
     for cell in [0, 3, rail_length / 2, rail_length - 2] {
         let position =
             (math::convert::usize_to_f64(cell) + 0.5 + guide.first_cell_offset) / guide.length;
@@ -248,9 +231,8 @@ fn a_strike_lands_on_the_junction_nearest_its_point() {
             "aimed at junction {cell}"
         );
     }
-    // Near the edges of a junction's catchment, 0.4 of a cell either
-    // side: still that junction (aiming exactly at it leaves half a cell
-    // of slack, enough to hide a shift by the offset).
+    // 0.4 of a cell either side is still that junction (exact aim leaves
+    // half a cell of slack, enough to hide a shifted offset).
     for cell in [3, rail_length / 2] {
         for shift in [-0.4, 0.4] {
             let position =
@@ -267,7 +249,6 @@ fn a_strike_lands_on_the_junction_nearest_its_point() {
             );
         }
     }
-    // Past the ends: the outer junctions.
     for (position, cell) in [(0.0, 0), (1.0, rail_length - 2)] {
         assert!(guide.strike(hammer(), position));
         assert_eq!(
@@ -304,8 +285,6 @@ fn a_two_cell_rail_takes_a_strike_and_one_cell_doesnt() {
     assert!(!one.strike(hammer(), 0.125));
 }
 
-/// On a straight-line shape, reading linearly between cells gives the line
-/// itself, exactly.
 #[test]
 fn the_pickup_reads_a_straight_line_exactly_between_cells() {
     let mut waveguide = Waveguide::<f64>::new(SAMPLE_RATE, 400.0, lossless_untuned()).unwrap();
