@@ -1,0 +1,10 @@
+# Committed per experiment: its scripts (to reproduce it), its README (the
+# findings) and each run's summary.md (the measured tables, with the
+# machine at the top). Everything else a run writes stays on the machine
+# that ran it: asm, perf output, criterion's data, logs, the per-run CSV
+# and machine file (sweep/README.md, "Output").
+*/results/*/*
+!*/results/*/summary.md
+*.s
+__pycache__/
+.work/

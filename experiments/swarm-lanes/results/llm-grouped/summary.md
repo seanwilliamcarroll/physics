@@ -95,8 +95,7 @@ Mean time; in brackets, the change against `lanes-16` at the same level.
 From `perf stat` over criterion's `--profile-time` run. GHz is
 cycles / task-clock; per pair (where the bench's size is a body count)
 is criterion's mean time × GHz / pairs, with pairs = n(n−1)/2. Backend stalls: cycles the core waited on
-results or memory. Where each loop spends its cycles, instruction by
-instruction: `perf/*.annotate.txt`.
+results or memory.
 
 | level | experiment | bench | GHz | IPC | cycles/pair | instr/pair | branch miss | backend stall |
 |---|---|---|---|---|---|---|---|---|
@@ -118,41 +117,3 @@ instruction: `perf/*.annotate.txt`.
 | x86-64-v3 | grouped-4 | swarm_step/Sorted/10000 | 5.54 | 3.37 | – | – | 3.8% | – |
 | native | grouped-4 | swarm_step/Brute/10000 | 5.54 | 3.33 | – | – | 1.1% | – |
 | native | grouped-4 | swarm_step/Sorted/10000 | 5.54 | 3.15 | – | – | 4.1% | – |
-
-## sqrt and div in the dumped functions
-
-x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.
-aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.
-wasm: `f64.sqrt` scalar; `f64x2.sqrt`/`f32x4.sqrt` 128-bit.
-Each file is in asm/.
-
-- `default--grouped--add_span-f32.s`: none
-- `default--grouped--flock_step-f32.s`: divss ×2
-- `default--grouped-4--add_span-f32.s`: none
-- `default--grouped-4--flock_step-f32.s`: divss ×2
-- `default--lanes-16--add_span-f32.s`: none
-- `default--lanes-16--flock_step-f32.s`: divss ×2
-- `native--grouped--add_span-f32.s`: none
-- `native--grouped--flock_step-f32.s`: divss ×2
-- `native--grouped-4--add_span-f32.s`: none
-- `native--grouped-4--flock_step-f32.s`: divss ×2
-- `native--lanes-16--add_span-f32.s`: none
-- `native--lanes-16--flock_step-f32.s`: divss ×2
-- `wasm--grouped--add_span-f32.s`: none
-- `wasm--grouped--flock_step-f32.s`: f32.div ×2
-- `wasm--grouped-4--add_span-f32.s`: none
-- `wasm--grouped-4--flock_step-f32.s`: f32.div ×2
-- `wasm--lanes-16--add_span-f32.s`: none
-- `wasm--lanes-16--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--grouped--add_span-f32.s`: none
-- `wasm-simd128--grouped--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--grouped-4--add_span-f32.s`: none
-- `wasm-simd128--grouped-4--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--lanes-16--add_span-f32.s`: none
-- `wasm-simd128--lanes-16--flock_step-f32.s`: f32.div ×2
-- `x86-64-v3--grouped--add_span-f32.s`: none
-- `x86-64-v3--grouped--flock_step-f32.s`: divss ×2
-- `x86-64-v3--grouped-4--add_span-f32.s`: none
-- `x86-64-v3--grouped-4--flock_step-f32.s`: divss ×2
-- `x86-64-v3--lanes-16--add_span-f32.s`: none
-- `x86-64-v3--lanes-16--flock_step-f32.s`: divss ×2

@@ -34,7 +34,7 @@ sums (`rules/tests.rs`).
 
 ## The code, checked for each build
 
-`results/<machine>/asm/`: rustc's `step_sorted` and `Grid::fill` at each
+A run's `asm/` (in its `--out`, not committed): rustc's `step_sorted` and `Grid::fill` at each
 CPU level, the wasm, and V8's code from it. What each should show:
 
 - the lane loop vector code everywhere (as before);

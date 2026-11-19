@@ -37,7 +37,7 @@ Benches: `swarm_step/Grid` at 1,000, 10,000 and 100,000 boids, and
 
 ## The code, three ways
 
-For each experiment, in `results/<machine>/asm/`:
+For each experiment, in a run's `asm/` (its `--out`; not committed: rerun to see them):
 
 | File | What |
 |---|---|
@@ -50,7 +50,7 @@ is its own function in all three.
 
 ## Findings (2026-11-18)
 
-Grid at 100,000 boids, ms (`results/{llm,m4}/results.csv`; `select` and
+Grid at 100,000 boids, ms (`results/{llm,m4}/summary.md`; `select` and
 `bits` compile to the same wasm, so one column):
 
 | | convert | select / bits | value | branch |
@@ -111,5 +111,5 @@ so `SWARM_MASK` drove Vicsek's two tests too, on a branch since reverted
 - **llm's V8 gap is not the masks** and stays open: 2.29 ms with the
   branching code against 0.95 natively on the same CPU, where the M4's
   V8 is level with its native code. Finding it means reading V8's x86
-  code (`results/llm/asm/v8-simd128--branch--vicsek_step.v8.s`) against
+  code (a run's `asm/v8-simd128--branch--vicsek_step.v8.s`) against
   the wasm; at ~1.3 ms a step, parked.
