@@ -25,15 +25,15 @@ use core::ptr;
 
 #[test]
 fn round_trip_through_the_c_abi() {
-    let d = demo_new(0, 1, 10, 42);
-    assert!(!d.is_null());
-    // SAFETY: `d` came from `demo_new` and is freed exactly once, last.
+    let demo = demo_new(0, 1, 10, 42);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` came from `demo_new` and is freed exactly once, last.
     unsafe {
-        assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
-        assert_eq!(demo_positions_len(d), 20);
-        let pos = core::slice::from_raw_parts(demo_positions_ptr(d), 20);
+        assert_eq!(demo_advance(demo, 1.0 / 60.0), 1);
+        assert_eq!(demo_positions_len(demo), 20);
+        let pos = core::slice::from_raw_parts(demo_positions_ptr(demo), 20);
         assert!(pos.chunks(2).all(|p| p[1] > 0.0));
-        demo_free(d);
+        demo_free(demo);
     }
 }
 
@@ -45,31 +45,38 @@ fn test_hook_panics_with_the_shared_message() {
 
 #[test]
 fn orbit_controls_through_the_c_abi() {
-    let d = demo_new(abi::DEMO_ORBIT, abi::SCALAR_F64, 0, 0);
-    assert!(!d.is_null());
-    // SAFETY: `d` came from `demo_new` and is freed exactly once, last.
+    let demo = demo_new(abi::DEMO_ORBIT, abi::SCALAR_F64, 0, 0);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` came from `demo_new` and is freed exactly once, last.
     unsafe {
-        assert_eq!(demo_set_integrator(d, abi::INTEGRATOR_VELOCITY_VERLET), 1);
-        assert_eq!(demo_set_integrator(d, 99), 0, "unknown integrator code");
-        assert_eq!(demo_set_rate(d, 0), 0, "zero rate rejected at the boundary");
-        assert_eq!(demo_set_rate(d, 30), 1);
-        assert_eq!(demo_advance(d, 1.0 / 30.0), 1);
-        let e = demo_energy(d);
+        assert_eq!(
+            demo_set_integrator(demo, abi::INTEGRATOR_VELOCITY_VERLET),
+            1
+        );
+        assert_eq!(demo_set_integrator(demo, 99), 0, "unknown integrator code");
+        assert_eq!(
+            demo_set_rate(demo, 0),
+            0,
+            "zero rate rejected at the boundary"
+        );
+        assert_eq!(demo_set_rate(demo, 30), 1);
+        assert_eq!(demo_advance(demo, 1.0 / 30.0), 1);
+        let e = demo_energy(demo);
         assert!(
             e.is_finite() && e < 0.0,
             "bound orbit has negative energy: {e}"
         );
-        demo_free(d);
+        demo_free(demo);
     }
 }
 
 #[test]
 fn fountain_energy_and_null_handles_read_as_nan() {
-    let d = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F32, 10, 1);
-    // SAFETY: `d` from `demo_new`, freed once; null is allowed everywhere.
+    let demo = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F32, 10, 1);
+    // SAFETY: `demo` from `demo_new`, freed once; null is allowed everywhere.
     unsafe {
-        assert!(demo_energy(d).is_nan());
-        demo_free(d);
+        assert!(demo_energy(demo).is_nan());
+        demo_free(demo);
         assert!(demo_energy(ptr::null()).is_nan());
         assert_eq!(demo_set_integrator(ptr::null_mut(), 0), 0);
         assert_eq!(demo_set_rate(ptr::null_mut(), 60), 0);
@@ -95,18 +102,18 @@ fn null_handles_are_harmless() {
 
 #[test]
 fn softening_is_parsed_at_the_boundary() {
-    let d = demo_new(abi::DEMO_DISK, abi::SCALAR_F32, 32, 1);
-    assert!(!d.is_null());
-    // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
+    let demo = demo_new(abi::DEMO_DISK, abi::SCALAR_F32, 32, 1);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` from `demo_new`, freed once, last; null is allowed.
     unsafe {
-        let e0 = demo_energy(d);
-        assert_eq!(demo_set_softening(d, -0.1), 0, "negative rejected");
-        assert_eq!(demo_set_softening(d, f64::NAN), 0, "NaN rejected");
-        assert_eq!(demo_energy(d).to_bits(), e0.to_bits(), "unchanged");
-        assert_eq!(demo_set_softening(d, 0.0), 1, "zero allowed");
-        assert_eq!(demo_set_softening(d, 0.5), 1);
-        assert!(demo_energy(d) > e0, "softer: shallower potential");
-        demo_free(d);
+        let e0 = demo_energy(demo);
+        assert_eq!(demo_set_softening(demo, -0.1), 0, "negative rejected");
+        assert_eq!(demo_set_softening(demo, f64::NAN), 0, "NaN rejected");
+        assert_eq!(demo_energy(demo).to_bits(), e0.to_bits(), "unchanged");
+        assert_eq!(demo_set_softening(demo, 0.0), 1, "zero allowed");
+        assert_eq!(demo_set_softening(demo, 0.5), 1);
+        assert!(demo_energy(demo) > e0, "softer: shallower potential");
+        demo_free(demo);
         assert_eq!(demo_set_softening(ptr::null_mut(), 0.1), 0);
     }
     let f = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 4, 1);
@@ -119,38 +126,38 @@ fn softening_is_parsed_at_the_boundary() {
 
 #[test]
 fn theta_is_parsed_at_the_boundary() {
-    let d = demo_new(abi::DEMO_CLUSTER, abi::SCALAR_F64, 32, 1);
-    // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
+    let demo = demo_new(abi::DEMO_CLUSTER, abi::SCALAR_F64, 32, 1);
+    // SAFETY: `demo` from `demo_new`, freed once, last; null is allowed.
     unsafe {
-        assert_eq!(demo_set_theta(d, -0.5), 0, "negative rejected");
-        assert_eq!(demo_set_theta(d, f64::NAN), 0, "NaN rejected");
-        assert_eq!(demo_set_theta(d, 0.5), 1);
-        assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
-        assert!(demo_energy(d).is_finite());
-        demo_free(d);
+        assert_eq!(demo_set_theta(demo, -0.5), 0, "negative rejected");
+        assert_eq!(demo_set_theta(demo, f64::NAN), 0, "NaN rejected");
+        assert_eq!(demo_set_theta(demo, 0.5), 1);
+        assert_eq!(demo_advance(demo, 1.0 / 60.0), 1);
+        assert!(demo_energy(demo).is_finite());
+        demo_free(demo);
         assert_eq!(demo_set_theta(ptr::null_mut(), 0.5), 0);
     }
 }
 
 #[test]
 fn pendulum_controls_are_parsed_at_the_boundary() {
-    let d = demo_new(abi::DEMO_PENDULUM, abi::SCALAR_F32, 0, 0);
-    assert!(!d.is_null());
-    // SAFETY: `d` from `demo_new`, freed once, last; null is allowed.
+    let demo = demo_new(abi::DEMO_PENDULUM, abi::SCALAR_F32, 0, 0);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` from `demo_new`, freed once, last; null is allowed.
     unsafe {
-        assert_eq!(demo_set_solver(d, abi::SOLVER_IMPULSE), 1);
-        assert_eq!(demo_set_solver(d, 9), 0, "unknown solver code");
-        assert_eq!(demo_set_beta(d, 1.5), 0, "beta above 1");
-        assert_eq!(demo_set_beta(d, f64::NAN), 0);
-        assert_eq!(demo_set_beta(d, 0.0), 1);
-        assert_eq!(demo_set_substeps(d, 0), 0, "zero substeps");
-        assert_eq!(demo_set_substeps(d, 4), 1);
-        assert_eq!(demo_set_iterations(d, 0), 0, "zero iterations");
-        assert_eq!(demo_set_iterations(d, 2), 1);
-        assert_eq!(demo_advance(d, 0.25), 15, "one clamped frame");
-        let err = demo_constraint_error(d);
+        assert_eq!(demo_set_solver(demo, abi::SOLVER_IMPULSE), 1);
+        assert_eq!(demo_set_solver(demo, 9), 0, "unknown solver code");
+        assert_eq!(demo_set_beta(demo, 1.5), 0, "beta above 1");
+        assert_eq!(demo_set_beta(demo, f64::NAN), 0);
+        assert_eq!(demo_set_beta(demo, 0.0), 1);
+        assert_eq!(demo_set_substeps(demo, 0), 0, "zero substeps");
+        assert_eq!(demo_set_substeps(demo, 4), 1);
+        assert_eq!(demo_set_iterations(demo, 0), 0, "zero iterations");
+        assert_eq!(demo_set_iterations(demo, 2), 1);
+        assert_eq!(demo_advance(demo, 0.25), 15, "one clamped frame");
+        let err = demo_constraint_error(demo);
         assert!(err.is_finite() && err > 0.0, "beta 0 stretches: {err}");
-        demo_free(d);
+        demo_free(demo);
         assert!(demo_constraint_error(ptr::null()).is_nan());
         assert_eq!(demo_set_solver(ptr::null_mut(), 0), 0);
     }
@@ -195,31 +202,31 @@ fn chain_and_double_pendulum_constructors_check_their_input() {
 
 #[test]
 fn grab_drag_release_through_the_c_abi() {
-    let d = demo_new_chain(abi::SCALAR_F64, 10, 100.0);
+    let demo = demo_new_chain(abi::SCALAR_F64, 10, 100.0);
     // SAFETY: from `demo_new_chain`, freed once, last; null is allowed.
     unsafe {
         // The bob is at (1, 0); the pin (0, 0) is static and can't be grabbed.
-        assert_eq!(demo_grab(d, 0.0, 0.0, 0.05), -1, "static pin");
-        assert_eq!(demo_grab(d, 1.0, 0.02, -1.0), -1, "negative radius");
-        assert_eq!(demo_grab(d, 1.0, 0.02, 0.1), 10);
+        assert_eq!(demo_grab(demo, 0.0, 0.0, 0.05), -1, "static pin");
+        assert_eq!(demo_grab(demo, 1.0, 0.02, -1.0), -1, "negative radius");
+        assert_eq!(demo_grab(demo, 1.0, 0.02, 0.1), 10);
         // Anchor added: 12 particles, 11 rods.
-        assert_eq!((demo_positions_len(d), demo_links_len(d)), (24, 22));
-        assert_eq!(demo_drag(d, 1.0, 1.0), 1);
+        assert_eq!((demo_positions_len(demo), demo_links_len(demo)), (24, 22));
+        assert_eq!(demo_drag(demo, 1.0, 1.0), 1);
         // Dragging far off stretches the drag rod, not the chain: the
         // readout leaves the drag rod out (a fresh grab: the chain is intact).
-        assert_eq!(demo_drag(d, 50.0, 50.0), 1);
+        assert_eq!(demo_drag(demo, 50.0, 50.0), 1);
         assert!(
-            demo_constraint_error(d) < 1e-9,
+            demo_constraint_error(demo) < 1e-9,
             "chain untouched before stepping"
         );
-        assert_eq!(demo_drag(d, 1.0, 1.0), 1);
-        assert_eq!(demo_drag(d, f64::NAN, 1.0), 0);
-        assert_eq!(demo_advance(d, 1.0 / 60.0), 1);
-        assert_eq!(demo_release(d), 1);
-        assert_eq!(demo_release(d), 0, "nothing held");
-        assert_eq!(demo_drag(d, 1.0, 1.0), 0, "nothing held");
-        assert_eq!((demo_positions_len(d), demo_links_len(d)), (22, 20));
-        demo_free(d);
+        assert_eq!(demo_drag(demo, 1.0, 1.0), 1);
+        assert_eq!(demo_drag(demo, f64::NAN, 1.0), 0);
+        assert_eq!(demo_advance(demo, 1.0 / 60.0), 1);
+        assert_eq!(demo_release(demo), 1);
+        assert_eq!(demo_release(demo), 0, "nothing held");
+        assert_eq!(demo_drag(demo, 1.0, 1.0), 0, "nothing held");
+        assert_eq!((demo_positions_len(demo), demo_links_len(demo)), (22, 20));
+        demo_free(demo);
         assert_eq!(demo_grab(core::ptr::null_mut(), 0.0, 0.0, 1.0), -1);
     }
 }
@@ -389,21 +396,21 @@ fn collision_scenes_check_their_input_and_read_out() {
     // SAFETY: every handle is from a `demo_new*` export (or null), and
     // freed once; null is allowed everywhere.
     unsafe {
-        let d = demo_new_break_shot(f64_, 0.0);
-        assert!(!d.is_null());
-        assert!(demo_momentum_x(d) > 0.0 && demo_momentum_y(d) == 0.0);
+        let demo = demo_new_break_shot(f64_, 0.0);
+        assert!(!demo.is_null());
+        assert!(demo_momentum_x(demo) > 0.0 && demo_momentum_y(demo) == 0.0);
         for e in [f64::NAN, -0.1, 1.1] {
-            assert_eq!(demo_set_restitution(d, e), 0, "e = {e}");
+            assert_eq!(demo_set_restitution(demo, e), 0, "e = {e}");
         }
-        assert_eq!(demo_set_restitution(d, 0.5), 1);
-        assert_eq!(demo_particle_radius(d, 0), 0.05);
-        assert!(demo_particle_radius(d, 99).is_nan());
-        let cell = demo_update_pairs(d);
+        assert_eq!(demo_set_restitution(demo, 0.5), 1);
+        assert_eq!(demo_particle_radius(demo, 0), 0.05);
+        assert!(demo_particle_radius(demo, 99).is_nan());
+        let cell = demo_update_pairs(demo);
         assert!(cell > 0.1, "cell {cell}");
-        let len = demo_pairs_len(d);
+        let len = demo_pairs_len(demo);
         assert!(len > 0 && len.is_multiple_of(2));
-        assert!(!demo_pairs_ptr(d).is_null());
-        demo_free(d);
+        assert!(!demo_pairs_ptr(demo).is_null());
+        demo_free(demo);
 
         // More pulled than balls swings them all; a fountain doesn't collide.
         let cradle = demo_new_cradle(f64_, 3, u32::MAX);
@@ -429,17 +436,17 @@ fn collision_scenes_check_their_input_and_read_out() {
 #[test]
 fn the_pool_table_parses_its_shots_at_the_boundary() {
     assert!(demo_new_pool(99).is_null());
-    let d = demo_new_pool(abi::SCALAR_F64);
-    assert!(!d.is_null());
-    // SAFETY: `d` from `demo_new_pool`, freed once; null is allowed.
+    let demo = demo_new_pool(abi::SCALAR_F64);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` from `demo_new_pool`, freed once; null is allowed.
     unsafe {
-        assert_eq!((demo_segments_len(d), demo_pockets_len(d)), (72, 18));
-        assert_eq!((demo_at_rest(d), demo_tunnels(d)), (1, 0.0));
+        assert_eq!((demo_segments_len(demo), demo_pockets_len(demo)), (72, 18));
+        assert_eq!((demo_at_rest(demo), demo_tunnels(demo)), (1, 0.0));
         assert_eq!(
             (
-                demo_ball_number(d, 0),
-                demo_ball_number(d, 5),
-                demo_ball_number(d, 16)
+                demo_ball_number(demo, 0),
+                demo_ball_number(demo, 5),
+                demo_ball_number(demo, 16)
             ),
             (0, 8, -1)
         );
@@ -452,22 +459,22 @@ fn the_pool_table_parses_its_shots_at_the_boundary() {
             (0.0, 0.0, 3.0, 0.0),
         ] {
             assert_eq!(
-                demo_strike(d, ax, ay, speed, tip),
+                demo_strike(demo, ax, ay, speed, tip),
                 0,
                 "({ax}, {ay}) {speed} {tip}"
             );
         }
-        assert_eq!(demo_set_speculative(d, 2), 0);
-        assert_eq!(demo_set_speculative(d, 0), 1);
-        assert_eq!(demo_respot_cue(d), 0, "the cue ball is in play");
+        assert_eq!(demo_set_speculative(demo, 2), 0);
+        assert_eq!(demo_set_speculative(demo, 0), 1);
+        assert_eq!(demo_respot_cue(demo), 0, "the cue ball is in play");
         assert_eq!(
-            demo_strike(d, 1.0, 0.0, abi::MAX_POOL_SPEED, abi::MAX_TIP),
+            demo_strike(demo, 1.0, 0.0, abi::MAX_POOL_SPEED, abi::MAX_TIP),
             1
         );
-        assert!(demo_spin_x(d, 0) == 0.0 && demo_spin_x(d, 99).is_nan());
-        assert_eq!(demo_at_rest(d), 0);
-        assert_eq!(demo_potted_len(d), 0);
-        demo_free(d);
+        assert!(demo_spin_x(demo, 0) == 0.0 && demo_spin_x(demo, 99).is_nan());
+        assert_eq!(demo_at_rest(demo), 0);
+        assert_eq!(demo_potted_len(demo), 0);
+        demo_free(demo);
 
         let fountain = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 10, 1);
         assert!(demo_tunnels(fountain).is_nan());
@@ -484,16 +491,16 @@ fn the_pool_table_parses_its_shots_at_the_boundary() {
 
 #[test]
 fn a_step_cap_bounds_an_advance() {
-    let d = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 10, 1);
-    // SAFETY: `d` from `demo_new`, freed once; null is allowed.
+    let demo = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 10, 1);
+    // SAFETY: `demo` from `demo_new`, freed once; null is allowed.
     unsafe {
-        assert_eq!(demo_set_step_cap(d, abi::MAX_RATE_HZ + 1), 0);
-        assert_eq!(demo_set_step_cap(d, 2), 1);
-        assert_eq!(demo_advance(d, 0.25), 2, "15 owed, 2 run");
-        assert_eq!(demo_advance(d, 1.0 / 60.0), 1, "nothing carried over");
-        assert_eq!(demo_set_step_cap(d, 0), 1, "0 lifts the cap");
-        assert_eq!(demo_advance(d, 0.25), 15);
-        demo_free(d);
+        assert_eq!(demo_set_step_cap(demo, abi::MAX_RATE_HZ + 1), 0);
+        assert_eq!(demo_set_step_cap(demo, 2), 1);
+        assert_eq!(demo_advance(demo, 0.25), 2, "15 owed, 2 run");
+        assert_eq!(demo_advance(demo, 1.0 / 60.0), 1, "nothing carried over");
+        assert_eq!(demo_set_step_cap(demo, 0), 1, "0 lifts the cap");
+        assert_eq!(demo_advance(demo, 0.25), 15);
+        demo_free(demo);
         assert_eq!(demo_set_step_cap(ptr::null_mut(), 1), 0);
     }
 }

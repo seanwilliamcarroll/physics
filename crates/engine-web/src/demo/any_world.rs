@@ -14,7 +14,7 @@ pub(super) enum AnyWorld {
 }
 
 /// Runs `$body` on whichever `Sim` `$world` holds, bound as `$s`:
-/// `each_scalar!(&mut self.world, s => s.world.set_solver(x))`. The body
+/// `each_scalar!(&mut self.world, sim => sim.world.set_solver(x))`. The body
 /// is compiled once per scalar type, so it must type-check for both
 /// (values parsed in `f64` go through `.cast()`, exact for `f64` itself).
 macro_rules! each_scalar {

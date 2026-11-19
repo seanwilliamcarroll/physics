@@ -8,12 +8,12 @@ use super::PHYSICS_DT;
 /// The M4 chain (10 links, 1:100), `setup` applied, after one second: its
 /// particles' positions.
 fn chain_after(setup: impl FnOnce(&mut Demo)) -> Vec<f32> {
-    let mut d = Demo::new_chain(ScalarKind::F64, 10, 100.0).unwrap();
-    setup(&mut d);
+    let mut demo = Demo::new_chain(ScalarKind::F64, 10, 100.0).unwrap();
+    setup(&mut demo);
     for _ in 0..60 {
-        d.advance(PHYSICS_DT);
+        demo.advance(PHYSICS_DT);
     }
-    d.positions().to_vec()
+    demo.positions().to_vec()
 }
 
 #[test]
@@ -22,15 +22,15 @@ fn the_m4_controls_reach_the_world() {
     // set_stabilization could each do nothing (the M4 page's iterations,
     // order and "impulse uses" controls).
     let base = chain_after(|_| {});
-    let iterations = chain_after(|d| d.set_iterations(NonZeroU32::new(5).unwrap()));
-    let order = chain_after(|d| d.set_order(Order::Reverse));
+    let iterations = chain_after(|demo| demo.set_iterations(NonZeroU32::new(5).unwrap()));
+    let order = chain_after(|demo| demo.set_order(Order::Reverse));
     assert_ne!(base, iterations, "iterations");
     assert_ne!(base, order, "order");
     // Stabilization is the impulse solver's.
     let impulse = |stabilization| {
-        chain_after(|d| {
-            d.set_solver(Solver::Impulse);
-            d.set_stabilization(stabilization);
+        chain_after(|demo| {
+            demo.set_solver(Solver::Impulse);
+            demo.set_stabilization(stabilization);
         })
     };
     assert_ne!(

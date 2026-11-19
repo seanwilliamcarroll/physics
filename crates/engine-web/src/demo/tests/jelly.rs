@@ -25,10 +25,10 @@ fn jelly_energy_is_kinetic_plus_gravity_plus_elastic() {
     // cargo-mutants (full run): flipping either `+` in the jelly's energy
     // sum went unnoticed. A twin world stepped alike gives each term.
     for body in BODIES {
-        let mut d = Demo::new_jelly(ScalarKind::F64, body, SIDE, SIDE, K, C).unwrap();
+        let mut demo = Demo::new_jelly(ScalarKind::F64, body, SIDE, SIDE, K, C).unwrap();
         let mut j = jelly::<f64>(body, JELLY_START_SUBSTEPS, SIDE, SIDE, K, C).unwrap();
         for _ in 0..STEPS {
-            d.advance(PHYSICS_DT);
+            demo.advance(PHYSICS_DT);
             j.world.step(TimeStep::new(PHYSICS_DT).unwrap());
         }
         let p = j.world.particles();
@@ -47,7 +47,7 @@ fn jelly_energy_is_kinetic_plus_gravity_plus_elastic() {
         );
         let expect = terms.iter().sum::<f64>();
         assert_eq!(
-            d.energy().map(f64::to_bits),
+            demo.energy().map(f64::to_bits),
             Some(expect.to_bits()),
             "{body:?}"
         );
@@ -60,14 +60,15 @@ fn a_live_stiffness_change_reaches_the_springs_the_world_steps() {
     // readout's copy of its springs (`reinstall` replaced by nothing). Far
     // past k_crit, the stepped jelly must blow up.
     let kinetic_after = |k: Option<f64>| {
-        let mut d = Demo::new_jelly(ScalarKind::F64, JellyBody::Springs, SIDE, SIDE, K, C).unwrap();
+        let mut demo =
+            Demo::new_jelly(ScalarKind::F64, JellyBody::Springs, SIDE, SIDE, K, C).unwrap();
         if let Some(k) = k {
-            assert!(d.set_stiffness(k));
+            assert!(demo.set_stiffness(k));
         }
         for _ in 0..60 {
-            d.advance(PHYSICS_DT);
+            demo.advance(PHYSICS_DT);
         }
-        d.kinetic_energy()
+        demo.kinetic_energy()
     };
     let (calm, stiff) = (kinetic_after(None), kinetic_after(Some(1e6)));
     assert!(calm < 10.0, "k = {K}: {calm} J");

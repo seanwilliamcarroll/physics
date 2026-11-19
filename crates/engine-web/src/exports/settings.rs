@@ -20,14 +20,15 @@ fn at_most(n: u32, max: u32) -> Option<NonZeroU32> {
 /// step. Returns 1 on success, 0 for an unknown code or a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_integrator(d: *mut Demo, code: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_integrator(demo: *mut Demo, code: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(integrator)) = (unsafe { d.as_mut() }, integrator_from_code(code)) else {
+    let (Some(demo), Some(integrator)) = (unsafe { demo.as_mut() }, integrator_from_code(code))
+    else {
         return 0;
     };
-    d.set_integrator(integrator);
+    demo.set_integrator(integrator);
     1
 }
 
@@ -37,12 +38,12 @@ pub(crate) unsafe extern "C" fn demo_set_integrator(d: *mut Demo, code: u32) -> 
 /// here, at the boundary.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_rate(d: *mut Demo, hz: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_rate(demo: *mut Demo, hz: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
-    unsafe { d.as_mut() }.map_or(0, |d| {
-        u32::from(d.clock().set_rate_hz(hz, abi::MAX_RATE_HZ))
+    unsafe { demo.as_mut() }.map_or(0, |demo| {
+        u32::from(demo.clock().set_rate_hz(hz, abi::MAX_RATE_HZ))
     })
 }
 
@@ -52,14 +53,14 @@ pub(crate) unsafe extern "C" fn demo_set_rate(d: *mut Demo, hz: u32) -> u32 {
 /// fountain), or a null handle. ε = 0 is allowed.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_softening(d: *mut Demo, eps: f64) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_softening(demo: *mut Demo, eps: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(eps)) = (unsafe { d.as_mut() }, Softening::new(eps)) else {
+    let (Some(demo), Some(eps)) = (unsafe { demo.as_mut() }, Softening::new(eps)) else {
         return 0;
     };
-    u32::from(d.set_softening(eps))
+    u32::from(demo.set_softening(eps))
 }
 
 /// Runs a gravity scene's force as Barnes–Hut with opening angle `theta`
@@ -68,14 +69,14 @@ pub(crate) unsafe extern "C" fn demo_set_softening(d: *mut Demo, eps: f64) -> u3
 /// `OpeningAngle` here), the fountain, or a null handle. θ = 0 is exact.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_theta(d: *mut Demo, theta: f64) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_theta(demo: *mut Demo, theta: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(theta)) = (unsafe { d.as_mut() }, OpeningAngle::new(theta)) else {
+    let (Some(demo), Some(theta)) = (unsafe { demo.as_mut() }, OpeningAngle::new(theta)) else {
         return 0;
     };
-    u32::from(d.set_theta(theta))
+    u32::from(demo.set_theta(theta))
 }
 
 /// Which solver steps a world with constraints (`code` from
@@ -83,14 +84,14 @@ pub(crate) unsafe extern "C" fn demo_set_theta(d: *mut Demo, theta: f64) -> u32 
 /// null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_solver(d: *mut Demo, code: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_solver(demo: *mut Demo, code: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(solver)) = (unsafe { d.as_mut() }, solver_from_code(code)) else {
+    let (Some(demo), Some(solver)) = (unsafe { demo.as_mut() }, solver_from_code(code)) else {
         return 0;
     };
-    d.set_solver(solver);
+    demo.set_solver(solver);
     1
 }
 
@@ -98,28 +99,28 @@ pub(crate) unsafe extern "C" fn demo_set_solver(d: *mut Demo, code: u32) -> u32 
 /// `[0, 1]`, NaN (parsed into `Baumgarte` here), or a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_beta(d: *mut Demo, beta: f64) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_beta(demo: *mut Demo, beta: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(beta)) = (unsafe { d.as_mut() }, Baumgarte::new(beta)) else {
+    let (Some(demo), Some(beta)) = (unsafe { demo.as_mut() }, Baumgarte::new(beta)) else {
         return 0;
     };
-    u32::from(d.set_baumgarte(beta))
+    u32::from(demo.set_baumgarte(beta))
 }
 
 /// Substeps per physics step. Returns 1, or 0 for 0, above
 /// [`MAX_SUBSTEPS`](abi::MAX_SUBSTEPS) (parsed here), or a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_substeps(d: *mut Demo, n: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_substeps(demo: *mut Demo, n: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, at_most(n, abi::MAX_SUBSTEPS)) else {
+    let (Some(demo), Some(n)) = (unsafe { demo.as_mut() }, at_most(n, abi::MAX_SUBSTEPS)) else {
         return 0;
     };
-    d.set_substeps(n);
+    demo.set_substeps(n);
     1
 }
 
@@ -127,14 +128,14 @@ pub(crate) unsafe extern "C" fn demo_set_substeps(d: *mut Demo, n: u32) -> u32 {
 /// [`MAX_ITERATIONS`](abi::MAX_ITERATIONS), or a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_iterations(d: *mut Demo, n: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_iterations(demo: *mut Demo, n: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(n)) = (unsafe { d.as_mut() }, at_most(n, abi::MAX_ITERATIONS)) else {
+    let (Some(demo), Some(n)) = (unsafe { demo.as_mut() }, at_most(n, abi::MAX_ITERATIONS)) else {
         return 0;
     };
-    d.set_iterations(n);
+    demo.set_iterations(n);
     1
 }
 
@@ -142,14 +143,14 @@ pub(crate) unsafe extern "C" fn demo_set_iterations(d: *mut Demo, n: u32) -> u32
 /// in [`crate::abi`]). Returns 1, or 0 for an unknown code or a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from a `demo_new*` export.
+/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_order(d: *mut Demo, code: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_order(demo: *mut Demo, code: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(order)) = (unsafe { d.as_mut() }, order_from_code(code)) else {
+    let (Some(demo), Some(order)) = (unsafe { demo.as_mut() }, order_from_code(code)) else {
         return 0;
     };
-    d.set_order(order);
+    demo.set_order(order);
     1
 }
 
@@ -158,15 +159,16 @@ pub(crate) unsafe extern "C" fn demo_set_order(d: *mut Demo, code: u32) -> u32 {
 /// code or a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from a `demo_new*` export.
+/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_stabilization(d: *mut Demo, code: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_stabilization(demo: *mut Demo, code: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    let (Some(d), Some(stabilization)) = (unsafe { d.as_mut() }, stabilization_from_code(code))
+    let (Some(demo), Some(stabilization)) =
+        (unsafe { demo.as_mut() }, stabilization_from_code(code))
     else {
         return 0;
     };
-    d.set_stabilization(stabilization);
+    demo.set_stabilization(stabilization);
     1
 }
 
@@ -176,11 +178,11 @@ pub(crate) unsafe extern "C" fn demo_set_stabilization(d: *mut Demo, code: u32) 
 /// or a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from a `demo_new*` export.
+/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_stiffness(d: *mut Demo, k: f64) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_stiffness(demo: *mut Demo, k: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    unsafe { d.as_mut() }.map_or(0, |d| u32::from(d.set_stiffness(k)))
+    unsafe { demo.as_mut() }.map_or(0, |demo| u32::from(demo.set_stiffness(k)))
 }
 
 /// Sets a jelly's damping `c` (N·s/m), live. Returns 1, or 0 for a
@@ -188,11 +190,11 @@ pub(crate) unsafe extern "C" fn demo_set_stiffness(d: *mut Demo, k: f64) -> u32 
 /// handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from a `demo_new*` export.
+/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_damping(d: *mut Demo, c: f64) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_damping(demo: *mut Demo, c: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    unsafe { d.as_mut() }.map_or(0, |d| u32::from(d.set_damping(c)))
+    unsafe { demo.as_mut() }.map_or(0, |demo| u32::from(demo.set_damping(c)))
 }
 
 /// Caps the physics steps one `demo_advance` may run at `n` (`0`: no cap),
@@ -202,11 +204,11 @@ pub(crate) unsafe extern "C" fn demo_set_damping(d: *mut Demo, c: f64) -> u32 {
 /// [`MAX_RATE_HZ`](abi::MAX_RATE_HZ) or for a null handle.
 ///
 /// # Safety
-/// `d` must be null or a live handle from a `demo_new*` export.
+/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_set_step_cap(d: *mut Demo, n: u32) -> u32 {
+pub(crate) unsafe extern "C" fn demo_set_step_cap(demo: *mut Demo, n: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
-    unsafe { d.as_mut() }.map_or(0, |d| {
-        u32::from(d.clock().set_cap_steps(n, abi::MAX_RATE_HZ))
+    unsafe { demo.as_mut() }.map_or(0, |demo| {
+        u32::from(demo.clock().set_cap_steps(n, abi::MAX_RATE_HZ))
     })
 }

@@ -43,19 +43,19 @@ impl Demo {
     /// that isn't a jelly. A held drag rod keeps its own stiffness.
     pub(crate) fn set_stiffness(&mut self, k: f64) -> bool {
         let grab = self.grab.as_ref();
-        each_scalar!(&mut self.world, s => s.set_stiffness(k, grab))
+        each_scalar!(&mut self.world, sim => sim.set_stiffness(k, grab))
     }
 
     /// A jelly's damping, live, as [`Demo::set_stiffness`].
     pub(crate) fn set_damping(&mut self, c: f64) -> bool {
         let grab = self.grab.as_ref();
-        each_scalar!(&mut self.world, s => s.set_damping(c, grab))
+        each_scalar!(&mut self.world, sim => sim.set_damping(c, grab))
     }
 
     /// Kinetic energy, J: the M5 page's explosion indicator (elastic
     /// energy of stiff, unconverged constraints is meaningless).
     #[must_use]
     pub(crate) fn kinetic_energy(&self) -> f64 {
-        each_scalar!(&self.world, s => engine::Scalar::to_f64(kinetic_energy(s.world.particles())))
+        each_scalar!(&self.world, sim => engine::Scalar::to_f64(kinetic_energy(sim.world.particles())))
     }
 }

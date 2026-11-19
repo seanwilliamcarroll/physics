@@ -15,7 +15,7 @@ impl Demo {
     /// Whether this demo's world can be grabbed ([`engine::World::grabbable`]:
     /// only one a solver already steps).
     pub(crate) fn grabbable(&self) -> bool {
-        each_scalar!(&self.world, s => s.world.grabbable())
+        each_scalar!(&self.world, sim => sim.world.grabbable())
     }
 
     /// Grabs the dynamic particle nearest to `(x, y)` (m) within `radius`
@@ -23,7 +23,7 @@ impl Demo {
     /// if nothing dynamic is that close.
     pub(crate) fn grab(&mut self, x: f64, y: f64, radius: f64) -> Option<usize> {
         self.release();
-        let grab = each_scalar!(&mut self.world, s => grab_in(&mut s.world, x, y, radius));
+        let grab = each_scalar!(&mut self.world, sim => grab_in(&mut sim.world, x, y, radius));
         let index = grab.as_ref().map(|g| g.particle().index());
         self.grab = grab;
         self.refresh_links();
@@ -34,7 +34,7 @@ impl Demo {
     /// Moves the held grab's anchor to `(x, y)`. `false` if nothing is held.
     pub(crate) fn drag(&mut self, x: f64, y: f64) -> bool {
         let Some(grab) = &self.grab else { return false };
-        each_scalar!(&mut self.world, s => s.world.drag(grab, Vec2::from_f64(x, y)));
+        each_scalar!(&mut self.world, sim => sim.world.drag(grab, Vec2::from_f64(x, y)));
         true
     }
 
@@ -45,7 +45,7 @@ impl Demo {
         };
         // Nothing is added to a demo's world after a grab, so release
         // can't be refused; if it were, keep the grab rather than lose it.
-        let result = each_scalar!(&mut self.world, s => s.world.release(grab));
+        let result = each_scalar!(&mut self.world, sim => sim.world.release(grab));
         if let Err(grab) = result {
             self.grab = Some(grab);
             return false;
@@ -57,12 +57,12 @@ impl Demo {
 
     /// The order each solver pass visits the constraints in.
     pub(crate) fn set_order(&mut self, order: Order) {
-        each_scalar!(&mut self.world, s => s.world.set_order(order));
+        each_scalar!(&mut self.world, sim => sim.world.set_order(order));
     }
 
     /// How the impulse solver corrects rigid rods' position error.
     pub(crate) fn set_stabilization(&mut self, stabilization: Stabilization) {
-        each_scalar!(&mut self.world, s => s.world.set_stabilization(stabilization));
+        each_scalar!(&mut self.world, sim => sim.world.set_stabilization(stabilization));
     }
 
     /// `[a0, b0, a1, b1, ...]`: the particles each constraint joins.
@@ -73,7 +73,7 @@ impl Demo {
 
     pub(super) fn refresh_links(&mut self) {
         let links = &mut self.links;
-        each_scalar!(&self.world, s => fill_links(&s.world, s.spring_ends(), links));
+        each_scalar!(&self.world, sim => fill_links(&sim.world, sim.spring_ends(), links));
     }
 }
 

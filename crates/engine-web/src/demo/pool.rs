@@ -39,14 +39,14 @@ impl Demo {
     /// nothing, for a world that isn't a table, a cue ball out of play, or
     /// an aim with no direction.
     pub(crate) fn strike(&mut self, aim_x: f64, aim_y: f64, speed: f64, tip: f64) -> bool {
-        each_scalar!(&mut self.world, s => strike_in(&mut s.world, aim_x, aim_y, speed, tip))
+        each_scalar!(&mut self.world, sim => strike_in(&mut sim.world, aim_x, aim_y, speed, tip))
     }
 
     /// Speculative contacts on or off; `false` for a world without
     /// collisions.
     pub(crate) fn set_speculative(&mut self, on: bool) -> bool {
-        each_scalar!(&mut self.world, s => s.world.collides() && {
-            s.world.set_speculative(on);
+        each_scalar!(&mut self.world, sim => sim.world.collides() && {
+            sim.world.set_speculative(on);
             true
         })
     }
@@ -55,7 +55,7 @@ impl Demo {
     /// doesn't count them.
     #[must_use]
     pub(crate) fn tunnels(&self) -> Option<u64> {
-        each_scalar!(&self.world, s => s.world.tunnels())
+        each_scalar!(&self.world, sim => sim.world.tunnels())
     }
 
     /// Whether every ball has stopped, spin included (the page's cue is
@@ -72,7 +72,7 @@ impl Demo {
         if !self.at_rest() {
             return false;
         }
-        let done = each_scalar!(&mut self.world, s => respot_in(&mut s.world));
+        let done = each_scalar!(&mut self.world, sim => respot_in(&mut sim.world));
         if done {
             self.fill_render_buf();
         }
@@ -104,9 +104,9 @@ impl Demo {
     /// Particle `i`'s spin `(ω_x, ω_y)`, rad/s; `None` past the end.
     #[must_use]
     pub(crate) fn spin(&self, i: usize) -> Option<(f64, f64)> {
-        each_scalar!(&self.world, s => {
-            let n = s.world.particles().len();
-            (i < n).then(|| s.world.spin().get(i).map_or((0.0, 0.0), |w| (w.x.to_f64(), w.y.to_f64())))
+        each_scalar!(&self.world, sim => {
+            let n = sim.world.particles().len();
+            (i < n).then(|| sim.world.spin().get(i).map_or((0.0, 0.0), |w| (w.x.to_f64(), w.y.to_f64())))
         })
     }
 
@@ -126,16 +126,16 @@ impl Demo {
     /// never move).
     fn fill_statics(&mut self) {
         let (segs, pockets) = (&mut self.segments_buf, &mut self.pockets_buf);
-        each_scalar!(&self.world, s => {
+        each_scalar!(&self.world, sim => {
             let f = |x: f64| math::convert::f64_to_f32(x);
             segs.clear();
-            for seg in s.world.segments() {
+            for seg in sim.world.segments() {
                 for e in seg.ends() {
                     segs.extend([f(e.x.to_f64()), f(e.y.to_f64())]);
                 }
             }
             pockets.clear();
-            for p in s.world.pockets() {
+            for p in sim.world.pockets() {
                 let c = p.center();
                 pockets.extend([f(c.x.to_f64()), f(c.y.to_f64()), f(p.radius().to_f64())]);
             }

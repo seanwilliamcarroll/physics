@@ -32,20 +32,20 @@ pub(crate) extern "C" fn demo_new(kind: u32, scalar: u32, n: u32, seed: u32) -> 
         return ptr::null_mut();
     };
     Demo::new(kind, scalar, n, u64::from(seed))
-        .map_or(ptr::null_mut(), |d| Box::into_raw(Box::new(d)))
+        .map_or(ptr::null_mut(), |demo| Box::into_raw(Box::new(demo)))
 }
 
 /// Frees a demo. Null is a no-op.
 ///
 /// # Safety
-/// `d` must be null or a handle from [`demo_new`] not yet freed. It is
+/// `demo` must be null or a handle from [`demo_new`] not yet freed. It is
 /// dangling afterwards.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_free(d: *mut Demo) {
-    if !d.is_null() {
+pub(crate) unsafe extern "C" fn demo_free(demo: *mut Demo) {
+    if !demo.is_null() {
         // SAFETY: non-null, so per the contract it came from `Box::into_raw`
         // in `demo_new` and hasn't been freed; ownership returns to a Box.
-        drop(unsafe { Box::from_raw(d) });
+        drop(unsafe { Box::from_raw(demo) });
     }
 }
 
@@ -53,11 +53,11 @@ pub(crate) unsafe extern "C" fn demo_free(d: *mut Demo) {
 /// (0 for a null handle).
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_advance(d: *mut Demo, elapsed_s: f64) -> u32 {
+pub(crate) unsafe extern "C" fn demo_advance(demo: *mut Demo, elapsed_s: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
-    unsafe { d.as_mut() }.map_or(0, |d| d.advance(elapsed_s))
+    unsafe { demo.as_mut() }.map_or(0, |demo| demo.advance(elapsed_s))
 }
 
 /// Pointer to the interleaved `f32` positions in wasm memory (null for a
@@ -65,22 +65,22 @@ pub(crate) unsafe extern "C" fn demo_advance(d: *mut Demo, elapsed_s: f64) -> u3
 /// may move, and memory growth detaches old `ArrayBuffer` views.
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_positions_ptr(d: *const Demo) -> *const f32 {
+pub(crate) unsafe extern "C" fn demo_positions_ptr(demo: *const Demo) -> *const f32 {
     // SAFETY: per the contract, null (-> None) or a live Demo.
-    unsafe { d.as_ref() }.map_or(ptr::null(), |d| d.positions().as_ptr())
+    unsafe { demo.as_ref() }.map_or(ptr::null(), |demo| demo.positions().as_ptr())
 }
 
 /// Number of `f32`s at [`demo_positions_ptr`]
 /// ([`COORDS_PER_PARTICLE`](crate::abi::COORDS_PER_PARTICLE) per particle; 0 for null).
 ///
 /// # Safety
-/// `d` must be null or a live handle from [`demo_new`].
+/// `demo` must be null or a live handle from [`demo_new`].
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_positions_len(d: *const Demo) -> usize {
+pub(crate) unsafe extern "C" fn demo_positions_len(demo: *const Demo) -> usize {
     // SAFETY: per the contract, null (-> None) or a live Demo.
-    unsafe { d.as_ref() }.map_or(0, |d| d.positions().len())
+    unsafe { demo.as_ref() }.map_or(0, |demo| demo.positions().len())
 }
 
 /// Creates the M4 chain (`scenarios::chain`): `links` links and a bob
@@ -98,7 +98,7 @@ pub(crate) extern "C" fn demo_new_chain(scalar: u32, links: u32, mass_ratio: f64
         return ptr::null_mut();
     };
     Demo::new_chain(scalar, links, mass_ratio)
-        .map_or(ptr::null_mut(), |d| Box::into_raw(Box::new(d)))
+        .map_or(ptr::null_mut(), |demo| Box::into_raw(Box::new(demo)))
 }
 
 /// Creates the M4 double pendulum from `start` (`START_*` in
@@ -121,7 +121,7 @@ pub(crate) extern "C" fn demo_new_double_pendulum(
         return ptr::null_mut();
     }
     Demo::new_double_pendulum(scalar, start, offset)
-        .map_or(ptr::null_mut(), |d| Box::into_raw(Box::new(d)))
+        .map_or(ptr::null_mut(), |demo| Box::into_raw(Box::new(demo)))
 }
 
 /// Creates the M5 jelly: a `cols` × `rows` grid (`JELLY_*` body code from
@@ -149,7 +149,7 @@ pub(crate) extern "C" fn demo_new_jelly(
         return ptr::null_mut();
     };
     Demo::new_jelly(scalar, body, cols, rows, k, c)
-        .map_or(ptr::null_mut(), |d| Box::into_raw(Box::new(d)))
+        .map_or(ptr::null_mut(), |demo| Box::into_raw(Box::new(demo)))
 }
 
 /// Pointer to the links buffer, `[a0, b0, a1, b1, ...]` as `u32`: the
@@ -157,21 +157,21 @@ pub(crate) extern "C" fn demo_new_jelly(
 /// handle). Re-read after `demo_grab`/`demo_release`, which change it.
 ///
 /// # Safety
-/// `d` must be null or a live handle from a `demo_new*` export.
+/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_links_ptr(d: *const Demo) -> *const u32 {
+pub(crate) unsafe extern "C" fn demo_links_ptr(demo: *const Demo) -> *const u32 {
     // SAFETY: per the contract, null (-> None) or a live Demo.
-    unsafe { d.as_ref() }.map_or(ptr::null(), |d| d.links().as_ptr())
+    unsafe { demo.as_ref() }.map_or(ptr::null(), |demo| demo.links().as_ptr())
 }
 
 /// Number of `u32`s at [`demo_links_ptr`] (two per constraint; 0 for null).
 ///
 /// # Safety
-/// `d` must be null or a live handle from a `demo_new*` export.
+/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
-pub(crate) unsafe extern "C" fn demo_links_len(d: *const Demo) -> usize {
+pub(crate) unsafe extern "C" fn demo_links_len(demo: *const Demo) -> usize {
     // SAFETY: per the contract, null (-> None) or a live Demo.
-    unsafe { d.as_ref() }.map_or(0, |d| d.links().len())
+    unsafe { demo.as_ref() }.map_or(0, |demo| demo.links().len())
 }
 
 /// Test hook: panics on purpose with [`TEST_PANIC_MESSAGE`], so

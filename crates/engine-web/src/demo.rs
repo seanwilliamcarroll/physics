@@ -143,7 +143,7 @@ impl Demo {
         let steps = self.clock.advance(elapsed);
         let rate = self.clock.rate();
         let between = &mut self.between_steps;
-        each_scalar!(&mut self.world, s => run_steps(&mut s.world, between, steps, rate));
+        each_scalar!(&mut self.world, sim => run_steps(&mut sim.world, between, steps, rate));
         self.fill_render_buf();
         steps
     }
@@ -154,7 +154,7 @@ impl Demo {
     /// ~2.4e-7 m. `None` past the last particle.
     #[must_use]
     pub(crate) fn particle_position(&self, i: usize) -> Option<(f64, f64)> {
-        each_scalar!(&self.world, s => s.world.particles().pos().get(i).map(|p| (p.x.to_f64(), p.y.to_f64())))
+        each_scalar!(&self.world, sim => sim.world.particles().pos().get(i).map(|p| (p.x.to_f64(), p.y.to_f64())))
     }
 
     /// Interleaved particle positions, `f32`, in meters.
@@ -167,35 +167,35 @@ impl Demo {
     #[cfg(test)]
     #[must_use]
     pub(crate) const fn integrator(&self) -> Integrator {
-        each_scalar!(&self.world, s => s.world.integrator())
+        each_scalar!(&self.world, sim => sim.world.integrator())
     }
 
     /// Takes effect from the next step.
     pub(crate) const fn set_integrator(&mut self, integrator: Integrator) {
-        each_scalar!(&mut self.world, s => s.world.set_integrator(integrator));
+        each_scalar!(&mut self.world, sim => sim.world.set_integrator(integrator));
     }
 
     /// Which solver steps the world when it has constraints.
     pub(crate) fn set_solver(&mut self, solver: Solver) {
-        each_scalar!(&mut self.world, s => s.world.set_solver(solver));
+        each_scalar!(&mut self.world, sim => sim.world.set_solver(solver));
     }
 
     /// The impulse solver's β, parsed at the boundary in `f64` and cast
     /// (checked again). `false`, changing nothing, if it leaves the type in
     /// the engine's scalar (it can't: `[0, 1]` survives rounding).
     pub(crate) fn set_baumgarte(&mut self, beta: Baumgarte<f64>) -> bool {
-        each_scalar!(&mut self.world, s => beta.cast().is_some_and(|b| {
-            s.world.set_baumgarte(b);
+        each_scalar!(&mut self.world, sim => beta.cast().is_some_and(|b| {
+            sim.world.set_baumgarte(b);
             true
         }))
     }
 
     pub(crate) const fn set_substeps(&mut self, substeps: NonZeroU32) {
-        each_scalar!(&mut self.world, s => s.world.set_substeps(substeps));
+        each_scalar!(&mut self.world, sim => sim.world.set_substeps(substeps));
     }
 
     pub(crate) const fn set_iterations(&mut self, iterations: NonZeroU32) {
-        each_scalar!(&mut self.world, s => s.world.set_iterations(iterations));
+        each_scalar!(&mut self.world, sim => sim.world.set_iterations(iterations));
     }
 
     /// Max constraint error (m), or `None` for a world without
@@ -205,7 +205,7 @@ impl Demo {
         // A held grab's rod is the last constraint; its stretch is the
         // pull, not error, so the readout leaves it out.
         let skip = usize::from(self.grab.is_some());
-        each_scalar!(&self.world, s => s.constraint_error(skip))
+        each_scalar!(&self.world, sim => sim.constraint_error(skip))
     }
 
     /// The clock, for the rate and the step budget's cap (the exports
@@ -220,32 +220,32 @@ impl Demo {
     /// and is cast, checked again, to the engine's scalar. Returns `false`,
     /// changing nothing, for other scenes or an ε that overflows there.
     pub(crate) fn set_softening(&mut self, eps: Softening<f64>) -> bool {
-        each_scalar!(&mut self.world, s => eps.cast().is_some_and(|e| s.set_softening(e)))
+        each_scalar!(&mut self.world, sim => eps.cast().is_some_and(|e| sim.set_softening(e)))
     }
 
     /// Switches a pairwise-gravity scene to Barnes–Hut with opening angle
     /// `theta` (parsed in `f64`, cast like ε); it stays on through softening
     /// changes. `false`, changing nothing, for other scenes.
     pub(crate) fn set_theta(&mut self, theta: OpeningAngle<f64>) -> bool {
-        each_scalar!(&mut self.world, s => theta.cast().is_some_and(|t| s.set_theta(t)))
+        each_scalar!(&mut self.world, sim => theta.cast().is_some_and(|t| sim.set_theta(t)))
     }
 
     /// Test-only: θ if Barnes–Hut is on, as `f64`.
     #[cfg(test)]
     pub(crate) fn theta(&self) -> Option<f64> {
-        each_scalar!(&self.world, s => s.theta().map(|t| t.get().to_f64()))
+        each_scalar!(&self.world, sim => sim.theta().map(|t| t.get().to_f64()))
     }
 
     /// Total energy (kinetic + potential) in joules, read out as `f64`, or
     /// `None` where it isn't defined (the fountain).
     #[must_use]
     pub(crate) fn energy(&self) -> Option<f64> {
-        each_scalar!(&self.world, s => s.energy())
+        each_scalar!(&self.world, sim => sim.energy())
     }
 
     fn fill_render_buf(&mut self) {
         let buf = &mut self.render_buf;
-        each_scalar!(&self.world, s => fill_positions(&s.world, buf));
+        each_scalar!(&self.world, sim => fill_positions(&sim.world, buf));
     }
 }
 

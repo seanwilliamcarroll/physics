@@ -79,8 +79,8 @@ impl Demo {
     /// bounce) or an `e` that leaves the type in the engine's scalar (it
     /// can't: `[0, 1]` survives rounding).
     pub(crate) fn set_restitution(&mut self, e: Restitution<f64>) -> bool {
-        each_scalar!(&mut self.world, s => s.world.collides() && e.cast().is_some_and(|e| {
-            s.world.set_restitution(e);
+        each_scalar!(&mut self.world, sim => sim.world.collides() && e.cast().is_some_and(|e| {
+            sim.world.set_restitution(e);
             true
         }))
     }
@@ -89,14 +89,14 @@ impl Demo {
     /// the last particle.
     #[must_use]
     pub(crate) fn particle_radius(&self, i: usize) -> Option<f64> {
-        each_scalar!(&self.world, s => s.world.particles().radius().get(i).map(|r| r.to_f64()))
+        each_scalar!(&self.world, sim => sim.world.particles().radius().get(i).map(|r| r.to_f64()))
     }
 
     /// Total momentum `Σ m v`, kg·m/s.
     #[must_use]
     pub(crate) fn momentum(&self) -> (f64, f64) {
-        each_scalar!(&self.world, s => {
-            let p = momentum(s.world.particles());
+        each_scalar!(&self.world, sim => {
+            let p = momentum(sim.world.particles());
             (p.x.to_f64(), p.y.to_f64())
         })
     }
@@ -109,7 +109,7 @@ impl Demo {
         let rate = self.clock.rate();
         let pairs = &mut self.pairs;
         pairs.clear();
-        each_scalar!(&self.world, s => broadphase_of(&s.world, rate, pairs))
+        each_scalar!(&self.world, sim => broadphase_of(&sim.world, rate, pairs))
     }
 
     /// The pairs buffer [`Demo::update_pairs`] fills.
