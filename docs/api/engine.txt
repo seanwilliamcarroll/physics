@@ -151,7 +151,6 @@ pub const fn engine::table::Table<S>::g(self) -> S
 pub const fn engine::table::Table<S>::mu_roll(self) -> S
 pub const fn engine::table::Table<S>::mu_slide(self) -> S
 pub fn engine::table::Table<S>::new(S, S, S) -> core::option::Option<Self>
-pub fn engine::table::rolling_spin<S: math::scalar::Scalar>(math::vec2::Vec2<S>, S) -> math::vec2::Vec2<S>
 pub fn engine::table::slip<S: math::scalar::Scalar>(math::vec2::Vec2<S>, math::vec2::Vec2<S>, S) -> math::vec2::Vec2<S>
 pub enum engine::ConfigError
 pub engine::ConfigError::ChangedBodies

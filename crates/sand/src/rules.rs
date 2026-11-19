@@ -11,10 +11,10 @@ use crate::random::{Purpose, draw};
 pub const DISPERSION: usize = 3;
 /// Lava flows on one step in this many (our choice: visibly slower than
 /// water), and a cell sideways at most.
-pub const LAVA_FLOW_ONE_IN: u64 = 2;
+pub(crate) const LAVA_FLOW_ONE_IN: u64 = 2;
 /// Blocked steam condenses back to water with this chance a step, 1 in
 /// this many (our choice: a cloud lingers a second or so at 60 Hz).
-pub const CONDENSE_ONE_IN: u64 = 64;
+pub(crate) const CONDENSE_ONE_IN: u64 = 64;
 
 impl Grid {
     /// Advances one step; returns how many moves were made (0: nothing

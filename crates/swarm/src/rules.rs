@@ -173,7 +173,7 @@ use tuning::{PER_BOID, TAIL};
 pub const PREDATOR_RANGE: f32 = 100.0;
 /// How hard a boid flees: the fraction of the way to "away at top speed"
 /// it steers each step (Reynolds 1999's flee, as a gain; our choice).
-pub const FLEE: f32 = 0.1;
+pub(crate) const FLEE: f32 = 0.1;
 
 /// The rest of the update, from what `me` saw: cohesion and alignment,
 /// separation, fleeing the predator, edge turning, the clamp, the move.

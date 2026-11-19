@@ -63,7 +63,7 @@ pub fn slip<S: Scalar>(v: Vec2<S>, w: Vec2<S>, r: S) -> Vec2<S> {
 }
 
 /// The spin of a ball rolling at `v`: `ω_x = −v_y / R`, `ω_y = v_x / R`.
-pub fn rolling_spin<S: Scalar>(v: Vec2<S>, r: S) -> Vec2<S> {
+pub(crate) fn rolling_spin<S: Scalar>(v: Vec2<S>, r: S) -> Vec2<S> {
     Vec2::new(-v.y / r, v.x / r)
 }
 

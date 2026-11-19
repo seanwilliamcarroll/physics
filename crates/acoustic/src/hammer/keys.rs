@@ -38,8 +38,9 @@ pub const FORTISSIMO: f64 = 5.0;
 pub const MAX_VELOCITY: f64 = 2.0 * FORTISSIMO;
 
 /// Contact at pp over contact at ff: "about ±20 % from p to ff"
-/// (measured) read as 1.2 / 0.8.
-pub const SPREAD: f64 = 1.5;
+/// (measured) read as 1.2 / 0.8. The fit's target (`fit.rs`, tests).
+#[cfg(test)]
+pub(super) const SPREAD: f64 = 1.5;
 
 /// Where `midi` sits from `a` to `b`, 0 to 1.
 fn along(midi: u8, a: f64, b: f64) -> f64 {
@@ -85,6 +86,6 @@ pub fn contact_target(midi: u8) -> f64 {
 
 /// Mezzo-forte, m/s.
 #[must_use]
-pub fn mezzo_forte() -> f64 {
+pub(crate) fn mezzo_forte() -> f64 {
     libm::sqrt(PIANISSIMO * FORTISSIMO)
 }

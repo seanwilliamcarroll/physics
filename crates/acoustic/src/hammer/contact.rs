@@ -17,7 +17,7 @@ const LONGEST: f64 = 0.05;
 /// model), s: from the first touch to the last separation, interpolated
 /// within the sample. `None` if it hasn't left within 50 ms.
 #[must_use]
-pub fn contact_time(fs: f64, f0: f64, felt: Felt, z: f64, velocity: f64) -> Option<f64> {
+pub(crate) fn contact_time(fs: f64, f0: f64, felt: Felt, z: f64, velocity: f64) -> Option<f64> {
     contact_within(fs, f0, felt, z, velocity, LONGEST)
 }
 

@@ -68,7 +68,7 @@ impl<S: Scalar> KsString<S> {
         self.bridge.damp(t60, ramp);
     }
 
-    /// Subtracts the delay line's mean (see [`DelayLine::remove_mean`]).
+    /// Subtracts the delay line's mean (`DelayLine::remove_mean`).
     pub fn remove_mean(&mut self) {
         self.line.remove_mean();
     }

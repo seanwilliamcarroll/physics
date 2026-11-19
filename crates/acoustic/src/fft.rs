@@ -102,7 +102,7 @@ impl<S: Scalar> Fft<S> {
 
 /// The quietest level [`Spectrum`] reports, dB: silence (and rounding)
 /// floors here instead of going to −∞.
-pub const FLOOR_DB: f64 = -200.0;
+pub(crate) const FLOOR_DB: f64 = -200.0;
 
 /// Turns `n` samples into `n / 2` magnitudes in dB (0 dB = a full-scale
 /// sine in its bin): a Hann window, an [`Fft`], and the single-sided

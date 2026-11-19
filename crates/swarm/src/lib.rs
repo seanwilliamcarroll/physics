@@ -24,5 +24,5 @@ pub use field::{Field, MAX_CELLS, MAX_DEPOSIT};
 pub use flock::{Boid, Flock, MAX_BOIDS, Neighbours};
 pub use params::{Arena, Params};
 pub use physarum::{MAX_AGENTS, Slime, SlimeParams};
-pub use rules::{FLEE, PREDATOR_RANGE};
+pub use rules::PREDATOR_RANGE;
 pub use vicsek::{MAX_PARTICLES, Particle, Vicsek, VicsekParams};

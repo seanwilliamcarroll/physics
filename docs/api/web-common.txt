@@ -11,5 +11,4 @@ pub const fn web_common::FixedStep::set_cap(&mut self, core::option::Option<core
 pub const fn web_common::FixedStep::set_cap_steps(&mut self, u32, u32) -> bool
 pub fn web_common::FixedStep::set_rate(&mut self, core::num::nonzero::NonZeroU32)
 pub fn web_common::FixedStep::set_rate_hz(&mut self, u32, u32) -> bool
-pub const web_common::MAX_FRAME_TIME: f64
 pub const fn web_common::install_panic_hook()

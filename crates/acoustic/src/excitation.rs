@@ -26,7 +26,7 @@ impl Excitation {
     /// Fills `string`'s delay line with this shape (noise drawn from
     /// `rng`), then removes the mean: the loop passes DC at full gain, so
     /// an offset would linger.
-    pub fn excite<S: Scalar>(self, string: &mut KsString<S>, rng: &mut SplitMix64) {
+    pub(crate) fn excite<S: Scalar>(self, string: &mut KsString<S>, rng: &mut SplitMix64) {
         match self {
             Self::Noise => string.pluck(|_, _| S::from_f64(rng.range(-1.0, 1.0))),
             Self::Triangle { peak } => {
@@ -49,7 +49,11 @@ impl Excitation {
     /// displacement in ±1 (each cell once), the triangle peaks at `peak`
     /// along the string from the bridge (`docs/13-waveguide.md`, "Plucking
     /// at a point"). No mean to remove: the loop's content cancels.
-    pub fn excite_waveguide<S: Scalar>(self, string: &mut Waveguide<S>, rng: &mut SplitMix64) {
+    pub(crate) fn excite_waveguide<S: Scalar>(
+        self,
+        string: &mut Waveguide<S>,
+        rng: &mut SplitMix64,
+    ) {
         match self {
             Self::Noise => string.pluck(|_| S::from_f64(rng.range(-1.0, 1.0))),
             Self::Triangle { peak } => {

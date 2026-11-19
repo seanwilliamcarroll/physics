@@ -10,4 +10,4 @@ mod rules;
 
 pub use grid::{CHUNK, Grid, MAX_CELLS};
 pub use material::{Material, unpack};
-pub use rules::{CONDENSE_ONE_IN, DISPERSION, LAVA_FLOW_ONE_IN};
+pub use rules::DISPERSION;

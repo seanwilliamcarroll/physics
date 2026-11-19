@@ -29,20 +29,25 @@
 //! the treble); the hammer stays a free mass until it moves away from the
 //! string, then retires.
 
+// The cheap blow model and the fit on it are offline tools: the tests
+// fit and check the hammers with them; the piano uses the fitted table.
+#[cfg(test)]
 mod contact;
 #[cfg(test)]
 mod fit;
 mod keys;
 mod table;
 
-pub use contact::contact_time;
-pub use keys::{
-    FORTISSIMO, MAX_VELOCITY, PIANISSIMO, SPREAD, STRIKE, contact_target, exponent, impedance,
-    mezzo_forte,
-};
+#[cfg(test)]
+use contact::contact_time;
+#[cfg(test)]
+use keys::SPREAD;
+pub(crate) use keys::mezzo_forte;
+pub use keys::{FORTISSIMO, MAX_VELOCITY, PIANISSIMO, STRIKE, contact_target, exponent, impedance};
 
 /// The rate the hammers were fitted at, Hz.
-pub const FITTED_AT: f64 = 48_000.0;
+#[cfg(test)]
+const FITTED_AT: f64 = 48_000.0;
 
 /// Each key's hammer: the smooth fit (`fit.rs`, done offline, as fitting
 /// all 88 takes seconds; `regenerate_the_table` redoes it), its exponent
