@@ -32,8 +32,8 @@ fn crossing_is_strict() {
         !crosses(v(2.0, 1.0), v(2.0, -1.0), v(-1.0, 0.0), v(1.0, 0.0)),
         "past the end"
     );
-    // Away from the origin and not axis-aligned (the targeted mutation
-    // run: about the origin, `b − a` and `b + a` agree in sign).
+    // Away from the origin and not axis-aligned: about the origin,
+    // `b − a` and `b + a` agree in sign.
     let (q0, q1) = (v(1.0, 1.0), v(3.0, 2.0));
     assert!(crosses(v(2.0, 3.0), v(2.0, 0.0), q0, q1), "down through");
     assert!(
@@ -44,15 +44,11 @@ fn crossing_is_strict() {
     assert!(!crosses(v(4.0, 3.0), v(4.0, 0.0), q0, q1), "past its end");
 }
 
-// count_tunnels itself (the full mutation run: only `passed_through` and
-// `crosses` were tested, through the ball–ball page case; the segment and
-// wall branches and the candidate cell weren't).
-
 use super::count_tunnels;
 use crate::collision::{Segment, Statics, Wall};
 use crate::{Mass, Particles, Radius, Restitution, UnitVec2};
 
-const R: f64 = 0.05;
+const RADIUS: f64 = 0.05;
 
 /// Circles at `after`, as if they'd moved there from `before` in one
 /// substep; returns the count against `walls` and `segments`.
@@ -62,17 +58,22 @@ fn count(
     walls: &[Wall<f64>],
     segments: &[Segment<f64>],
 ) -> u32 {
-    let mut p = Particles::new();
+    let mut particles = Particles::new();
     for &(x, y) in after {
-        p.add_circle(
+        particles.add_circle(
             Vec2::new(x, y),
             Vec2::ZERO,
             Mass::new(1.0).unwrap(),
-            Radius::new(R).unwrap(),
+            Radius::new(RADIUS).unwrap(),
         );
     }
     let before: Vec<Vec2<f64>> = before.iter().map(|&(x, y)| Vec2::new(x, y)).collect();
-    count_tunnels(&before, &p, Statics { walls, segments }, &mut Vec::new())
+    count_tunnels(
+        &before,
+        &particles,
+        Statics { walls, segments },
+        &mut Vec::new(),
+    )
 }
 
 #[test]
@@ -107,8 +108,12 @@ fn a_pair_is_found_however_far_apart_it_started() {
 
 #[test]
 fn a_path_across_a_segment_counts_once() {
-    let e = Restitution::new(0.8).unwrap();
-    let cushion = [Segment::new(Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0), e)];
+    let restitution = Restitution::new(0.8).unwrap();
+    let cushion = [Segment::new(
+        Vec2::new(-1.0, 0.0),
+        Vec2::new(1.0, 0.0),
+        restitution,
+    )];
     assert_eq!(
         count(&[(0.0, 0.5)], &[(0.0, -0.5)], &[], &cushion),
         1,
@@ -136,13 +141,13 @@ fn a_path_across_a_segment_counts_once() {
 fn ending_behind_a_wall_by_more_than_the_radius_counts() {
     let floor = [Wall::through(Vec2::ZERO, UnitVec2::Y)];
     assert_eq!(
-        count(&[(0.0, 1.0)], &[(0.0, -2.0 * R)], &floor, &[]),
+        count(&[(0.0, 1.0)], &[(0.0, -2.0 * RADIUS)], &floor, &[]),
         1,
         "behind it"
     );
     // Overlapping by less than a radius is a contact, not a tunnel.
     assert_eq!(
-        count(&[(0.0, 1.0)], &[(0.0, -0.5 * R)], &floor, &[]),
+        count(&[(0.0, 1.0)], &[(0.0, -0.5 * RADIUS)], &floor, &[]),
         0,
         "overlap"
     );
@@ -156,34 +161,33 @@ fn ending_behind_a_wall_by_more_than_the_radius_counts() {
 fn statics_and_points_never_tunnel() {
     let floor = [Wall::through(Vec2::ZERO, UnitVec2::Y)];
     // A static circle behind the wall (inverse mass 0): not counted.
-    let mut p = Particles::new();
-    p.add_circle(
+    let mut particles = Particles::new();
+    particles.add_circle(
         Vec2::new(0.0, -1.0),
         Vec2::ZERO,
         Mass::new(1.0).unwrap(),
-        Radius::new(R).unwrap(),
+        Radius::new(RADIUS).unwrap(),
     );
-    assert!(p.set_body(0, Vec2::new(0.0, -1.0), 0.0, R));
+    assert!(particles.set_body(0, Vec2::new(0.0, -1.0), 0.0, RADIUS));
     let statics = Statics {
         walls: &floor,
         segments: &[],
     };
     assert_eq!(
-        count_tunnels(&[Vec2::new(0.0, 1.0)], &p, statics, &mut Vec::new()),
+        count_tunnels(&[Vec2::new(0.0, 1.0)], &particles, statics, &mut Vec::new()),
         0
     );
     // A point (radius 0) behind it: not counted either.
-    let mut p = Particles::new();
-    p.add(Vec2::new(0.0, -1.0), Vec2::ZERO, Mass::new(1.0).unwrap());
+    let mut particles = Particles::new();
+    particles.add(Vec2::new(0.0, -1.0), Vec2::ZERO, Mass::new(1.0).unwrap());
     assert_eq!(
-        count_tunnels(&[Vec2::new(0.0, 1.0)], &p, statics, &mut Vec::new()),
+        count_tunnels(&[Vec2::new(0.0, 1.0)], &particles, statics, &mut Vec::new()),
         0
     );
 }
 
-/// From the full mutation run of 2026-11-12: the cell grows with twice
-/// the furthest move. A jump of 2 m hid a cell of `2 / moved` (also 1 at
-/// moved = 2); 10 m doesn't.
+/// The cell grows with twice the furthest move; a 2 m jump alone can
+/// hide a wrong formula (`2 / moved` is also 1 there), 10 m can't.
 #[test]
 fn a_ten_metre_jump_through_a_circle_is_found() {
     assert_eq!(

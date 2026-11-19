@@ -1,5 +1,5 @@
-//! [`Pocket`]: a sensor circle on a billiards table (M7,
-//! `docs/09-billiards.md`, "Pockets").
+//! [`Pocket`]: a sensor circle on a billiards table
+//! (`docs/09-billiards.md`, "Pockets").
 
 use crate::{Scalar, Vec2};
 

@@ -1,4 +1,4 @@
-//! [`Wall`]: a static half-plane (M6).
+//! [`Wall`]: a static half-plane.
 
 use crate::{Scalar, UnitVec2, Vec2};
 
