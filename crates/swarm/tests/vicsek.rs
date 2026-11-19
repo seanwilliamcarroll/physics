@@ -1,5 +1,5 @@
-//! S2's system-level tests (`docs/15-swarm.md`, S2): speed, the two
-//! limits of the noise, and the 0/0 count.
+//! The Vicsek system's tests (`docs/15-swarm.md`, "The Vicsek model"):
+//! speed, the two limits of the noise, and the 0/0 count.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -7,28 +7,30 @@ use core::f32::consts::TAU;
 
 use swarm::{Particle, Vicsek, VicsekParams};
 
-const N: usize = 400;
-const L: f32 = 10.0;
+const PARTICLES: usize = 400;
+const SIDE: f32 = 10.0;
 
 #[test]
 fn every_particle_moves_exactly_v_a_step() {
-    let mut v = Vicsek::new(N, L, VicsekParams::paper(2.0), 1).unwrap();
+    let mut vicsek = Vicsek::new(PARTICLES, SIDE, VicsekParams::paper(2.0), 1).unwrap();
     for _ in 0..200 {
-        let before: Vec<Particle> = v.particles().collect();
-        v.step();
-        for (a, b) in before.iter().zip(v.particles()) {
-            let image = |d: f32| {
-                if d > L / 2.0 {
-                    d - L
-                } else if d < -L / 2.0 {
-                    d + L
+        let before: Vec<Particle> = vicsek.particles().collect();
+        vicsek.step();
+        for (old, new) in before.iter().zip(vicsek.particles()) {
+            let minimum_image = |delta: f32| {
+                if delta > SIDE / 2.0 {
+                    delta - SIDE
+                } else if delta < -SIDE / 2.0 {
+                    delta + SIDE
                 } else {
-                    d
+                    delta
                 }
             };
-            let d = (image(b.x - a.x).powi(2) + image(b.y - a.y).powi(2)).sqrt();
+            let distance = (minimum_image(new.x - old.x).powi(2)
+                + minimum_image(new.y - old.y).powi(2))
+            .sqrt();
             // f32 positions up to 10: an ulp is ~1e-6.
-            assert!((d - 0.03).abs() < 1e-5, "moved {d}");
+            assert!((distance - 0.03).abs() < 1e-5, "moved {distance}");
         }
     }
 }
@@ -37,19 +39,19 @@ fn every_particle_moves_exactly_v_a_step() {
 /// 2,000 steps (identical unit vectors sum and normalize back exactly).
 #[test]
 fn without_noise_an_aligned_system_stays_aligned() {
-    let start = Vicsek::new(N, L, VicsekParams::paper(0.0), 1).unwrap();
+    let start = Vicsek::new(PARTICLES, SIDE, VicsekParams::paper(0.0), 1).unwrap();
     let aligned: Vec<Particle> = start
         .particles()
-        .map(|p| Particle {
+        .map(|particle| Particle {
             cos: 1.0,
             sin: 0.0,
-            ..p
+            ..particle
         })
         .collect();
-    let mut v = Vicsek::with_particles(L, VicsekParams::paper(0.0), aligned, 1).unwrap();
+    let mut vicsek = Vicsek::with_particles(SIDE, VicsekParams::paper(0.0), aligned, 1).unwrap();
     for _ in 0..2000 {
-        v.step();
-        assert!(v.order() > 1.0 - 1e-12, "v_a {}", v.order());
+        vicsek.step();
+        assert!(vicsek.order() > 1.0 - 1e-12, "v_a {}", vicsek.order());
     }
 }
 
@@ -60,14 +62,15 @@ fn without_noise_an_aligned_system_stays_aligned() {
 /// 0.0442–0.0449 (1.5%). Bound 10%.
 #[test]
 fn at_full_noise_order_is_that_of_random_headings() {
-    let expected = core::f64::consts::PI.sqrt() / (2.0 * math::convert::usize_to_f64(N).sqrt());
+    let expected =
+        core::f64::consts::PI.sqrt() / (2.0 * math::convert::usize_to_f64(PARTICLES).sqrt());
     for seed in [1, 2, 3] {
-        let mut v = Vicsek::new(N, L, VicsekParams::paper(TAU), seed).unwrap();
+        let mut vicsek = Vicsek::new(PARTICLES, SIDE, VicsekParams::paper(TAU), seed).unwrap();
         let mut sum = 0.0;
-        for k in 0..3000 {
-            v.step();
-            if k >= 1000 {
-                sum += v.order();
+        for step in 0..3000 {
+            vicsek.step();
+            if step >= 1000 {
+                sum += vicsek.order();
             }
         }
         let mean = sum / 2000.0;
@@ -85,10 +88,10 @@ fn at_full_noise_order_is_that_of_random_headings() {
 #[test]
 fn exact_cancellation_doesnt_happen_in_practice() {
     for (eta, seed) in [(0.5_f32, 4), (2.0, 4), (4.0, 4), (TAU, 1)] {
-        let mut v = Vicsek::new(N, L, VicsekParams::paper(eta), seed).unwrap();
+        let mut vicsek = Vicsek::new(PARTICLES, SIDE, VicsekParams::paper(eta), seed).unwrap();
         for _ in 0..3000 {
-            v.step();
+            vicsek.step();
         }
-        assert_eq!(v.annihilations(), 0, "eta {eta}");
+        assert_eq!(vicsek.annihilations(), 0, "eta {eta}");
     }
 }

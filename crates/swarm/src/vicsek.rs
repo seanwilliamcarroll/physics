@@ -1,7 +1,7 @@
-//! [`Vicsek`]: the Vicsek model (`docs/15-swarm.md`, S2; Vicsek et al.
-//! 1995). Constant speed v; each step every particle takes the average
-//! heading of the particles within `r` of it (itself included) plus a
-//! uniform angle in `[−η/2, η/2]`; a periodic square box of side L.
+//! [`Vicsek`]: the Vicsek model (`docs/15-swarm.md`, "The Vicsek model";
+//! Vicsek et al. 1995). Constant speed v; each step every particle takes
+//! the average heading of the particles within `r` of it (itself included)
+//! plus a uniform angle in `[−η/2, η/2]`; a periodic square box of side L.
 
 use math::SplitMix64;
 use math::convert::f64_to_f32;
@@ -56,6 +56,7 @@ pub struct Particle {
     pub sin: f32,
 }
 
+/// The particles, one entry each in x, y and the heading's cos and sin.
 #[derive(Clone, Debug, Default)]
 struct State {
     x: Vec<f32>,
@@ -65,32 +66,32 @@ struct State {
 }
 
 impl State {
-    fn get(&self, i: usize) -> Option<Particle> {
+    fn get(&self, index: usize) -> Option<Particle> {
         Some(Particle {
-            x: *self.x.get(i)?,
-            y: *self.y.get(i)?,
-            cos: *self.cos.get(i)?,
-            sin: *self.sin.get(i)?,
+            x: *self.x.get(index)?,
+            y: *self.y.get(index)?,
+            cos: *self.cos.get(index)?,
+            sin: *self.sin.get(index)?,
         })
     }
 
-    fn set(&mut self, i: usize, p: Particle) {
+    fn set(&mut self, index: usize, particle: Particle) {
         let slots = (
-            self.x.get_mut(i),
-            self.y.get_mut(i),
-            self.cos.get_mut(i),
-            self.sin.get_mut(i),
+            self.x.get_mut(index),
+            self.y.get_mut(index),
+            self.cos.get_mut(index),
+            self.sin.get_mut(index),
         );
-        if let (Some(x), Some(y), Some(c), Some(s)) = slots {
-            (*x, *y, *c, *s) = (p.x, p.y, p.cos, p.sin);
+        if let (Some(x), Some(y), Some(cos), Some(sin)) = slots {
+            (*x, *y, *cos, *sin) = (particle.x, particle.y, particle.cos, particle.sin);
         }
     }
 
-    fn push(&mut self, p: Particle) {
-        self.x.push(p.x);
-        self.y.push(p.y);
-        self.cos.push(p.cos);
-        self.sin.push(p.sin);
+    fn push(&mut self, particle: Particle) {
+        self.x.push(particle.x);
+        self.y.push(particle.y);
+        self.cos.push(particle.cos);
+        self.sin.push(particle.sin);
     }
 
     fn len(&self) -> usize {
@@ -103,9 +104,10 @@ impl State {
 /// neighbourhood's headings cancelled exactly.
 #[derive(Clone, Debug)]
 pub struct Vicsek {
+    /// The box's side, L.
     side: f32,
     params: VicsekParams,
-    cur: State,
+    current: State,
     next: State,
     rng: SplitMix64,
     steps: u64,
@@ -117,32 +119,32 @@ pub struct Vicsek {
 }
 
 impl Vicsek {
-    /// `n` particles (1 to [`MAX_PARTICLES`]) at random in an `L × L`
-    /// box, random headings, the noise drawn from `seed`'s stream. `None`
-    /// for a bad count, side or params.
+    /// `particle_count` particles (1 to [`MAX_PARTICLES`]) at random in a
+    /// `side × side` box, random headings, the noise drawn from `seed`'s
+    /// stream. `None` for a bad count, side or params.
     #[must_use]
-    pub fn new(n: usize, side: f32, params: VicsekParams, seed: u64) -> Option<Self> {
-        if !(1..=MAX_PARTICLES).contains(&n) {
+    pub fn new(particle_count: usize, side: f32, params: VicsekParams, seed: u64) -> Option<Self> {
+        if !(1..=MAX_PARTICLES).contains(&particle_count) {
             return None;
         }
         let mut rng = SplitMix64::new(seed);
-        let l = f64::from(side);
-        let particles: Vec<Particle> = (0..n)
+        let side_f64 = f64::from(side);
+        let particles: Vec<Particle> = (0..particle_count)
             .map(|_| {
-                let (x, y) = (rng.range(0.0, l), rng.range(0.0, l));
+                let (x, y) = (rng.range(0.0, side_f64), rng.range(0.0, side_f64));
                 // A direction, without trig: a point in the unit disc.
-                let (c, s) = loop {
-                    let (c, s) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
-                    let len = (c * c + s * s).sqrt();
-                    if len > 1e-3 && len <= 1.0 {
-                        break (c / len, s / len);
+                let (cos, sin) = loop {
+                    let (disc_x, disc_y) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
+                    let length = (disc_x * disc_x + disc_y * disc_y).sqrt();
+                    if length > 1e-3 && length <= 1.0 {
+                        break (disc_x / length, disc_y / length);
                     }
                 };
                 Particle {
                     x: f64_to_f32(x),
                     y: f64_to_f32(y),
-                    cos: f64_to_f32(c),
-                    sin: f64_to_f32(s),
+                    cos: f64_to_f32(cos),
+                    sin: f64_to_f32(sin),
                 }
             })
             .collect();
@@ -162,22 +164,22 @@ impl Vicsek {
         if !(side.is_finite() && side > 0.0) {
             return None;
         }
-        let mut cur = State::default();
-        for p in particles.into_iter().take(MAX_PARTICLES + 1) {
-            cur.push(Particle {
-                x: wrap(p.x, side),
-                y: wrap(p.y, side),
-                ..p
+        let mut current = State::default();
+        for particle in particles.into_iter().take(MAX_PARTICLES + 1) {
+            current.push(Particle {
+                x: wrap_into_box(particle.x, side),
+                y: wrap_into_box(particle.y, side),
+                ..particle
             });
         }
-        if cur.len() == 0 || cur.len() > MAX_PARTICLES {
+        if current.len() == 0 || current.len() > MAX_PARTICLES {
             return None;
         }
         Some(Self {
             side,
             params,
-            next: cur.clone(),
-            cur,
+            next: current.clone(),
+            current,
             rng: SplitMix64::new(seed),
             steps: 0,
             annihilations: 0,
@@ -190,54 +192,72 @@ impl Vicsek {
     /// (its neighbourhood's normalized heading sum, rotated by the
     /// noise), and its new position from its *current* heading (Eq. 1).
     pub fn step(&mut self) {
-        let n = self.cur.len();
-        let (side, p) = (self.side, self.params);
+        let particle_count = self.current.len();
+        let (side, params) = (self.side, self.params);
         let gridded = !self.brute_force
             && self
                 .grid
-                .rebuild_periodic(side, p.radius, &self.cur.x, &self.cur.y)
+                .rebuild_periodic(side, params.radius, &self.current.x, &self.current.y)
                 .is_some();
-        for i in 0..n {
-            let Some(me) = self.cur.get(i) else { continue };
-            // The neighbourhood's heading sum, `me` included (distance 0).
+        for index in 0..particle_count {
+            let Some(particle) = self.current.get(index) else {
+                continue;
+            };
+            // The neighbourhood's heading sum, the particle included
+            // (distance 0).
             let mut sum = (0.0_f32, 0.0_f32);
             if gridded {
-                for cell in self.grid.cells_wrapped(me.x, me.y) {
+                for cell in self.grid.cells_wrapped(particle.x, particle.y) {
                     let candidates = cell.iter().filter_map(|&j| usize::try_from(j).ok());
-                    add_headings(&mut sum, &self.cur, me, side, p.radius, candidates);
+                    add_headings(
+                        &mut sum,
+                        &self.current,
+                        particle,
+                        side,
+                        params.radius,
+                        candidates,
+                    );
                 }
             } else {
-                add_headings(&mut sum, &self.cur, me, side, p.radius, 0..n);
+                add_headings(
+                    &mut sum,
+                    &self.current,
+                    particle,
+                    side,
+                    params.radius,
+                    0..particle_count,
+                );
             }
-            let (sc, ss) = sum;
-            let next = self.turn(me, sc, ss);
-            self.next.set(i, next);
+            let (sum_cos, sum_sin) = sum;
+            let next = self.turn(particle, sum_cos, sum_sin);
+            self.next.set(index, next);
         }
-        core::mem::swap(&mut self.cur, &mut self.next);
+        core::mem::swap(&mut self.current, &mut self.next);
         self.steps += 1;
     }
 
     /// The particle with its new heading (the normalized sum, or its own
     /// if the sum is exactly zero, counted), noise applied, and moved by
     /// its old one.
-    fn turn(&mut self, me: Particle, sc: f32, ss: f32) -> Particle {
-        let len = (sc * sc + ss * ss).sqrt();
-        let (c, s) = if len > 0.0 {
-            (sc / len, ss / len)
+    fn turn(&mut self, particle: Particle, sum_cos: f32, sum_sin: f32) -> Particle {
+        let length = (sum_cos * sum_cos + sum_sin * sum_sin).sqrt();
+        let (mean_cos, mean_sin) = if length > 0.0 {
+            (sum_cos / length, sum_sin / length)
         } else {
             self.annihilations += 1;
-            (me.cos, me.sin)
+            (particle.cos, particle.sin)
         };
         // Δθ uniform on [−η/2, η/2], one draw per particle per step in
         // storage order.
-        let dt = f64_to_f32((self.rng.next_unit_f64() - 0.5) * f64::from(self.params.noise));
-        let (sn, cs) = (libm::sinf(dt), libm::cosf(dt));
-        let v = self.params.speed;
+        let noise_angle =
+            f64_to_f32((self.rng.next_unit_f64() - 0.5) * f64::from(self.params.noise));
+        let (noise_sin, noise_cos) = (libm::sinf(noise_angle), libm::cosf(noise_angle));
+        let speed = self.params.speed;
         Particle {
-            x: wrap(me.x + v * me.cos, self.side),
-            y: wrap(me.y + v * me.sin, self.side),
-            cos: c * cs - s * sn,
-            sin: c * sn + s * cs,
+            x: wrap_into_box(particle.x + speed * particle.cos, self.side),
+            y: wrap_into_box(particle.y + speed * particle.sin, self.side),
+            cos: mean_cos * noise_cos - mean_sin * noise_sin,
+            sin: mean_cos * noise_sin + mean_sin * noise_cos,
         }
     }
 
@@ -248,31 +268,36 @@ impl Vicsek {
         self.brute_force = on;
     }
 
+    /// The number of particles.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.cur.len()
+        self.current.len()
     }
 
     /// Never true: a system has at least one particle.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.cur.len() == 0
+        self.current.len() == 0
     }
 
+    /// The particle at `index` (storage order), or `None` past the end.
     #[must_use]
-    pub fn particle(&self, i: usize) -> Option<Particle> {
-        self.cur.get(i)
+    pub fn particle(&self, index: usize) -> Option<Particle> {
+        self.current.get(index)
     }
 
+    /// Every particle, in storage order.
     pub fn particles(&self) -> impl Iterator<Item = Particle> + '_ {
-        (0..self.len()).filter_map(|i| self.cur.get(i))
+        (0..self.len()).filter_map(|index| self.current.get(index))
     }
 
+    /// The box's side, L.
     #[must_use]
     pub const fn side(&self) -> f32 {
         self.side
     }
 
+    /// The model's constants.
     #[must_use]
     pub const fn params(&self) -> VicsekParams {
         self.params
@@ -281,9 +306,13 @@ impl Vicsek {
     /// Replaces the constants from the next step; `false` (and nothing
     /// changed) if unusable.
     pub fn set_params(&mut self, params: VicsekParams) -> bool {
-        params.checked().map(|p| self.params = p).is_some()
+        params
+            .checked()
+            .map(|checked| self.params = checked)
+            .is_some()
     }
 
+    /// Steps taken so far.
     #[must_use]
     pub const fn steps(&self) -> u64 {
         self.steps
@@ -300,13 +329,13 @@ impl Vicsek {
     /// the length of the mean heading. Summed in `f64`.
     #[must_use]
     pub fn order(&self) -> f64 {
-        let (mut c, mut s, mut n) = (0.0_f64, 0.0_f64, 0.0_f64);
-        for p in self.particles() {
-            c += f64::from(p.cos);
-            s += f64::from(p.sin);
-            n += 1.0;
+        let (mut sum_cos, mut sum_sin, mut count) = (0.0_f64, 0.0_f64, 0.0_f64);
+        for particle in self.particles() {
+            sum_cos += f64::from(particle.cos);
+            sum_sin += f64::from(particle.sin);
+            count += 1.0;
         }
-        (c * c + s * s).sqrt() / n
+        (sum_cos * sum_cos + sum_sin * sum_sin).sqrt() / count
     }
 
     /// The paper's measurement: `transient` steps discarded, then the mean
@@ -327,58 +356,64 @@ impl Vicsek {
     /// The state's bytes for hashing (the repeatability tests).
     pub fn state_bytes(&self) -> impl Iterator<Item = u8> + '_ {
         self.particles()
-            .flat_map(|p| [p.x, p.y, p.cos, p.sin])
+            .flat_map(|particle| [particle.x, particle.y, particle.cos, particle.sin])
             .flat_map(f32::to_le_bytes)
     }
 }
 
-/// Adds to `sum` the headings of the `candidates` within `r` of `me`
-/// (minimum image), `me` included if it's among them. Called once per
-/// cell on the grid: the sum carries on from cell to cell, in the same
-/// order as one pass over them all.
+/// Adds to `sum` the headings of the `candidates` within `radius` of
+/// `particle` (minimum image), the particle included if it's among them.
+/// Called once per cell on the grid: the sum carries on from cell to cell,
+/// in the same order as one pass over them all.
 fn add_headings(
     sum: &mut (f32, f32),
-    s: &State,
-    me: Particle,
+    state: &State,
+    particle: Particle,
     side: f32,
-    r: f32,
+    radius: f32,
     candidates: impl Iterator<Item = usize>,
 ) {
-    let r_sq = r * r;
-    let (mut sc, mut ss) = *sum;
-    for j in candidates {
-        let Some(o) = s.get(j) else { continue };
-        let (dx, dy) = (image(me.x - o.x, side), image(me.y - o.y, side));
-        if dx * dx + dy * dy < r_sq {
-            sc += o.cos;
-            ss += o.sin;
+    let radius_squared = radius * radius;
+    let (mut sum_cos, mut sum_sin) = *sum;
+    for candidate in candidates {
+        let Some(other) = state.get(candidate) else {
+            continue;
+        };
+        let (dx, dy) = (
+            minimum_image(particle.x - other.x, side),
+            minimum_image(particle.y - other.y, side),
+        );
+        if dx * dx + dy * dy < radius_squared {
+            sum_cos += other.cos;
+            sum_sin += other.sin;
         }
     }
-    *sum = (sc, ss);
+    *sum = (sum_cos, sum_sin);
 }
 
-/// `d` as the minimum image in a box of side `l`: in `[−l/2, l/2]`.
-fn image(d: f32, l: f32) -> f32 {
-    if d > 0.5 * l {
-        d - l
-    } else if d < -0.5 * l {
-        d + l
+/// `delta` as the minimum image in a box of `side`: in `[−side/2, side/2]`.
+fn minimum_image(delta: f32, side: f32) -> f32 {
+    if delta > 0.5 * side {
+        delta - side
+    } else if delta < -0.5 * side {
+        delta + side
     } else {
-        d
+        delta
     }
 }
 
-/// `x` wrapped into `[0, l)` (a step is far less than l).
-fn wrap(x: f32, l: f32) -> f32 {
-    let w = if x >= l {
-        x - l
-    } else if x < 0.0 {
-        x + l
+/// `coordinate` wrapped into `[0, side)` (a step is far less than `side`).
+fn wrap_into_box(coordinate: f32, side: f32) -> f32 {
+    let wrapped = if coordinate >= side {
+        coordinate - side
+    } else if coordinate < 0.0 {
+        coordinate + side
     } else {
-        x
+        coordinate
     };
-    // `x + l` can round up to exactly `l` for a tiny negative x.
-    if w >= l { 0.0 } else { w }
+    // `coordinate + side` can round up to exactly `side` for a tiny
+    // negative coordinate.
+    if wrapped >= side { 0.0 } else { wrapped }
 }
 
 #[cfg(test)]

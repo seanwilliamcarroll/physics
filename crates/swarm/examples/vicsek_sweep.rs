@@ -27,39 +27,43 @@ const WINDOW: u32 = 3000;
 fn main() {
     let wanted: Vec<usize> = std::env::args()
         .skip(1)
-        .filter_map(|a| a.parse().ok())
+        .filter_map(|argument| argument.parse().ok())
         .collect();
     let sizes: Vec<(usize, f64)> = FIG_2A
         .iter()
         .copied()
-        .filter(|(n, _)| {
+        .filter(|(particle_count, _)| {
             if wanted.is_empty() {
-                *n <= 4000
+                *particle_count <= 4000
             } else {
-                wanted.contains(n)
+                wanted.contains(particle_count)
             }
         })
         .collect();
-    for (n, l) in sizes {
+    for (particle_count, side) in sizes {
         println!(
-            "N = {n}, L = {l} (rho = {:.2}), {SEEDS} seeds, {TRANSIENT} + {WINDOW} steps",
-            usize_to_f64(n) / (l * l)
+            "N = {particle_count}, L = {side} (rho = {:.2}), {SEEDS} seeds, {TRANSIENT} + {WINDOW} steps",
+            usize_to_f64(particle_count) / (side * side)
         );
-        for k in 0..=20_u32 {
-            let eta = f64::from(k) * 0.25;
+        for step in 0..=20_u32 {
+            let eta = f64::from(step) * 0.25;
             let runs: Vec<f64> = (1..=SEEDS)
                 .map(|seed| {
-                    let mut v =
-                        Vicsek::new(n, f64_to_f32(l), VicsekParams::paper(f64_to_f32(eta)), seed)
-                            .unwrap();
-                    v.mean_order(TRANSIENT, WINDOW)
+                    let mut vicsek = Vicsek::new(
+                        particle_count,
+                        f64_to_f32(side),
+                        VicsekParams::paper(f64_to_f32(eta)),
+                        seed,
+                    )
+                    .unwrap();
+                    vicsek.mean_order(TRANSIENT, WINDOW)
                 })
                 .collect();
             let mean = runs.iter().sum::<f64>() / usize_to_f64(runs.len());
-            let sd = (runs.iter().map(|r| (r - mean).powi(2)).sum::<f64>()
+            let standard_deviation = (runs.iter().map(|run| (run - mean).powi(2)).sum::<f64>()
                 / usize_to_f64(runs.len()))
             .sqrt();
-            println!("  eta {eta:.2}  v_a {mean:.3} ± {sd:.3}");
+            println!("  eta {eta:.2}  v_a {mean:.3} ± {standard_deviation:.3}");
         }
     }
 }
