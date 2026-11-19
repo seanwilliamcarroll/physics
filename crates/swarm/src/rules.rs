@@ -144,13 +144,29 @@ impl Seen {
             self.add(r, me, Boid { x, y, vx, vy });
         }
     }
+
+    /// Sorted's candidates: the `spans` of the whole flock's arrays (`x`
+    /// and the rest, in cell order), each through the lane loop. How a
+    /// span's edges go is the target's (`tuning.rs`) or the build's
+    /// (`knobs.rs`: `SWARM_SPAN`, `SWARM_TAIL`); per span and scalar, as
+    /// [`Self::add_span`] for each span.
+    pub(crate) fn add_spans<const L: usize>(
+        &mut self,
+        r: Ranges,
+        me: Boid,
+        flock: [&[f32]; 4],
+        spans: impl Iterator<Item = core::ops::Range<usize>>,
+    ) {
+        lanes::add_spans::<L>(self, r, me, flock, spans, (PER_BOID, TAIL));
+    }
 }
 
 mod knobs;
 mod lanes;
 mod tuning;
 
-pub(crate) use tuning::{BRUTE_LANES, GRID_MASK, SORTED_LANES};
+pub(crate) use tuning::{BRUTE_LANES, GRID_MASK, SORTED_LANES, TRUNCATE_CELL};
+use tuning::{PER_BOID, TAIL};
 
 /// How close the predator must be to be fled, pixels (our choice: a
 /// little over twice the visual range, so a flock parts ahead of it).

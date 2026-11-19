@@ -8,6 +8,18 @@
 //! - `SWARM_SUM`: `ordered` (default) or `algebraic`. Algebraic adds with
 //!   `f32::algebraic_add`, which lets the compiler reorder them (and so
 //!   vectorize the sums however it likes).
+//! - `SWARM_SPAN`, `SWARM_TAIL`, `SWARM_CELL`: Sorted's span edges, for
+//!   `experiments/sorted-edges/`; unset, the target's (`tuning.rs`).
+//!   `SWARM_SPAN`: `per-span` (each span's lanes added into the sums at
+//!   its end) or `per-boid` (one set of lanes for a boid's three spans,
+//!   added once). `SWARM_TAIL`: `scalar` (a span's last few candidates
+//!   one at a time, branching), `masked` (one more block, its lanes
+//!   outside the leftovers masked out by comparing lane numbers) or
+//!   `table` (the same block, its mask loaded from a table of zeros then
+//!   ones). `SWARM_CELL`: `floor` or `truncate` (the grid's cell
+//!   coordinates without `floor`: the same for the non-negative values it
+//!   takes; x86's baseline has no float rounding instruction, so `floor`
+//!   is a call).
 //! - `SWARM_MASK`: how the grid's scalar candidate test (`Seen::add_masked`)
 //!   writes its masks: `convert` (a bool converted to a float), `select`
 //!   (`if c { 1.0 } else { 0.0 }`), `bits` (the bits of `1.0`, masked by the
@@ -23,6 +35,26 @@ pub(crate) const LANES: Option<usize> = lanes(option_env!("SWARM_LANES"));
 
 /// How the lane loop adds.
 pub(crate) const SUM: Sum = sum(option_env!("SWARM_SUM"));
+
+/// Whether Sorted adds one set of lanes per boid (`SWARM_SPAN`), if set.
+pub(crate) const PER_BOID: Option<bool> = choice(
+    option_env!("SWARM_SPAN"),
+    "SWARM_SPAN",
+    b"per-span",
+    b"per-boid",
+);
+
+/// How Sorted adds a span's leftovers (`SWARM_TAIL`), if set.
+pub(crate) const TAIL: Option<Tail> = tail(option_env!("SWARM_TAIL"));
+
+/// Whether the grid's cell coordinates truncate instead of `floor`
+/// (`SWARM_CELL`), if set.
+pub(crate) const TRUNCATE_CELL: Option<bool> = choice(
+    option_env!("SWARM_CELL"),
+    "SWARM_CELL",
+    b"floor",
+    b"truncate",
+);
 
 /// How the grid's candidate test masks, if set.
 pub(crate) const MASK: Option<Mask> = mask(option_env!("SWARM_MASK"));
@@ -40,6 +72,18 @@ pub(crate) enum Mask {
     Value,
     /// The branching `Seen::add`.
     Branch,
+}
+
+/// How Sorted adds a span's leftovers, fewer than a block (`SWARM_TAIL`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Tail {
+    /// One at a time, branching (`Seen::add`).
+    Scalar,
+    /// One more block, the lanes outside the leftovers masked out by
+    /// comparing lane numbers.
+    Masked,
+    /// The same block, its mask a window on a table of zeros then ones.
+    Table,
 }
 
 /// The lane loop's additions.
@@ -92,6 +136,39 @@ pub(crate) const fn mask(setting: Option<&str>) -> Option<Mask> {
         Some(Mask::Branch)
     } else {
         panic_at_build("SWARM_MASK: `convert`, `select`, `bits`, `value` or `branch`")
+    }
+}
+
+/// `SWARM_TAIL` as a [`Tail`]; a bad value fails the build.
+pub(crate) const fn tail(setting: Option<&str>) -> Option<Tail> {
+    let Some(text) = setting else {
+        return None;
+    };
+    let t = text.as_bytes();
+    if same(t, b"scalar") {
+        Some(Tail::Scalar)
+    } else if same(t, b"masked") {
+        Some(Tail::Masked)
+    } else if same(t, b"table") {
+        Some(Tail::Table)
+    } else {
+        panic_at_build("SWARM_TAIL: `scalar`, `masked` or `table`")
+    }
+}
+
+/// A two-way setting: `off` is `false`, `on` is `true`, unset `None`;
+/// anything else fails the build, naming `name`.
+pub(crate) const fn choice(
+    setting: Option<&str>,
+    name: &str,
+    off: &[u8],
+    on: &[u8],
+) -> Option<bool> {
+    match setting {
+        None => None,
+        Some(text) if same(text.as_bytes(), off) => Some(false),
+        Some(text) if same(text.as_bytes(), on) => Some(true),
+        Some(_) => panic_at_build(name),
     }
 }
 

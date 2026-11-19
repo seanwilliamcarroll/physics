@@ -7,7 +7,7 @@
 //! bits. (A loop one pass per register's worth of lanes, the same bits
 //! without spills, was tried and dropped: `experiments/swarm-lanes/`.)
 
-use super::knobs::{SUM, Sum};
+use super::knobs::{SUM, Sum, Tail};
 use super::{Ranges, Seen};
 use crate::Boid;
 
@@ -27,6 +27,119 @@ pub(super) fn add_blocks<const L: usize>(
         lanes.add(r, me, a, b, c, d);
     }
     lanes.into(seen);
+}
+
+/// Sorted's spans of the flock's arrays (`[x, y, vx, vy]`, cell order)
+/// into `seen`: each span's whole blocks through the lane loop, its
+/// leftovers one at a time (`Seen::add`) or as one more block with the
+/// lanes outside them masked out, the mask from compares or a table
+/// (`SWARM_TAIL`); each span's lanes added
+/// into `seen` at its end, or one set for all the spans, added once
+/// (`SWARM_SPAN`). The settings are arguments for the tests; the build
+/// passes constants (`Seen::add_spans`).
+pub(super) fn add_spans<const L: usize>(
+    seen: &mut Seen,
+    r: Ranges,
+    me: Boid,
+    [x, y, vx, vy]: [&[f32]; 4],
+    spans: impl Iterator<Item = core::ops::Range<usize>>,
+    (per_boid, leftovers): (bool, Tail),
+) {
+    let mut lanes = Lanes::<L>::new();
+    for span in spans {
+        let ((cx, rx), (cy, ry), (cvx, rvx), (cvy, rvy)) = (
+            part(x, &span).as_chunks::<L>(),
+            part(y, &span).as_chunks::<L>(),
+            part(vx, &span).as_chunks::<L>(),
+            part(vy, &span).as_chunks::<L>(),
+        );
+        for (((a, b), c), d) in cx.iter().zip(cy).zip(cvx).zip(cvy) {
+            lanes.add(r, me, a, b, c, d);
+        }
+        let rem = rx.len();
+        // The block of `L` ending at the span's end (or the arrays' first
+        // `L`): its last `rem` within the span are the leftovers.
+        let tail = span.end.saturating_sub(L)..span.end.saturating_sub(L) + L;
+        let masked = (leftovers != Tail::Scalar && rem > 0)
+            .then(|| {
+                Some((
+                    block(x, &tail)?,
+                    block(y, &tail)?,
+                    block(vx, &tail)?,
+                    block(vy, &tail)?,
+                ))
+            })
+            .flatten();
+        if let Some((a, b, c, d)) = masked {
+            // The leftovers are the block's lanes `first..end`: its last
+            // `rem`, unless the block is the arrays' first `L` (`end < L`).
+            let end = span.end - tail.start;
+            let first = end - rem;
+            let compared;
+            let mask = match window::<L>(rem) {
+                Some(w) if leftovers == Tail::Table && end == L => w,
+                _ => {
+                    compared = core::array::from_fn(|k| unit((first..end).contains(&k)));
+                    &compared
+                }
+            };
+            lanes.add_masked(r, me, a, b, c, d, mask);
+        }
+        // Per span, the lanes go in before the leftovers: as `add_span`.
+        if !per_boid {
+            core::mem::replace(&mut lanes, Lanes::new()).into(seen);
+        }
+        if masked.is_none() {
+            for (((&x, &y), &vx), &vy) in rx.iter().zip(ry).zip(rvx).zip(rvy) {
+                seen.add(r, me, Boid { x, y, vx, vy });
+            }
+        }
+    }
+    if per_boid {
+        lanes.into(seen);
+    }
+}
+
+/// The most lanes there can be (`SWARM_LANES`, `knobs.rs`).
+const MAX_LANES: usize = 64;
+
+/// Zeros then ones, [`MAX_LANES`] of each: a window of `L` on it is a
+/// block's mask for its last few lanes (`window`).
+static STEPS: [f32; 2 * MAX_LANES] = steps();
+
+const fn steps() -> [f32; 2 * MAX_LANES] {
+    let mut a = [0.0; 2 * MAX_LANES];
+    let mut i = MAX_LANES;
+    while i < 2 * MAX_LANES {
+        #[expect(
+            clippy::indexing_slicing,
+            reason = "const evaluation, in bounds by the loop; a slip fails the build"
+        )]
+        {
+            a[i] = 1.0;
+        }
+        i += 1;
+    }
+    a
+}
+
+/// A block's mask counting only its last `rem` lanes: 1.0 in each, 0.0
+/// in the others, from [`STEPS`] (one load, no compares).
+fn window<const L: usize>(rem: usize) -> Option<&'static [f32; L]> {
+    let start = (MAX_LANES + rem).checked_sub(L)?;
+    STEPS
+        .get(start..start + L)
+        .and_then(|w| <&[f32; L]>::try_from(w).ok())
+}
+
+/// `a`'s elements `r`, empty if out of range.
+fn part<'a>(a: &'a [f32], r: &core::ops::Range<usize>) -> &'a [f32] {
+    a.get(r.clone()).unwrap_or_default()
+}
+
+/// `a`'s elements `r` as one block of `L`, if they're in range and `L`.
+fn block<'a, const L: usize>(a: &'a [f32], r: &core::ops::Range<usize>) -> Option<&'a [f32; L]> {
+    a.get(r.clone()).and_then(|s| <&[f32; L]>::try_from(s).ok())
 }
 
 /// `a += x`, in the lane loop: as written, or reassociable when the build
@@ -108,6 +221,49 @@ impl<const L: usize> Lanes<L> {
             let d_sq = dx * dx + dy * dy;
             let close = unit(d_sq < r.protected_sq);
             let near = unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
+            accumulate(cdx, close * dx);
+            accumulate(cdy, close * dy);
+            accumulate(sx, near * ox);
+            accumulate(sy, near * oy);
+            accumulate(svx, near * ovx);
+            accumulate(svy, near * ovy);
+            accumulate(n, near);
+        }
+    }
+
+    /// One block of `L` with each lane's terms times its `mask` (1.0
+    /// counted, 0.0 not).
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "a block's four arrays, as `add`, and its mask"
+    )]
+    fn add_masked(
+        &mut self,
+        r: Ranges,
+        me: Boid,
+        x: &[f32; L],
+        y: &[f32; L],
+        vx: &[f32; L],
+        vy: &[f32; L],
+        mask: &[f32; L],
+    ) {
+        let sums = self
+            .sum_x
+            .iter_mut()
+            .zip(&mut self.sum_y)
+            .zip(&mut self.sum_vx)
+            .zip(&mut self.sum_vy)
+            .zip(&mut self.count)
+            .zip(&mut self.close_dx)
+            .zip(&mut self.close_dy);
+        let others = x.iter().zip(y).zip(vx).zip(vy);
+        for ((((((((sx, sy), svx), svy), n), cdx), cdy), (((&ox, &oy), &ovx), &ovy)), &m) in
+            sums.zip(others).zip(mask)
+        {
+            let (dx, dy) = (me.x - ox, me.y - oy);
+            let d_sq = dx * dx + dy * dy;
+            let close = m * unit(d_sq < r.protected_sq);
+            let near = m * unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
             accumulate(cdx, close * dx);
             accumulate(cdy, close * dy);
             accumulate(sx, near * ox);

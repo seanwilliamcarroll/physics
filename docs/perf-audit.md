@@ -362,6 +362,19 @@ ranges as an order of magnitude.
   in V8, though the every-cell settled scan was 26% faster; not merged.
   Judging it needs a busy scene like the page's (brush blobs, streams,
   piles), which the bench lacks.
+- **Sorted boids' span edges (2026-11-18):** profiles put a quarter to a
+  third of a Sorted step at the spans' edges (scalar leftovers, a
+  per-span 8-to-1 reduction) and ~5% at x86's baseline in a `floorf`
+  call. Three changes, swept in every combination over two rounds
+  (`experiments/sorted-edges/`): one set of lanes per boid, reduced
+  once; the leftovers as one more block with the lanes outside them
+  masked out, the mask a window on a table of zeros then ones; the cell
+  lookup truncating. All three on every target, with 8 lanes for Sorted
+  in wasm: Zen 5 −38% at 10k and 100k (AVX-512), −36%/−37% (AVX2),
+  −26%/−30% (SSE2); the M4 −7%/−31%; V8 −17%/−19% (Zen 5), −2%/−15%
+  (the M4). The block removes the leftovers' branches (branch misses
+  3.6% → 0.3%). At 1k (about a boid a span) V8 is 7–20% slower: large
+  flocks first.
 
 ### Findings
 

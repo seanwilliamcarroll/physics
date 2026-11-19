@@ -1,3 +1,4 @@
+use super::knobs::Tail;
 use super::{FLEE, PREDATOR_RANGE, Ranges, Seen, clamp_speed, steer};
 use crate::{Arena, Boid, Params};
 
@@ -223,5 +224,68 @@ fn the_masked_add_matches_the_branching_one() {
         branching.add(r, ME, o);
         masked.add_masked(r, ME, o);
         assert_eq!(branching, masked, "after {o:?}");
+    }
+}
+
+/// Sorted's span edges, every way (`SWARM_SPAN`, `SWARM_TAIL`): the same
+/// sums as each candidate through [`Seen::add`], to rounding. Spans short
+/// (under a block), at the arrays' start (the masked block can't reach
+/// back), whole blocks, and long; empty ones too.
+#[test]
+fn every_span_edge_setting_sums_the_same_candidates() {
+    const L: usize = 8;
+    // Up to 61 boids: u16 arithmetic, exact in f32.
+    let ks = || 0..61_u16;
+    let x: Vec<f32> = ks()
+        .map(|k| ME.x + (f32::from(k * 37 % 101) - 50.0) * 1.3)
+        .collect();
+    let y: Vec<f32> = ks()
+        .map(|k| ME.y + (f32::from(k * 53 % 97) - 48.0) * 1.1)
+        .collect();
+    let vx: Vec<f32> = ks().map(|k| f32::from(k % 7) - 3.0).collect();
+    let vy: Vec<f32> = ks().map(|k| f32::from(k % 5) - 2.0).collect();
+    let r = Ranges::of(&P);
+    let spans = [0..3, 3..3, 3..11, 11..30, 30..32, 40..48, 48..61, 0..61];
+    let mut reference = Seen::default();
+    for span in spans.clone() {
+        for k in span {
+            reference.add(
+                r,
+                ME,
+                Boid {
+                    x: x[k],
+                    y: y[k],
+                    vx: vx[k],
+                    vy: vy[k],
+                },
+            );
+        }
+    }
+    assert!(reference.count > 10.0, "the data must have neighbours");
+    for settings in [false, true]
+        .into_iter()
+        .flat_map(|b| [Tail::Scalar, Tail::Masked, Tail::Table].map(|t| (b, t)))
+    {
+        let mut seen = Seen::default();
+        super::lanes::add_spans::<L>(
+            &mut seen,
+            r,
+            ME,
+            [&x, &y, &vx, &vy],
+            spans.clone().into_iter(),
+            settings,
+        );
+        let close = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
+        for (got, want) in [
+            (seen.sum_x, reference.sum_x),
+            (seen.sum_y, reference.sum_y),
+            (seen.sum_vx, reference.sum_vx),
+            (seen.sum_vy, reference.sum_vy),
+            (seen.count, reference.count),
+            (seen.close_dx, reference.close_dx),
+            (seen.close_dy, reference.close_dy),
+        ] {
+            assert!(close(got, want), "{settings:?}: {got} against {want}");
+        }
     }
 }
