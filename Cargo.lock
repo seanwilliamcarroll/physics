@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "acoustic"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "libm",
@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "acoustic-web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "acoustic",
  "math",
@@ -276,7 +276,7 @@ checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 
 [[package]]
 name = "engine"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "math",
@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "engine-web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "engine",
  "math",
@@ -365,7 +365,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "math"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proptest",
 ]
@@ -512,7 +512,7 @@ dependencies = [
 
 [[package]]
 name = "sand"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "math",
@@ -522,7 +522,7 @@ dependencies = [
 
 [[package]]
 name = "sand-web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "sand",
@@ -587,7 +587,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "swarm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "libm",
@@ -598,7 +598,7 @@ dependencies = [
 
 [[package]]
 name = "swarm-web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libm",
  "math",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "test-support"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "engine",
  "math",
@@ -679,7 +679,7 @@ dependencies = [
 
 [[package]]
 name = "web-common"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "winapi"
@@ -729,7 +729,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
 ]
