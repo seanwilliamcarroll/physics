@@ -76,7 +76,6 @@ fn an_agent_turns_toward_the_stronger_side() {
     };
     let mut slime = Slime::new(64, 1, params, 1).unwrap();
     (slime.x[0], slime.y[0], slime.cos[0], slime.sin[0]) = (20.5, 20.5, 1.0, 0.0);
-    // Something at the +SA sensor: (20.5 + 9 cos 22.5°, 20.5 + 9 sin 22.5°).
     let (sensor_angle, sensor_offset) = (params.sensor_angle, params.sensor_offset);
     let (sensor_x, sensor_y) = (
         20.5 + sensor_offset * sensor_angle.cos(),
@@ -242,7 +241,6 @@ fn params_are_replaced_only_by_usable_ones_that_fit_the_world() {
         ..defaults
     }));
     assert_eq!(slime.params(), slower, "a refusal changes nothing");
-    // A step of half the world (8 cells) is refused; just under is taken.
     assert!(!slime.set_params(SlimeParams {
         step_distance: 8.0,
         ..defaults
@@ -275,7 +273,6 @@ fn turns(before: &Slime, after: &Slime) -> [usize; 3] {
 
 #[test]
 fn on_an_empty_field_a_sensing_agent_goes_straight() {
-    // Left, front and right all read 0: no side is stronger.
     let before = Slime::new(64, 300, SlimeParams::DEFAULT, 3).unwrap();
     let mut after = before.clone();
     after.step();

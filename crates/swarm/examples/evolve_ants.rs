@@ -61,7 +61,6 @@ fn genome(params: AntParams) -> Vec<f64> {
     .to_vec()
 }
 
-/// The training scene: 200 × 120, the nest left, food 130 cells away.
 fn training(params: AntParams, seed: u64) -> f64 {
     let mut colony = Colony::new(200, 120, 500, (30.0, 60.0, 6.0), params, seed).unwrap();
     colony.paint_food(160.0, 60.0, 8.0, 50);

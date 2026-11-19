@@ -83,7 +83,6 @@ fn without_noise_a_particle_takes_its_neighbourhoods_heading_and_moves_by_its_ol
 
 #[test]
 fn neighbours_are_seen_across_the_walls() {
-    // At x = 0.2 and x = 9.9: 0.3 apart through the wall.
     let first = particle(0.2, 5.0, 1.0, 0.0);
     let second = particle(9.9, 5.0, 0.0, 1.0);
     let mut vicsek =
@@ -93,7 +92,6 @@ fn neighbours_are_seen_across_the_walls() {
         vicsek.particle(0).unwrap().sin > 0.5,
         "the first sees the second through the wall"
     );
-    // And a particle crossing the wall reappears on the other side.
     let crossing = particle(9.99, 5.0, 1.0, 0.0);
     let mut alone = Vicsek::with_particles(SIDE, VicsekParams::paper(0.0), [crossing], 1).unwrap();
     alone.step();
@@ -121,8 +119,6 @@ fn exactly_opposite_headings_keep_their_own_and_are_counted() {
 
 #[test]
 fn the_noise_turns_by_at_most_half_eta() {
-    // Alone (its own heading is the average), each step turns by Δθ with
-    // |Δθ| ≤ η/2, and the heading stays a unit vector.
     let eta = 1.0_f32;
     let mut vicsek = Vicsek::with_particles(
         SIDE,

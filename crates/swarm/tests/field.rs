@@ -45,7 +45,6 @@ fn deposit_diffuse_decay_keep_their_accounts() {
             "decay"
         );
     }
-    // Walls never hold anything.
     for (index, &is_open) in open.iter().enumerate() {
         if !is_open {
             assert_eq!(field.values()[index], 0.0);

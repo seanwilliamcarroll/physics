@@ -21,7 +21,6 @@ fn diffusion_spreads_to_the_eight_neighbours_and_keeps_the_rest() {
     let mut field = Field::new(5, 5).unwrap();
     field.deposit(2, 2, 8.0);
     field.diffuse(&all_open(5, 5), 0.5);
-    // Keeps 4, gives 4: 0.5 to each of eight neighbours.
     assert_eq!(field.get(2, 2), Some(4.0));
     for (x, y) in [
         (1, 1),
@@ -40,8 +39,6 @@ fn diffusion_spreads_to_the_eight_neighbours_and_keeps_the_rest() {
 
 #[test]
 fn diffusion_conserves_mass_at_edges_and_walls() {
-    // A corner (three neighbours) and a cell boxed by walls on all sides
-    // but one: nothing leaks.
     let (width, height) = (6, 6);
     let mut open = all_open(width, height);
     for (x, y) in [(3, 2), (4, 2), (5, 2), (3, 3), (3, 4), (4, 4), (5, 4)] {
@@ -95,8 +92,6 @@ fn periodic_diffusion_wraps_and_the_mean_filter_is_rate_eight_ninths() {
     let mut field = Field::new(5, 4).unwrap();
     field.deposit(0, 0, 9.0);
     field.diffuse_periodic(8.0 / 9.0);
-    // The corner's eight neighbours, wrapped: (4,3) (0,3) (1,3) (4,0) (1,0)
-    // (4,1) (0,1) (1,1); each gets a ninth, the cell keeps a ninth.
     for (x, y) in [
         (0, 0),
         (4, 3),
@@ -135,7 +130,6 @@ fn top_share_of_uniform_and_concentrated_fields() {
 fn open_neighbours_counts_the_eight_less_edges_and_walls() {
     let field = Field::new(4, 3).unwrap();
     let mut open = all_open(4, 3);
-    // A wall at (1, 1).
     open[5] = false;
     #[rustfmt::skip]
     let expected = [
@@ -172,7 +166,6 @@ fn diffusing_with_given_counts_is_diffusing() {
 fn the_size_is_reported_and_a_column_past_the_edge_is_outside() {
     let mut field = Field::new(7, 5).unwrap();
     assert_eq!((field.width(), field.height()), (7, 5));
-    // x = width is outside, not the next row's first cell.
     assert_eq!(field.get(7, 0), None);
     assert_eq!(field.get(0, 5), None);
     assert!(!field.deposit(7, 0, 1.0));
@@ -181,7 +174,6 @@ fn the_size_is_reported_and_a_column_past_the_edge_is_outside() {
 
 #[test]
 fn diffusion_at_the_right_edge_does_not_wrap_to_the_next_row() {
-    // Mass is conserved either way, so only the place shows it.
     let mut field = Field::new(5, 5).unwrap();
     field.deposit(4, 2, 5.0);
     assert_eq!(

@@ -6,12 +6,9 @@ use math::convert::{f64_to_usize, usize_to_f64};
 use super::Colony;
 
 impl Colony {
-    /// The row-major indices of the cells of the disc of `radius` at
-    /// `(x, y)`, clipped to the world.
     pub(super) fn disc(&self, x: f32, y: f32, radius: f32) -> Vec<usize> {
-        // The bounding box is clipped to the world first, then whole cells
-        // are stepped: stepping an f64 by 1.0 from a huge coordinate never
-        // advances (a hang).
+        // Clip the box first, then step whole cells: an f64 stepped by 1.0 from a huge
+        // coordinate never advances (a hang).
         let (reach, width, height) = (f64::from(radius.max(0.0)), self.width, self.height);
         let (x, y) = (f64::from(x), f64::from(y));
         let clipped_span = |first: f64, last: f64, cell_count: usize| -> Option<(usize, usize)> {
@@ -45,8 +42,6 @@ impl Colony {
         cells
     }
 
-    /// Adds `amount` food to every open cell of a disc (saturating at
-    /// `u16::MAX`); returns the units added.
     pub fn paint_food(&mut self, x: f32, y: f32, radius: f32, amount: u16) -> u64 {
         let mut added = 0_u64;
         for cell in self.disc(x, y, radius) {
@@ -95,8 +90,6 @@ impl Colony {
         changed
     }
 
-    /// Removes the food at `cell`, updating the accounting; returns the
-    /// units removed.
     fn remove_food(&mut self, cell: usize) -> u16 {
         let Some(food) = self.food.get_mut(cell) else {
             return 0;

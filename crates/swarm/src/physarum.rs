@@ -8,26 +8,19 @@ use math::convert::{f64_to_f32, f64_to_usize, usize_to_f64};
 
 use crate::Field;
 
-/// The most agents.
 pub const MAX_AGENTS: usize = 1 << 21;
 
 /// The model's constants: our values (Jones's paper wasn't read; these are
 /// the values commonly reported for it: `docs/15-swarm.md`, "Physarum").
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SlimeParams {
-    /// SA, radians.
     pub sensor_angle: f32,
-    /// SO: how far ahead the sensors are, cells.
     pub sensor_offset: f32,
-    /// RA, radians.
     pub turn: f32,
-    /// SS: cells a step.
     pub step_distance: f32,
-    /// What an agent deposits a step.
     pub deposit: f32,
     /// The fraction diffused to neighbours a step (8/9: the mean filter).
     pub diffusion: f32,
-    /// The fraction that decays a step.
     pub decay: f32,
 }
 
@@ -62,13 +55,9 @@ impl SlimeParams {
     }
 }
 
-/// The cell index (along one axis of `side` cells) holding coordinate
-/// `coordinate`, wrapped: `floor(coordinate) mod side`. A sensor or a step
-/// reaches at most one world-width outside in practice, where the wrap is
-/// one add; anything further takes the general `rem_euclid` (an `fmod`
-/// call: on every lookup it was 40% of a step; `docs/profiling.md`). The
-/// same integer either way: these are whole numbers in `f64`, so the add
-/// is exact.
+/// The cell index holding `coordinate` wrapped: `floor(coordinate) mod side`. One add within a
+/// world-width outside, else `rem_euclid` (an `fmod` call: on every lookup it was 40% of a step;
+/// `docs/profiling.md`).
 fn wrap_cell(coordinate: f32, side: usize) -> usize {
     let (floor, side_length) = (f64::from(coordinate.floor()), usize_to_f64(side));
     let wrapped = if (0.0..side_length).contains(&floor) {
@@ -83,12 +72,8 @@ fn wrap_cell(coordinate: f32, side: usize) -> usize {
     f64_to_usize(wrapped).unwrap_or(0).min(side - 1)
 }
 
-/// Position `position` wrapped into `[0, side_length)`: exactly
-/// `position.rem_euclid(side_length)` (`fmod` is exact; `position −
-/// side_length` is exact for a position in `[side_length, 2 side_length)`;
-/// below zero `rem_euclid` itself adds `side_length`), without the call
-/// when the position is within one side outside. A sum that rounds up to
-/// `side_length` becomes 0.
+/// `position` wrapped into `[0, side_length)`: exactly `rem_euclid`, without the `fmod` call
+/// when within one side outside. A sum that rounds up to `side_length` becomes 0.
 fn wrap_position(position: f32, side_length: f32) -> f32 {
     let wrapped = if (0.0..side_length).contains(&position) {
         position
@@ -104,7 +89,6 @@ fn wrap_position(position: f32, side_length: f32) -> f32 {
     if wrapped >= side_length { 0.0 } else { wrapped }
 }
 
-/// A Physarum system on a periodic `side × side` field.
 #[derive(Clone, Debug)]
 pub struct Slime {
     side: usize,
@@ -181,14 +165,11 @@ impl Slime {
         })
     }
 
-    /// The index of the cell holding `(x, y)`, wrapped into the field.
     fn cell(&self, x: f32, y: f32) -> usize {
         let side = self.side;
         wrap_cell(y, side) * side + wrap_cell(x, side)
     }
 
-    /// One step: every agent senses (the field as it was), turns, moves,
-    /// and deposits; then the nodes deposit; then diffusion and decay.
     pub fn step(&mut self) {
         let params = self.params;
         let side_length = f64_to_f32(usize_to_f64(self.side));
@@ -292,24 +273,19 @@ impl Slime {
         ok
     }
 
-    /// Removes every node.
     pub fn clear_nodes(&mut self) {
         self.nodes.clear();
     }
 
-    /// The nodes: `(cell x, cell y, deposit a step)`.
     #[must_use]
     pub fn nodes(&self) -> &[(usize, usize, f32)] {
         &self.nodes
     }
 
-    /// Sensing on (the default) or off: off, agents turn at random (−RA,
-    /// 0, +RA equally): the baseline.
     pub const fn set_sensing(&mut self, on: bool) {
         self.sensing = on;
     }
 
-    /// Replaces the constants; `false` (unchanged) if unusable.
     pub fn set_params(&mut self, params: SlimeParams) -> bool {
         let fits = f64::from(params.step_distance) < usize_to_f64(self.side) / 2.0;
         match params.checked() {
@@ -321,25 +297,21 @@ impl Slime {
         }
     }
 
-    /// The model's constants.
     #[must_use]
     pub const fn params(&self) -> SlimeParams {
         self.params
     }
 
-    /// The trail field.
     #[must_use]
     pub const fn field(&self) -> &Field {
         &self.field
     }
 
-    /// Cells across the (square) field.
     #[must_use]
     pub const fn side(&self) -> usize {
         self.side
     }
 
-    /// The number of agents.
     #[must_use]
     pub fn len(&self) -> usize {
         self.x.len()
@@ -351,18 +323,15 @@ impl Slime {
         self.x.is_empty()
     }
 
-    /// Steps taken so far.
     #[must_use]
     pub const fn steps(&self) -> u64 {
         self.steps
     }
 
-    /// Agents' positions, cells.
     pub fn positions(&self) -> impl Iterator<Item = (f32, f32)> + '_ {
         self.x.iter().copied().zip(self.y.iter().copied())
     }
 
-    /// What the last step deposited (agents and nodes), for accounting.
     #[must_use]
     pub fn last_deposits(&self) -> f64 {
         self.deposits
@@ -376,8 +345,6 @@ impl Slime {
                 .sum::<f64>()
     }
 
-    /// The state's bytes for hashing (the repeatability tests): agents,
-    /// then the field.
     #[must_use]
     pub fn state_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();

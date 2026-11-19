@@ -8,15 +8,11 @@ use math::convert::f64_to_f32;
 
 use crate::grid::Grid;
 
-/// The most particles a system holds (as [`MAX_BOIDS`](crate::MAX_BOIDS)).
 pub const MAX_PARTICLES: usize = 1 << 18;
 
-/// The model's constants: Vicsek et al.'s units by default.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct VicsekParams {
-    /// Interaction radius `r` (the paper's unit of length: 1).
     pub radius: f32,
-    /// The distance a particle moves a step, `v` (the paper's 0.03).
     pub speed: f32,
     /// The noise amplitude η: `Δθ` is uniform on `[−η/2, η/2]`, so η =
     /// 2π is no alignment at all.
@@ -47,7 +43,6 @@ impl VicsekParams {
     }
 }
 
-/// A particle: position in `[0, L)²` and its heading, a unit vector.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Particle {
     pub x: f32,
@@ -56,7 +51,6 @@ pub struct Particle {
     pub sin: f32,
 }
 
-/// The particles, one entry each in x, y and the heading's cos and sin.
 #[derive(Clone, Debug, Default)]
 struct State {
     x: Vec<f32>,
@@ -104,7 +98,6 @@ impl State {
 /// neighbourhood's headings cancelled exactly.
 #[derive(Clone, Debug)]
 pub struct Vicsek {
-    /// The box's side, L.
     side: f32,
     params: VicsekParams,
     current: State,
@@ -119,9 +112,6 @@ pub struct Vicsek {
 }
 
 impl Vicsek {
-    /// `particle_count` particles (1 to [`MAX_PARTICLES`]) at random in a
-    /// `side × side` box, random headings, the noise drawn from `seed`'s
-    /// stream. `None` for a bad count, side or params.
     #[must_use]
     pub fn new(particle_count: usize, side: f32, params: VicsekParams, seed: u64) -> Option<Self> {
         if !(1..=MAX_PARTICLES).contains(&particle_count) {
@@ -132,7 +122,6 @@ impl Vicsek {
         let particles: Vec<Particle> = (0..particle_count)
             .map(|_| {
                 let (x, y) = (rng.range(0.0, side_f64), rng.range(0.0, side_f64));
-                // A direction, without trig: a point in the unit disc.
                 let (cos, sin) = loop {
                     let (disc_x, disc_y) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
                     let length = (disc_x * disc_x + disc_y * disc_y).sqrt();
@@ -151,8 +140,6 @@ impl Vicsek {
         Self::with_particles(side, params, particles, rng.next_u64())
     }
 
-    /// Exactly `particles` (positions wrapped into the box), the noise
-    /// from `seed`. `None` if empty, too many, or a bad side or params.
     #[must_use]
     pub fn with_particles(
         side: f32,
@@ -188,9 +175,6 @@ impl Vicsek {
         })
     }
 
-    /// One step: every particle's new heading from the current state
-    /// (its neighbourhood's normalized heading sum, rotated by the
-    /// noise), and its new position from its *current* heading (Eq. 1).
     pub fn step(&mut self) {
         let particle_count = self.current.len();
         let (side, params) = (self.side, self.params);
@@ -236,9 +220,6 @@ impl Vicsek {
         self.steps += 1;
     }
 
-    /// The particle with its new heading (the normalized sum, or its own
-    /// if the sum is exactly zero, counted), noise applied, and moved by
-    /// its old one.
     fn turn(&mut self, particle: Particle, sum_cos: f32, sum_sin: f32) -> Particle {
         let length = (sum_cos * sum_cos + sum_sin * sum_sin).sqrt();
         let (mean_cos, mean_sin) = if length > 0.0 {
@@ -268,7 +249,6 @@ impl Vicsek {
         self.brute_force = on;
     }
 
-    /// The number of particles.
     #[must_use]
     pub fn len(&self) -> usize {
         self.current.len()
@@ -280,24 +260,20 @@ impl Vicsek {
         self.current.len() == 0
     }
 
-    /// The particle at `index` (storage order), or `None` past the end.
     #[must_use]
     pub fn particle(&self, index: usize) -> Option<Particle> {
         self.current.get(index)
     }
 
-    /// Every particle, in storage order.
     pub fn particles(&self) -> impl Iterator<Item = Particle> + '_ {
         (0..self.len()).filter_map(|index| self.current.get(index))
     }
 
-    /// The box's side, L.
     #[must_use]
     pub const fn side(&self) -> f32 {
         self.side
     }
 
-    /// The model's constants.
     #[must_use]
     pub const fn params(&self) -> VicsekParams {
         self.params
@@ -312,7 +288,6 @@ impl Vicsek {
             .is_some()
     }
 
-    /// Steps taken so far.
     #[must_use]
     pub const fn steps(&self) -> u64 {
         self.steps
@@ -353,7 +328,6 @@ impl Vicsek {
         sum / f64::from(window)
     }
 
-    /// The state's bytes for hashing (the repeatability tests).
     pub fn state_bytes(&self) -> impl Iterator<Item = u8> + '_ {
         self.particles()
             .flat_map(|particle| [particle.x, particle.y, particle.cos, particle.sin])
@@ -402,7 +376,6 @@ fn minimum_image(delta: f32, side: f32) -> f32 {
     }
 }
 
-/// `coordinate` wrapped into `[0, side)` (a step is far less than `side`).
 fn wrap_into_box(coordinate: f32, side: f32) -> f32 {
     let wrapped = if coordinate >= side {
         coordinate - side

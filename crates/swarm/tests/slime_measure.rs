@@ -17,8 +17,6 @@ use swarm::{Slime, SlimeParams};
 
 const DEGREES: f32 = core::f32::consts::PI / 180.0;
 
-/// 6,000 agents on a 128² field (37% occupancy), concentration after
-/// `steps`.
 fn concentration(params: SlimeParams, sensing: bool, seed: u64, steps: u32) -> f64 {
     let mut slime = Slime::new(128, 6000, params, seed).unwrap();
     slime.set_sensing(sensing);

@@ -2,17 +2,12 @@
 //! and decayed (`docs/15-swarm.md`, "Deposit, diffuse, decay"). The ants'
 //! pheromone and Physarum's trail.
 
-/// The most cells a field holds: 2²² (4M; 400 × 225 is 90k).
 pub const MAX_CELLS: usize = 1 << 22;
 
-/// The most one deposit may add (an agent's, an ant's, a node's): a
-/// million. Values are `f32` and nothing else bounds what is laid down
-/// each step: a deposit near `f32::MAX` (finite, so it passes) sums to
-/// infinity in a few steps and every reading after is NaN. At a million a
-/// step, a cell is 10²⁰ times further from overflow than any run is long.
+/// The most one deposit may add: a deposit near `f32::MAX` sums to infinity in a few steps and
+/// every reading after is NaN; at a million a cell stays 10²⁰ times from overflow.
 pub const MAX_DEPOSIT: f32 = 1.0e6;
 
-/// A `width × height` grid of non-negative `f32` values, row-major.
 #[derive(Clone, Debug)]
 pub struct Field {
     width: usize,
@@ -23,7 +18,6 @@ pub struct Field {
 }
 
 impl Field {
-    /// A zero field; `None` for a zero side or more than [`MAX_CELLS`].
     #[must_use]
     pub fn new(width: usize, height: usize) -> Option<Self> {
         let cell_count = width.checked_mul(height)?;
@@ -38,24 +32,20 @@ impl Field {
         })
     }
 
-    /// Cells across.
     #[must_use]
     pub const fn width(&self) -> usize {
         self.width
     }
 
-    /// Cells down.
     #[must_use]
     pub const fn height(&self) -> usize {
         self.height
     }
 
-    /// The row-major index of cell `(x, y)`, or `None` outside.
     fn index(&self, x: usize, y: usize) -> Option<usize> {
         (x < self.width && y < self.height).then(|| y * self.width + x)
     }
 
-    /// The value at `(x, y)`, or `None` outside.
     #[must_use]
     pub fn get(&self, x: usize, y: usize) -> Option<f32> {
         self.values.get(self.index(x, y)?).copied()
@@ -77,22 +67,18 @@ impl Field {
         true
     }
 
-    /// Every value, row-major (rendering).
     #[must_use]
     pub fn values(&self) -> &[f32] {
         &self.values
     }
 
-    /// The sum of every value, in `f64` (accounting).
     #[must_use]
     pub fn total(&self) -> f64 {
         self.values.iter().map(|&value| f64::from(value)).sum()
     }
 
-    /// Each cell's count of open neighbours (of eight), for
-    /// [`Self::diffuse_counted`]. It changes only when walls do, so a
-    /// caller that diffuses every step computes it once: recounted each
-    /// step it was 95% of the ants' step (`docs/profiling.md`).
+    /// Each cell's open neighbours (of eight), for [`Self::diffuse_counted`]. Compute once: recounted
+    /// each step it was 95% of the ants' step (`docs/profiling.md`).
     #[must_use]
     pub fn open_neighbours(&self, open: &[bool]) -> Vec<u8> {
         let (width, height) = (self.width, self.height);
@@ -121,13 +107,9 @@ impl Field {
         counts
     }
 
-    /// Diffusion that conserves mass: every open cell keeps `1 − rate` of
-    /// its value and gives `rate`, split equally among its open neighbours
-    /// (of eight; `open[i]` false is a wall, and walls give and take
-    /// nothing). A cell with no open neighbour keeps everything. `open`
-    /// must be one flag per cell; `rate` is clamped to `[0, 1]`. Counts the
-    /// neighbours each call: a caller diffusing every step should use
-    /// [`Self::diffuse_counted`].
+    /// Mass-conserving diffusion: every open cell keeps `1 − rate` and gives `rate` equally to its
+    /// open neighbours; walls give and take nothing. `open` is one flag per cell; `rate` is clamped
+    /// to `[0, 1]`. Every-step callers use [`Self::diffuse_counted`].
     pub fn diffuse(&mut self, open: &[bool], rate: f32) {
         let counts = self.open_neighbours(open);
         self.diffuse_counted(open, &counts, rate);
@@ -165,11 +147,8 @@ impl Field {
                     *slot += value - given;
                 }
                 if open_count == 8 && x > 0 && x + 1 < width && y > 0 && y + 1 < height {
-                    // All eight open, which only an interior cell can be
-                    // (checked all the same: the counts are the caller's):
-                    // the three rows of three, nothing to test per
-                    // neighbour. Each target gets one add from this cell
-                    // either way, so the sums are the same bits.
+                    // All eight open (checked: the counts are the caller's): no per-neighbour
+                    // test; one add per target either way, so the same bits.
                     let rows = [index - width - 1, index - 1, index + width - 1]
                         .map(|first| first..first + 3);
                     let [above, beside, below] = rows;
@@ -202,11 +181,8 @@ impl Field {
         core::mem::swap(&mut self.values, &mut self.scratch);
     }
 
-    /// Diffusion on a periodic grid (no walls, the edges wrapped): every
-    /// cell keeps `1 − rate` and takes `rate / 8` of each of its eight
-    /// neighbours' values, so the total is conserved (in reals; to
-    /// rounding in f32). `rate = 8/9` is the 3 × 3 mean filter. Written as
-    /// a gather (each cell reads its neighbours), which reads in order.
+    /// Diffusion on a periodic grid (no walls): each cell keeps `1 − rate` and takes `rate / 8` of
+    /// each neighbour, a gather that reads in order. `rate = 8/9` is the 3 × 3 mean filter.
     pub(crate) fn diffuse_periodic(&mut self, rate: f32) {
         let rate = if rate.is_finite() {
             rate.clamp(0.0, 1.0)
@@ -241,9 +217,7 @@ impl Field {
         core::mem::swap(&mut self.values, &mut self.scratch);
     }
 
-    /// The share of the total in the `fraction` of cells holding most
-    /// (0.1 of a uniform field's mass is in its top 10%; a network's is
-    /// far more). 0 for an empty field.
+    /// The share of the total in the `fraction` of cells holding most (0 for an empty field).
     #[must_use]
     pub fn top_share(&self, fraction: f64) -> f64 {
         let total = self.total();
@@ -270,7 +244,6 @@ impl Field {
             / total
     }
 
-    /// Every value times `1 − rate` (`rate` clamped to `[0, 1]`).
     pub fn decay(&mut self, rate: f32) {
         let keep = 1.0
             - if rate.is_finite() {
@@ -283,14 +256,12 @@ impl Field {
         }
     }
 
-    /// Sets cell `index` (row-major) to zero.
     pub fn zero(&mut self, index: usize) {
         if let Some(value) = self.values.get_mut(index) {
             *value = 0.0;
         }
     }
 
-    /// Sets every value to zero.
     pub fn clear(&mut self) {
         self.values.fill(0.0);
     }

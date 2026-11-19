@@ -72,7 +72,6 @@ fn genes_stay_in_range_and_the_start_is_in_the_first_generation() {
         generations: 10,
         ..settings(1)
     };
-    // Fitness pushes x up past its range: it must clamp at 1.
     let history = evolve(
         &narrow,
         &ten_generations,
@@ -161,7 +160,6 @@ fn normal_deviates_have_mean_zero_and_variance_one() {
 
 use std::sync::Mutex;
 
-/// Every genome scored, in order (one thread), `population` a generation.
 fn scored(genes: &[Gene], settings: &Evolve) -> Vec<Vec<Vec<f64>>> {
     let seen = Mutex::new(Vec::new());
     let history = evolve(genes, settings, None, |genome, _| {
@@ -180,7 +178,6 @@ fn scored(genes: &[Gene], settings: &Evolve) -> Vec<Vec<Vec<f64>>> {
         .collect()
 }
 
-/// Whether gene `gene` of `child` is some member of `parents`' same gene.
 fn inherited(child: &[f64], parents: &[Vec<f64>], gene: usize) -> bool {
     parents
         .iter()
@@ -202,11 +199,8 @@ fn the_mean_is_the_mean() {
     assert_eq!(mean_over(&[1, 2, 3], math::convert::u64_to_f64), 2.0);
 }
 
-/// σ runs linearly from `sigma.0` at the first breeding to `sigma.1` at a
-/// breeding after the last generation (never reached). From −x to x over
-/// three generations it passes through exactly 0 at the second breeding:
-/// the third generation's genes are unmutated copies of the second's,
-/// where the second's own were mutated.
+/// σ runs linearly from `sigma.0` to `sigma.1`: from −x to x over three generations it is exactly
+/// 0 at the second breeding, so the third generation's genes are unmutated copies.
 #[test]
 fn sigma_runs_linearly_between_its_ends() {
     let settings = Evolve {

@@ -6,8 +6,6 @@
 
 use swarm::{AntParams, Colony, Pheromone};
 
-/// The foraging scene: 200 × 120 cells, the nest at the left, a food
-/// patch 130 cells away, 500 ants.
 fn scene(params: AntParams, seed: u64) -> Colony {
     let mut colony = Colony::new(200, 120, 500, (30.0, 60.0, 6.0), params, seed).unwrap();
     colony.paint_food(160.0, 60.0, 8.0, 50);

@@ -7,7 +7,6 @@
 use math::SplitMix64;
 use math::convert::{u64_to_f64, usize_to_f64};
 
-/// One gene's range, inclusive.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Gene {
     pub min: f64,
@@ -17,12 +16,9 @@ pub struct Gene {
 /// The run's settings.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Evolve {
-    /// Individuals a generation (at least `elites + 1`).
     pub population: usize,
     pub generations: u32,
-    /// The best kept unchanged each generation (and re-scored).
     pub elites: usize,
-    /// Tournament size.
     pub tournament: usize,
     /// Mutation σ as a fraction of each gene's range: at the start and
     /// at the end (linear between).
@@ -40,11 +36,8 @@ pub struct Evolve {
 /// One generation's record.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Generation {
-    /// The best fitness (NaN scores lose).
     pub best: f64,
-    /// The mean of the finite fitnesses.
     pub mean: f64,
-    /// The genome that scored `best`.
     pub best_genome: Vec<f64>,
 }
 
@@ -162,9 +155,6 @@ where
     history
 }
 
-/// A child of two parents: each gene from one or the other (a coin flip
-/// apiece), plus Gaussian mutation of σ times the gene's range. Not yet
-/// clamped to the genes' ranges.
 fn crossover_and_mutate(
     rng: &mut SplitMix64,
     first_parent: &[f64],
@@ -228,7 +218,6 @@ where
     })
 }
 
-/// The index of the best of `size` drawn at random (NaN loses).
 fn tournament(rng: &mut SplitMix64, scores: &[f64], size: usize) -> usize {
     let count = u64::try_from(scores.len()).unwrap_or(1).max(1);
     let mut best: Option<(usize, f64)> = None;
@@ -255,7 +244,6 @@ fn normal(rng: &mut SplitMix64) -> f64 {
     libm::sqrt(-2.0 * libm::log(radius_uniform)) * libm::cos(core::f64::consts::TAU * angle_uniform)
 }
 
-/// The mean of `fitness` over `seeds` (a convenience for noisy fitness).
 #[must_use]
 pub fn mean_over(seeds: &[u64], fitness: impl Fn(u64) -> f64) -> f64 {
     seeds.iter().map(|&seed| fitness(seed)).sum::<f64>()

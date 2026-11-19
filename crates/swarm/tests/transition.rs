@@ -9,7 +9,6 @@
 use math::convert::{f64_to_f32, u64_to_f64};
 use swarm::{Vicsek, VicsekParams};
 
-/// Fig. 2a's (N, L) for N = 40, 100, 400.
 const SIZES: [(usize, f32); 3] = [(40, 3.1), (100, 5.0), (400, 10.0)];
 const SEEDS: u64 = 3;
 

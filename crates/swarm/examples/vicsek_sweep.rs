@@ -12,7 +12,6 @@
 use math::convert::{f64_to_f32, usize_to_f64};
 use swarm::{Vicsek, VicsekParams};
 
-/// Fig. 2a's (N, L).
 const FIG_2A: [(usize, f64); 5] = [
     (40, 3.1),
     (100, 5.0),

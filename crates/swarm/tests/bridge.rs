@@ -16,7 +16,6 @@ use swarm::{AntParams, Colony};
 
 const WIDTH: usize = 140;
 const HEIGHT: usize = 120;
-/// The row the nest and food chambers sit on.
 const CENTRE_Y: f32 = 60.0;
 /// The gate: the arms are counted where they cross this column.
 const GATE_X: f32 = 70.0;

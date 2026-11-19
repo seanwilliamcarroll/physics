@@ -1,5 +1,3 @@
-// Small in-range test values: casts between them can't lose anything
-// that matters here.
 #![expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -79,7 +77,6 @@ fn params_and_sizes_are_checked() {
 
 #[test]
 fn a_searching_ant_turns_toward_the_stronger_food_trail() {
-    // Food pheromone ahead and to the right (+y is the +SA side here).
     let mut colony = colony_with_one_ant(20.0, 20.0);
     let (sensor_angle, sensor_distance) = (
         AntParams::DEFAULT.sensor_angle,
@@ -98,7 +95,6 @@ fn a_searching_ant_turns_toward_the_stronger_food_trail() {
     let ant = only_ant(&colony);
     let turned = ant.sin.atan2(ant.cos);
     assert!((turned - sensor_angle).abs() < 1e-5, "turned {turned}");
-    // Nothing anywhere: straight on.
     let mut colony = colony_with_one_ant(20.0, 20.0);
     colony.step();
     assert_eq!((only_ant(&colony).cos, only_ant(&colony).sin), (1.0, 0.0));
@@ -133,7 +129,6 @@ fn a_wall_ahead_turns_the_ant_around_in_place() {
     colony.step();
     let ant = only_ant(&colony);
     assert_eq!((ant.x, ant.y, ant.cos), (20.0, 20.0, -1.0));
-    // The edge of the world too.
     let mut at_edge = colony_with_one_ant(59.5, 20.0);
     at_edge.step();
     assert_eq!((only_ant(&at_edge).x, only_ant(&at_edge).cos), (59.5, -1.0));
@@ -159,7 +154,6 @@ fn painting_far_outside_the_world_paints_nothing_and_returns() {
     assert_eq!(colony.paint_food(1e30, 1e30, 3.0, 5), 0);
     assert_eq!(colony.paint_wall(-1e30, 5.0, 3.0), 0);
     assert_eq!(colony.erase(f32::INFINITY, 5.0, 3.0), 0);
-    // A huge radius is clipped to the world.
     assert_eq!(colony.paint_food(30.0, 20.0, 1e30, 1), 60 * 40);
 }
 
@@ -217,7 +211,6 @@ fn diffusion_conserves_mass_after_walls_are_painted_and_erased() {
 fn a_cell_index_stops_at_the_far_edges() {
     let colony = colony_with_one_ant(20.0, 20.0);
     assert_eq!(colony.index(59.9, 39.9), Some(39 * 60 + 59));
-    // x = width is outside, not the next row's first cell.
     assert_eq!(colony.index(60.0, 5.0), None);
     assert_eq!(colony.index(5.0, 40.0), None);
     assert_eq!(colony.index(-0.5, 5.0), None);
@@ -231,9 +224,7 @@ fn a_disc_is_clipped_to_the_world_edge_by_edge() {
         cells.sort_unstable();
         cells
     };
-    // One cell, in the middle.
     assert_eq!(cells(10.5, 7.5, 0.0), [7 * 60 + 10]);
-    // Entirely outside, on each side: nothing.
     for (x, y) in [(-3.0, 5.0), (63.0, 5.0), (5.0, -3.0), (5.0, 43.0)] {
         assert_eq!(cells(x, y, 1.0), [], "({x}, {y})");
     }
@@ -241,10 +232,8 @@ fn a_disc_is_clipped_to_the_world_edge_by_edge() {
     // 0 (a cell is in if its centre is within √(r² + ½)): included.
     assert_eq!(cells(-0.2, 5.5, 0.2), [5 * 60]);
     assert_eq!(cells(5.5, -0.2, 0.2), [5]);
-    // The last column and row themselves.
     assert_eq!(cells(59.5, 5.5, 0.0), [5 * 60 + 59]);
     assert_eq!(cells(5.5, 39.5, 0.0), [39 * 60 + 5]);
-    // Not finite: nothing.
     assert_eq!(cells(f32::NAN, 5.0, 1.0), []);
     assert_eq!(cells(5.0, f32::INFINITY, 1.0), []);
 }
@@ -253,16 +242,13 @@ fn a_disc_is_clipped_to_the_world_edge_by_edge() {
 fn painted_food_is_counted_once_and_erasing_takes_it_back() {
     let mut colony = colony_with_one_ant(20.0, 20.0);
     assert_eq!(colony.paint_food(10.5, 10.5, 0.0, 7), 7);
-    // On top of what's there: only the added amount counts.
     assert_eq!(colony.paint_food(10.5, 10.5, 0.0, 5), 5);
     assert_eq!((colony.painted(), colony.food_in_world()), (12, 12));
     assert_eq!(colony.food().get(10 * 60 + 10), Some(&12));
     assert_eq!(colony.food().len(), 60 * 40);
-    // Erasing an empty cell changes nothing; a cell with food, one cell.
     assert_eq!(colony.erase(30.5, 30.5, 0.0), 0);
     assert_eq!(colony.erase(10.5, 10.5, 0.0), 1);
     assert_eq!((colony.painted(), colony.food_in_world()), (0, 0));
-    // A wall erased counts too.
     assert_eq!(colony.paint_wall(30.5, 30.5, 0.0), 1);
     assert_eq!(colony.erase(30.5, 30.5, 0.0), 1);
 }
@@ -273,7 +259,6 @@ fn a_new_wall_removes_the_pheromone_under_it_and_only_there() {
     for _ in 0..5 {
         colony.step();
     }
-    // The ant walked +x from (20, 20): a trail in row 20.
     let at = |colony: &Colony, x: usize| colony.field(Pheromone::Home).get(x, 20).unwrap();
     assert!(at(&colony, 22) > 0.0 && at(&colony, 24) > 0.0);
     colony.paint_wall(22.5, 20.5, 0.0);
@@ -308,7 +293,6 @@ fn the_nest_moves_only_to_a_usable_place() {
         assert!(!colony.set_nest(x, y, radius), "({x}, {y}, {radius})");
         assert_eq!(colony.nest(), was, "refused: unchanged");
     }
-    // The corners of the usable range.
     assert!(colony.set_nest(0.0, 0.0, 0.5));
     assert!(colony.set_nest(59.9, 39.9, 0.5));
     assert_eq!(colony.nest(), (59.9, 39.9, 0.5));
@@ -356,7 +340,6 @@ fn without_sensing_the_turn_is_uniform_within_the_turn_angle() {
     for _ in 0..2000 {
         colony.step();
         let now = only_ant(&colony);
-        // The signed angle from the old heading to the new.
         let turned = libm::atan2f(
             before.cos * now.sin - before.sin * now.cos,
             before.cos * now.cos + before.sin * now.sin,

@@ -8,24 +8,18 @@ use math::convert::{f64_to_f32, f64_to_usize};
 
 use crate::Field;
 
-/// The most ants a colony holds.
 pub const MAX_ANTS: usize = 1 << 18;
 
 /// The ants' constants (all our choices, measured: `docs/15-swarm.md`,
 /// "The ants as built"). Angles in radians, distances in cells, per step.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct AntParams {
-    /// SA: the side sensors' angle off the heading.
     pub sensor_angle: f32,
-    /// SD: how far ahead the sensors are.
     pub sensor_distance: f32,
-    /// RA: the turn toward the stronger side.
     pub turn: f32,
     /// A random turn each step, uniform in `[−wiggle, wiggle]`.
     pub wiggle: f32,
-    /// v: cells a step.
     pub speed: f32,
-    /// q: the deposit leaving the nest or the food.
     pub deposit: f32,
     /// k: the deposit's fall-off, `q · e^(−k s)` after `s` steps.
     pub falloff: f32,
@@ -36,9 +30,8 @@ pub struct AntParams {
 }
 
 impl AntParams {
-    /// SA, SD, RA and v as planned; the wiggle, fall-off, diffusion and
-    /// decay from a scan: the setting whose worst of four seeds delivered
-    /// most (`docs/15-swarm.md`, "The ants as built").
+    /// Wiggle, fall-off, diffusion and decay from a scan: the best worst-of-four-seeds
+    /// (`docs/15-swarm.md`, "The ants as built").
     pub const DEFAULT: Self = Self {
         sensor_angle: core::f32::consts::FRAC_PI_4,
         sensor_distance: 9.0,
@@ -51,12 +44,9 @@ impl AntParams {
         decay: 0.008,
     };
 
-    /// The best of the evolution (`docs/15-swarm.md`, "The ants evolved";
-    /// `examples/evolve_ants.rs`, 25 generations of 20, seed 2026): SA
-    /// 79.8°, SD 1.7 cells, RA 32.8°, wiggle 2.9°, a steep fall-off, the
-    /// most diffusion its range allowed, slow decay. Held out: 5,394
-    /// delivered against the defaults' 1,701, and 3,978 against 404 in the
-    /// barriers scene it never saw.
+    /// The best of `examples/evolve_ants.rs` (`docs/15-swarm.md`, "The ants evolved"). Held out:
+    /// 5,394 delivered against the defaults' 1,701, and 3,978 against 404 in the unseen barriers
+    /// scene.
     pub const EVOLVED: Self = Self {
         sensor_angle: 1.392_224_1,
         sensor_distance: 1.674_356_8,
@@ -103,7 +93,6 @@ pub struct Ant {
     pub steps_since_leaving: u32,
 }
 
-/// The two fields an ant writes and reads.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Pheromone {
     /// Laid by searching ants: it leads home.
@@ -112,8 +101,6 @@ pub enum Pheromone {
     Food,
 }
 
-/// One ant's deposit in a step: where and how much, applied after every
-/// ant has moved.
 #[derive(Copy, Clone, Debug)]
 struct Deposit {
     pheromone: Pheromone,
@@ -122,18 +109,15 @@ struct Deposit {
     amount: f32,
 }
 
-/// A colony and its world.
 #[derive(Clone, Debug)]
 pub struct Colony {
     width: usize,
     height: usize,
-    /// `true` for an open cell, `false` for a wall.
     open: Vec<bool>,
     /// Each cell's open neighbours, for the fields' diffusion: recounted
     /// only when walls change (`Field::diffuse_counted`).
     neighbours: Vec<u8>,
     food: Vec<u16>,
-    /// The nest's centre `(x, y)` and radius, cells.
     nest: (f32, f32, f32),
     home_field: Field,
     food_field: Field,
@@ -143,7 +127,6 @@ pub struct Colony {
     sensing: bool,
     steps: u64,
     delivered: u64,
-    /// Food painted in, less food painted out: the accounting's total.
     painted: i64,
     deposits: Vec<Deposit>,
 }
@@ -214,7 +197,6 @@ impl Colony {
         Some(colony)
     }
 
-    /// Recounts each cell's open neighbours (after walls change).
     fn recount(&mut self) {
         self.neighbours = self.home_field.open_neighbours(&self.open);
     }
@@ -266,7 +248,6 @@ impl Colony {
         self.sensing = on;
     }
 
-    /// Replaces the constants; `false` (unchanged) if unusable.
     pub fn set_params(&mut self, params: AntParams) -> bool {
         params
             .checked()
@@ -289,9 +270,6 @@ impl Colony {
         }
     }
 
-    /// One step: every ant senses (the fields as they were), turns,
-    /// moves, takes or delivers food; then the deposits, diffusion and
-    /// decay.
     pub fn step(&mut self) {
         let params = self.params;
         self.deposits.clear();
@@ -356,7 +334,6 @@ impl Colony {
             } else if self.in_nest(ant.x, ant.y) {
                 ant.steps_since_leaving = 0;
             }
-            // Deposit into the other field, weakening with distance.
             let laid = if ant.carrying {
                 Pheromone::Food
             } else {
@@ -394,8 +371,6 @@ impl Colony {
         self.steps += 1;
     }
 
-    /// The deposits the last step made into `pheromone`, summed
-    /// (accounting).
     #[must_use]
     pub fn last_deposits(&self, pheromone: Pheromone) -> f64 {
         self.deposits
@@ -405,7 +380,6 @@ impl Colony {
             .sum()
     }
 
-    /// The `pheromone` field.
     #[must_use]
     pub fn field(&self, pheromone: Pheromone) -> &Field {
         match pheromone {
@@ -414,12 +388,10 @@ impl Colony {
         }
     }
 
-    /// Every ant, in storage order.
     pub fn ants(&self) -> impl Iterator<Item = Ant> + '_ {
         self.ants.iter().copied()
     }
 
-    /// The number of ants.
     #[must_use]
     pub fn len(&self) -> usize {
         self.ants.len()
@@ -431,55 +403,46 @@ impl Colony {
         self.ants.is_empty()
     }
 
-    /// The world's `(width, height)`, cells.
     #[must_use]
     pub const fn size(&self) -> (usize, usize) {
         (self.width, self.height)
     }
 
-    /// `true` for an open cell, row-major.
     #[must_use]
     pub fn open(&self) -> &[bool] {
         &self.open
     }
 
-    /// Food units per cell, row-major.
     #[must_use]
     pub fn food(&self) -> &[u16] {
         &self.food
     }
 
-    /// The nest's centre `(x, y)` and radius, cells.
     #[must_use]
     pub const fn nest(&self) -> (f32, f32, f32) {
         self.nest
     }
 
-    /// The ants' constants.
     #[must_use]
     pub const fn params(&self) -> AntParams {
         self.params
     }
 
-    /// Steps taken so far.
     #[must_use]
     pub const fn steps(&self) -> u64 {
         self.steps
     }
 
-    /// Food units brought to the nest so far.
     #[must_use]
     pub const fn delivered(&self) -> u64 {
         self.delivered
     }
 
-    /// Ants carrying food now.
     #[must_use]
     pub fn carrying(&self) -> u64 {
         self.ants.iter().map(|ant| u64::from(ant.carrying)).sum()
     }
 
-    /// Food lying in the world now.
     #[must_use]
     pub fn food_in_world(&self) -> u64 {
         self.food.iter().map(|&units| u64::from(units)).sum()
@@ -492,8 +455,6 @@ impl Colony {
         self.painted
     }
 
-    /// The state's bytes for hashing (the repeatability tests): ants, then
-    /// both fields.
     #[must_use]
     pub fn state_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
@@ -542,8 +503,6 @@ fn rotate(cos: f32, sin: f32, angle: f32) -> (f32, f32) {
     )
 }
 
-/// A random unit vector `(cos, sin)`, without trig: a point in the unit
-/// disc, normalized.
 fn random_heading(rng: &mut SplitMix64) -> (f32, f32) {
     loop {
         let (x, y) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
