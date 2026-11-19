@@ -95,7 +95,6 @@ fn a_centre_hit_slides_then_rolls_then_stops_as_the_model_says() {
                     (x - expected_x).abs() < position_tolerance,
                     "{solver:?} {substeps}: at {time:.3} s, x {x} (want {expected_x})"
                 );
-                // The cloth only takes energy (kinetic and spin).
                 let current_energy = energy(&world);
                 assert!(
                     current_energy <= previous_energy,
@@ -132,8 +131,6 @@ fn a_ball_struck_at_two_fifths_of_its_radius_rolls_from_the_start() {
                 "{solver:?} ({dx}, {dy}): slip {slip_speed}"
             );
             world.step(time_step(DT));
-            // Only rolling resistance, along the aim: no sliding friction's
-            // μ_s g, nothing sideways.
             let velocity = world.particles().vel()[0];
             let along = aim.dot(velocity);
             let sideways = (velocity - aim.get() * along).length();
@@ -170,7 +167,6 @@ fn stun_follow_and_draw_after_a_full_hit() {
             let mut world = table_world(solver, 10);
             world.set_restitution(Restitution::ELASTIC);
             world.set_table(Table::new(SLIDING_FRICTION, 0.0, GRAVITY));
-            // Touching: the hit is in the first substep, at the struck spin.
             let cue = ball(&mut world, -2.0 * BALL_RADIUS, 0.0);
             ball(&mut world, 0.0, 0.0);
             world.strike(cue, UnitVec2::X, launch_speed, tip_offset);

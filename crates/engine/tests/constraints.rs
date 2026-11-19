@@ -7,7 +7,6 @@ use engine::scenarios::{PENDULUM_LENGTH, pendulum};
 use engine::{DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
 use test_support::{Tol, for_each_scalar, kg, nonzero, pendulum_energy, time_step, v};
 
-/// The `01-solvers.md` setup: 10 s at 60 Hz.
 const DT: f64 = 1.0 / 60.0;
 const STEPS: u32 = 600;
 
@@ -140,7 +139,6 @@ fn small_angle_period(solver: Solver, amplitude: f64) -> f64 {
         }
         previous_x = x;
     }
-    // Crossings come every half period.
     2.0 * (last_crossing - first_crossing.unwrap()) / f64::from(crossings - 1)
 }
 

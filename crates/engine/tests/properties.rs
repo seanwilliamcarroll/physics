@@ -15,10 +15,8 @@ use test_support::{
     time_step, world_spec,
 };
 
-/// One second of 60 Hz steps per property case.
 const STEPS: u32 = 60;
 const DT: f64 = 1.0 / 60.0;
-/// Largest translation tried, m (each axis).
 const MAX_SHIFT_M: f64 = 100.0;
 
 fn run<S: Scalar>(mut world: World<S>) -> World<S> {

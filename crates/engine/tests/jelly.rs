@@ -15,13 +15,11 @@ use test_support::{nonzero, time_step};
 const DT: f64 = 1.0 / 60.0;
 /// The page's default substeps: h = 1/600 s.
 const SUBSTEPS: u32 = 10;
-/// The page's default damping, N·s/m.
 const DAMPING: f64 = 0.5;
 
 /// The single-spring threshold for one jelly particle (1/64 kg): `4 m / h²`
 /// = 22 500 N/m.
 fn critical_stiffness() -> f64 {
-    // 64 particles share JELLY_MASS (1 kg).
     let particle_mass = engine::scenarios::JELLY_MASS / 64.0;
     assert_eq!(JELLY_COLS * JELLY_ROWS, 64);
     let substep = DT / f64::from(SUBSTEPS);

@@ -16,7 +16,6 @@ fn pins_and_balls_hang_touching_with_the_pulled_ones_on_their_circle() {
             0.0,
             "pin {index} is static"
         );
-        // Every ball is on its rod's circle: rest, or pulled out.
         assert!(
             ((ball - pin).length() - CRADLE_LENGTH).abs() < 1e-12,
             "ball {index}"
@@ -34,7 +33,6 @@ fn pins_and_balls_hang_touching_with_the_pulled_ones_on_their_circle() {
         let (pin, ball) = (particles.pos()[2 * index], particles.pos()[2 * index + 1]);
         assert_eq!(ball.x < pin.x, index < 2, "ball {index}");
     }
-    // Hanging neighbors touch exactly.
     let (ball_3, ball_4) = (particles.pos()[5], particles.pos()[7]);
     assert!(((ball_4 - ball_3).length() - 2.0 * CRADLE_RADIUS).abs() < 1e-12);
 }

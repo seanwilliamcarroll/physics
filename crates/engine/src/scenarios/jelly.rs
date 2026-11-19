@@ -23,7 +23,6 @@ pub const JELLY_SPACING: f64 = 0.1;
 /// size changes resolution, not weight.
 pub const JELLY_MASS: f64 = 1.0;
 
-/// Height of the jelly's bottom row above the ground at release, m.
 pub const JELLY_DROP: f64 = 0.5;
 
 /// Height of the ground, m (`World::set_ground`).
@@ -183,13 +182,12 @@ pub fn jelly<S: Scalar>(
     Ok(Jelly { world, springs })
 }
 
-/// `α = 1/k` for constraints: `k = ∞` is rigid (α = 0); `k ≤ 0`, NaN, or a
-/// `k` so small that `1/k` overflows in `S` (an infinite compliance, which
-/// XPBD would turn into NaN) is rejected.
+/// Compliance α = 1 / `stiffness` for constraints: infinite stiffness is
+/// rigid (α = 0).
 ///
 /// # Errors
-/// [`ConfigError::InvalidStiffness`] unless `k > 0` and `1/k` is finite in
-/// `S`.
+/// [`ConfigError::InvalidStiffness`] unless `stiffness > 0` (NaN fails) and
+/// 1 / `stiffness` is finite in `S`.
 pub fn compliance_for<S: Scalar>(stiffness: f64) -> Result<Compliance<S>, ConfigError> {
     // `stiffness > 0` is false for NaN too, so NaN is rejected here.
     let positive = stiffness > 0.0;

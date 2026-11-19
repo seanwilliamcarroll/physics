@@ -9,8 +9,6 @@ use test_support::{kg, nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
 
-/// A 1 kg bob on a spring of `stiffness` and `damping` to a static anchor,
-/// rest length 1 m, released stretched by `stretch` (no gravity).
 fn bob_on_spring(
     stiffness: f64,
     damping: f64,
@@ -109,7 +107,6 @@ fn spring_conserves_momentum() {
     assert!(drift < 2e-13, "{drift}");
 }
 
-/// Max energy over 10 s relative to the start, for `stiffness`.
 fn energy_growth(stiffness: f64) -> f64 {
     let (mut world, force) = bob_on_spring(stiffness, 0.0, 1, 0.01);
     let start_energy = energy(&world, &force);

@@ -1,6 +1,5 @@
 //! Methods that must misbehave (`docs/04-testing.md`, known-failure
-//! catalog). The orbit demo shows these failures side by side; these tests
-//! keep the demonstrations demonstrating.
+//! catalog): these tests keep the demos' failures failing.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -13,10 +12,8 @@ use test_support::{
     steps_for, time_step,
 };
 
-/// One 60 Hz frame: the step the demo uses.
 const FINE_DT: f64 = 1.0 / 60.0;
 
-/// Explicit Euler on the circular orbit, energy sampled once per orbit.
 const EXPLICIT_EULER_ORBITS: usize = 5;
 /// It must at least double the separation in `EXPLICIT_EULER_ORBITS` orbits
 /// (measured: 2.13x, still accelerating outward).
@@ -50,7 +47,6 @@ fn explicit_euler_gains_energy_on_orbit<S: Tol>() {
 }
 for_each_scalar!(explicit_euler_gains_energy_on_orbit);
 
-/// Coarse step for the precession test: 10 Hz, ~30 steps per orbit.
 const COARSE_DT: f64 = 1.0 / 10.0;
 /// Launch at 80% of circular speed: an ellipse (e ≈ 0.36), so the orbit has
 /// an orientation to precess.
@@ -95,7 +91,6 @@ fn periapsis_angle<S: Scalar>(world: &World<S>) -> f64 {
         )
 }
 
-/// Precession over the run, wrapped to (-π, π].
 fn precession<S: Tol>(dt: f64) -> (f64, Vec<f64>, (f64, f64)) {
     let mut world = orbit::<S>(Integrator::SymplecticEuler, ECCENTRIC_SPEED).unwrap();
     let start_angle = periapsis_angle(&world);
@@ -145,7 +140,6 @@ const SPIKE_FACTOR: f64 = 100.0;
 /// "Bounded": the softened pass stays below this peak speed, m/s.
 const SOFTENED_PEAK_MAX: f64 = 10.0;
 
-/// Fastest speed reached by either body during the close pass.
 fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     let mut world = World::<S>::new(Integrator::SymplecticEuler, nonzero(1));
     world.add_force(newtonian(Softening::new(s::<S>(softening)).unwrap()));

@@ -13,7 +13,6 @@ fn orbit_starts_centered_at_rest_and_at_the_separation() {
     assert_eq!(positions.len(), 2);
     assert!((positions[1] - positions[0]).length() - ORBIT_SEPARATION < 1e-12);
     assert!(center_of_mass(&world.particles).unwrap().length() < 1e-12);
-    // Zero net momentum, relative to the planet's own momentum.
     let planet_momentum = velocities[1].length() / world.particles.inv_mass()[1];
     assert!(momentum(&world.particles).length() <= 1e-12 * planet_momentum);
 }
@@ -55,8 +54,6 @@ fn speed_ratio_scales_the_launch_speed() {
 
 #[test]
 fn orbit_gravity_is_the_force_the_scenario_uses() {
-    // Same accelerations from orbit_gravity() as from the world's own
-    // step: one source for the force, so energy readouts match it.
     let world = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let mut accelerations = vec![Vec2::ZERO; 2];
     orbit_gravity::<f64>()

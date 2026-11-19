@@ -10,7 +10,6 @@ use test_support::{kg, nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
 const SUBSTEPS: u32 = 10;
-/// A pool ball (`docs/09-billiards.md`).
 const BALL_RADIUS: f64 = 0.028_575;
 const BALL_MASS: f64 = 0.17;
 
@@ -58,7 +57,6 @@ fn a_cushion_reflects_at_the_angle_it_was_hit_scaled_by_its_restitution() {
         for cushion_restitution in [1.0, 0.8] {
             let mut world = cushion_world(solver, SUBSTEPS, 1.0);
             add_cushion(&mut world, (-2.0, 0.0), (2.0, 0.0), cushion_restitution);
-            // 2 m/s at 30° to the cushion, towards it.
             let angle = 30f64.to_radians();
             let (vx, vy) = (2.0 * angle.cos(), -2.0 * angle.sin());
             add_ball(&mut world, (-0.3, 0.2), (vx, vy));
@@ -78,7 +76,6 @@ fn a_cushion_reflects_at_the_angle_it_was_hit_scaled_by_its_restitution() {
     }
 }
 
-/// The largest rise in kinetic energy over 0.5 s, relative to the start.
 fn worst_gain(world: &mut World<f64>) -> f64 {
     let start_energy = kinetic_energy(world.particles());
     let mut worst = 0.0_f64;
@@ -113,8 +110,6 @@ fn a_ball_squeezed_against_a_cushion_never_gains_energy() {
                 {
                     let mut world = cushion_world(solver, SUBSTEPS, ball_restitution);
                     add_cushion(&mut world, (-1.0, 0.0), (1.0, 0.0), cushion_restitution);
-                    // 0.2 mm off the cushion, moving in; the cue ball
-                    // touching it at `angle`, moving in too.
                     let object_y = BALL_RADIUS + 2e-4;
                     let angle_radians = angle.to_radians();
                     let direction = (angle_radians.sin(), -angle_radians.cos());
@@ -206,7 +201,6 @@ fn a_ball_glancing_off_a_cushions_end_reflects_about_the_corner() {
         add_ball(&mut world, (-0.3, 0.01), (2.0, 0.0));
         run(&mut world, 30);
         let velocity = world.particles().vel()[0];
-        // At contact the centre is BALL_RADIUS from (0, 0) at y = 0.01.
         let normal =
             Vec2::new(-(BALL_RADIUS * BALL_RADIUS - 0.01 * 0.01).sqrt(), 0.01) / BALL_RADIUS;
         let incoming = Vec2::new(2.0, 0.0);
@@ -218,8 +212,6 @@ fn a_ball_glancing_off_a_cushions_end_reflects_about_the_corner() {
     }
 }
 
-/// A 12 m/s ball (the cue's fastest) at a cushion, one substep a step:
-/// it bounces back; it doesn't pass through.
 #[test]
 fn nothing_passes_through_a_cushion_at_one_substep() {
     for solver in Solver::ALL {
@@ -247,7 +239,6 @@ fn a_cut_shot_leaves_along_the_line_of_centres() {
                     let mut world = cushion_world(solver, substeps, 1.0);
                     let offset = 2.0 * BALL_RADIUS * cut.to_radians().sin();
                     add_ball(&mut world, (0.0, 0.0), (0.0, 0.0));
-                    // A non-round distance away, so the hit falls mid-substep.
                     add_ball(&mut world, (-0.4123, offset), (speed, 0.0));
                     run(&mut world, 60);
                     let velocity = world.particles().vel()[0];

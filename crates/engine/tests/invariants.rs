@@ -1,6 +1,5 @@
 //! Conservation and correctness invariants (`docs/04-testing.md`, phase 1).
-// Marks the whole file as test code, so clippy's `allow-*-in-tests` settings
-// cover the generic test bodies too (see docs/lint-policy.md).
+// Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
 use engine::diagnostics::{center_of_mass, momentum};
@@ -13,7 +12,6 @@ use test_support::{
 
 const GRAVITY_Y: f64 = -9.81;
 
-/// One dynamic particle under uniform gravity, `substeps` per step.
 fn falling_world<S: Tol>(
     integrator: Integrator,
     substeps: u32,
@@ -84,8 +82,6 @@ fn free_fall_matches_each_integrators_closed_form<S: Tol>() {
 }
 for_each_scalar!(free_fall_matches_each_integrators_closed_form);
 
-/// The Euler variants' known error: halving h halves the error against the
-/// analytic parabola (first order), with opposite signs.
 fn euler_free_fall_error_is_first_order_in_dt<S: Tol>() {
     for integrator in [Integrator::SymplecticEuler, Integrator::ExplicitEuler] {
         let error_at = |step_size: f64, step_count: u32| {
@@ -243,8 +239,6 @@ fn pairwise_gravity_conserves_momentum<S: Tol>() {
 }
 for_each_scalar!(pairwise_gravity_conserves_momentum);
 
-/// With momentum conserved, the center of mass moves in a straight line at
-/// `P / M`, however violently the bodies interact.
 fn center_of_mass_moves_at_constant_velocity<S: Tol>() {
     let mut world = cluster::<S>(CLUSTER_BODIES, 1).unwrap();
     let total_mass: f64 = world
@@ -273,11 +267,7 @@ fn center_of_mass_moves_at_constant_velocity<S: Tol>() {
 }
 for_each_scalar!(center_of_mass_moves_at_constant_velocity);
 
-// --- Orbits (`docs/04-testing.md`, phase 1 step 4) ---
-
-/// Step size the integrators are compared at: one 60 Hz frame.
 const ORBIT_DT: f64 = 1.0 / 60.0;
-/// "Over 100 orbits" (`docs/04-testing.md`).
 const ORBITS: f64 = 100.0;
 
 /// ωh for the circular orbit: radians of orbit per step. Both integrators'
@@ -306,7 +296,6 @@ const VV_RADIUS_BAND: f64 = 0.001;
 /// factor. Measured: 3,300x in f64, 125x in f32 (rounding-limited).
 const VERLET_ADVANTAGE: f64 = 50.0;
 
-/// First and last 10% envelopes of an error series.
 fn trend_envelopes(errors: &[f64]) -> (f64, f64) {
     let tenth = errors.len() / 10;
     (

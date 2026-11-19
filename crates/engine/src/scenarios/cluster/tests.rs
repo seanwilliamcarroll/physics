@@ -20,7 +20,6 @@ fn cluster_places_n_bodies_in_the_disk_with_bounded_mass_and_speed() {
             .iter()
             .all(|velocity| velocity.x.abs() <= CLUSTER_SPEED && velocity.y.abs() <= CLUSTER_SPEED)
     );
-    // Fixed total, whatever N; relative weights keep their spread.
     let masses: Vec<f64> = world
         .particles
         .inv_mass()

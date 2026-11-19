@@ -9,18 +9,13 @@ use engine::{DistanceConstraint, Integrator, Scalar, Solver, Vec2, World};
 use test_support::{for_each_scalar, kg, nonzero, pendulum_energy, s, state_bits, time_step, v};
 
 const DT: f64 = 1.0 / 60.0;
-/// The pages' substeps.
 const SUBSTEPS: u32 = 20;
 /// 3 s: a 1 m drop lands in ~0.45 s; the rod has settled long before the end.
 const STEPS: u32 = 180;
 /// Below the origin, so "on the ground" isn't "at zero" by accident.
 const GROUND: f64 = -0.5;
-/// Everything is dropped from rest, its lowest point this far above the
-/// ground.
 const DROP_HEIGHT: f64 = 1.0;
 
-/// A 1 kg particle at rest `DROP_HEIGHT` above the ground, under the
-/// pendulum's gravity (so `pendulum_energy` is its energy).
 fn dropped_particle<S: Scalar>(integrator: Integrator) -> World<S> {
     let mut world = World::new(integrator, nonzero(SUBSTEPS));
     world.add_force(pendulum_gravity());
@@ -29,8 +24,6 @@ fn dropped_particle<S: Scalar>(integrator: Integrator) -> World<S> {
     world
 }
 
-/// A free 1 m rod of two 1 kg particles tilted 30°, so one end lands
-/// first and the rod rotates down onto the ground.
 fn dropped_rod<S: Scalar>(solver: Solver) -> World<S> {
     let mut world = World::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
     world.add_force(pendulum_gravity());
@@ -44,8 +37,6 @@ fn dropped_rod<S: Scalar>(solver: Solver) -> World<S> {
     world
 }
 
-/// Steps `world` `STEPS` times; returns the largest energy gain over any
-/// one step, J (negative if energy fell every step).
 fn max_energy_gain<S: Scalar>(world: &mut World<S>) -> f64 {
     let mut energy = pendulum_energy(world);
     let mut gain = f64::NEG_INFINITY;
@@ -58,7 +49,6 @@ fn max_energy_gain<S: Scalar>(world: &mut World<S>) -> f64 {
     gain
 }
 
-/// Largest `|y − ground|` and largest speed over the particles.
 fn rest_error<S: Scalar>(world: &World<S>) -> (f64, f64) {
     let particles = world.particles();
     let gap = particles
@@ -143,7 +133,6 @@ fn energy_only_drops_at_impacts() {
         let gain = max_energy_gain(&mut world);
         println!("{solver:?}: max gain {gain:e} J");
         assert!(gain <= GAIN_TOL, "{solver:?} gained {gain} J");
-        // And the impacts did take energy out.
         assert!(pendulum_energy(&world) < start_energy, "{solver:?}");
     }
 }
@@ -153,7 +142,6 @@ fn energy_only_drops_at_impacts() {
 /// bob is clamped, and the rod fights the clamp; not checked here).
 #[test]
 fn static_particles_below_the_ground_are_not_moved() {
-    /// How far the ground is above the static particle, m.
     const ABOVE: f64 = 0.5;
     for integrator in Integrator::ALL {
         let mut world = World::<f64>::new(integrator, nonzero(SUBSTEPS));

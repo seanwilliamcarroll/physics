@@ -35,7 +35,6 @@ impl Fountain {
         }
     }
 
-    /// Builds a world with `particle_count` freshly launched particles.
     #[must_use]
     pub fn world<S: Scalar>(&mut self, particle_count: usize) -> World<S> {
         let mut world = World::new(Integrator::SymplecticEuler, FOUNTAIN_SUBSTEPS);

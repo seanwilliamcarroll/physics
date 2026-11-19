@@ -12,7 +12,6 @@ use test_support::{
     momentum_drift_bound, momentum_scale, time_step,
 };
 
-/// One step: a 60 Hz frame, as the demos use.
 const DT: f64 = 1.0 / 60.0;
 
 /// Opening angles probed, and the bound on each one's force error:
@@ -36,7 +35,6 @@ const THETA_BOUNDS: [(f64, f64); 4] = [(0.3, 0.13), (0.5, 0.5), (0.8, 2.0), (1.0
 const SIZES: [usize; 3] = [64, 256, 1024];
 const SEEDS: [u64; 3] = [1, 2, 3];
 
-/// `max |a_tree − a_direct| / RMS |a_direct|` for the cluster in `particles`.
 fn force_error<S: Scalar>(particles: &Particles<S>, theta: f64) -> f64 {
     let exact = accelerations(particles, &cluster_gravity::<S>().unwrap());
     let tree = accelerations(particles, &cluster_barnes_hut_force::<S>(theta));
@@ -57,7 +55,6 @@ fn len_u32<T>(slice: &[T]) -> u32 {
     u32::try_from(slice.len()).unwrap()
 }
 
-/// Force error stays under each θ's bound, and grows with θ.
 fn force_error_is_bounded_and_grows_with_theta<S: Tol>() {
     for body_count in SIZES {
         for seed in SEEDS {
@@ -80,7 +77,6 @@ fn force_error_is_bounded_and_grows_with_theta<S: Tol>() {
 }
 for_each_scalar!(force_error_is_bounded_and_grows_with_theta);
 
-/// Momentum run: 64 bodies, 1000 steps (16.7 s), θ = 0.5.
 const MOMENTUM_BODIES: usize = 64;
 const MOMENTUM_STEPS: u32 = 1000;
 const MOMENTUM_THETA: f64 = 0.5;
@@ -160,8 +156,6 @@ fn theta_zero_conserves_momentum_to_rounding<S: Tol>() {
 }
 for_each_scalar!(theta_zero_conserves_momentum_to_rounding);
 
-/// Inside `World::step` (not just `accumulate`), a cluster stays finite
-/// for every θ: a smoke test of the force in a real run.
 fn cluster_runs_finite_for_every_theta<S: Tol>() {
     for (theta, _) in THETA_BOUNDS {
         let mut world = cluster_barnes_hut::<S>(MOMENTUM_BODIES, 2, theta);

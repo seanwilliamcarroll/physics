@@ -19,7 +19,6 @@ pub const BOX_BALL_RADIUS: f64 = 0.08;
 pub const BOX_BALL_MASS: f64 = 1.0;
 /// Initial velocity components are uniform in `±BOX_SPEED`, m/s.
 pub const BOX_SPEED: f64 = 2.0;
-/// Default ball count for [`ball_box`].
 pub const BOX_BALLS: usize = 20;
 
 // Starting grid of slots `BOX_SLOT` m apart, the lowest row `BOX_FIRST_ROW`

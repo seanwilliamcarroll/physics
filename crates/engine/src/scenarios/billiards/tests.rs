@@ -61,7 +61,6 @@ fn the_table_matches_the_specification() {
             .count();
         assert_eq!(partners, 1, "mouth point {point:?}");
     }
-    // Each jaw starts at a rail end, at the cut angle to that rail.
     let mut starts = Vec::new();
     for [from, to] in &jaws {
         let (start, tip) = if on_edge(*from) {
@@ -98,7 +97,6 @@ fn the_table_matches_the_specification() {
         );
         starts.push(start);
     }
-    // One jaw at every mouth point.
     sort_by_position(&mut starts);
     let mut sorted = ends.clone();
     sort_by_position(&mut sorted);
@@ -147,10 +145,8 @@ fn the_rack_is_sixteen_balls_on_the_table_touching_not_overlapping() {
             );
         }
     }
-    // The apex on the foot spot, its neighbours touching it.
     assert_eq!(positions[1], Vec2::new(POOL_LENGTH / 4.0, 0.0));
     assert!(((positions[2] - positions[1]).length() - 2.0 * radius).abs() < 1e-12);
-    // Every number once.
     let mut numbers = POOL_RACK.to_vec();
     numbers.sort_unstable();
     assert_eq!(numbers, (1..=15).collect::<Vec<u8>>());

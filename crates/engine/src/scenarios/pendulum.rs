@@ -15,9 +15,7 @@ pub const PENDULUM_LENGTH: f64 = 1.0;
 /// horizontally, it swings through `m g L` ≈ 9.81 J.
 pub const PENDULUM_MASS: f64 = 1.0;
 
-/// The force [`pendulum`] adds: [`STANDARD_GRAVITY`] downward. Public so
-/// energy readouts use exactly the scenario's force (like
-/// [`orbit_gravity`](super::orbit_gravity)).
+/// The force [`pendulum`] adds: [`STANDARD_GRAVITY`] downward.
 #[must_use]
 pub fn pendulum_gravity<S: Scalar>() -> UniformGravity<S> {
     UniformGravity::new(Vec2::new(S::ZERO, -S::from_f64(STANDARD_GRAVITY)))

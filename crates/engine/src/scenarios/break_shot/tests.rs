@@ -4,8 +4,7 @@ use super::{BREAK_BALL_MASS, BREAK_BALL_RADIUS, BREAK_ROWS, BREAK_SPEED, break_s
 use crate::diagnostics::momentum;
 use crate::{Solver, Vec2};
 
-/// The rack's nearest-neighbor distance (the cue ball, particle 0, left
-/// out).
+/// The rack's nearest-neighbor distance (cue ball excluded).
 fn nearest_neighbor_distance(world: &crate::World<f64>) -> f64 {
     let rack = &world.particles.pos()[1..];
     let mut nearest = f64::INFINITY;

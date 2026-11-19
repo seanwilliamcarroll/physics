@@ -41,7 +41,6 @@ fn head_on(solver: Solver, restitution: f64) -> (Vec2<f64>, Vec2<f64>) {
     (world.particles().vel()[0], world.particles().vel()[1])
 }
 
-/// Velocity tolerance for one collision, m/s.
 const HEAD_ON_TOL: f64 = 1e-9;
 
 #[test]
@@ -152,10 +151,8 @@ fn a_bounce_reaches_e_squared_of_the_drop() {
     }
 }
 
-/// A ball: (position, velocity, mass).
 type BallSpec = ((f64, f64), (f64, f64), f64);
 
-/// The pileup's balls.
 const PILEUP: [BallSpec; 6] = [
     ((-1.0, 0.03), (2.0, 0.0), 1.0),
     ((0.0, 0.0), (0.0, 0.0), 2.0),
@@ -165,8 +162,6 @@ const PILEUP: [BallSpec; 6] = [
     ((1.0, -0.05), (-1.5, 0.1), 0.8),
 ];
 
-/// Kinetic energy through the pileup at `restitution`: (start, end,
-/// largest step-to-step rise).
 fn pileup_energy(solver: Solver, restitution: f64) -> (f64, f64, f64) {
     let mut world = contact_world(solver, restitution);
     for (position, velocity, mass) in PILEUP {
@@ -235,16 +230,12 @@ fn a_stack_rests_without_sinking() {
     }
 }
 
-// Edge cases (`docs/numerical-testing-checklist.md` §2.6 and §2.8): speeds
-// that cross many radii per substep, and extreme mass ratios.
-
 /// A ball fired at `speed` m/s (no gravity) at a wall 1 m away, for 1 s:
 /// whether it ever ended a step inside the wall, and its final velocity.
 /// Walls are half-planes, so a ball can't get *through* one; the risk at
 /// many radii per substep is a missed bounce, leaving it inside.
 fn bullet(solver: Solver, speed: f64) -> (bool, Vec2<f64>) {
     let mut world = contact_world(solver, 1.0);
-    // A wall at x = 1, free on the left (its normal is −x).
     world.add_wall(Wall::through(Vec2::new(1.0, 0.0), -UnitVec2::X));
     add_ball(&mut world, (0.0, 0.0), (speed, 0.0), 1.0);
     let mut inside = false;
@@ -290,7 +281,6 @@ fn fast_circles_dont_pass_through_each_other() {
                 "{solver:?}: they passed through"
             );
         }
-        // Equal masses, elastic: they swap velocities.
         let velocities = world.particles().vel();
         assert!(
             (velocities[0].x + 1e3).abs() < 1e-9 && (velocities[1].x - 1e3).abs() < 1e-9,

@@ -16,7 +16,6 @@ pub const CRADLE_RADIUS: f64 = 0.05;
 pub const CRADLE_LENGTH: f64 = 0.5;
 /// Every ball's mass, kg.
 pub const CRADLE_MASS: f64 = 1.0;
-/// Default ball count.
 pub const CRADLE_BALLS: usize = 5;
 
 /// The pulled balls start displaced by `(−0.6, +0.2) L` from rest: on the

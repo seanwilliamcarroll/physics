@@ -10,10 +10,8 @@ use engine::scenarios::{
 use engine::{Integrator, Scalar, Solver};
 use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, state_bits, time_step};
 
-/// One step: a 60 Hz frame, as the demos use.
 const DT: f64 = 1.0 / 60.0;
 
-/// Reference runs: every scenario, and the orbit under every integrator.
 #[derive(Copy, Clone, Debug)]
 enum Run {
     /// 100 particles, 600 steps (10 s), respawning: exercises the PRNG
@@ -91,7 +89,6 @@ const RUNS: [Run; 25] = [
     Run::PoolBreak(Solver::Impulse),
 ];
 
-/// Builds the run's world, steps it, and returns the final state's bits.
 fn run<S: Scalar>(reference_run: Run) -> Vec<u64> {
     match reference_run {
         Run::Fountain => {
@@ -174,7 +171,6 @@ fn run<S: Scalar>(reference_run: Run) -> Vec<u64> {
     }
 }
 
-/// Steps `world` `steps` times at [`DT`]; the final state's bits.
 fn stepped<S: Scalar>(world: &mut engine::World<S>, steps: usize) -> Vec<u64> {
     for _ in 0..steps {
         world.step(time_step(DT));
@@ -182,7 +178,6 @@ fn stepped<S: Scalar>(world: &mut engine::World<S>, steps: usize) -> Vec<u64> {
     state_bits(world.particles())
 }
 
-/// Repeatability: the same run twice is bit-identical, for every scalar.
 fn every_run_is_repeatable<S: Tol>() {
     for reference_run in RUNS {
         assert!(

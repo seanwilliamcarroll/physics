@@ -42,10 +42,8 @@ fn hard_circles() -> impl Strategy<Value = Vec<(f64, f64, f64)>> {
     ]
 }
 
-/// Positions, radii, and the grid's candidate pairs.
 type Grid = (Vec<Vec2<f64>>, Vec<f64>, Vec<(usize, usize)>);
 
-/// The grid's pairs for `circles`, each moved by `offset`.
 fn grid(circles: &[(f64, f64, f64)], offset: (f64, f64)) -> Grid {
     let positions: Vec<_> = circles
         .iter()
@@ -105,7 +103,6 @@ proptest! {
 
     #[test]
     fn insertion_order_only_renames_the_pairs(circles in circles(), seed in any::<u64>()) {
-        // A shuffle of the circles: the same pairs, under the new names.
         let mut order: Vec<usize> = (0..circles.len()).collect();
         let mut rng = math::SplitMix64::new(seed);
         for index in (1..order.len()).rev() {

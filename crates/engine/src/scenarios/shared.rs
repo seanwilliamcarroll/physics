@@ -22,12 +22,10 @@ pub fn newtonian<S: Scalar>(softening: Softening<S>) -> PairwiseGravity<S> {
     PairwiseGravity::new(S::from_f64(GRAVITATIONAL_CONSTANT), softening)
 }
 
-/// Checks a scenario's softening constant once, in `S`.
 pub(super) fn softening<S: Scalar>(length: f64) -> Result<Softening<S>, ConfigError> {
     Softening::new(S::from_f64(length)).ok_or(ConfigError::InvalidSoftening)
 }
 
-/// Checks a scenario's computed mass once, in `S`.
 pub(super) fn mass<S: Scalar>(kilograms: f64) -> Result<Mass<S>, ConfigError> {
     Mass::new(S::from_f64(kilograms)).ok_or(ConfigError::InvalidMass)
 }
@@ -66,11 +64,9 @@ pub(super) fn point_in_annulus(
 pub(super) struct BodyF64 {
     pub(super) position: (f64, f64),
     pub(super) velocity: (f64, f64),
-    /// kg.
     pub(super) mass: f64,
 }
 
-/// Converts `bodies` to `S` and adds them to `world`, each mass checked once.
 pub(super) fn add_bodies<S: Scalar>(
     world: &mut World<S>,
     bodies: impl IntoIterator<Item = BodyF64>,

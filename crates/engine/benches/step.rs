@@ -23,7 +23,6 @@ const SIZES: [usize; 3] = [16, 128, 1024];
 /// Extra size for the force-only groups: where Barnes–Hut's O(n log n)
 /// should clearly beat the pair loop (`docs/barnes-hut.md`, cost).
 const LARGE_N: usize = 4096;
-/// Barnes–Hut sizes: around and past the crossover with pairwise.
 const TREE_SIZES: [usize; 3] = [128, 1024, LARGE_N];
 /// Opening angles: 0.5 (a common accuracy choice, ~5% max force error
 /// here) and 1.0 (Barnes & Hut's own, ~30%); `docs/barnes-hut.md`.
@@ -56,7 +55,6 @@ fn step<S: Scalar>(criterion: &mut Criterion, scalar: &str) {
     }
 }
 
-/// The force alone (no integration), to separate the O(n²) pair loop.
 fn pairwise<S: Scalar>(criterion: &mut Criterion, scalar: &str) {
     let mut group = criterion.benchmark_group(format!("pairwise_{scalar}"));
     let gravity = cluster_gravity::<S>().unwrap();
@@ -151,7 +149,6 @@ const BALL_RADIUS: f64 = 0.05;
 const BALL_SPACING: f64 = 0.12;
 const BALL_JITTER: f64 = 0.02;
 
-/// `collision::candidate_pairs` on N circles.
 fn broadphase(criterion: &mut Criterion) {
     let mut group = criterion.benchmark_group("broadphase_f64");
     for circle_count in TREE_SIZES {
@@ -159,7 +156,6 @@ fn broadphase(criterion: &mut Criterion) {
         let positions: Vec<Vec2<f64>> = (0..circle_count)
             .map(|index| {
                 let (column, row) = (index % side, index / side);
-                // A fixed, cheap jitter pattern: enough to break symmetry.
                 let jitter = |seed: usize| {
                     BALL_JITTER
                         * (f64::from(u32::try_from(seed * 7919 % 101).unwrap()) / 100.0 - 0.5)

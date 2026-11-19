@@ -1,11 +1,6 @@
-//! Chains and the double pendulum: the mass-ratio test and the chaos demo,
-//! measured.
-//!
-//! Every expected value is our measurement (f64, aarch64-apple-darwin),
-//! recorded in the comments and in `docs/06-constraints.md`. Tolerances are
-//! deliberately loose (~10x): these tests pin the *qualitative* result
-//! (which solver holds the chain, that the copies separate), not the
-//! digits; `determinism.rs` pins the digits.
+//! Chains and the double pendulum (`docs/06-constraints.md`). Expected
+//! values are our measurements (f64, aarch64-apple-darwin) with ~10x
+//! tolerances: these pin the qualitative result, `determinism.rs` the digits.
 #![cfg(test)]
 
 use engine::diagnostics::constraint_error;
@@ -17,17 +12,11 @@ use test_support::{nonzero, pendulum_energy, time_step};
 const DT: f64 = 1.0 / 60.0;
 const CHAIN_STEPS: u32 = 600;
 
-/// A bob 100 times a link particle's mass.
 const MASS_RATIO: f64 = 100.0;
 
-/// What one chain run reports: each field is the largest value seen
-/// after any step.
 #[derive(Copy, Clone, Debug)]
 struct ChainRun {
-    /// Largest |C| of any link after any step, m.
     link_error: f64,
-    /// Largest |Σ link lengths − [`CHAIN_LENGTH`]| after any step, m: how
-    /// much longer (or shorter) the whole chain got.
     stretch: f64,
     /// Largest energy *gain* over the start, J. A frictionless chain can
     /// only lose energy to the solver, never gain it: a gain means the
@@ -35,7 +24,6 @@ struct ChainRun {
     energy_gain: f64,
 }
 
-/// Total length of the chain's links, m.
 fn chain_length<S: Scalar>(world: &World<S>) -> f64 {
     let positions = world.particles().pos();
     world
@@ -50,7 +38,6 @@ fn chain_length<S: Scalar>(world: &World<S>) -> f64 {
         .sum()
 }
 
-/// The [`CHAIN_LINKS`]-link chain at `mass_ratio`, 10 s.
 fn chain_run(
     solver: Solver,
     stabilization: Stabilization,
@@ -208,8 +195,6 @@ fn classic_baumgarte_blows_up_on_heavy_chains() {
 
 const CHAOS_SUBSTEPS: u32 = 20;
 
-/// Distance between the tips (particle 2) of two double pendulums, m,
-/// compared in f64.
 fn tip_distance<First: Scalar, Second: Scalar>(
     first: &World<First>,
     second: &World<Second>,
@@ -222,8 +207,6 @@ fn tip_distance<First: Scalar, Second: Scalar>(
     dx.hypot(dy)
 }
 
-/// Steps both until the tips are more than 1 cm apart; the time in s, or
-/// `None` within `max_seconds`.
 fn time_to_separate<First: Scalar, Second: Scalar>(
     first: &mut World<First>,
     second: &mut World<Second>,

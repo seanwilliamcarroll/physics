@@ -1,7 +1,5 @@
 //! Simultaneous impacts (`docs/08-collision.md`): restitution when a ball
-//! meets several contacts at once, on the scenarios that showed Newton
-//! restitution's failures, then the scenarios' behavior (the box running
-//! down when inelastic, the cradle by iterations and substeps). Both
+//! meets several contacts at once, then the box and the cradle. Both
 //! solvers; elastic at 10 substeps unless a test says otherwise.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
@@ -41,8 +39,6 @@ fn cradle_tol(solver: Solver) -> f64 {
 /// substep it lands), which averages out but not exactly.
 const BOX_TOL: f64 = 0.01;
 
-/// Kinetic energy kept after one ball (2 m/s) hits two side by side,
-/// `gap` m apart, 2 s.
 fn one_hits_two(solver: Solver, gap: f64) -> f64 {
     let ball_radius = 0.1;
     let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
@@ -60,7 +56,6 @@ fn one_hits_two(solver: Solver, gap: f64) -> f64 {
     kinetic_energy(world.particles()) / start_energy
 }
 
-/// The break shot with the rack `gap` m apart, 2 s: (KE kept, |Δp|).
 fn break_kept(solver: Solver, gap: f64) -> (f64, f64) {
     let mut world = break_shot::<f64>(solver, nonzero(SUBSTEPS), gap).unwrap();
     let (start_energy, start_momentum) = (
@@ -76,14 +71,9 @@ fn break_kept(solver: Solver, gap: f64) -> (f64, f64) {
     )
 }
 
-/// The cradle (5 balls, the first pulled): each ball's furthest swing to
-/// the right of its rest position over the first right-hand swing, as a
-/// fraction of the pull's horizontal distance. Ideal [0, 0, 0, 0, 1].
 fn cradle_swing(solver: Solver, substeps: u32, iterations: u32) -> Vec<f64> {
     let mut world = cradle::<f64>(solver, nonzero(substeps), 5, 1).unwrap();
     world.set_iterations(nonzero(iterations));
-    // Balls are particles 1, 3, 5, … (each after its pin); rest x is the
-    // pin's x.
     let particle_count = world.particles().len();
     let rest_x: Vec<f64> = (0..particle_count)
         .step_by(2)
@@ -103,7 +93,6 @@ fn cradle_swing(solver: Solver, substeps: u32, iterations: u32) -> Vec<f64> {
     furthest.iter().map(|swing| swing / pull).collect()
 }
 
-/// The ball box (20 balls), 20 s: total energy kept.
 fn box_kept(solver: Solver) -> f64 {
     let mut world = ball_box::<f64>(solver, nonzero(SUBSTEPS), 20, 1).unwrap();
     let gravity = pendulum_gravity();
@@ -116,9 +105,6 @@ fn box_kept(solver: Solver) -> f64 {
     }
     energy(&world) / start_energy
 }
-
-/// The impact stage (Generalized Reflections), in both solvers, against
-/// each failure Newton restitution had.
 
 #[test]
 fn one_ball_hitting_two_keeps_its_energy() {
@@ -179,8 +165,6 @@ fn the_ball_box_keeps_its_energy() {
     }
 }
 
-/// The ball box at restitution `restitution`, 20 s: total energy every 2 s,
-/// as a fraction of the start.
 fn box_energy_every_2s(solver: Solver, restitution: f64) -> Vec<f64> {
     let mut world = ball_box::<f64>(solver, nonzero(SUBSTEPS), 20, 1).unwrap();
     world.set_restitution(Restitution::new(restitution).unwrap());
@@ -288,7 +272,6 @@ fn the_cradle_ignores_iterations() {
     }
 }
 
-/// The cradle's worst ball against `[0, 0, 0, 0, 1]`.
 fn cradle_error(solver: Solver, substeps: u32) -> f64 {
     cradle_swing(solver, substeps, 1)
         .iter()

@@ -1,9 +1,7 @@
 //! Properties of constrained worlds (`docs/06-constraints.md`, "Iteration
-//! order"). Gauss–Seidel visits constraints in order, so reordering them is
-//! a different (valid) solve: the exact permutation invariance of
-//! `properties.rs` doesn't hold here. What does hold, and is checked: both
-//! orders keep every rod within the solver's error bound, and they stay
-//! close to each other.
+//! order"). Reordering constraints is a different (valid) Gauss–Seidel
+//! solve, so exact permutation invariance doesn't hold; checked instead:
+//! both orders stay within the error bound and close to each other.
 #![cfg(test)]
 
 use engine::diagnostics::constraint_error;
@@ -47,8 +45,6 @@ fn bounds(solver: Solver) -> (f64, f64) {
     }
 }
 
-/// Builds the chain with its rods added in `order`, steps it `steps`
-/// times, and returns (positions, max rod error seen).
 fn run(links: &[LinkSpec], order: &[usize], solver: Solver, steps: u32) -> (Vec<Vec2<f64>>, f64) {
     let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
     world.add_force(pendulum_gravity());

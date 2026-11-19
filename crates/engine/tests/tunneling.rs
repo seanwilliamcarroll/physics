@@ -11,7 +11,6 @@ use test_support::{kg, nonzero, time_step};
 const DT: f64 = 1.0 / 60.0;
 const BALL_RADIUS: f64 = 0.028_575;
 
-/// A ball at `speed` into a resting one; tunnels counted over 1 s.
 fn head_on(
     solver: Solver,
     substeps: u32,
@@ -26,7 +25,6 @@ fn head_on(
     world.count_tunnels(true);
     let radius = Radius::new(BALL_RADIUS).unwrap();
     world.add_circle(Vec2::ZERO, Vec2::ZERO, kg(0.17), radius);
-    // A non-round distance, so the meeting falls anywhere in a substep.
     world.add_circle(
         Vec2::new(-start_distance, 0.0),
         Vec2::new(speed, 0.0),
@@ -39,8 +37,6 @@ fn head_on(
     world.tunnels().unwrap()
 }
 
-/// Tunnels over 20 starting distances (the meeting falls anywhere in a
-/// substep).
 fn over_starts(solver: Solver, substeps: u32, speed: f64, speculative: bool) -> u64 {
     (0..20)
         .map(|start| {
@@ -102,7 +98,6 @@ fn without_them_a_fast_ball_goes_through_a_cushion() {
                 Vec2::new(1.0, 0.0),
                 Restitution::new(0.8).unwrap(),
             ));
-            // 0.1 m off, at 12 m/s: 0.2 m a step.
             world.add_circle(
                 Vec2::new(0.0, 0.1),
                 Vec2::new(0.0, -12.0),

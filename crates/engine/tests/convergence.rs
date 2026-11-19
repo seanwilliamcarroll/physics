@@ -13,7 +13,6 @@ use test_support::{kg, nonzero, time_step};
 /// A 1 kg bob on a k = 100 N/m spring to a static anchor: ω = 10 rad/s.
 const STIFFNESS: f64 = 100.0;
 const OMEGA: f64 = 10.0;
-/// Released at rest, stretched this far, m.
 const AMPLITUDE: f64 = 0.1;
 /// Simulated time, s: under a period (0.63 s), so the error hasn't come
 /// back round.
@@ -21,8 +20,6 @@ const DURATION: f64 = 0.5;
 /// Steps over `DURATION`: each level halves the step (ωh from 0.05 to 0.006).
 const LEVELS: [usize; 4] = [100, 200, 400, 800];
 
-/// The bob's position and velocity errors at `DURATION`, after
-/// `step_count` steps of `DURATION / step_count`.
 fn errors(integrator: Integrator, step_count: usize) -> (f64, f64) {
     let mut world = World::new(integrator, nonzero(1));
     let anchor = world.add_static(Vec2::ZERO);
@@ -47,7 +44,6 @@ fn errors(integrator: Integrator, step_count: usize) -> (f64, f64) {
     ((x - exact_x).abs(), (vx - exact_vx).abs())
 }
 
-/// The observed orders between successive levels: log2(e(h) / e(h/2)).
 fn orders(integrator: Integrator) -> (Vec<f64>, Vec<f64>) {
     orders_at(integrator, &LEVELS)
 }
@@ -149,7 +145,6 @@ fn a_world_at_rest_with_no_force_stays_bit_identical() {
     }
 }
 
-/// The slow tier (`cargo xtask slow`): 8 halvings, down to ωh = 0.0004.
 const FINE_LEVELS: [usize; 8] = [100, 200, 400, 800, 1600, 3200, 6400, 12_800];
 
 #[test]

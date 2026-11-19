@@ -16,9 +16,7 @@ pub const COLLAPSE_TOTAL_MASS: f64 = 3.0e10;
 /// per seed.
 ///
 /// # Errors
-/// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SOFTENING`](super::CLUSTER_SOFTENING) positive, and the masses
-/// positive and far from `S`'s range limits).
+/// Only if a fixed constant were invalid (it isn't).
 pub fn collapse<S: Scalar>(body_count: usize, seed: u64) -> Result<World<S>, ConfigError> {
     let mut world = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
     world.add_force(cluster_gravity()?);

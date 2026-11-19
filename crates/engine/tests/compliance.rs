@@ -9,16 +9,13 @@ use test_support::{kg, nonzero, time_step};
 /// k = 1/α = 100 N/m with m = 1 kg: ω = 10 rad/s, T = 2π/10 ≈ 0.628 s.
 const COMPLIANCE: f64 = 0.01;
 const MASS: f64 = 1.0;
-/// Rest length and initial stretch, m: small next to the rest length.
 const REST_LENGTH: f64 = 1.0;
 const STRETCH: f64 = 0.01;
 /// 60 Hz frames with 20 substeps: ωh ≈ 0.008, well resolved.
 const DT: f64 = 1.0 / 60.0;
 const SUBSTEPS: u32 = 20;
-/// Long enough for several periods.
 const STEPS: u32 = 300;
 
-/// Measured period from upward zero crossings of the stretch, averaged.
 fn measured_period(solver: Solver) -> f64 {
     let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
     let pin = world.add_static(Vec2::ZERO);
@@ -33,7 +30,6 @@ fn measured_period(solver: Solver) -> f64 {
     .unwrap();
     world.add_constraint(rod).unwrap();
     world.set_solver(solver);
-    // First and last crossing times, and how many periods lie between.
     let (mut first_crossing, mut last_crossing, mut periods) = (None, 0.0, -1.0_f64);
     let mut previous_stretch = STRETCH;
     for step in 0..STEPS {

@@ -90,7 +90,6 @@ pub fn pool_table<S: Scalar>(
         ));
     };
     for sign_y in [1.0, -1.0] {
-        // Long rails, either side of the side pocket.
         add_segment(
             (-half_length + corner_setback, sign_y * half_width),
             (-half_side_mouth, sign_y * half_width),
@@ -128,7 +127,6 @@ pub fn pool_table<S: Scalar>(
         }
     }
     for sign_x in [1.0, -1.0] {
-        // Short rails.
         add_segment(
             (sign_x * half_length, -half_width + corner_setback),
             (sign_x * half_length, half_width - corner_setback),

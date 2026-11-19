@@ -18,7 +18,6 @@ fn heavy_center_then_orbiters_in_the_annulus() {
             (DISK_INNER_RADIUS..=DISK_RADIUS).contains(&radius),
             "radius = {radius}"
         );
-        // Orbiters share DISK_ORBITERS_TOTAL_MASS equally.
         assert!(
             (1.0 / inverse_mass - DISK_ORBITERS_TOTAL_MASS / 49.0).abs()
                 <= 1e-6 * DISK_ORBITERS_TOTAL_MASS
@@ -50,7 +49,6 @@ fn is_deterministic_per_seed() {
 fn net_momentum_is_zero() {
     let world = disk::<f64>(200, 3).unwrap();
     let particles = &world.particles;
-    // Relative to one orbiter's momentum, a typical term in the sum.
     let typical = particles.vel()[1].length() / particles.inv_mass()[1];
     assert!(
         momentum(particles).length() <= 1e-10 * typical,

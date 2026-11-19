@@ -1,18 +1,11 @@
-//! `01-solvers.md`'s measured table as regression tests, one test per row,
-//! f64.
-//!
-//! Each expected value is **our** measurement, with a 2% band: results are
-//! deterministic, so the band only absorbs harmless rounding changes from a
-//! refactor; a real change in behavior moves them far more. `01`'s own
-//! numbers came from a separate script, and ours agree with them to its
-//! printed precision or close to it; both are listed per row and the
-//! comparison is recorded in `docs/06-constraints.md`.
+//! `01-solvers.md`'s measured table as regression tests, one per row, f64.
+//! Expected values are our measurements with a 2% band; `01`'s own numbers
+//! are listed per row (comparison: `docs/06-constraints.md`).
 #![cfg(test)]
 
 use engine::Solver;
 use test_support::{PendulumRun, pendulum_run};
 
-/// Relative band around each measured value.
 const BAND: f64 = 0.02;
 
 fn assert_near(what: &str, measured: f64, expected: f64) {
@@ -23,7 +16,6 @@ fn assert_near(what: &str, measured: f64, expected: f64) {
     );
 }
 
-/// XPBD's rod error is rounding: within a few ulps of the 1 m rod.
 const XPBD_ROD_BOUND: f64 = 8.0 * f64::EPSILON;
 
 fn run(solver: Solver, baumgarte_factor: f64, substeps: u32) -> PendulumRun {

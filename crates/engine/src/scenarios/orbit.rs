@@ -81,9 +81,7 @@ pub fn orbit_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 /// the star.
 ///
 /// # Errors
-/// Only if the fixed configuration were invalid (it isn't:
-/// [`ORBIT_SOFTENING`] positive, and the masses positive and far from `S`'s
-/// range limits).
+/// Only if a fixed constant were invalid (it isn't).
 pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<World<S>, ConfigError> {
     let mut world = World::new(integrator, ORBIT_SUBSTEPS);
     world.add_force(orbit_gravity()?);

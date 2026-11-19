@@ -60,7 +60,6 @@ fn a_ball_rolled_in_is_potted_and_out_of_play() {
 fn a_ball_passing_the_pocket_isnt_potted() {
     for solver in Solver::ALL {
         let mut world = pocket_world(solver);
-        // Its centre passes 0.07 from the pocket's: outside the 0.06.
         add_ball(&mut world, (0.0, 0.07), (2.0, 0.0));
         for _ in 0..60 {
             world.step(time_step(DT));
@@ -77,7 +76,6 @@ fn a_retired_ball_collides_with_nothing_and_a_reinstated_one_does() {
         let parked = add_ball(&mut world, (0.5, 0.0), (0.0, 0.0));
         add_ball(&mut world, (0.0, 0.3), (0.0, 0.0));
         assert!(world.retire(parked));
-        // A ball through where the retired one sits: no contact.
         let mover = add_ball(&mut world, (0.2, 0.0), (1.0, 0.0));
         for _ in 0..30 {
             world.step(time_step(DT));
