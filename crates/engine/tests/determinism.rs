@@ -10,10 +10,8 @@ use engine::scenarios::{
 use engine::{Integrator, Scalar, Solver};
 use test_support::{Tol, cluster_barnes_hut, for_each_scalar, nonzero, state_bits, time_step};
 
-/// One step: a 60 Hz frame, as the demos use.
 const DT: f64 = 1.0 / 60.0;
 
-/// Reference runs: every scenario, and the orbit under every integrator.
 #[derive(Copy, Clone, Debug)]
 enum Run {
     /// 100 particles, 600 steps (10 s), respawning: exercises the PRNG
@@ -40,17 +38,17 @@ enum Run {
     /// predict / project / derive order and λ handling.
     Pendulum(Solver),
     /// The 8×8 jelly, 10 substeps, 300 steps (5 s: falls, lands, settles):
-    /// force springs at k = 1000 N/m, constraints at k = 1e5 (M5.5).
+    /// force springs at k = 1000 N/m, constraints at k = 1e5.
     Jelly(JellyBody),
     /// The 1:100 chain ([`CHAIN_LINKS`] links), 4 substeps, 600 steps:
     /// pins Gauss–Seidel's constraint order along a chain.
     Chain(Solver),
-    /// The double pendulum (1e-9 m offset), impulse with 20 substeps (the
-    /// page's default), 600 steps: chaotic, so any change shows up.
+    /// The double pendulum (1e-9 m offset), impulse with 20 substeps, 600
+    /// steps: chaotic, so any change shows up.
     DoublePendulum,
     /// The ball box ([`BOX_BALLS`] balls, seed 1), 10 substeps, 600 steps
     /// (10 s): walls, gravity and many impacts, so the contact order and
-    /// the impact stage's rounds are pinned (M6).
+    /// the impact stage's rounds are pinned.
     BallBox(Solver),
     /// The break shot (rack touching), 10 substeps, 120 steps (2 s):
     /// one impact through a touching rack, the impact stage's hardest case.
@@ -59,7 +57,7 @@ enum Run {
     /// steps (5 s): impacts down a row, with rods.
     Cradle(Solver),
     /// The pool break (10 m/s, a stun), 10 substeps, 240 steps (4 s):
-    /// cushions, pockets, the cloth and the moment-of-impact normals (M7).
+    /// cushions, pockets, the cloth and the moment-of-impact normals.
     PoolBreak(Solver),
 }
 
@@ -91,100 +89,101 @@ const RUNS: [Run; 25] = [
     Run::PoolBreak(Solver::Impulse),
 ];
 
-/// Builds the run's world, steps it, and returns the final state's bits.
-fn run<S: Scalar>(r: Run) -> Vec<u64> {
-    match r {
+fn run<S: Scalar>(reference_run: Run) -> Vec<u64> {
+    match reference_run {
         Run::Fountain => {
-            let mut scene = Fountain::new(1);
-            let mut w = scene.world::<S>(100);
+            let mut fountain = Fountain::new(1);
+            let mut world = fountain.world::<S>(100);
             for _ in 0..600 {
-                w.step(time_step(DT));
-                scene.respawn_fallen(&mut w);
+                world.step(time_step(DT));
+                fountain.respawn_fallen(&mut world);
             }
-            state_bits(w.particles())
+            state_bits(world.particles())
         }
         Run::Cluster | Run::Disk | Run::Collapse => {
-            let build = match r {
+            let build = match reference_run {
                 Run::Cluster => cluster::<S>,
                 Run::Disk => disk::<S>,
                 _ => collapse::<S>,
             };
-            let mut w = build(16, 1).unwrap();
-            stepped(&mut w, 300)
+            let mut world = build(16, 1).unwrap();
+            stepped(&mut world, 300)
         }
         Run::Jelly(body) => {
-            let k = if body == JellyBody::Springs {
+            let stiffness = if body == JellyBody::Springs {
                 1000.0
             } else {
                 1e5
             };
-            let mut j = jelly::<S>(body, nonzero(10), JELLY_COLS, JELLY_ROWS, k, 0.5).unwrap();
+            let mut jelly_world =
+                jelly::<S>(body, nonzero(10), JELLY_COLS, JELLY_ROWS, stiffness, 0.5).unwrap();
             for _ in 0..300 {
-                j.world.step(time_step(DT));
+                jelly_world.world.step(time_step(DT));
             }
-            state_bits(j.world.particles())
+            state_bits(jelly_world.world.particles())
         }
         Run::Pendulum(solver) => {
-            let mut w = pendulum::<S>(solver, nonzero(4)).unwrap();
-            stepped(&mut w, 600)
+            let mut world = pendulum::<S>(solver, nonzero(4)).unwrap();
+            stepped(&mut world, 600)
         }
         Run::Chain(solver) => {
-            let mut w = chain::<S>(solver, nonzero(4), CHAIN_LINKS, 100.0).unwrap();
-            stepped(&mut w, 600)
+            let mut world = chain::<S>(solver, nonzero(4), CHAIN_LINKS, 100.0).unwrap();
+            stepped(&mut world, 600)
         }
         Run::DoublePendulum => {
-            let mut w = double_pendulum::<S>(
+            let mut world = double_pendulum::<S>(
                 Solver::Impulse,
                 nonzero(20),
                 DoublePendulumStart::Horizontal,
                 1e-9,
             )
             .unwrap();
-            stepped(&mut w, 600)
+            stepped(&mut world, 600)
         }
         Run::BallBox(solver) => {
-            let mut w = ball_box::<S>(solver, nonzero(10), BOX_BALLS, 1).unwrap();
-            stepped(&mut w, 600)
+            let mut world = ball_box::<S>(solver, nonzero(10), BOX_BALLS, 1).unwrap();
+            stepped(&mut world, 600)
         }
         Run::BreakShot(solver) => {
-            let mut w = break_shot::<S>(solver, nonzero(10), 0.0).unwrap();
-            stepped(&mut w, 120)
+            let mut world = break_shot::<S>(solver, nonzero(10), 0.0).unwrap();
+            stepped(&mut world, 120)
         }
         Run::Cradle(solver) => {
-            let mut w = cradle::<S>(solver, nonzero(10), CRADLE_BALLS, 1).unwrap();
-            stepped(&mut w, 300)
+            let mut world = cradle::<S>(solver, nonzero(10), CRADLE_BALLS, 1).unwrap();
+            stepped(&mut world, 300)
         }
         Run::PoolBreak(solver) => {
-            let mut w = pool_break::<S>(solver, nonzero(10), 10.0, 0.0).unwrap();
-            stepped(&mut w, 240)
+            let mut world = pool_break::<S>(solver, nonzero(10), 10.0, 0.0).unwrap();
+            stepped(&mut world, 240)
         }
         Run::ClusterLarge => {
-            let mut w = cluster::<S>(200, 1).unwrap();
-            stepped(&mut w, 100)
+            let mut world = cluster::<S>(200, 1).unwrap();
+            stepped(&mut world, 100)
         }
         Run::ClusterBarnesHut => {
-            let mut w = cluster_barnes_hut::<S>(64, 1, 0.5);
-            stepped(&mut w, 300)
+            let mut world = cluster_barnes_hut::<S>(64, 1, 0.5);
+            stepped(&mut world, 300)
         }
         Run::Orbit(integrator) => {
-            let mut w = orbit::<S>(integrator, 1.0).unwrap();
-            stepped(&mut w, 600)
+            let mut world = orbit::<S>(integrator, 1.0).unwrap();
+            stepped(&mut world, 600)
         }
     }
 }
 
-/// Steps `w` `steps` times at [`DT`]; the final state's bits.
-fn stepped<S: Scalar>(w: &mut engine::World<S>, steps: usize) -> Vec<u64> {
+fn stepped<S: Scalar>(world: &mut engine::World<S>, steps: usize) -> Vec<u64> {
     for _ in 0..steps {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
-    state_bits(w.particles())
+    state_bits(world.particles())
 }
 
-/// Repeatability: the same run twice is bit-identical, for every scalar.
 fn every_run_is_repeatable<S: Tol>() {
-    for r in RUNS {
-        assert!(run::<S>(r) == run::<S>(r), "{r:?}: two runs differ");
+    for reference_run in RUNS {
+        assert!(
+            run::<S>(reference_run) == run::<S>(reference_run),
+            "{reference_run:?}: two runs differ"
+        );
     }
 }
 for_each_scalar!(every_run_is_repeatable);

@@ -1,8 +1,6 @@
-//! Ready-made worlds, shared by tests and demos: the scene you test is the
-//! scene you demo. All in SI units.
-//!
-//! One file per scene (`scenarios/<scene>.rs`), re-exported here, so
-//! callers write `scenarios::cluster` whatever file it lives in.
+//! Ready-made worlds, shared by tests and demos: the scenario you test is the
+//! scenario you demo. All in SI units. One file per scenario, re-exported
+//! here.
 
 mod ball_box;
 mod billiards;

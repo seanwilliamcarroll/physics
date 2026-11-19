@@ -1,4 +1,4 @@
-//! [`orbit`]: a star and a planet on a softened Kepler orbit (M1).
+//! [`orbit`]: a star and a planet on a softened Kepler orbit.
 
 use core::num::NonZeroU32;
 
@@ -18,9 +18,9 @@ pub const ORBIT_NOMINAL_PERIOD: f64 = 3.0;
 /// so momentum conservation is still exercised.
 pub const ORBIT_MASS_RATIO: f64 = 1.0e-3;
 
-/// Softening ε for [`orbit`], m: 1/200 of the separation, so the force is
-/// nearly pure 1/r² (period changes by < 10⁻⁴) while ε = 0 stays an
-/// explicit choice for M2.
+/// Softening length for [`orbit`], m: 1/200 of the separation, so the force
+/// is nearly pure 1/r² (period changes by < 10⁻⁴) while zero softening
+/// stays an explicit choice.
 pub const ORBIT_SOFTENING: f64 = 0.01;
 
 /// `speed_ratio` for a circular [`orbit`]: launch at exactly the circular
@@ -49,9 +49,11 @@ pub const ORBIT_TOTAL_MASS: f64 = 4.0
 /// platform's libm and may differ in the last bits across targets.
 #[must_use]
 pub fn orbit_relative_speed() -> f64 {
-    let (d, eps) = (ORBIT_SEPARATION, ORBIT_SOFTENING);
-    let q = d * d + eps * eps;
-    (GRAVITATIONAL_CONSTANT * ORBIT_TOTAL_MASS * d * d / (q * q.sqrt())).sqrt()
+    let (separation, softening_length) = (ORBIT_SEPARATION, ORBIT_SOFTENING);
+    let softened_squared = separation * separation + softening_length * softening_length;
+    (GRAVITATIONAL_CONSTANT * ORBIT_TOTAL_MASS * separation * separation
+        / (softened_squared * softened_squared.sqrt()))
+    .sqrt()
 }
 
 /// The actual (softened) period of the circular orbit, s: `2π d / v`.
@@ -61,8 +63,8 @@ pub fn orbit_period() -> f64 {
 }
 
 /// The force [`orbit`] adds: [`newtonian`] with [`ORBIT_SOFTENING`]. Public
-/// so energy readouts (`diagnostics::total_energy`) use exactly the scene's
-/// force.
+/// so energy readouts (`diagnostics::total_energy`) use exactly the
+/// scenario's force.
 ///
 /// # Errors
 /// Only if [`ORBIT_SOFTENING`] were invalid (it isn't: it's positive).
@@ -79,34 +81,32 @@ pub fn orbit_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 /// the star.
 ///
 /// # Errors
-/// Only if the fixed configuration were invalid (it isn't:
-/// [`ORBIT_SOFTENING`] positive, and the masses positive and far from `S`'s
-/// range limits).
+/// Only if a fixed constant were invalid (it isn't).
 pub fn orbit<S: Scalar>(integrator: Integrator, speed_ratio: f64) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(integrator, ORBIT_SUBSTEPS);
-    w.add_force(orbit_gravity()?);
+    let mut world = World::new(integrator, ORBIT_SUBSTEPS);
+    world.add_force(orbit_gravity()?);
     // Split the separation and the relative velocity by mass, so the
     // center of mass sits at the origin with zero momentum.
-    let q = ORBIT_MASS_RATIO;
+    let mass_ratio = ORBIT_MASS_RATIO;
     let (star_mass, planet_mass) = (
-        ORBIT_TOTAL_MASS / (1.0 + q),
-        ORBIT_TOTAL_MASS * q / (1.0 + q),
+        ORBIT_TOTAL_MASS / (1.0 + mass_ratio),
+        ORBIT_TOTAL_MASS * mass_ratio / (1.0 + mass_ratio),
     );
-    let (star_share, planet_share) = (q / (1.0 + q), 1.0 / (1.0 + q));
-    let v_rel = orbit_relative_speed() * speed_ratio;
-    let d = ORBIT_SEPARATION;
+    let (star_share, planet_share) = (mass_ratio / (1.0 + mass_ratio), 1.0 / (1.0 + mass_ratio));
+    let relative_speed = orbit_relative_speed() * speed_ratio;
+    let separation = ORBIT_SEPARATION;
     let vec = |x: f64, y: f64| Vec2::from_f64(x, y);
-    w.particles.add(
-        vec(-d * star_share, 0.0),
-        vec(0.0, -v_rel * star_share),
+    world.particles.add(
+        vec(-separation * star_share, 0.0),
+        vec(0.0, -relative_speed * star_share),
         mass(star_mass)?,
     );
-    w.particles.add(
-        vec(d * planet_share, 0.0),
-        vec(0.0, v_rel * planet_share),
+    world.particles.add(
+        vec(separation * planet_share, 0.0),
+        vec(0.0, relative_speed * planet_share),
         mass(planet_mass)?,
     );
-    Ok(w)
+    Ok(world)
 }
 
 #[cfg(test)]

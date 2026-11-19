@@ -1,4 +1,4 @@
-//! [`pendulum`]: `01-solvers.md`'s pendulum, a pin and a bob on a rod (M3).
+//! [`pendulum`]: `01-solvers.md`'s pendulum, a pin and a bob on a rod.
 
 use core::num::NonZeroU32;
 
@@ -15,9 +15,7 @@ pub const PENDULUM_LENGTH: f64 = 1.0;
 /// horizontally, it swings through `m g L` ≈ 9.81 J.
 pub const PENDULUM_MASS: f64 = 1.0;
 
-/// The force [`pendulum`] adds: [`STANDARD_GRAVITY`] downward. Public so
-/// energy readouts use exactly the scene's force (like [`orbit_gravity`](super::orbit_gravity)).
-/// (`01`'s script used 9.81; the 0.04% difference is in its numbers.)
+/// The force [`pendulum`] adds: [`STANDARD_GRAVITY`] downward.
 #[must_use]
 pub fn pendulum_gravity<S: Scalar>() -> UniformGravity<S> {
     UniformGravity::new(Vec2::new(S::ZERO, -S::from_f64(STANDARD_GRAVITY)))
@@ -31,21 +29,21 @@ pub fn pendulum_gravity<S: Scalar>() -> UniformGravity<S> {
 /// # Errors
 /// Only if the fixed configuration were invalid (it isn't).
 pub fn pendulum<S: Scalar>(solver: Solver, substeps: NonZeroU32) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(Integrator::SymplecticEuler, substeps);
-    w.add_force(pendulum_gravity());
-    let pin = w.particles.add_static(Vec2::ZERO);
-    let bob = w.particles.add(
+    let mut world = World::new(Integrator::SymplecticEuler, substeps);
+    world.add_force(pendulum_gravity());
+    let pin = world.particles.add_static(Vec2::ZERO);
+    let bob = world.particles.add(
         Vec2::from_f64(PENDULUM_LENGTH, 0.0),
         Vec2::ZERO,
         mass(PENDULUM_MASS)?,
     );
-    let rod =
-        DistanceConstraint::between(&w.particles, pin, bob).ok_or(ConfigError::UnknownParticle)?;
-    w.add_constraint(rod)?;
-    w.set_solver(solver);
-    // Classic Baumgarte: what `01-solvers.md` measured, so M3 reproduces
-    // its table. Stable here (one rod); split impulses would add XPBD-like
-    // damping (`docs/06-constraints.md`, "Stabilization").
-    w.set_stabilization(Stabilization::Baumgarte);
-    Ok(w)
+    let rod = DistanceConstraint::between(&world.particles, pin, bob)
+        .ok_or(ConfigError::UnknownParticle)?;
+    world.add_constraint(rod)?;
+    world.set_solver(solver);
+    // Classic Baumgarte: what `01-solvers.md` measured. Stable here (one
+    // rod); split impulses would add XPBD-like damping
+    // (`docs/06-constraints.md`, "Stabilization").
+    world.set_stabilization(Stabilization::Baumgarte);
+    Ok(world)
 }

@@ -1,5 +1,5 @@
-//! [`pool_table`], [`pool_rack`], [`pool_break`]: a 9-ft pool table (M7,
-//! `docs/09-billiards.md`). Seen from above: no in-plane gravity; `g`
+//! [`pool_table`], [`pool_rack`], [`pool_break`]: a 9-ft pool table
+//! (`docs/09-billiards.md`). Seen from above: no in-plane gravity; `g`
 //! enters through the cloth.
 
 use core::num::NonZeroU32;
@@ -47,7 +47,6 @@ const SIDE_CUT_DEG: f64 = 104.0;
 /// pocket's sensor).
 const JAW_LENGTH: f64 = 0.06;
 
-/// The head and foot spots: a quarter of the length from each end.
 const HEAD_SPOT: (f64, f64) = (-POOL_LENGTH / 4.0, 0.0);
 const FOOT_SPOT: (f64, f64) = (POOL_LENGTH / 4.0, 0.0);
 
@@ -61,73 +60,108 @@ pub fn pool_table<S: Scalar>(
     solver: Solver,
     substeps: NonZeroU32,
 ) -> Result<World<S>, ConfigError> {
-    let s = S::from_f64;
-    let table = Table::new(s(POOL_MU_SLIDE), s(POOL_MU_ROLL), s(POOL_G))
-        .ok_or(ConfigError::InvalidTable)?;
-    let e_ball = Restitution::new(s(POOL_E_BALL)).ok_or(ConfigError::InvalidTable)?;
-    let e_cushion = Restitution::new(s(POOL_E_CUSHION)).ok_or(ConfigError::InvalidTable)?;
-    let mut w = World::new(Integrator::SymplecticEuler, substeps);
-    w.set_solver(solver);
-    w.set_restitution(e_ball);
-    w.set_table(Some(table));
-    let (hl, hw) = (POOL_LENGTH / 2.0, POOL_WIDTH / 2.0);
-    // A corner mouth is a 45° line across the corner, M long: its points
-    // sit `M / √2` back along each rail.
-    let a = POOL_CORNER_MOUTH / 2.0_f64.sqrt();
-    let half_side = POOL_SIDE_MOUTH / 2.0;
+    let to_scalar = S::from_f64;
+    let table = Table::new(
+        to_scalar(POOL_MU_SLIDE),
+        to_scalar(POOL_MU_ROLL),
+        to_scalar(POOL_G),
+    )
+    .ok_or(ConfigError::InvalidTable)?;
+    let ball_restitution =
+        Restitution::new(to_scalar(POOL_E_BALL)).ok_or(ConfigError::InvalidTable)?;
+    let cushion_restitution =
+        Restitution::new(to_scalar(POOL_E_CUSHION)).ok_or(ConfigError::InvalidTable)?;
+    let mut world = World::new(Integrator::SymplecticEuler, substeps);
+    world.set_solver(solver);
+    world.set_restitution(ball_restitution);
+    world.set_table(Some(table));
+    let (half_length, half_width) = (POOL_LENGTH / 2.0, POOL_WIDTH / 2.0);
+    // A corner mouth is a 45° line across the corner, `POOL_CORNER_MOUTH`
+    // long: its points sit `mouth / √2` back along each rail.
+    let corner_setback = POOL_CORNER_MOUTH / 2.0_f64.sqrt();
+    let half_side_mouth = POOL_SIDE_MOUTH / 2.0;
     let corner_turn = (180.0 - CORNER_CUT_DEG).to_radians();
     let side_turn = (180.0 - SIDE_CUT_DEG).to_radians();
-    let mut seg = |p: (f64, f64), q: (f64, f64)| {
-        w.add_segment(Segment::new(
-            Vec2::new(s(p.0), s(p.1)),
-            Vec2::new(s(q.0), s(q.1)),
-            e_cushion,
+    let mut add_segment = |from: (f64, f64), to: (f64, f64)| {
+        world.add_segment(Segment::new(
+            Vec2::new(to_scalar(from.0), to_scalar(from.1)),
+            Vec2::new(to_scalar(to.0), to_scalar(to.1)),
+            cushion_restitution,
         ));
     };
-    for sy in [1.0, -1.0] {
-        // Long rails, either side of the side pocket.
-        seg((-hl + a, sy * hw), (-half_side, sy * hw));
-        seg((half_side, sy * hw), (hl - a, sy * hw));
-        for sx in [1.0, -1.0] {
+    for sign_y in [1.0, -1.0] {
+        add_segment(
+            (-half_length + corner_setback, sign_y * half_width),
+            (-half_side_mouth, sign_y * half_width),
+        );
+        add_segment(
+            (half_side_mouth, sign_y * half_width),
+            (half_length - corner_setback, sign_y * half_width),
+        );
+        for sign_x in [1.0, -1.0] {
             // A jaw leaves its point turned outward from the rail by
             // 180° − cut, toward the pocket.
-            let (t, c) = (corner_turn.sin(), corner_turn.cos());
-            seg(
-                (sx * (hl - a), sy * hw),
-                (sx * (hl - a + c * JAW_LENGTH), sy * (hw + t * JAW_LENGTH)),
-            );
-            seg(
-                (sx * hl, sy * (hw - a)),
-                (sx * (hl + t * JAW_LENGTH), sy * (hw - a + c * JAW_LENGTH)),
-            );
-            let (t, c) = (side_turn.sin(), side_turn.cos());
-            seg(
-                (sx * half_side, sy * hw),
+            let (turn_sin, turn_cos) = (corner_turn.sin(), corner_turn.cos());
+            add_segment(
+                (sign_x * (half_length - corner_setback), sign_y * half_width),
                 (
-                    sx * (half_side - c * JAW_LENGTH),
-                    sy * (hw + t * JAW_LENGTH),
+                    sign_x * (half_length - corner_setback + turn_cos * JAW_LENGTH),
+                    sign_y * (half_width + turn_sin * JAW_LENGTH),
+                ),
+            );
+            add_segment(
+                (sign_x * half_length, sign_y * (half_width - corner_setback)),
+                (
+                    sign_x * (half_length + turn_sin * JAW_LENGTH),
+                    sign_y * (half_width - corner_setback + turn_cos * JAW_LENGTH),
+                ),
+            );
+            let (turn_sin, turn_cos) = (side_turn.sin(), side_turn.cos());
+            add_segment(
+                (sign_x * half_side_mouth, sign_y * half_width),
+                (
+                    sign_x * (half_side_mouth - turn_cos * JAW_LENGTH),
+                    sign_y * (half_width + turn_sin * JAW_LENGTH),
                 ),
             );
         }
     }
-    for sx in [1.0, -1.0] {
-        // Short rails.
-        seg((sx * hl, -hw + a), (sx * hl, hw - a));
+    for sign_x in [1.0, -1.0] {
+        add_segment(
+            (sign_x * half_length, -half_width + corner_setback),
+            (sign_x * half_length, half_width - corner_setback),
+        );
     }
     // Pockets (our choice): a corner's sensor centred on the table's
     // corner, reaching the mouth's midpoint; a side's a ball's radius
     // behind the mouth, as wide as it.
-    let mut pocket = |x: f64, y: f64, r: f64| -> Result<(), ConfigError> {
-        let p = Pocket::new(Vec2::new(s(x), s(y)), s(r)).ok_or(ConfigError::InvalidTable)?;
-        w.add_pocket(p);
+    let mut add_pocket = |x: f64, y: f64, pocket_radius: f64| -> Result<(), ConfigError> {
+        let pocket = Pocket::new(
+            Vec2::new(to_scalar(x), to_scalar(y)),
+            to_scalar(pocket_radius),
+        )
+        .ok_or(ConfigError::InvalidTable)?;
+        world.add_pocket(pocket);
         Ok(())
     };
-    for sy in [1.0, -1.0] {
-        pocket(-hl, sy * hw, a / 2.0_f64.sqrt())?;
-        pocket(0.0, sy * (hw + POOL_BALL_RADIUS), half_side)?;
-        pocket(hl, sy * hw, a / 2.0_f64.sqrt())?;
+    for sign_y in [1.0, -1.0] {
+        add_pocket(
+            -half_length,
+            sign_y * half_width,
+            corner_setback / 2.0_f64.sqrt(),
+        )?;
+        add_pocket(
+            0.0,
+            sign_y * (half_width + POOL_BALL_RADIUS),
+            half_side_mouth,
+        )?;
+        add_pocket(
+            half_length,
+            sign_y * half_width,
+            corner_setback / 2.0_f64.sqrt(),
+        )?;
     }
-    Ok(w)
+    Ok(world)
 }
 
 /// The table with the cue ball (particle 0) on the head spot and 15 balls
@@ -138,25 +172,33 @@ pub fn pool_table<S: Scalar>(
 /// As [`pool_table`]; [`ConfigError::InvalidMass`] or
 /// [`ConfigError::InvalidRadius`] likewise.
 pub fn pool_rack<S: Scalar>(solver: Solver, substeps: NonZeroU32) -> Result<World<S>, ConfigError> {
-    let mut w = pool_table(solver, substeps)?;
-    let (m, r) = (mass(POOL_BALL_MASS)?, radius(POOL_BALL_RADIUS)?);
+    let mut world = pool_table(solver, substeps)?;
+    let (ball_mass, ball_radius) = (mass(POOL_BALL_MASS)?, radius(POOL_BALL_RADIUS)?);
     let at = |x: f64, y: f64| Vec2::new(S::from_f64(x), S::from_f64(y));
-    w.add_circle(at(HEAD_SPOT.0, HEAD_SPOT.1), Vec2::ZERO, m, r);
+    world.add_circle(
+        at(HEAD_SPOT.0, HEAD_SPOT.1),
+        Vec2::ZERO,
+        ball_mass,
+        ball_radius,
+    );
     // Rows a ball's diameter apart along y, √3 R apart along x.
-    let d = 2.0 * POOL_BALL_RADIUS;
+    let diameter = 2.0 * POOL_BALL_RADIUS;
     let row_step = 3.0_f64.sqrt() * POOL_BALL_RADIUS;
     for row in 0..5_u8 {
-        for k in 0..=row {
-            let (row, k) = (f64::from(row), f64::from(k));
-            w.add_circle(
-                at(FOOT_SPOT.0 + row * row_step, (k - row / 2.0) * d),
+        for position_in_row in 0..=row {
+            let (row, position_in_row) = (f64::from(row), f64::from(position_in_row));
+            world.add_circle(
+                at(
+                    FOOT_SPOT.0 + row * row_step,
+                    (position_in_row - row / 2.0) * diameter,
+                ),
                 Vec2::ZERO,
-                m,
-                r,
+                ball_mass,
+                ball_radius,
             );
         }
     }
-    Ok(w)
+    Ok(world)
 }
 
 /// The rack, broken: the cue ball struck at `speed` m/s straight at the
@@ -175,10 +217,10 @@ pub fn pool_break<S: Scalar>(
     if !(speed >= 0.0 && speed.is_finite() && tip.abs() <= 0.5) {
         return Err(ConfigError::InvalidShot);
     }
-    let mut w = pool_rack(solver, substeps)?;
+    let mut world = pool_rack(solver, substeps)?;
     let tip = S::from_f64(tip * POOL_BALL_RADIUS);
-    w.strike(POOL_CUE, UnitVec2::X, S::from_f64(speed), tip);
-    Ok(w)
+    world.strike(POOL_CUE, UnitVec2::X, S::from_f64(speed), tip);
+    Ok(world)
 }
 
 #[cfg(test)]

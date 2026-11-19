@@ -1,4 +1,4 @@
-//! The cloth (M7, `docs/09-billiards.md`, "The ball model"): sliding to
+//! The cloth (`docs/09-billiards.md`, "The ball model"): sliding to
 //! rolling to rest, against the analytic results, and the shots that
 //! emerge from it. Both solvers.
 // Whole file is test code (docs/lint-policy.md).
@@ -10,26 +10,31 @@ use engine::{Integrator, ParticleId, Radius, Restitution, Solver, Table, UnitVec
 use test_support::{kg, nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
-const R: f64 = 0.028_575;
-const M: f64 = 0.17;
-const MU_S: f64 = 0.2;
-const MU_R: f64 = 0.01;
-const G: f64 = 9.81;
+const BALL_RADIUS: f64 = 0.028_575;
+const BALL_MASS: f64 = 0.17;
+const SLIDING_FRICTION: f64 = 0.2;
+const ROLLING_FRICTION: f64 = 0.01;
+const GRAVITY: f64 = 9.81;
 
-fn world(solver: Solver, substeps: u32) -> World<f64> {
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(substeps));
-    w.set_solver(solver);
-    w.set_restitution(Restitution::new(0.94).unwrap());
-    w.set_table(Table::new(MU_S, MU_R, G));
-    w
+fn table_world(solver: Solver, substeps: u32) -> World<f64> {
+    let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(substeps));
+    world.set_solver(solver);
+    world.set_restitution(Restitution::new(0.94).unwrap());
+    world.set_table(Table::new(SLIDING_FRICTION, ROLLING_FRICTION, GRAVITY));
+    world
 }
 
-fn ball(w: &mut World<f64>, x: f64, y: f64) -> ParticleId {
-    w.add_circle(Vec2::new(x, y), Vec2::ZERO, kg(M), Radius::new(R).unwrap())
+fn ball(world: &mut World<f64>, x: f64, y: f64) -> ParticleId {
+    world.add_circle(
+        Vec2::new(x, y),
+        Vec2::ZERO,
+        kg(BALL_MASS),
+        Radius::new(BALL_RADIUS).unwrap(),
+    )
 }
 
-fn energy(w: &World<f64>) -> f64 {
-    kinetic_energy(w.particles()) + rotational_energy(w.particles(), w.spin())
+fn energy(world: &World<f64>) -> f64 {
+    kinetic_energy(world.particles()) + rotational_energy(world.particles(), world.spin())
 }
 
 /// Bounds for a centre hit at 3 m/s, sampled each step for 25 s (sliding,
@@ -39,59 +44,72 @@ fn energy(w: &World<f64>) -> f64 {
 /// from positions, `(x − x₀) / h`, which magnifies rounding by 1/h); the
 /// position comes from the drift, first order: 0.0250 m × (1 substep / n)
 /// at n = 1, 10 and 40.
-fn velocity_tol(solver: Solver) -> f64 {
+fn velocity_tolerance(solver: Solver) -> f64 {
     match solver {
         Solver::Impulse => 5e-11,
         Solver::Xpbd => 7e-7,
     }
 }
-const POSITION_TOL_PER_SUBSTEP: f64 = 0.03;
+const POSITION_TOLERANCE_PER_SUBSTEP: f64 = 0.03;
 
 #[test]
 fn a_centre_hit_slides_then_rolls_then_stops_as_the_model_says() {
     // Sliding at μ_s g until t_s = 2 v₀ / (7 μ_s g), rolling on at 5/7 v₀
     // from s = 12 v₀² / (49 μ_s g), slowing at μ_r g to rest.
-    let v0 = 3.0;
-    let t_s = 2.0 * v0 / (7.0 * MU_S * G);
-    let (vr, s) = (5.0 * v0 / 7.0, 12.0 * v0 * v0 / (49.0 * MU_S * G));
+    let launch_speed = 3.0;
+    let sliding_time = 2.0 * launch_speed / (7.0 * SLIDING_FRICTION * GRAVITY);
+    let (rolling_speed, sliding_distance) = (
+        5.0 * launch_speed / 7.0,
+        12.0 * launch_speed * launch_speed / (49.0 * SLIDING_FRICTION * GRAVITY),
+    );
     for solver in Solver::ALL {
-        for sub in [1u32, 10, 40] {
-            let mut w = world(solver, sub);
-            let id = ball(&mut w, 0.0, 0.0);
-            assert!(w.strike(id, UnitVec2::X, v0, 0.0));
-            let mut prev = energy(&w);
-            for k in 1..=1500 {
-                w.step(time_step(DT));
-                let t = f64::from(k) * DT;
-                let (x, v) = (w.particles().pos()[0].x, w.particles().vel()[0].x);
-                let (want_v, want_x) = if t < t_s {
-                    (v0 - MU_S * G * t, v0 * t - 0.5 * MU_S * G * t * t)
+        for substeps in [1u32, 10, 40] {
+            let mut world = table_world(solver, substeps);
+            let cue = ball(&mut world, 0.0, 0.0);
+            assert!(world.strike(cue, UnitVec2::X, launch_speed, 0.0));
+            let mut previous_energy = energy(&world);
+            for step in 1..=1500 {
+                world.step(time_step(DT));
+                let time = f64::from(step) * DT;
+                let (x, vx) = (world.particles().pos()[0].x, world.particles().vel()[0].x);
+                let (expected_vx, expected_x) = if time < sliding_time {
+                    (
+                        launch_speed - SLIDING_FRICTION * GRAVITY * time,
+                        launch_speed * time - 0.5 * SLIDING_FRICTION * GRAVITY * time * time,
+                    )
                 } else {
-                    let tr = (t - t_s).min(vr / (MU_R * G));
-                    (vr - MU_R * G * tr, s + vr * tr - 0.5 * MU_R * G * tr * tr)
+                    let rolling_time =
+                        (time - sliding_time).min(rolling_speed / (ROLLING_FRICTION * GRAVITY));
+                    (
+                        rolling_speed - ROLLING_FRICTION * GRAVITY * rolling_time,
+                        sliding_distance + rolling_speed * rolling_time
+                            - 0.5 * ROLLING_FRICTION * GRAVITY * rolling_time * rolling_time,
+                    )
                 };
                 assert!(
-                    (v - want_v).abs() < velocity_tol(solver),
-                    "{solver:?} {sub}: at {t:.3} s, v {v} (want {want_v})"
+                    (vx - expected_vx).abs() < velocity_tolerance(solver),
+                    "{solver:?} {substeps}: at {time:.3} s, v {vx} (want {expected_vx})"
                 );
-                let x_tol = POSITION_TOL_PER_SUBSTEP / f64::from(sub);
+                let position_tolerance = POSITION_TOLERANCE_PER_SUBSTEP / f64::from(substeps);
                 assert!(
-                    (x - want_x).abs() < x_tol,
-                    "{solver:?} {sub}: at {t:.3} s, x {x} (want {want_x})"
+                    (x - expected_x).abs() < position_tolerance,
+                    "{solver:?} {substeps}: at {time:.3} s, x {x} (want {expected_x})"
                 );
-                // The cloth only takes energy (kinetic and spin).
-                let e = energy(&w);
-                assert!(e <= prev, "{solver:?} {sub}: energy rose at {t:.3} s");
-                prev = e;
+                let current_energy = energy(&world);
+                assert!(
+                    current_energy <= previous_energy,
+                    "{solver:?} {substeps}: energy rose at {time:.3} s"
+                );
+                previous_energy = current_energy;
             }
-            assert_eq!(w.particles().vel()[0], Vec2::ZERO, "at rest, exactly");
+            assert_eq!(world.particles().vel()[0], Vec2::ZERO, "at rest, exactly");
         }
     }
 }
 
 /// Aimed any way, not just along x: the spin's axis turns with the aim
-/// (the full mutation run: a sign lost in the axis survived while every
-/// strike in the tests was along +x, where the swapped component is 0).
+/// (a sign lost in the axis survived while every strike was along +x,
+/// where the swapped component is 0).
 #[test]
 fn a_ball_struck_at_two_fifths_of_its_radius_rolls_from_the_start() {
     for solver in Solver::ALL {
@@ -103,22 +121,27 @@ fn a_ball_struck_at_two_fifths_of_its_radius_rolls_from_the_start() {
             (-1.0, 0.0),
         ] {
             let aim = Vec2::new(dx, dy).normalized().unwrap();
-            let mut w = world(solver, 10);
-            let id = ball(&mut w, 0.0, 0.0);
-            w.strike(id, aim, 2.0, 0.4 * R);
-            let u = slip(w.particles().vel()[0], w.spin()[0], R).length();
-            assert!(u < 1e-12, "{solver:?} ({dx}, {dy}): slip {u}");
-            w.step(time_step(DT));
-            // Only rolling resistance, along the aim: no sliding friction's
-            // μ_s g, nothing sideways.
-            let v = w.particles().vel()[0];
-            let along = aim.dot(v);
-            let side = (v - aim.get() * along).length();
+            let mut world = table_world(solver, 10);
+            let cue = ball(&mut world, 0.0, 0.0);
+            world.strike(cue, aim, 2.0, 0.4 * BALL_RADIUS);
+            let slip_speed =
+                slip(world.particles().vel()[0], world.spin()[0], BALL_RADIUS).length();
             assert!(
-                (along - (2.0 - MU_R * G * DT)).abs() < 1e-9,
+                slip_speed < 1e-12,
+                "{solver:?} ({dx}, {dy}): slip {slip_speed}"
+            );
+            world.step(time_step(DT));
+            let velocity = world.particles().vel()[0];
+            let along = aim.dot(velocity);
+            let sideways = (velocity - aim.get() * along).length();
+            assert!(
+                (along - (2.0 - ROLLING_FRICTION * GRAVITY * DT)).abs() < 1e-9,
                 "{solver:?}: {along}"
             );
-            assert!(side < 1e-12, "{solver:?} ({dx}, {dy}): sideways {side}");
+            assert!(
+                sideways < 1e-12,
+                "{solver:?} ({dx}, {dy}): sideways {sideways}"
+            );
         }
     }
 }
@@ -132,26 +155,30 @@ fn a_ball_struck_at_two_fifths_of_its_radius_rolls_from_the_start() {
 /// mid-substep, `docs/08-collision.md`); bound at the whole substep.
 #[test]
 fn stun_follow_and_draw_after_a_full_hit() {
-    let v0 = 2.0;
-    let h = DT / 10.0;
+    let launch_speed = 2.0;
+    let substep = DT / 10.0;
     for solver in Solver::ALL {
-        for b in [0.0, 0.4 * R, 0.5 * R, -0.5 * R] {
-            let mut w = world(solver, 10);
-            w.set_restitution(Restitution::ELASTIC);
-            w.set_table(Table::new(MU_S, 0.0, G));
-            // Touching: the hit is in the first substep, at the struck spin.
-            let cue = ball(&mut w, -2.0 * R, 0.0);
-            ball(&mut w, 0.0, 0.0);
-            w.strike(cue, UnitVec2::X, v0, b);
+        for tip_offset in [
+            0.0,
+            0.4 * BALL_RADIUS,
+            0.5 * BALL_RADIUS,
+            -0.5 * BALL_RADIUS,
+        ] {
+            let mut world = table_world(solver, 10);
+            world.set_restitution(Restitution::ELASTIC);
+            world.set_table(Table::new(SLIDING_FRICTION, 0.0, GRAVITY));
+            let cue = ball(&mut world, -2.0 * BALL_RADIUS, 0.0);
+            ball(&mut world, 0.0, 0.0);
+            world.strike(cue, UnitVec2::X, launch_speed, tip_offset);
             for _ in 0..120 {
-                w.step(time_step(DT));
+                world.step(time_step(DT));
             }
-            let v = w.particles().vel()[0];
-            let want = 5.0 / 7.0 * (b / R) * v0;
-            let tol = 5.0 / 7.0 * MU_S * G * h;
+            let velocity = world.particles().vel()[0];
+            let expected = 5.0 / 7.0 * (tip_offset / BALL_RADIUS) * launch_speed;
+            let tolerance = 5.0 / 7.0 * SLIDING_FRICTION * GRAVITY * substep;
             assert!(
-                (v.x - want).abs() < tol && v.y == 0.0,
-                "{solver:?} b {b}: cue {v:?}, want {want}"
+                (velocity.x - expected).abs() < tolerance && velocity.y == 0.0,
+                "{solver:?} b {tip_offset}: cue {velocity:?}, want {expected}"
             );
         }
     }
@@ -159,9 +186,9 @@ fn stun_follow_and_draw_after_a_full_hit() {
 
 #[test]
 fn a_struck_static_or_point_is_refused() {
-    let mut w = world(Solver::Impulse, 1);
-    let pin = w.add_static(Vec2::ZERO);
-    let point = w.add_particle(Vec2::ZERO, Vec2::ZERO, kg(1.0));
-    assert!(!w.strike(pin.id(), UnitVec2::X, 1.0, 0.0));
-    assert!(!w.strike(point, UnitVec2::X, 1.0, 0.0));
+    let mut world = table_world(Solver::Impulse, 1);
+    let pin = world.add_static(Vec2::ZERO);
+    let point = world.add_particle(Vec2::ZERO, Vec2::ZERO, kg(1.0));
+    assert!(!world.strike(pin.id(), UnitVec2::X, 1.0, 0.0));
+    assert!(!world.strike(point, UnitVec2::X, 1.0, 0.0));
 }

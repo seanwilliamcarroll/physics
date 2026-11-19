@@ -1,4 +1,4 @@
-//! [`cluster`]: `n` bodies drifting under mutual softened gravity (M1, M2).
+//! [`cluster`]: `n` bodies drifting under mutual softened gravity.
 
 use core::num::NonZeroU32;
 
@@ -10,11 +10,9 @@ use crate::{ConfigError, Integrator, PairwiseGravity, Scalar, World};
 pub const CLUSTER_RADIUS: f64 = 2.0;
 
 /// Total mass of [`cluster`], kg, whatever N: `G M` ≈ 13 m³/s². Fixed so
-/// the time scale doesn't change with N. Per-body mass ranges (as before
-/// M2.6) made N = 1024 collapse and fling every body out of view within
-/// 0.5 s, while N = 256 kept most. The value is the 16-body reference run's
-/// former mean total (16 × 1.25 × 10¹⁰), so small clusters behave as
-/// before.
+/// the time scale doesn't change with N: per-body mass ranges made N = 1024
+/// collapse and fling every body out of view within 0.5 s, while N = 256
+/// kept most.
 pub const CLUSTER_TOTAL_MASS: f64 = 2.0e11;
 
 /// Relative body weight range for [`cluster`], `(min, max)`: each body draws
@@ -28,7 +26,7 @@ pub const CLUSTER_WEIGHT: (f64, f64) = (0.5, 2.0);
 /// to conserve (zero could hide a sign error).
 pub const CLUSTER_SPEED: f64 = 0.2;
 
-/// Softening ε for [`cluster`], m: 1/20 of the radius, so close passes
+/// Softening length for [`cluster`], m: 1/20 of the radius, so close passes
 /// give a bounded kick instead of flinging bodies apart.
 pub const CLUSTER_SOFTENING: f64 = 0.1;
 
@@ -36,7 +34,7 @@ pub const CLUSTER_SOFTENING: f64 = 0.1;
 pub const CLUSTER_SUBSTEPS: NonZeroU32 = NonZeroU32::MIN;
 
 /// The force [`cluster`] adds: [`newtonian`] with [`CLUSTER_SOFTENING`].
-/// Public so energy readouts use exactly the scene's force (like
+/// Public so energy readouts use exactly the scenario's force (like
 /// [`orbit_gravity`](super::orbit_gravity)).
 ///
 /// # Errors
@@ -45,47 +43,46 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
     softening(CLUSTER_SOFTENING).map(newtonian)
 }
 
-/// `n` bodies under mutual softened gravity: positions uniform in a disk
-/// of [`CLUSTER_RADIUS`], masses in proportion to weights drawn from
+/// `body_count` bodies under mutual softened gravity: positions uniform in
+/// a disk of [`CLUSTER_RADIUS`], masses in proportion to weights drawn from
 /// [`CLUSTER_WEIGHT`] and summing to [`CLUSTER_TOTAL_MASS`], small random
 /// velocities. Deterministic per seed.
 ///
-/// Positions use rejection sampling (`point_in_annulus` in `shared.rs`) rather than
-/// `r = R√u, θ = 2πv`: no `sin`/`cos`, whose last bits depend on the
-/// platform's libm, so the scene starts bit-identical on every platform.
+/// Positions use rejection sampling (`point_in_annulus` in `shared.rs`)
+/// rather than `r = R√u, θ = 2πv`: no `sin`/`cos`, whose last bits depend on
+/// the platform's libm, so the scenario starts bit-identical on every
+/// platform.
 ///
 /// # Errors
-/// Only if the fixed configuration were invalid (it isn't:
-/// [`CLUSTER_SOFTENING`] positive, and the masses positive and far from
-/// `S`'s range limits).
-pub fn cluster<S: Scalar>(n: usize, seed: u64) -> Result<World<S>, ConfigError> {
-    let mut w = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
-    w.add_force(cluster_gravity()?);
-    add_bodies(&mut w, cluster_bodies(n, seed))?;
-    Ok(w)
+/// Only if a fixed constant were invalid (it isn't).
+pub fn cluster<S: Scalar>(body_count: usize, seed: u64) -> Result<World<S>, ConfigError> {
+    let mut world = World::new(Integrator::SymplecticEuler, CLUSTER_SUBSTEPS);
+    world.add_force(cluster_gravity()?);
+    add_bodies(&mut world, cluster_bodies(body_count, seed))?;
+    Ok(world)
 }
 
 /// [`cluster`]'s bodies in `f64` (not generic: compiled once). Weights
 /// are drawn per body in the same pass as position and velocity, then
 /// scaled to the total.
-pub(super) fn cluster_bodies(n: usize, seed: u64) -> Vec<BodyF64> {
+pub(super) fn cluster_bodies(body_count: usize, seed: u64) -> Vec<BodyF64> {
     let mut rng = SplitMix64::new(seed);
-    let mut bodies: Vec<BodyF64> = (0..n)
+    let mut bodies: Vec<BodyF64> = (0..body_count)
         .map(|_| {
-            let pos = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
+            let position = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
             let vx = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
             let vy = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
             let weight = rng.range(CLUSTER_WEIGHT.0, CLUSTER_WEIGHT.1);
             BodyF64 {
-                pos,
-                vel: (vx, vy),
+                position,
+                velocity: (vx, vy),
                 mass: weight,
             }
         })
         .collect();
-    let total_weight: f64 = bodies.iter().map(|b| b.mass).sum();
-    for b in &mut bodies {
-        b.mass *= CLUSTER_TOTAL_MASS / total_weight;
+    let total_weight: f64 = bodies.iter().map(|body| body.mass).sum();
+    for body in &mut bodies {
+        body.mass *= CLUSTER_TOTAL_MASS / total_weight;
     }
     bodies
 }

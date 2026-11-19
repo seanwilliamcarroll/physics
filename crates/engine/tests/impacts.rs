@@ -1,8 +1,6 @@
-//! Simultaneous impacts (M6, `docs/08-collision.md`): restitution when a
-//! ball meets several contacts at once, on the scenes that showed Newton
-//! restitution's failures, then the scenes' behavior (the box running down
-//! when inelastic, the cradle by iterations and substeps). Both solvers;
-//! elastic at 10 substeps unless a test says otherwise.
+//! Simultaneous impacts (`docs/08-collision.md`): restitution when a ball
+//! meets several contacts at once, then the box and the cradle. Both
+//! solvers; elastic at 10 substeps unless a test says otherwise.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -41,80 +39,72 @@ fn cradle_tol(solver: Solver) -> f64 {
 /// substep it lands), which averages out but not exactly.
 const BOX_TOL: f64 = 0.01;
 
-/// Kinetic energy kept after one ball (2 m/s) hits two side by side,
-/// `gap` m apart, 2 s.
 fn one_hits_two(solver: Solver, gap: f64) -> f64 {
-    let r = 0.1;
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
-    w.set_solver(solver);
-    w.set_restitution(Restitution::new(1.0).unwrap());
-    let radius = Radius::new(r).unwrap();
-    let y = r + gap / 2.0;
-    w.add_circle(Vec2::new(-1.0, 0.0), Vec2::new(2.0, 0.0), kg(1.0), radius);
-    w.add_circle(Vec2::new(0.5, y), Vec2::ZERO, kg(1.0), radius);
-    w.add_circle(Vec2::new(0.5, -y), Vec2::ZERO, kg(1.0), radius);
-    let e0 = kinetic_energy(w.particles());
+    let ball_radius = 0.1;
+    let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
+    world.set_solver(solver);
+    world.set_restitution(Restitution::new(1.0).unwrap());
+    let radius = Radius::new(ball_radius).unwrap();
+    let target_y = ball_radius + gap / 2.0;
+    world.add_circle(Vec2::new(-1.0, 0.0), Vec2::new(2.0, 0.0), kg(1.0), radius);
+    world.add_circle(Vec2::new(0.5, target_y), Vec2::ZERO, kg(1.0), radius);
+    world.add_circle(Vec2::new(0.5, -target_y), Vec2::ZERO, kg(1.0), radius);
+    let start_energy = kinetic_energy(world.particles());
     for _ in 0..120 {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
-    kinetic_energy(w.particles()) / e0
+    kinetic_energy(world.particles()) / start_energy
 }
 
-/// The break shot with the rack `gap` m apart, 2 s: (KE kept, |Δp|).
 fn break_kept(solver: Solver, gap: f64) -> (f64, f64) {
-    let mut w = break_shot::<f64>(solver, nonzero(SUBSTEPS), gap).unwrap();
-    let (e0, p0) = (kinetic_energy(w.particles()), momentum(w.particles()));
+    let mut world = break_shot::<f64>(solver, nonzero(SUBSTEPS), gap).unwrap();
+    let (start_energy, start_momentum) = (
+        kinetic_energy(world.particles()),
+        momentum(world.particles()),
+    );
     for _ in 0..120 {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
     (
-        kinetic_energy(w.particles()) / e0,
-        (momentum(w.particles()) - p0).length(),
+        kinetic_energy(world.particles()) / start_energy,
+        (momentum(world.particles()) - start_momentum).length(),
     )
 }
 
-/// The cradle (5 balls, the first pulled): each ball's furthest swing to
-/// the right of its rest position over the first right-hand swing, as a
-/// fraction of the pull's horizontal distance. Ideal [0, 0, 0, 0, 1].
 fn cradle_swing(solver: Solver, substeps: u32, iterations: u32) -> Vec<f64> {
-    let mut w = cradle::<f64>(solver, nonzero(substeps), 5, 1).unwrap();
-    w.set_iterations(nonzero(iterations));
-    // Balls are particles 1, 3, 5, … (each after its pin); rest x is the
-    // pin's x.
-    let n = w.particles().len();
-    let rest: Vec<f64> = (0..n)
+    let mut world = cradle::<f64>(solver, nonzero(substeps), 5, 1).unwrap();
+    world.set_iterations(nonzero(iterations));
+    let particle_count = world.particles().len();
+    let rest_x: Vec<f64> = (0..particle_count)
         .step_by(2)
-        .map(|i| w.particles().pos()[i].x)
+        .map(|pin_index| world.particles().pos()[pin_index].x)
         .collect();
-    let mut furthest = vec![0.0_f64; rest.len()];
+    let mut furthest = vec![0.0_f64; rest_x.len()];
     // The impact comes at a quarter period (~0.35 s), the far apex at
     // half (~0.71 s): 0.9 s covers it, before anything swings back.
     for _ in 0..54 {
-        w.step(time_step(DT));
-        for (k, f) in furthest.iter_mut().enumerate() {
-            *f = f.max(w.particles().pos()[2 * k + 1].x - rest[k]);
+        world.step(time_step(DT));
+        for (ball, ball_furthest) in furthest.iter_mut().enumerate() {
+            *ball_furthest =
+                ball_furthest.max(world.particles().pos()[2 * ball + 1].x - rest_x[ball]);
         }
     }
     let pull = 0.6 * CRADLE_LENGTH;
-    furthest.iter().map(|f| f / pull).collect()
+    furthest.iter().map(|swing| swing / pull).collect()
 }
 
-/// The ball box (20 balls), 20 s: total energy kept.
 fn box_kept(solver: Solver) -> f64 {
-    let mut w = ball_box::<f64>(solver, nonzero(SUBSTEPS), 20, 1).unwrap();
-    let g = pendulum_gravity();
-    let energy = |w: &World<f64>| {
-        kinetic_energy(w.particles()) + uniform_gravity_potential(w.particles(), &g)
+    let mut world = ball_box::<f64>(solver, nonzero(SUBSTEPS), 20, 1).unwrap();
+    let gravity = pendulum_gravity();
+    let energy = |world: &World<f64>| {
+        kinetic_energy(world.particles()) + uniform_gravity_potential(world.particles(), &gravity)
     };
-    let e0 = energy(&w);
+    let start_energy = energy(&world);
     for _ in 0..1200 {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
-    energy(&w) / e0
+    energy(&world) / start_energy
 }
-
-/// The impact stage (Generalized Reflections), in both solvers, against
-/// each failure Newton restitution had.
 
 #[test]
 fn one_ball_hitting_two_keeps_its_energy() {
@@ -134,16 +124,19 @@ fn one_ball_hitting_two_keeps_its_energy() {
 fn the_break_keeps_its_energy_and_momentum_touching_or_not() {
     for solver in Solver::ALL {
         for gap in [0.0, 0.002, 0.01] {
-            let (kept, dp) = break_kept(solver, gap);
+            let (kept, momentum_change) = break_kept(solver, gap);
             println!(
-                "{solver:?} gap {gap}: kept 1 {:+e}, |Δp| {dp:e}",
+                "{solver:?} gap {gap}: kept 1 {:+e}, |Δp| {momentum_change:e}",
                 kept - 1.0
             );
             assert!(
                 (kept - 1.0).abs() < ENERGY_TOL,
                 "{solver:?} gap {gap}: kept {kept}"
             );
-            assert!(dp < momentum_tol(solver), "{solver:?} gap {gap}: |Δp| {dp}");
+            assert!(
+                momentum_change < momentum_tol(solver),
+                "{solver:?} gap {gap}: |Δp| {momentum_change}"
+            );
         }
     }
 }
@@ -154,10 +147,10 @@ fn the_cradle_passes_its_impact_down_the_row() {
         let swing = cradle_swing(solver, SUBSTEPS, 1);
         println!("{solver:?} swing / pull: {swing:?}");
         let ideal = [0.0, 0.0, 0.0, 0.0, 1.0];
-        for (k, (got, want)) in swing.iter().zip(ideal).enumerate() {
+        for (ball, (measured, wanted)) in swing.iter().zip(ideal).enumerate() {
             assert!(
-                (got - want).abs() < cradle_tol(solver),
-                "{solver:?} ball {k}: {got} (ideal {want})"
+                (measured - wanted).abs() < cradle_tol(solver),
+                "{solver:?} ball {ball}: {measured} (ideal {wanted})"
             );
         }
     }
@@ -172,22 +165,20 @@ fn the_ball_box_keeps_its_energy() {
     }
 }
 
-/// The ball box at restitution `e`, 20 s: total energy every 2 s, as a
-/// fraction of the start.
-fn box_energy_every_2s(solver: Solver, e: f64) -> Vec<f64> {
-    let mut w = ball_box::<f64>(solver, nonzero(SUBSTEPS), 20, 1).unwrap();
-    w.set_restitution(Restitution::new(e).unwrap());
-    let g = pendulum_gravity();
-    let energy = |w: &World<f64>| {
-        kinetic_energy(w.particles()) + uniform_gravity_potential(w.particles(), &g)
+fn box_energy_every_2s(solver: Solver, restitution: f64) -> Vec<f64> {
+    let mut world = ball_box::<f64>(solver, nonzero(SUBSTEPS), 20, 1).unwrap();
+    world.set_restitution(Restitution::new(restitution).unwrap());
+    let gravity = pendulum_gravity();
+    let energy = |world: &World<f64>| {
+        kinetic_energy(world.particles()) + uniform_gravity_potential(world.particles(), &gravity)
     };
-    let e0 = energy(&w);
+    let start_energy = energy(&world);
     let mut samples = Vec::new();
     for _ in 0..10 {
         for _ in 0..120 {
-            w.step(time_step(DT));
+            world.step(time_step(DT));
         }
-        samples.push(energy(&w) / e0);
+        samples.push(energy(&world) / start_energy);
     }
     samples
 }
@@ -200,20 +191,26 @@ const BOX_RISE_TOL: f64 = 2e-10;
 /// settle a little higher), against 1 when elastic.
 const BOX_RUN_DOWN: f64 = 0.3;
 
-/// The box at restitution `e` runs down: energy never rising between 2 s
-/// samples, and at rest by 20 s. One test per (solver, e), so a parallel
-/// runner (nextest) spreads them: as one test they took 30 s, the longest
-/// in the workspace.
-fn runs_down(solver: Solver, e: f64) {
-    let s = box_energy_every_2s(solver, e);
-    println!("{solver:?} e {e}: {s:.4?}");
-    for (k, pair) in s.windows(2).enumerate() {
-        if let [a, b] = pair {
-            assert!(b - a < BOX_RISE_TOL, "{solver:?} e {e}: rose at {k}: {s:?}");
+/// The box at restitution `restitution` runs down: energy never rising
+/// between 2 s samples, and at rest by 20 s. One test per (solver,
+/// restitution), so a parallel runner (nextest) spreads them: as one test
+/// they took 30 s, the longest in the workspace.
+fn runs_down(solver: Solver, restitution: f64) {
+    let samples = box_energy_every_2s(solver, restitution);
+    println!("{solver:?} e {restitution}: {samples:.4?}");
+    for (index, pair) in samples.windows(2).enumerate() {
+        if let [earlier, later] = pair {
+            assert!(
+                later - earlier < BOX_RISE_TOL,
+                "{solver:?} e {restitution}: rose at {index}: {samples:?}"
+            );
         }
     }
-    let last = s.last().copied().unwrap_or(1.0);
-    assert!(last < BOX_RUN_DOWN, "{solver:?} e {e}: kept {last}");
+    let last = samples.last().copied().unwrap_or(1.0);
+    assert!(
+        last < BOX_RUN_DOWN,
+        "{solver:?} e {restitution}: kept {last}"
+    );
 }
 
 #[test]
@@ -259,25 +256,27 @@ fn iterations_tol(solver: Solver) -> f64 {
 #[test]
 fn the_cradle_ignores_iterations() {
     for solver in Solver::ALL {
-        let (one, many) = (
+        let (one_iteration, many_iterations) = (
             cradle_swing(solver, SUBSTEPS, 1),
             cradle_swing(solver, SUBSTEPS, 16),
         );
-        let d = one
+        let largest_difference = one_iteration
             .iter()
-            .zip(&many)
-            .map(|(a, b)| (a - b).abs())
+            .zip(&many_iterations)
+            .map(|(one, many)| (one - many).abs())
             .fold(0.0, f64::max);
-        assert!(d < iterations_tol(solver), "{solver:?}: {d}");
+        assert!(
+            largest_difference < iterations_tol(solver),
+            "{solver:?}: {largest_difference}"
+        );
     }
 }
 
-/// The cradle's worst ball against `[0, 0, 0, 0, 1]`.
 fn cradle_error(solver: Solver, substeps: u32) -> f64 {
     cradle_swing(solver, substeps, 1)
         .iter()
         .zip([0.0, 0.0, 0.0, 0.0, 1.0])
-        .map(|(got, want)| (got - want).abs())
+        .map(|(measured, wanted)| (measured - wanted).abs())
         .fold(0.0, f64::max)
 }
 
@@ -294,9 +293,9 @@ fn the_cradle_by_substeps() {
         let xpbd = cradle_error(Solver::Xpbd, substeps) * f64::from(substeps);
         let impulse = cradle_error(Solver::Impulse, substeps);
         println!("{substeps} substeps: XPBD error × n {xpbd:.4}, impulse error {impulse:.4}");
-        let (lo, hi) = XPBD_CRADLE_ORDER;
+        let (lowest, highest) = XPBD_CRADLE_ORDER;
         assert!(
-            (lo..hi).contains(&xpbd),
+            (lowest..highest).contains(&xpbd),
             "XPBD, {substeps} substeps: {xpbd}"
         );
         assert!(

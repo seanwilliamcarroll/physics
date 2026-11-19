@@ -1,6 +1,5 @@
 //! Conservation and correctness invariants (`docs/04-testing.md`, phase 1).
-// Marks the whole file as test code, so clippy's `allow-*-in-tests` settings
-// cover the generic test bodies too (see docs/lint-policy.md).
+// Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
 use engine::diagnostics::{center_of_mass, momentum};
@@ -11,19 +10,18 @@ use test_support::{
     nonzero, s, steps_for, time_step, v,
 };
 
-const G: f64 = -9.81;
+const GRAVITY_Y: f64 = -9.81;
 
-/// One dynamic particle under uniform gravity, `substeps` per step.
 fn falling_world<S: Tol>(
     integrator: Integrator,
     substeps: u32,
-    x0: Vec2<S>,
-    v0: Vec2<S>,
+    start_position: Vec2<S>,
+    start_velocity: Vec2<S>,
 ) -> World<S> {
-    let mut w = World::new(integrator, nonzero(substeps));
-    w.add_force(UniformGravity::new(v(0.0, G)));
-    w.add_particle(x0, v0, Mass::ONE);
-    w
+    let mut world = World::new(integrator, nonzero(substeps));
+    world.add_force(UniformGravity::new(v(0.0, GRAVITY_Y)));
+    world.add_particle(start_position, start_velocity, Mass::ONE);
+    world
 }
 
 /// Under constant `g`, every integrator here has an exact closed form.
@@ -48,46 +46,51 @@ fn discrete_offset(integrator: Integrator) -> f64 {
 }
 
 fn free_fall_matches_each_integrators_closed_form<S: Tol>() {
-    let (x0, v0) = ((0.0, 10.0), (2.0, 5.0));
-    let (h, n) = (1.0 / 64.0, 64); // binary-exact h, t = 1 s
+    let (start_position, start_velocity) = ((0.0, 10.0), (2.0, 5.0));
+    let (step_size, step_count) = (1.0 / 64.0, 64); // binary-exact step, t = 1 s
     for integrator in Integrator::ALL {
-        let mut w = falling_world::<S>(integrator, 1, v(x0.0, x0.1), v(v0.0, v0.1));
-        for _ in 0..n {
-            w.step(time_step(h));
+        let mut world = falling_world::<S>(
+            integrator,
+            1,
+            v(start_position.0, start_position.1),
+            v(start_velocity.0, start_velocity.1),
+        );
+        for _ in 0..step_count {
+            world.step(time_step(step_size));
         }
-        let t = h * f64::from(n);
-        let c = discrete_offset(integrator);
-        let x = w.particles().pos()[0];
-        let vel = w.particles().vel()[0];
-        let expect_y = x0.1 + v0.1 * t + 0.5 * G * t * (t + c * h);
-        let expect_x = x0.0 + v0.0 * t;
+        let time = step_size * f64::from(step_count);
+        let offset = discrete_offset(integrator);
+        let position = world.particles().pos()[0];
+        let velocity = world.particles().vel()[0];
+        let expected_y = start_position.1
+            + start_velocity.1 * time
+            + 0.5 * GRAVITY_Y * time * (time + offset * step_size);
+        let expected_x = start_position.0 + start_velocity.0 * time;
         assert!(
-            (x.y.to_f64() - expect_y).abs() < S::POS_ABS,
-            "{integrator:?}: y = {x:?}, want {expect_y}"
+            (position.y.to_f64() - expected_y).abs() < S::POS_ABS,
+            "{integrator:?}: y = {position:?}, want {expected_y}"
         );
         assert!(
-            (x.x.to_f64() - expect_x).abs() < S::POS_ABS,
-            "{integrator:?}: x = {x:?}, want {expect_x}"
+            (position.x.to_f64() - expected_x).abs() < S::POS_ABS,
+            "{integrator:?}: x = {position:?}, want {expected_x}"
         );
         assert!(
-            (vel.y.to_f64() - (v0.1 + G * t)).abs() < S::POS_ABS,
-            "{integrator:?}: v = {vel:?}"
+            (velocity.y.to_f64() - (start_velocity.1 + GRAVITY_Y * time)).abs() < S::POS_ABS,
+            "{integrator:?}: v = {velocity:?}"
         );
     }
 }
 for_each_scalar!(free_fall_matches_each_integrators_closed_form);
 
-/// The Euler variants' known error: halving h halves the error against the
-/// analytic parabola (first order), with opposite signs.
 fn euler_free_fall_error_is_first_order_in_dt<S: Tol>() {
     for integrator in [Integrator::SymplecticEuler, Integrator::ExplicitEuler] {
-        let error_at = |h: f64, n: u32| {
-            let mut w = falling_world::<S>(integrator, 1, v(0.0, 0.0), v(0.0, 0.0));
-            for _ in 0..n {
-                w.step(time_step(h));
+        let error_at = |step_size: f64, step_count: u32| {
+            let mut world = falling_world::<S>(integrator, 1, v(0.0, 0.0), v(0.0, 0.0));
+            for _ in 0..step_count {
+                world.step(time_step(step_size));
             }
-            let t = h * f64::from(n);
-            w.particles().pos()[0].y.to_f64() - 0.5 * G * t * t
+            let time = step_size * f64::from(step_count);
+            world.particles().pos()[0].y.to_f64() - 0.5 * GRAVITY_Y * time * time
         };
         let coarse = error_at(1.0 / 32.0, 32);
         let fine = error_at(1.0 / 64.0, 64);
@@ -102,15 +105,19 @@ for_each_scalar!(euler_free_fall_error_is_first_order_in_dt);
 
 fn static_particle_is_bit_identical<S: Tol>() {
     for integrator in Integrator::ALL {
-        let mut w = falling_world::<S>(integrator, 4, v(0.0, 0.0), v(1.0, 1.0));
+        let mut world = falling_world::<S>(integrator, 4, v(0.0, 0.0), v(1.0, 1.0));
         let pin = v::<S>(1.5, -2.25);
-        w.add_static(pin);
+        world.add_static(pin);
         for _ in 0..1000 {
-            w.step(time_step(1.0 / 60.0));
+            world.step(time_step(1.0 / 60.0));
         }
-        assert_eq!(bits(w.particles().pos()[1]), bits(pin), "{integrator:?}");
         assert_eq!(
-            bits(w.particles().vel()[1]),
+            bits(world.particles().pos()[1]),
+            bits(pin),
+            "{integrator:?}"
+        );
+        assert_eq!(
+            bits(world.particles().vel()[1]),
             bits(Vec2::<S>::ZERO),
             "{integrator:?}"
         );
@@ -121,19 +128,22 @@ for_each_scalar!(static_particle_is_bit_identical);
 /// A static particle never moves, even with a velocity (`vel_mut` can give
 /// it one): `kick` and `drift` skip `inv_mass = 0` in every stepper, the
 /// three integrators and both solvers (a rod from the pin puts a world in
-/// a solver's hands). Before the audit after A3 a static drifted at
-/// whatever velocity it was given.
+/// a solver's hands).
 fn a_static_with_a_velocity_stays_put<S: Tol>() {
     let pin = v::<S>(1.5, -2.25);
-    let run = |mut w: World<S>, label: &str| {
-        let id = w.add_static(pin);
-        if let Some(vel) = w.vel_mut().get_mut(id.index()) {
-            *vel = v(3.0, 4.0);
+    let run = |mut world: World<S>, label: &str| {
+        let id = world.add_static(pin);
+        if let Some(velocity) = world.vel_mut().get_mut(id.index()) {
+            *velocity = v(3.0, 4.0);
         }
         for _ in 0..100 {
-            w.step(time_step(1.0 / 60.0));
+            world.step(time_step(1.0 / 60.0));
         }
-        assert_eq!(bits(w.particles().pos()[id.index()]), bits(pin), "{label}");
+        assert_eq!(
+            bits(world.particles().pos()[id.index()]),
+            bits(pin),
+            "{label}"
+        );
     };
     for integrator in Integrator::ALL {
         run(
@@ -142,21 +152,21 @@ fn a_static_with_a_velocity_stays_put<S: Tol>() {
         );
     }
     for solver in [Solver::Xpbd, Solver::Impulse] {
-        let mut w = World::new(Integrator::SymplecticEuler, nonzero(4));
-        w.add_force(UniformGravity::new(v(0.0, G)));
-        w.set_solver(solver);
-        let bob = w.add_particle(v(1.5, -3.25), Vec2::ZERO, Mass::ONE);
-        let anchor = w.add_static(v(1.5, -2.25));
-        let rod = DistanceConstraint::between(w.particles(), anchor, bob).unwrap();
-        w.add_constraint(rod).unwrap();
-        run(w, &format!("{solver:?}"));
+        let mut world = World::new(Integrator::SymplecticEuler, nonzero(4));
+        world.add_force(UniformGravity::new(v(0.0, GRAVITY_Y)));
+        world.set_solver(solver);
+        let bob = world.add_particle(v(1.5, -3.25), Vec2::ZERO, Mass::ONE);
+        let anchor = world.add_static(v(1.5, -2.25));
+        let rod = DistanceConstraint::between(world.particles(), anchor, bob).unwrap();
+        world.add_constraint(rod).unwrap();
+        run(world, &format!("{solver:?}"));
     }
 }
 for_each_scalar!(a_static_with_a_velocity_stays_put);
 
-/// M0's "zero dt" test, now a type's: a zero step was a no-op for the
-/// integrators, but `0 / 0` for XPBD's velocity (`Δx / h`), so no step that
-/// isn't positive and finite can be made at all.
+/// A zero step would be a no-op for the integrators but `0 / 0` for XPBD's
+/// velocity (`Δx / h`), so no step that isn't positive and finite can be
+/// made at all.
 fn zero_and_bad_steps_cant_be_made<S: Tol>() {
     for bad in [0.0, -1.0 / 60.0, f64::NAN, f64::INFINITY] {
         assert!(TimeStep::<S>::new(s(bad)).is_none(), "{bad}");
@@ -171,81 +181,93 @@ for_each_scalar!(zero_and_bad_steps_cant_be_made);
 /// computed; h is computed as `World` does (`dt / k` in S). A wrong h
 /// (off by a substep) moves the particle far past the tolerance.
 fn substeps_equal_repeated_smaller_steps<S: Tol>() {
-    let k = 3;
-    let dt = s::<S>(1.0 / 60.0);
-    let h = dt / s(f64::from(k));
+    let substeps = 3;
+    let step = s::<S>(1.0 / 60.0);
+    let substep = step / s(f64::from(substeps));
     for integrator in Integrator::ALL {
-        let mut a = falling_world::<S>(integrator, k, v(0.0, 0.0), v(2.0, 5.0));
-        let mut b = falling_world::<S>(integrator, 1, v(0.0, 0.0), v(2.0, 5.0));
+        let mut with_substeps = falling_world::<S>(integrator, substeps, v(0.0, 0.0), v(2.0, 5.0));
+        let mut with_small_steps = falling_world::<S>(integrator, 1, v(0.0, 0.0), v(2.0, 5.0));
         for _ in 0..100 {
-            a.step(TimeStep::new(dt).unwrap());
-            for _ in 0..k {
-                b.step(TimeStep::new(h).unwrap());
+            with_substeps.step(TimeStep::new(step).unwrap());
+            for _ in 0..substeps {
+                with_small_steps.step(TimeStep::new(substep).unwrap());
             }
         }
         // 300 small steps' rounding, relative to how far and how fast.
-        let close = |x: Vec2<S>, y: Vec2<S>| {
-            (x - y).length().to_f64() <= 300.0 * S::EPSILON * y.length().to_f64().max(1.0)
+        let close = |value: Vec2<S>, reference: Vec2<S>| {
+            (value - reference).length().to_f64()
+                <= 300.0 * S::EPSILON * reference.length().to_f64().max(1.0)
         };
-        let (pa, pb) = (a.particles().pos()[0], b.particles().pos()[0]);
-        assert!(close(pa, pb), "{integrator:?}: {pa:?} vs {pb:?}");
-        let (va, vb) = (a.particles().vel()[0], b.particles().vel()[0]);
-        assert!(close(va, vb), "{integrator:?}: {va:?} vs {vb:?}");
+        let (position, small_position) = (
+            with_substeps.particles().pos()[0],
+            with_small_steps.particles().pos()[0],
+        );
+        assert!(
+            close(position, small_position),
+            "{integrator:?}: {position:?} vs {small_position:?}"
+        );
+        let (velocity, small_velocity) = (
+            with_substeps.particles().vel()[0],
+            with_small_steps.particles().vel()[0],
+        );
+        assert!(
+            close(velocity, small_velocity),
+            "{integrator:?}: {velocity:?} vs {small_velocity:?}"
+        );
     }
 }
 for_each_scalar!(substeps_equal_repeated_smaller_steps);
 
-const CLUSTER_N: usize = 16;
+const CLUSTER_BODIES: usize = 16;
 const CLUSTER_STEPS: u32 = 1000;
 const STEP: f64 = 1.0 / 60.0;
 
 /// `docs/04-testing.md`: pairwise forces are equal and opposite, so the
 /// total momentum of an isolated cluster can only change by rounding.
 fn pairwise_gravity_conserves_momentum<S: Tol>() {
-    let mut w = cluster::<S>(CLUSTER_N, 1).unwrap();
-    let p0 = momentum(w.particles());
+    let mut world = cluster::<S>(CLUSTER_BODIES, 1).unwrap();
+    let start_momentum = momentum(world.particles());
     for _ in 0..CLUSTER_STEPS {
-        w.step(time_step(STEP));
+        world.step(time_step(STEP));
     }
-    let drift = (momentum(w.particles()) - p0).length().to_f64();
-    let scale = momentum_scale(w.particles());
+    let drift = (momentum(world.particles()) - start_momentum)
+        .length()
+        .to_f64();
+    let scale = momentum_scale(world.particles());
     let bound = momentum_drift_bound::<S>(CLUSTER_STEPS, scale);
     assert!(drift <= bound, "drift {drift:e} vs bound {bound:e}");
 }
 for_each_scalar!(pairwise_gravity_conserves_momentum);
 
-/// With momentum conserved, the center of mass moves in a straight line at
-/// `P / M`, however violently the bodies interact.
 fn center_of_mass_moves_at_constant_velocity<S: Tol>() {
-    let mut w = cluster::<S>(CLUSTER_N, 1).unwrap();
-    let total_mass: f64 = w
+    let mut world = cluster::<S>(CLUSTER_BODIES, 1).unwrap();
+    let total_mass: f64 = world
         .particles()
         .inv_mass()
         .iter()
-        .map(|w| 1.0 / w.to_f64())
+        .map(|inverse_mass| 1.0 / inverse_mass.to_f64())
         .sum();
-    let p0 = momentum(w.particles());
-    let com_velocity = (p0.x.to_f64() / total_mass, p0.y.to_f64() / total_mass);
-    let c0 = center_of_mass(w.particles()).unwrap();
-    for _ in 0..CLUSTER_STEPS {
-        w.step(time_step(STEP));
-    }
-    let t = STEP * f64::from(CLUSTER_STEPS);
-    let c1 = center_of_mass(w.particles()).unwrap();
-    let expect = (
-        c0.x.to_f64() + com_velocity.0 * t,
-        c0.y.to_f64() + com_velocity.1 * t,
+    let start_momentum = momentum(world.particles());
+    let center_velocity = (
+        start_momentum.x.to_f64() / total_mass,
+        start_momentum.y.to_f64() / total_mass,
     );
-    let err = (c1.x.to_f64() - expect.0).hypot(c1.y.to_f64() - expect.1);
-    assert!(err <= S::COM_ABS, "COM off by {err:e} m");
+    let start_center = center_of_mass(world.particles()).unwrap();
+    for _ in 0..CLUSTER_STEPS {
+        world.step(time_step(STEP));
+    }
+    let time = STEP * f64::from(CLUSTER_STEPS);
+    let end_center = center_of_mass(world.particles()).unwrap();
+    let expected = (
+        start_center.x.to_f64() + center_velocity.0 * time,
+        start_center.y.to_f64() + center_velocity.1 * time,
+    );
+    let error = (end_center.x.to_f64() - expected.0).hypot(end_center.y.to_f64() - expected.1);
+    assert!(error <= S::COM_ABS, "COM off by {error:e} m");
 }
 for_each_scalar!(center_of_mass_moves_at_constant_velocity);
 
-// --- Orbits (docs/04-testing.md, phase 1 step 4) ---
-
-/// Step size the integrators are compared at: one 60 Hz frame.
 const ORBIT_DT: f64 = 1.0 / 60.0;
-/// "Over 100 orbits" (docs/04-testing.md).
 const ORBITS: f64 = 100.0;
 
 /// ωh for the circular orbit: radians of orbit per step. Both integrators'
@@ -274,7 +296,6 @@ const VV_RADIUS_BAND: f64 = 0.001;
 /// factor. Measured: 3,300x in f64, 125x in f32 (rounding-limited).
 const VERLET_ADVANTAGE: f64 = 50.0;
 
-/// First and last 10% envelopes of an error series.
 fn trend_envelopes(errors: &[f64]) -> (f64, f64) {
     let tenth = errors.len() / 10;
     (
@@ -284,47 +305,57 @@ fn trend_envelopes(errors: &[f64]) -> (f64, f64) {
 }
 
 fn orbit_run<S: Tol>(integrator: Integrator) -> (Vec<f64>, (f64, f64)) {
-    let mut w = orbit::<S>(integrator, 1.0).unwrap();
-    energy_errors(&mut w, ORBIT_DT, steps_for(ORBITS, ORBIT_DT))
+    let mut world = orbit::<S>(integrator, 1.0).unwrap();
+    energy_errors(&mut world, ORBIT_DT, steps_for(ORBITS, ORBIT_DT))
 }
 
 fn symplectic_euler_orbit_energy_is_bounded_and_does_not_trend<S: Tol>() {
-    let (errors, (lo, hi)) = orbit_run::<S>(Integrator::SymplecticEuler);
-    let wh = omega_h();
-    let bound = BOUND_FACTOR * wh * wh + S::ENERGY_FLOOR;
-    let max = envelope(&errors);
-    assert!(max <= bound, "max |ΔE/E| {max:e} > bound {bound:e}");
+    let (errors, (lowest_separation, highest_separation)) =
+        orbit_run::<S>(Integrator::SymplecticEuler);
+    let omega_step = omega_h();
+    let bound = BOUND_FACTOR * omega_step * omega_step + S::ENERGY_FLOOR;
+    let max_error = envelope(&errors);
+    assert!(
+        max_error <= bound,
+        "max |ΔE/E| {max_error:e} > bound {bound:e}"
+    );
     let (first, last) = trend_envelopes(&errors);
     assert!(
         last <= TREND_FACTOR * first + S::ENERGY_FLOOR,
         "energy error trends: first 10% {first:e}, last 10% {last:e}"
     );
-    let d = ORBIT_SEPARATION;
+    let separation = ORBIT_SEPARATION;
     assert!(
-        lo >= d * (1.0 - SE_RADIUS_BAND) && hi <= d * (1.0 + SE_RADIUS_BAND),
-        "separation left the band: [{lo}, {hi}]"
+        lowest_separation >= separation * (1.0 - SE_RADIUS_BAND)
+            && highest_separation <= separation * (1.0 + SE_RADIUS_BAND),
+        "separation left the band: [{lowest_separation}, {highest_separation}]"
     );
 }
 for_each_scalar!(symplectic_euler_orbit_energy_is_bounded_and_does_not_trend);
 
 fn velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_euler<S: Tol>() {
-    let (errors, (lo, hi)) = orbit_run::<S>(Integrator::VelocityVerlet);
-    let wh = omega_h();
-    let bound = BOUND_FACTOR * wh.powi(4) / 4.0 + S::ENERGY_FLOOR;
-    let max = envelope(&errors);
-    assert!(max <= bound, "max |ΔE/E| {max:e} > bound {bound:e}");
+    let (errors, (lowest_separation, highest_separation)) =
+        orbit_run::<S>(Integrator::VelocityVerlet);
+    let omega_step = omega_h();
+    let bound = BOUND_FACTOR * omega_step.powi(4) / 4.0 + S::ENERGY_FLOOR;
+    let max_error = envelope(&errors);
+    assert!(
+        max_error <= bound,
+        "max |ΔE/E| {max_error:e} > bound {bound:e}"
+    );
     let (first, last) = trend_envelopes(&errors);
     assert!(
         last <= TREND_FACTOR * first + S::ENERGY_FLOOR,
         "energy error trends: first 10% {first:e}, last 10% {last:e}"
     );
-    let d = ORBIT_SEPARATION;
+    let separation = ORBIT_SEPARATION;
     assert!(
-        lo >= d * (1.0 - VV_RADIUS_BAND) && hi <= d * (1.0 + VV_RADIUS_BAND),
-        "separation left the band: [{lo}, {hi}]"
+        lowest_separation >= separation * (1.0 - VV_RADIUS_BAND)
+            && highest_separation <= separation * (1.0 + VV_RADIUS_BAND),
+        "separation left the band: [{lowest_separation}, {highest_separation}]"
     );
-    let (se_errors, _) = orbit_run::<S>(Integrator::SymplecticEuler);
-    let advantage = envelope(&se_errors) / max;
+    let (symplectic_errors, _) = orbit_run::<S>(Integrator::SymplecticEuler);
+    let advantage = envelope(&symplectic_errors) / max_error;
     assert!(
         advantage >= VERLET_ADVANTAGE,
         "Verlet only {advantage:.1}x better than symplectic Euler"
@@ -338,38 +369,51 @@ for_each_scalar!(velocity_verlet_orbit_is_bounded_and_tighter_than_symplectic_eu
 const LONG_ORBITS: f64 = 2000.0;
 
 fn long_orbit_holds<S: Tol>(integrator: Integrator, bound: f64, band: f64) {
-    let mut w = orbit::<S>(integrator, 1.0).unwrap();
-    let (errors, (lo, hi)) = energy_errors(&mut w, ORBIT_DT, steps_for(LONG_ORBITS, ORBIT_DT));
-    let max = envelope(&errors);
+    let mut world = orbit::<S>(integrator, 1.0).unwrap();
+    let (errors, (lowest_separation, highest_separation)) =
+        energy_errors(&mut world, ORBIT_DT, steps_for(LONG_ORBITS, ORBIT_DT));
+    let max_error = envelope(&errors);
     let (first, last) = trend_envelopes(&errors);
     eprintln!(
-        "{integrator:?}: max {max:e} (bound {bound:e}), first {first:e}, last {last:e}, [{lo}, {hi}]"
+        "{integrator:?}: max {max_error:e} (bound {bound:e}), first {first:e}, last {last:e}, [{lowest_separation}, {highest_separation}]"
     );
-    assert!(max <= bound + S::ENERGY_FLOOR, "max |ΔE/E| {max:e}");
+    assert!(
+        max_error <= bound + S::ENERGY_FLOOR,
+        "max |ΔE/E| {max_error:e}"
+    );
     assert!(
         last <= TREND_FACTOR * first + S::ENERGY_FLOOR,
         "trends: {first:e} → {last:e}"
     );
-    let d = ORBIT_SEPARATION;
+    let separation = ORBIT_SEPARATION;
     assert!(
-        lo >= d * (1.0 - band) && hi <= d * (1.0 + band),
-        "[{lo}, {hi}]"
+        lowest_separation >= separation * (1.0 - band)
+            && highest_separation <= separation * (1.0 + band),
+        "[{lowest_separation}, {highest_separation}]"
     );
 }
 
 #[test]
 #[ignore = "slow: cargo xtask slow"]
 fn slow_symplectic_orbits_hold_for_two_thousand_orbits() {
-    let wh = omega_h();
+    let omega_step = omega_h();
     for scalar_f32 in [false, true] {
-        let se = BOUND_FACTOR * wh * wh;
-        let vv = BOUND_FACTOR * wh.powi(4) / 4.0;
+        let symplectic_bound = BOUND_FACTOR * omega_step * omega_step;
+        let verlet_bound = BOUND_FACTOR * omega_step.powi(4) / 4.0;
         if scalar_f32 {
-            long_orbit_holds::<f32>(Integrator::SymplecticEuler, se, SE_RADIUS_BAND);
-            long_orbit_holds::<f32>(Integrator::VelocityVerlet, vv, VV_RADIUS_BAND);
+            long_orbit_holds::<f32>(
+                Integrator::SymplecticEuler,
+                symplectic_bound,
+                SE_RADIUS_BAND,
+            );
+            long_orbit_holds::<f32>(Integrator::VelocityVerlet, verlet_bound, VV_RADIUS_BAND);
         } else {
-            long_orbit_holds::<f64>(Integrator::SymplecticEuler, se, SE_RADIUS_BAND);
-            long_orbit_holds::<f64>(Integrator::VelocityVerlet, vv, VV_RADIUS_BAND);
+            long_orbit_holds::<f64>(
+                Integrator::SymplecticEuler,
+                symplectic_bound,
+                SE_RADIUS_BAND,
+            );
+            long_orbit_holds::<f64>(Integrator::VelocityVerlet, verlet_bound, VV_RADIUS_BAND);
         }
     }
 }

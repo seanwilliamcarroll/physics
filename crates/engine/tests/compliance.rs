@@ -1,5 +1,5 @@
-//! Compliant constraints in both solvers (`docs/06-constraints.md`, "M4:
-//! compliance"): a bob on a compliant rod is a spring of stiffness
+//! Compliant constraints in both solvers (`docs/06-constraints.md`,
+//! "compliance"): a bob on a compliant rod is a spring of stiffness
 //! `k = 1/α`, so small oscillations have period `2π √(m α)`.
 #![cfg(test)]
 
@@ -7,60 +7,56 @@ use engine::{Compliance, DistanceConstraint, Integrator, Solver, Vec2, World};
 use test_support::{kg, nonzero, time_step};
 
 /// k = 1/α = 100 N/m with m = 1 kg: ω = 10 rad/s, T = 2π/10 ≈ 0.628 s.
-const ALPHA: f64 = 0.01;
+const COMPLIANCE: f64 = 0.01;
 const MASS: f64 = 1.0;
-/// Rest length and initial stretch, m: small next to the rest length.
-const REST: f64 = 1.0;
+const REST_LENGTH: f64 = 1.0;
 const STRETCH: f64 = 0.01;
 /// 60 Hz frames with 20 substeps: ωh ≈ 0.008, well resolved.
 const DT: f64 = 1.0 / 60.0;
 const SUBSTEPS: u32 = 20;
-/// Long enough for several periods.
 const STEPS: u32 = 300;
 
-/// Measured period from upward zero crossings of the stretch, averaged.
 fn measured_period(solver: Solver) -> f64 {
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
-    let pin = w.add_static(Vec2::ZERO);
-    let bob = w.add_particle(Vec2::new(REST + STRETCH, 0.0), Vec2::ZERO, kg(MASS));
+    let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
+    let pin = world.add_static(Vec2::ZERO);
+    let bob = world.add_particle(Vec2::new(REST_LENGTH + STRETCH, 0.0), Vec2::ZERO, kg(MASS));
     let rod = DistanceConstraint::with_length(
-        w.particles(),
+        world.particles(),
         pin,
         bob,
-        REST,
-        Compliance::new(ALPHA).unwrap(),
+        REST_LENGTH,
+        Compliance::new(COMPLIANCE).unwrap(),
     )
     .unwrap();
-    w.add_constraint(rod).unwrap();
-    w.set_solver(solver);
-    // First and last crossing times, and how many periods lie between.
-    let (mut first, mut last, mut periods) = (None, 0.0, -1.0_f64);
-    let mut prev = STRETCH;
-    for i in 0..STEPS {
-        w.step(time_step(DT));
-        let stretch = w.particles().pos()[1].x - REST;
-        if prev < 0.0 && stretch >= 0.0 {
-            let t = f64::from(i + 1) * DT;
-            first.get_or_insert(t);
-            last = t;
+    world.add_constraint(rod).unwrap();
+    world.set_solver(solver);
+    let (mut first_crossing, mut last_crossing, mut periods) = (None, 0.0, -1.0_f64);
+    let mut previous_stretch = STRETCH;
+    for step in 0..STEPS {
+        world.step(time_step(DT));
+        let stretch = world.particles().pos()[1].x - REST_LENGTH;
+        if previous_stretch < 0.0 && stretch >= 0.0 {
+            let time = f64::from(step + 1) * DT;
+            first_crossing.get_or_insert(time);
+            last_crossing = time;
             periods += 1.0;
         }
-        prev = stretch;
+        previous_stretch = stretch;
     }
-    (last - first.unwrap()) / periods
+    (last_crossing - first_crossing.unwrap()) / periods
 }
 
-/// Measured (M4.2): 0.62857 s in both solvers against 0.62832 s, 0.04%
-/// (mostly the 1/60 s sampling of the crossings). ~10x that.
+/// Measured: 0.62857 s in both solvers against 0.62832 s, 0.04% (mostly the
+/// 1/60 s sampling of the crossings). ~10x that.
 const PERIOD_REL_TOL: f64 = 0.005;
 
 fn check(solver: Solver) {
-    let expected = 2.0 * std::f64::consts::PI * (MASS * ALPHA).sqrt();
-    let got = measured_period(solver);
-    println!("{solver:?}: period {got:.5} s, expected {expected:.5} s");
+    let expected = 2.0 * std::f64::consts::PI * (MASS * COMPLIANCE).sqrt();
+    let measured = measured_period(solver);
+    println!("{solver:?}: period {measured:.5} s, expected {expected:.5} s");
     assert!(
-        (got - expected).abs() <= PERIOD_REL_TOL * expected,
-        "{solver:?}: {got} vs {expected}"
+        (measured - expected).abs() <= PERIOD_REL_TOL * expected,
+        "{solver:?}: {measured} vs {expected}"
     );
 }
 
@@ -81,33 +77,33 @@ fn damped_energy_ratio(solver: Solver) -> f64 {
     energy_ratio(solver, 0.4)
 }
 
-fn energy_ratio(solver: Solver, c: f64) -> f64 {
+fn energy_ratio(solver: Solver, damping_coefficient: f64) -> f64 {
     use engine::Damping;
     use engine::diagnostics::kinetic_energy;
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
-    let pin = w.add_static(Vec2::ZERO);
-    let bob = w.add_particle(Vec2::new(REST + 0.05, 0.0), Vec2::ZERO, kg(MASS));
+    let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
+    let pin = world.add_static(Vec2::ZERO);
+    let bob = world.add_particle(Vec2::new(REST_LENGTH + 0.05, 0.0), Vec2::ZERO, kg(MASS));
     let rod = DistanceConstraint::with_length(
-        w.particles(),
+        world.particles(),
         pin,
         bob,
-        REST,
-        Compliance::new(ALPHA).unwrap(),
+        REST_LENGTH,
+        Compliance::new(COMPLIANCE).unwrap(),
     )
     .unwrap()
-    .with_damping(Damping::new(c).unwrap());
-    w.add_constraint(rod).unwrap();
-    w.set_solver(solver);
+    .with_damping(Damping::new(damping_coefficient).unwrap());
+    world.add_constraint(rod).unwrap();
+    world.set_solver(solver);
     // Spring energy ½ k x² = ½ x² / α plus kinetic.
-    let energy = |w: &World<f64>| {
-        let x = w.particles().pos()[1].x - REST;
-        kinetic_energy(w.particles()) + 0.5 * x * x / ALPHA
+    let energy = |world: &World<f64>| {
+        let stretch = world.particles().pos()[1].x - REST_LENGTH;
+        kinetic_energy(world.particles()) + 0.5 * stretch * stretch / COMPLIANCE
     };
-    let e0 = energy(&w);
+    let start_energy = energy(&world);
     for _ in 0..300 {
-        w.step(time_step(DT));
+        world.step(time_step(DT));
     }
-    energy(&w) / e0
+    energy(&world) / start_energy
 }
 
 /// Both constraint solvers are implicit for a compliant spring, and an
@@ -118,14 +114,14 @@ fn energy_ratio(solver: Solver, c: f64) -> f64 {
 /// (`docs/07-soft-bodies.md`).
 #[test]
 fn compliant_springs_damp_at_backward_eulers_rate() {
-    let h = DT / f64::from(SUBSTEPS);
-    let omega_h_sq = h * h / (MASS * ALPHA);
-    let predicted = (1.0 + omega_h_sq).powf(-f64::from(300 * SUBSTEPS));
+    let substep = DT / f64::from(SUBSTEPS);
+    let omega_h_squared = substep * substep / (MASS * COMPLIANCE);
+    let predicted = (1.0 + omega_h_squared).powf(-f64::from(300 * SUBSTEPS));
     for solver in Solver::ALL {
-        let got = energy_ratio(solver, 0.0);
+        let measured = energy_ratio(solver, 0.0);
         assert!(
-            (got - predicted).abs() < 1e-3 * predicted,
-            "{solver:?}: {got} vs {predicted}"
+            (measured - predicted).abs() < 1e-3 * predicted,
+            "{solver:?}: {measured} vs {predicted}"
         );
     }
 }
@@ -136,12 +132,12 @@ fn compliant_springs_damp_at_backward_eulers_rate() {
 /// velocity form). Bound ~5x.
 #[test]
 fn constraint_damping_decays_at_the_analytic_rate() {
-    let want = (-2.0_f64).exp();
+    let expected = (-2.0_f64).exp();
     for solver in Solver::ALL {
         let ratio = damped_energy_ratio(solver) / energy_ratio(solver, 0.0);
         assert!(
-            (ratio - want).abs() < 0.05 * want,
-            "{solver:?}: {ratio} vs {want}"
+            (ratio - expected).abs() < 0.05 * expected,
+            "{solver:?}: {ratio} vs {expected}"
         );
     }
 }
