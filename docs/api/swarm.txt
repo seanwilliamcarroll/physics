@@ -10,7 +10,7 @@ pub struct swarm::Ant
 pub swarm::Ant::carrying: bool
 pub swarm::Ant::cos: f32
 pub swarm::Ant::sin: f32
-pub swarm::Ant::since: u32
+pub swarm::Ant::steps_since_leaving: u32
 pub swarm::Ant::x: f32
 pub swarm::Ant::y: f32
 pub struct swarm::AntParams
@@ -109,8 +109,8 @@ pub fn swarm::Flock::step(&mut self)
 pub const fn swarm::Flock::steps(&self) -> u64
 pub fn swarm::Flock::with_boids(swarm::Arena, swarm::Params, impl core::iter::traits::collect::IntoIterator<Item = swarm::Boid>) -> core::option::Option<Self>
 pub struct swarm::Gene
-pub swarm::Gene::hi: f64
-pub swarm::Gene::lo: f64
+pub swarm::Gene::max: f64
+pub swarm::Gene::min: f64
 pub struct swarm::Generation
 pub swarm::Generation::best: f64
 pub swarm::Generation::best_genome: alloc::vec::Vec<f64>
@@ -157,7 +157,7 @@ pub swarm::SlimeParams::deposit: f32
 pub swarm::SlimeParams::diffusion: f32
 pub swarm::SlimeParams::sensor_angle: f32
 pub swarm::SlimeParams::sensor_offset: f32
-pub swarm::SlimeParams::step: f32
+pub swarm::SlimeParams::step_distance: f32
 pub swarm::SlimeParams::turn: f32
 impl swarm::SlimeParams
 pub const swarm::SlimeParams::DEFAULT: Self
