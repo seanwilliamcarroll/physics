@@ -4,10 +4,10 @@ use super::{
 
 #[test]
 fn counts_round_trip_exactly_below_the_limit() {
-    for n in [0_usize, 1, 2, 4095, 48_000, 1 << 31, usize::MAX >> 12] {
-        let x = usize_to_f64(n);
+    for count in [0_usize, 1, 2, 4095, 48_000, 1 << 31, usize::MAX >> 12] {
+        let x = usize_to_f64(count);
         if x < EXACT_LIMIT {
-            assert_eq!(f64_to_usize(x), Some(n), "{n}");
+            assert_eq!(f64_to_usize(x), Some(count), "{count}");
         }
     }
     assert_eq!(u64_to_f64(1 << 52), 4_503_599_627_370_496.0);

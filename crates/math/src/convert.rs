@@ -27,25 +27,25 @@ const EXACT_LIMIT: f64 = {
 /// A count as an `f64`: exact below `2^53` (every in-memory length here is
 /// far below), the nearest `f64` above.
 #[must_use]
-pub const fn usize_to_f64(n: usize) -> f64 {
+pub const fn usize_to_f64(count: usize) -> f64 {
     #[expect(
         clippy::cast_precision_loss,
         reason = "exact below 2^53, the nearest f64 above; documented"
     )]
-    let x = n as f64;
-    x
+    let as_float = count as f64;
+    as_float
 }
 
 /// A `u64` (a running count, a seed) as the nearest `f64`: exact below
 /// `2^53`.
 #[must_use]
-pub const fn u64_to_f64(n: u64) -> f64 {
+pub const fn u64_to_f64(value: u64) -> f64 {
     #[expect(
         clippy::cast_precision_loss,
         reason = "exact below 2^53, the nearest f64 above; documented"
     )]
-    let x = n as f64;
-    x
+    let as_float = value as f64;
+    as_float
 }
 
 /// `x` as a count, truncated toward zero (as `as` does: round, floor or
@@ -61,8 +61,8 @@ pub fn f64_to_usize(x: f64) -> Option<usize> {
         clippy::cast_sign_loss,
         reason = "checked non-negative and below the exact limit: truncation toward zero is the rule"
     )]
-    let n = in_range.then_some(x as usize);
-    n
+    let count = in_range.then_some(x as usize);
+    count
 }
 
 /// `seconds` at `rate` per second, as a whole number of samples (truncated,
@@ -83,7 +83,7 @@ pub fn clamped_index(x: f64, max: usize) -> usize {
     if !positive {
         return 0;
     }
-    f64_to_usize(x).map_or(max, |n| n.min(max))
+    f64_to_usize(x).map_or(max, |index| index.min(max))
 }
 
 /// `x` as the nearest `f32` (infinite past `f32::MAX`): a deliberate
@@ -94,8 +94,8 @@ pub const fn f64_to_f32(x: f64) -> f32 {
         clippy::cast_possible_truncation,
         reason = "narrowing to the nearest f32 is the point; documented"
     )]
-    let y = x as f32;
-    y
+    let narrowed = x as f32;
+    narrowed
 }
 
 #[cfg(test)]

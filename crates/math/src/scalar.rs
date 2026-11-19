@@ -7,7 +7,7 @@
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
-/// A real-number stand-in: `f32`, `f64`, and later fixed point.
+/// A real-number stand-in: `f32`, `f64`, and (planned) fixed point.
 ///
 /// Swapped at compile time via generics, so arithmetic is monomorphized and
 /// costs nothing over using the concrete type directly.
@@ -38,7 +38,7 @@ pub trait Scalar:
     /// For setup (literals, configuration), not hot loops: precompute
     /// constants like `G` and `dt` once, outside the step.
     #[must_use]
-    fn from_f64(v: f64) -> Self;
+    fn from_f64(value: f64) -> Self;
 
     /// Lossless readout for tests, diagnostics, and rendering.
     /// Not a computation path.
@@ -68,8 +68,8 @@ impl Scalar for f64 {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
 
-    fn from_f64(v: f64) -> Self {
-        v
+    fn from_f64(value: f64) -> Self {
+        value
     }
 
     fn to_f64(self) -> f64 {
@@ -93,8 +93,8 @@ impl Scalar for f32 {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
 
-    fn from_f64(v: f64) -> Self {
-        crate::convert::f64_to_f32(v)
+    fn from_f64(value: f64) -> Self {
+        crate::convert::f64_to_f32(value)
     }
 
     fn to_f64(self) -> f64 {

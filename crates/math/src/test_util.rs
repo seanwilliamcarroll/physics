@@ -21,7 +21,7 @@ macro_rules! for_each_scalar {
     };
 }
 
-/// Shorthand for `S::from_f64(v)` in tests.
-pub(crate) fn s<S: Scalar>(v: f64) -> S {
-    S::from_f64(v)
+/// Shorthand for `S::from_f64(value)` in tests.
+pub(crate) fn s<S: Scalar>(value: f64) -> S {
+    S::from_f64(value)
 }

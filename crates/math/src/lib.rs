@@ -1,7 +1,6 @@
 //! Shared math types for every track (engine, acoustic, sand, swarm):
 //! the [`Scalar`] trait, [`Vec2<S>`](Vec2), [`UnitVec2<S>`](UnitVec2), and
-//! the [`SplitMix64`] PRNG,
-//! and checked numeric conversions ([`convert`]).
+//! the [`SplitMix64`] PRNG, and checked numeric conversions ([`convert`]).
 
 // Declared first: `#[macro_use]` makes its macros visible to the modules below.
 #[cfg(test)]
