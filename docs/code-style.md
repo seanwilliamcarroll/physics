@@ -125,7 +125,9 @@ unclear without one; then the fix is usually a better name.
 - **Edit with the Edit and Write tools.** No `python3` or `sed` scripts
   doing find-and-replace across files: a word-boundary replace of `w` or
   `g` hits strings and other identifiers. A reviewed `perl -pi` on one
-  exact multi-character identifier is acceptable.
+  exact multi-character identifier is acceptable. Never `sed -i` (macOS
+  `sed -i -e` leaves `*-e` backup files), and check `git status --short`
+  for stray files before every commit.
 
 ## Procedure, one crate
 
