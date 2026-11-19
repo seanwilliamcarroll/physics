@@ -30,7 +30,6 @@ fn painting_sets_a_material_inside_and_refuses_outside() {
     assert_eq!(grid.count(Material::Water), 1);
 }
 
-/// A layer of sand on a stone floor, run until nothing moves.
 fn settled(width: usize, height: usize, chunked: bool) -> Grid {
     let mut grid = Grid::new(width, height, 1).unwrap();
     grid.set_chunked(chunked);
@@ -61,11 +60,9 @@ fn a_settled_grid_visits_nothing_with_chunks_and_everything_without() {
     );
 }
 
-/// Lava that could flow but waits on its coin, and blocked steam waiting
-/// to condense, keep their own chunk awake though nothing moved: without
-/// that, the chunk sleeps and they never move. Alone in a still grid
-/// (random grids always have movement nearby, so the equivalence property
-/// test can't see this), chunked must still match every-cell.
+/// Waiting lava and blocked steam must keep their chunk awake, or it sleeps
+/// and they never move. Random grids always have movement nearby, so only a
+/// still grid shows it: chunked must match every-cell.
 #[test]
 fn waiting_cells_keep_their_chunk_awake() {
     let scene = |chunked: bool| {

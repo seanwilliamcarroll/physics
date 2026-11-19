@@ -7,20 +7,18 @@ use engine::scenarios::{orbit_gravity, orbit_period};
 use engine::{Scalar, World};
 use math::convert::f64_to_usize;
 
-/// Total energy of a `scenarios::orbit` world, under the scene's own force.
 #[must_use]
 pub fn orbit_energy<S: Scalar>(world: &World<S>) -> f64 {
     total_energy(world.particles(), &orbit_gravity().unwrap()).to_f64()
 }
 
-/// Distance between the two bodies of an orbit world, m.
+/// Distance between the two bodies, m.
 #[must_use]
 pub fn separation<S: Scalar>(world: &World<S>) -> f64 {
     let positions = world.particles().pos();
     (positions[1] - positions[0]).length().to_f64()
 }
 
-/// Steps of `dt` for `orbits` periods of the circular orbit (rounded).
 #[must_use]
 pub fn steps_for(orbits: f64, dt: f64) -> u32 {
     u32::try_from(f64_to_usize((orbits * orbit_period() / dt).round()).unwrap()).unwrap()
@@ -47,7 +45,6 @@ pub fn energy_errors<S: Scalar>(
     (errors, (min_separation, max_separation))
 }
 
-/// Largest |value| in a slice (the error envelope).
 #[must_use]
 pub fn envelope(errors: &[f64]) -> f64 {
     errors

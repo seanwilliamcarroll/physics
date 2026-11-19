@@ -1,23 +1,17 @@
 //! [`Material`] and the cell byte: 3 bits of material, 4 of shade.
 
-/// What a cell holds.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum Material {
     Empty = 0,
     Sand = 1,
     Water = 2,
-    /// Never moves.
     Stone = 3,
-    /// A slow liquid; touching water, it turns to stone and the water to
-    /// steam.
     Lava = 4,
-    /// Rises; condenses back to water when it can't.
     Steam = 5,
 }
 
 impl Material {
-    /// Every material, in code order.
     pub const ALL: [Self; 6] = [
         Self::Empty,
         Self::Sand,
@@ -27,7 +21,6 @@ impl Material {
         Self::Steam,
     ];
 
-    /// The material with code `code`, if any.
     #[must_use]
     pub const fn from_code(code: u8) -> Option<Self> {
         match code {
@@ -48,12 +41,10 @@ impl Material {
 }
 
 const MATERIAL_MASK: u8 = 0b0000_0111;
-/// The shade bits sit above the material's: `0..16`, for rendering only.
 const SHADE_SHIFT: u32 = 3;
 const SHADE_MASK: u8 = 0b1111;
 
-/// A cell's material. Cells are only ever written through [`cell`], so an
-/// unknown code can't occur; it would read as empty.
+/// Cells are only written through [`cell`], so an unknown code can't occur.
 pub(crate) const fn material(cell_byte: u8) -> Material {
     match Material::from_code(cell_byte & MATERIAL_MASK) {
         Some(known) => known,
@@ -61,7 +52,6 @@ pub(crate) const fn material(cell_byte: u8) -> Material {
     }
 }
 
-/// A cell's shade, `0..16`.
 pub(crate) const fn shade(cell_byte: u8) -> u8 {
     (cell_byte >> SHADE_SHIFT) & SHADE_MASK
 }
@@ -73,7 +63,6 @@ pub const fn unpack(cell_byte: u8) -> (Material, u8) {
     (material(cell_byte), shade(cell_byte))
 }
 
-/// The byte for `material` with `shade` (its low 4 bits).
 pub(crate) const fn cell(material: Material, shade: u8) -> u8 {
     material.code() | ((shade & SHADE_MASK) << SHADE_SHIFT)
 }

@@ -2,10 +2,8 @@
 
 use crate::Scalar;
 
-/// Runs a generic test body `fn name<S: Scalar>()` once per scalar type.
-///
-/// Expands to a module named after the test with one `#[test]` per scalar,
-/// so failures read as `name::f32` / `name::f64`.
+/// Runs a generic test body `fn name<S: Scalar>()` once per scalar type, as
+/// `name::f32` / `name::f64`.
 macro_rules! for_each_scalar {
     ($name:ident) => {
         mod $name {
@@ -21,7 +19,6 @@ macro_rules! for_each_scalar {
     };
 }
 
-/// Shorthand for `S::from_f64(value)` in tests.
 pub(crate) fn s<S: Scalar>(value: f64) -> S {
     S::from_f64(value)
 }

@@ -16,8 +16,7 @@ pub fn cluster_barnes_hut_force<S: Scalar>(theta: f64) -> BarnesHut<S> {
     )
 }
 
-/// `scenarios::cluster(body_count, seed)` (same bodies, integrator,
-/// substeps), but under Barnes–Hut at `theta` instead of pairwise gravity.
+/// `scenarios::cluster(body_count, seed)` under Barnes–Hut at `theta`.
 #[must_use]
 pub fn cluster_barnes_hut<S: Scalar>(body_count: usize, seed: u64, theta: f64) -> World<S> {
     let mut world = cluster::<S>(body_count, seed).unwrap();
@@ -26,7 +25,6 @@ pub fn cluster_barnes_hut<S: Scalar>(body_count: usize, seed: u64, theta: f64) -
     world
 }
 
-/// The accelerations `force` alone gives `particles`.
 pub fn accelerations<S: Scalar, F: Force<S> + ?Sized>(
     particles: &Particles<S>,
     force: &F,

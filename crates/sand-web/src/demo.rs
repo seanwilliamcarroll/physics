@@ -8,27 +8,22 @@ use web_common::FixedStep;
 
 use crate::abi;
 
-/// One running automaton on a page.
 pub struct SandDemo {
     grid: Grid,
     clock: FixedStep,
-    /// One `u32` per cell, RGBA in memory order (`ImageData`'s): written
-    /// by [`render`](Self::render).
+    /// One `u32` per cell, in `ImageData` byte order.
     pixels: Vec<u32>,
     /// Every cell byte's colour: rendering is a lookup per cell.
     palette: [u32; 256],
-    /// Moves made by the last step (0: settled).
     last_moves: usize,
 }
 
-/// Steps a demo starts at (the page's default rate).
 const START_RATE: NonZeroU32 = match NonZeroU32::new(abi::DEFAULT_RATE_HZ) {
     Some(rate) => rate,
     None => NonZeroU32::MIN,
 };
 
 impl SandDemo {
-    /// An empty `width × height` grid; `None` for a zero or too-large side.
     #[must_use]
     pub fn new(width: usize, height: usize, seed: u64) -> Option<Self> {
         let grid = Grid::new(width, height, seed)?;
@@ -50,34 +45,28 @@ impl SandDemo {
         &self.grid
     }
 
-    /// Adds `elapsed` seconds of real time and runs the fixed steps it pays
-    /// for; returns how many.
+    /// Runs the fixed steps `elapsed` seconds pays for; returns how many.
     pub fn advance(&mut self, elapsed: f64) -> u32 {
         self.clock
             .run(elapsed, || self.last_moves = self.grid.step())
     }
 
-    /// The clock, for the rate and the step budget's cap (the exports
-    /// parse and set both through it: `FixedStep::set_rate_hz`,
-    /// `set_cap_steps`).
     pub const fn clock(&mut self) -> &mut FixedStep {
         &mut self.clock
     }
 
-    /// Chunked updates on or off (see `sand::Grid::set_chunked`).
     pub fn set_chunked(&mut self, on: bool) {
         self.grid.set_chunked(on);
     }
 
-    /// Moves made by the last step.
+    /// Moves made by the last step (0: settled).
     #[must_use]
     pub const fn last_moves(&self) -> usize {
         self.last_moves
     }
 
-    /// Paints a disc of `radius` cells around `(x, y)` (cells may be
-    /// outside the grid: they're clipped) with `material`; returns how many
-    /// cells were painted.
+    /// Paints a disc of `radius` cells, clipped to the grid; returns the
+    /// cells painted.
     pub fn paint(&mut self, x: i64, y: i64, radius: i64, material: Material) -> usize {
         let mut painted = 0;
         for dy in -radius..=radius {
@@ -97,8 +86,6 @@ impl SandDemo {
         painted
     }
 
-    /// Fills the RGBA buffer from the grid and returns it.
-    ///
     /// A palette lookup per cell: in wasm at 1920 × 1080, 0.47 ms, against
     /// 8.6 ms decoding each cell through `Grid::get` and a shade lookup.
     pub fn render(&mut self) -> &[u32] {
@@ -113,7 +100,6 @@ impl SandDemo {
     }
 }
 
-/// A material's base colour, RGB.
 const fn base(material: Material) -> [u8; 3] {
     match material {
         Material::Empty => [0x16, 0x1a, 0x22],
@@ -125,8 +111,7 @@ const fn base(material: Material) -> [u8; 3] {
     }
 }
 
-/// How far a shade moves a channel, per step of shade from the middle
-/// (8): ±32 at the extremes, so grains read without changing material.
+/// Per step of shade from the middle (8): ±32 at the extremes.
 const SHADE_STEP: i16 = 4;
 
 /// `material`'s colour varied by `shade` (empty isn't varied), as an

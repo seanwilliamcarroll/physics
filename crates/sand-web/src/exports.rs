@@ -10,7 +10,6 @@ use web_common::boundary::capped;
 use crate::abi;
 use crate::demo::SandDemo;
 
-/// The material for a wire code, if any.
 fn material(code: u32) -> Option<Material> {
     u8::try_from(code).ok().and_then(Material::from_code)
 }
@@ -29,7 +28,7 @@ pub(crate) extern "C" fn sand_new(width: u32, height: u32, seed: u32) -> *mut Sa
         .map_or(ptr::null_mut(), |demo| Box::into_raw(Box::new(demo)))
 }
 
-/// Frees a demo. Null is a no-op.
+/// Null is a no-op.
 ///
 /// # Safety
 /// `demo` must be null or a handle from [`sand_new`] not yet freed.
@@ -131,8 +130,6 @@ pub(crate) unsafe extern "C" fn sand_render(demo: *mut SandDemo) -> *const u32 {
     unsafe { demo.as_mut() }.map_or(ptr::null(), |demo| demo.render().as_ptr())
 }
 
-/// The grid's width (0 for null).
-///
 /// # Safety
 /// `demo` must be null or a live handle from [`sand_new`].
 #[unsafe(no_mangle)]
@@ -141,8 +138,6 @@ pub(crate) unsafe extern "C" fn sand_width(demo: *const SandDemo) -> u32 {
     unsafe { demo.as_ref() }.map_or(0, |demo| u32::try_from(demo.grid().width()).unwrap_or(0))
 }
 
-/// The grid's height (0 for null).
-///
 /// # Safety
 /// `demo` must be null or a live handle from [`sand_new`].
 #[unsafe(no_mangle)]
@@ -176,7 +171,7 @@ pub(crate) unsafe extern "C" fn sand_last_moves(demo: *const SandDemo) -> u32 {
     })
 }
 
-/// Chunks the next step will update (0 for null); see [`sand_chunks`].
+/// Chunks the next step will update (0 for null).
 ///
 /// # Safety
 /// `demo` must be null or a live handle from [`sand_new`].

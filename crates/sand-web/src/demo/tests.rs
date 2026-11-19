@@ -4,8 +4,7 @@ use sand::Material;
 #[test]
 fn a_disc_of_paint_clipped_to_the_grid() {
     let mut demo = SandDemo::new(20, 10, 1).unwrap();
-    // A radius-2 disc is 13 cells; centred in a corner, a quarter-ish
-    // (6 cells: (0,0) (1,0) (2,0) (0,1) (1,1) (0,2)) lands in the grid.
+    // A radius-2 disc is 13 cells; 6 land in the grid from a corner.
     assert_eq!(demo.paint(10, 5, 2, Material::Sand), 13);
     assert_eq!(demo.paint(0, 0, 2, Material::Water), 6);
     assert_eq!(demo.paint(-50, -50, 3, Material::Water), 0);

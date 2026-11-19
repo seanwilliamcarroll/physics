@@ -22,8 +22,6 @@ enum Call {
     Render,
 }
 
-/// What a page could pass (`test_support::hostile_f64`), around this
-/// module's usual values.
 fn hostile_f64() -> impl Strategy<Value = f64> {
     test_support::hostile_f64(0.0..0.3)
 }

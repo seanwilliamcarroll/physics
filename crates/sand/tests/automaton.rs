@@ -5,7 +5,6 @@
 use math::SplitMix64;
 use sand::{Grid, Material};
 
-/// A `width × height` grid with a stone floor row at the bottom.
 fn floored(width: usize, height: usize, seed: u64) -> Grid {
     let mut grid = Grid::new(width, height, seed).unwrap();
     for x in 0..width {
@@ -14,7 +13,6 @@ fn floored(width: usize, height: usize, seed: u64) -> Grid {
     grid
 }
 
-/// A coordinate or count as `i64`, for signed differences.
 fn signed(count: usize) -> i64 {
     i64::try_from(count).unwrap()
 }

@@ -32,7 +32,6 @@ fn busy(width: usize, height: usize, fill: f64) -> Grid {
     grid
 }
 
-/// A sand layer at rest on a floor: nothing moves.
 fn settled(width: usize, height: usize) -> Grid {
     let mut grid = Grid::new(width, height, 1).unwrap();
     for y in height * 3 / 4..height {

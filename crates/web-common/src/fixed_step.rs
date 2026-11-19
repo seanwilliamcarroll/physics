@@ -1,41 +1,31 @@
 //! Fixed-timestep accumulator: turns variable frame times into a whole
 //! number of fixed physics steps.
 //!
-//! Lives in Rust, not JS, so the stepping policy is tested natively and JS
-//! can never pass a variable `dt` to the engine. Displays at 60/120/144 Hz
-//! all advance the simulation at the same rate.
+//! Lives in Rust so the policy is tested natively and JS can never pass a
+//! variable `dt` to the engine.
 
 use core::num::NonZeroU32;
 
-/// Most simulated time one frame may request, in seconds. Longer frames
-/// (a stalled or backgrounded tab) are clamped, so the simulation slows
-/// down instead of running hundreds of catch-up steps that make the next
-/// frame slow too (the "spiral of death").
+/// Most simulated time one frame may request, in seconds: longer frames (a
+/// backgrounded tab) slow the simulation instead of spiralling into catch-up
+/// steps.
 pub(crate) const MAX_FRAME_TIME: f64 = 0.25;
 
-/// Accumulates real time and pays it out in steps of `dt`.
 #[derive(Clone, Debug)]
 pub struct FixedStep {
-    /// Steps per simulated second.
     rate: NonZeroU32,
-    /// Seconds per step, `1 / rate`: positive and finite by construction
-    /// (a zero or negative `dt` would make `advance` loop forever).
+    /// `1 / rate`: positive and finite by construction (else `advance` could loop forever).
     dt: f64,
     /// Elapsed time not yet simulated. Invariant: `0 <= leftover < dt`
     /// between calls to [`advance`](Self::advance).
     leftover: f64,
-    /// At most this many steps per [`advance`](Self::advance), if set (a
-    /// step budget, `docs/workers.md`): steps owed beyond it are dropped,
-    /// so a page too slow for real time runs in slow motion instead of
-    /// owing ever more catch-up steps.
+    /// Step budget (`docs/workers.md`): steps owed beyond it are dropped, so a
+    /// slow page runs in slow motion instead of building a backlog.
     cap: Option<NonZeroU32>,
 }
 
 impl FixedStep {
-    /// A clock paying out `rate` steps per simulated second.
-    ///
-    /// Takes a rate, not a `dt`, so a bad step size can't be expressed:
-    /// `1 / rate` for a nonzero integer is always positive and finite
+    /// Takes a rate, not a `dt`, so a bad step size can't be expressed
     /// (`docs/type-invariants.md`).
     #[must_use]
     pub fn new(rate: NonZeroU32) -> Self {
@@ -47,22 +37,18 @@ impl FixedStep {
         }
     }
 
-    /// Steps per simulated second.
     #[must_use]
     pub const fn rate(&self) -> NonZeroU32 {
         self.rate
     }
 
-    /// Test-only: seconds per step, `1 / rate`.
     #[cfg(test)]
     #[must_use]
     pub(crate) const fn dt(&self) -> f64 {
         self.dt
     }
 
-    /// Switches to `rate` steps per second and drops any owed time: the
-    /// leftover was measured in the old step size, and carrying it over
-    /// could fire a step immediately at the new one.
+    /// Drops any owed time: it was measured in the old step size.
     pub fn set_rate(&mut self, rate: NonZeroU32) {
         *self = Self {
             cap: self.cap,
@@ -70,16 +56,14 @@ impl FixedStep {
         };
     }
 
-    /// [`set_rate`](Self::set_rate) from a bare number, as an export gets
-    /// it: `false` (and nothing changed) for 0 or above `max`. The parse
-    /// every `*_set_rate` export does, in one place.
+    /// [`set_rate`](Self::set_rate) from a bare number: `false` (nothing changed)
+    /// for 0 or above `max`.
     pub fn set_rate_hz(&mut self, hz: u32, max: u32) -> bool {
         let rate = NonZeroU32::new(hz).filter(|rate| rate.get() <= max);
         rate.map(|rate| self.set_rate(rate)).is_some()
     }
 
-    /// [`set_cap`](Self::set_cap) from a bare number, as an export gets
-    /// it: 0 is no cap; `false` (and nothing changed) above `max`.
+    /// [`set_cap`](Self::set_cap) from a bare number: 0 is no cap; `false` (and nothing changed) above `max`.
     pub const fn set_cap_steps(&mut self, steps: u32, max: u32) -> bool {
         if steps > max {
             return false;
@@ -88,8 +72,7 @@ impl FixedStep {
         true
     }
 
-    /// [`advance`](Self::advance), then `step` once per step owed; how
-    /// many. A demo's whole `advance`.
+    /// [`advance`](Self::advance), then `step` once per step owed; returns how many.
     pub fn run(&mut self, elapsed: f64, mut step: impl FnMut()) -> u32 {
         let steps = self.advance(elapsed);
         for _ in 0..steps {
@@ -98,8 +81,7 @@ impl FixedStep {
         steps
     }
 
-    /// Caps the steps per [`advance`](Self::advance) at `cap` (`None`: no
-    /// cap, the default). Owed time past the cap is dropped, not carried.
+    /// `None`: no cap. Owed time past the cap is dropped, not carried.
     pub const fn set_cap(&mut self, cap: Option<NonZeroU32>) {
         self.cap = cap;
     }
@@ -128,8 +110,7 @@ impl FixedStep {
         steps
     }
 
-    /// Simulated time owed but not yet stepped, in `[0, dt)`. Test-only for
-    /// now; render interpolation (`leftover / dt`) would make it public.
+    /// Simulated time owed but not yet stepped, in `[0, dt)`.
     #[cfg(test)]
     #[must_use]
     pub(crate) const fn leftover(&self) -> f64 {
