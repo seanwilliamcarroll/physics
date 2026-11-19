@@ -9,8 +9,7 @@ use engine::collision::candidate_pairs;
 use proptest::prelude::*;
 use test_support::proptest_config;
 
-/// Circles: position in a 4 m box, radius 0 (a point) or 1–20 cm
-/// (uniform: the original distribution).
+/// Circles: position in a 4 m box, radius 0 (a point) or 1–20 cm.
 fn circles() -> impl Strategy<Value = Vec<(f64, f64, f64)>> {
     prop::collection::vec(
         (
@@ -22,10 +21,10 @@ fn circles() -> impl Strategy<Value = Vec<(f64, f64, f64)>> {
     )
 }
 
-/// The checklist's harder distributions (§2.4): **clustered** (up to 60
-/// circles in a 5 cm box, so many share a cell), and **mixed sizes**
-/// (radii from 0.1 mm to 0.5 m together: the cell is sized by the
-/// largest, so small circles crowd few cells).
+/// The harder distributions: **clustered** (up to 60 circles in a 5 cm
+/// box, so many share a cell), and **mixed sizes** (radii from 0.1 mm to
+/// 0.5 m together: the cell is sized by the largest, so small circles crowd
+/// few cells).
 fn hard_circles() -> impl Strategy<Value = Vec<(f64, f64, f64)>> {
     prop_oneof![
         prop::collection::vec(
@@ -46,26 +45,29 @@ fn hard_circles() -> impl Strategy<Value = Vec<(f64, f64, f64)>> {
 /// Positions, radii, and the grid's candidate pairs.
 type Grid = (Vec<Vec2<f64>>, Vec<f64>, Vec<(usize, usize)>);
 
-/// The grid's pairs for circles `c`, each moved by `offset`.
-fn grid(c: &[(f64, f64, f64)], offset: (f64, f64)) -> Grid {
-    let pos: Vec<_> = c
+/// The grid's pairs for `circles`, each moved by `offset`.
+fn grid(circles: &[(f64, f64, f64)], offset: (f64, f64)) -> Grid {
+    let positions: Vec<_> = circles
         .iter()
         .map(|&(x, y, _)| Vec2::new(x + offset.0, y + offset.1))
         .collect();
-    let radius: Vec<_> = c.iter().map(|&(_, _, r)| r).collect();
-    let max_r = radius.iter().copied().fold(0.0, f64::max);
+    let radii: Vec<_> = circles.iter().map(|&(_, _, radius)| radius).collect();
+    let max_radius = radii.iter().copied().fold(0.0, f64::max);
     let mut pairs = Vec::new();
-    candidate_pairs(&pos, &radius, 2.0 * max_r, &mut pairs);
-    (pos, radius, pairs)
+    candidate_pairs(&positions, &radii, 2.0 * max_radius, &mut pairs);
+    (positions, radii, pairs)
 }
 
-fn brute_force(pos: &[Vec2<f64>], radius: &[f64]) -> Vec<(usize, usize)> {
+fn brute_force(positions: &[Vec2<f64>], radii: &[f64]) -> Vec<(usize, usize)> {
     let mut pairs = Vec::new();
-    for a in 0..pos.len() {
-        for b in a + 1..pos.len() {
-            let (ra, rb) = (radius[a], radius[b]);
-            if ra > 0.0 && rb > 0.0 && (pos[b] - pos[a]).length() < ra + rb {
-                pairs.push((a, b));
+    for first in 0..positions.len() {
+        for second in first + 1..positions.len() {
+            let (first_radius, second_radius) = (radii[first], radii[second]);
+            if first_radius > 0.0
+                && second_radius > 0.0
+                && (positions[second] - positions[first]).length() < first_radius + second_radius
+            {
+                pairs.push((first, second));
             }
         }
     }
@@ -76,46 +78,53 @@ proptest! {
     #![proptest_config(proptest_config())]
 
     #[test]
-    fn grid_pairs_are_a_superset_of_true_overlaps(c in circles()) {
-        let pos: Vec<_> = c.iter().map(|&(x, y, _)| Vec2::new(x, y)).collect();
-        let radius: Vec<_> = c.iter().map(|&(_, _, r)| r).collect();
-        let max_r = radius.iter().copied().fold(0.0, f64::max);
+    fn grid_pairs_are_a_superset_of_true_overlaps(circles in circles()) {
+        let positions: Vec<_> = circles.iter().map(|&(x, y, _)| Vec2::new(x, y)).collect();
+        let radii: Vec<_> = circles.iter().map(|&(_, _, radius)| radius).collect();
+        let max_radius = radii.iter().copied().fold(0.0, f64::max);
         let mut grid = Vec::new();
-        candidate_pairs(&pos, &radius, 2.0 * max_r, &mut grid);
-        for pair in brute_force(&pos, &radius) {
+        candidate_pairs(&positions, &radii, 2.0 * max_radius, &mut grid);
+        for pair in brute_force(&positions, &radii) {
             prop_assert!(grid.contains(&pair), "missed {pair:?}");
         }
         // Each pair once, ordered, sorted: deterministic output.
-        prop_assert!(grid.iter().all(|&(a, b)| a < b));
-        prop_assert!(grid.windows(2).all(|w| w[0] < w[1]));
+        prop_assert!(grid.iter().all(|&(first, second)| first < second));
+        prop_assert!(grid.windows(2).all(|window| window[0] < window[1]));
     }
 
     #[test]
     fn hard_distributions_far_from_the_origin_miss_nothing(
-        c in hard_circles(),
+        circles in hard_circles(),
         offset in prop_oneof![Just(0.0), Just(1e3), Just(-1e6), Just(1e9), Just(1e12)],
     ) {
-        let (pos, radius, pairs) = grid(&c, (offset, -offset));
-        for pair in brute_force(&pos, &radius) {
+        let (positions, radii, pairs) = grid(&circles, (offset, -offset));
+        for pair in brute_force(&positions, &radii) {
             prop_assert!(pairs.contains(&pair), "missed {pair:?} at offset {offset}");
         }
     }
 
     #[test]
-    fn insertion_order_only_renames_the_pairs(c in circles(), seed in any::<u64>()) {
+    fn insertion_order_only_renames_the_pairs(circles in circles(), seed in any::<u64>()) {
         // A shuffle of the circles: the same pairs, under the new names.
-        let mut order: Vec<usize> = (0..c.len()).collect();
+        let mut order: Vec<usize> = (0..circles.len()).collect();
         let mut rng = math::SplitMix64::new(seed);
-        for i in (1..order.len()).rev() {
-            let j = usize::try_from(rng.next_u64() % (u64::try_from(i).unwrap() + 1)).unwrap();
-            order.swap(i, j);
+        for index in (1..order.len()).rev() {
+            let swap_with = usize::try_from(rng.next_u64() % (u64::try_from(index).unwrap() + 1)).unwrap();
+            order.swap(index, swap_with);
         }
-        let shuffled: Vec<_> = order.iter().map(|&i| c[i]).collect();
-        let (_, _, base) = grid(&c, (0.0, 0.0));
+        let shuffled: Vec<_> = order.iter().map(|&index| circles[index]).collect();
+        let (_, _, base) = grid(&circles, (0.0, 0.0));
         let (_, _, moved) = grid(&shuffled, (0.0, 0.0));
         let mut renamed: Vec<(usize, usize)> = moved
             .iter()
-            .map(|&(a, b)| { let (x, y) = (order[a], order[b]); if x < y { (x, y) } else { (y, x) } })
+            .map(|&(first, second)| {
+                let (first_original, second_original) = (order[first], order[second]);
+                if first_original < second_original {
+                    (first_original, second_original)
+                } else {
+                    (second_original, first_original)
+                }
+            })
             .collect();
         renamed.sort_unstable();
         prop_assert_eq!(renamed, base);

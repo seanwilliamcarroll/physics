@@ -36,12 +36,10 @@ const ITERATIONS: u32 = 4;
 const COMPARE_STEPS: u32 = 6;
 
 /// Bounds: max rod error over 1 s, and the gap between the two orders
-/// after 0.1 s. Re-measured before M6 over 2,000 chains: XPBD 8.8 mm and
-/// 55 µm, impulse 14.8 mm and 58 µm. The impulse gap bound was 50 µm, set
-/// in M4.3 (worst 4.9 µm) under classic Baumgarte, and never re-measured
-/// after split impulses became the default (M4.9): a random chain found
-/// 56 µm (kept in `constrained_properties.proptest-regressions`). Split
-/// impulses order like XPBD now, so both get XPBD's ~10x bound.
+/// after 0.1 s. Measured over 2,000 chains: XPBD 8.8 mm and 55 µm, impulse
+/// 14.8 mm and 58 µm (a random chain found the impulse gap at 56 µm, kept
+/// in `constrained_properties.proptest-regressions`). Split impulses order
+/// like XPBD, so both get XPBD's ~10x bound.
 fn bounds(solver: Solver) -> (f64, f64) {
     match solver {
         Solver::Xpbd => (0.04, 5.0e-4),
@@ -52,29 +50,33 @@ fn bounds(solver: Solver) -> (f64, f64) {
 /// Builds the chain with its rods added in `order`, steps it `steps`
 /// times, and returns (positions, max rod error seen).
 fn run(links: &[LinkSpec], order: &[usize], solver: Solver, steps: u32) -> (Vec<Vec2<f64>>, f64) {
-    let mut w = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
-    w.add_force(pendulum_gravity());
-    w.set_solver(solver);
-    w.set_iterations(nonzero(ITERATIONS));
-    let mut ids = vec![w.add_static(Vec2::ZERO).id()];
-    let mut x = Vec2::ZERO;
-    for &(len, angle, m) in links {
-        x += Vec2::new(len * angle.cos(), len * angle.sin());
-        ids.push(w.add_particle(x, Vec2::ZERO, kg(m)));
+    let mut world = World::<f64>::new(Integrator::SymplecticEuler, nonzero(SUBSTEPS));
+    world.add_force(pendulum_gravity());
+    world.set_solver(solver);
+    world.set_iterations(nonzero(ITERATIONS));
+    let mut ids = vec![world.add_static(Vec2::ZERO).id()];
+    let mut position = Vec2::ZERO;
+    for &(length, angle, mass) in links {
+        position += Vec2::new(length * angle.cos(), length * angle.sin());
+        ids.push(world.add_particle(position, Vec2::ZERO, kg(mass)));
     }
     let rods: Vec<_> = ids
         .windows(2)
-        .map(|p| DistanceConstraint::between(w.particles(), p[0], p[1]).unwrap())
+        .map(|pair| DistanceConstraint::between(world.particles(), pair[0], pair[1]).unwrap())
         .collect();
-    for &i in order {
-        w.add_constraint(rods[i]).unwrap();
+    for &rod_index in order {
+        world.add_constraint(rods[rod_index]).unwrap();
     }
     let mut worst = 0.0_f64;
     for _ in 0..steps {
-        w.step(time_step(DT));
-        worst = worst.max(constraint_error(w.particles(), w.constraints()).unwrap().0);
+        world.step(time_step(DT));
+        worst = worst.max(
+            constraint_error(world.particles(), world.constraints())
+                .unwrap()
+                .0,
+        );
     }
-    (w.particles().pos().to_vec(), worst)
+    (world.particles().pos().to_vec(), worst)
 }
 
 proptest! {
@@ -82,20 +84,27 @@ proptest! {
 
     #[test]
     fn constraint_order_changes_the_answer_only_boundedly(
-        (links, order) in chain_spec().prop_flat_map(|l| {
-            let n = l.len();
-            (Just(l), Just((0..n).collect::<Vec<_>>()).prop_shuffle())
+        (links, order) in chain_spec().prop_flat_map(|links| {
+            let link_count = links.len();
+            (Just(links), Just((0..link_count).collect::<Vec<_>>()).prop_shuffle())
         }),
     ) {
         for solver in Solver::ALL {
             let identity: Vec<usize> = (0..links.len()).collect();
-            let (max_err, max_gap) = bounds(solver);
-            let (_, err_a) = run(&links, &identity, solver, STEPS);
-            let (_, err_b) = run(&links, &order, solver, STEPS);
-            prop_assert!(err_a <= max_err && err_b <= max_err, "{solver:?}: {err_a} / {err_b} m");
-            let (a, _) = run(&links, &identity, solver, COMPARE_STEPS);
-            let (b, _) = run(&links, &order, solver, COMPARE_STEPS);
-            let gap = a.iter().zip(&b).map(|(p, q)| (*p - *q).length()).fold(0.0, f64::max);
+            let (max_error, max_gap) = bounds(solver);
+            let (_, identity_error) = run(&links, &identity, solver, STEPS);
+            let (_, shuffled_error) = run(&links, &order, solver, STEPS);
+            prop_assert!(
+                identity_error <= max_error && shuffled_error <= max_error,
+                "{solver:?}: {identity_error} / {shuffled_error} m"
+            );
+            let (identity_positions, _) = run(&links, &identity, solver, COMPARE_STEPS);
+            let (shuffled_positions, _) = run(&links, &order, solver, COMPARE_STEPS);
+            let gap = identity_positions
+                .iter()
+                .zip(&shuffled_positions)
+                .map(|(first, second)| (*first - *second).length())
+                .fold(0.0, f64::max);
             prop_assert!(gap <= max_gap, "{solver:?}: orders {gap} m apart");
         }
     }

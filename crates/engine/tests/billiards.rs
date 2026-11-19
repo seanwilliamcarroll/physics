@@ -1,4 +1,4 @@
-//! The table (M7, `docs/09-billiards.md`): a break, both solvers.
+//! The table (`docs/09-billiards.md`): a break, both solvers.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -9,8 +9,8 @@ use test_support::{nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
 
-fn energy(w: &World<f64>) -> f64 {
-    kinetic_energy(w.particles()) + rotational_energy(w.particles(), w.spin())
+fn energy(world: &World<f64>) -> f64 {
+    kinetic_energy(world.particles()) + rotational_energy(world.particles(), world.spin())
 }
 
 /// A break settles: measured at rest (energy exactly 0) by 6.0–6.5 s at
@@ -21,23 +21,30 @@ fn energy(w: &World<f64>) -> f64 {
 fn a_break_settles_on_the_table() {
     for solver in Solver::ALL {
         for (speed, tip) in [(12.0, 0.4), (6.0, -0.3)] {
-            let mut w = pool_break::<f64>(solver, nonzero(10), speed, tip).unwrap();
-            w.count_tunnels(true);
-            let mut prev = energy(&w);
+            let mut world = pool_break::<f64>(solver, nonzero(10), speed, tip).unwrap();
+            world.count_tunnels(true);
+            let mut previous_energy = energy(&world);
             for _ in 0..480 {
-                w.step(time_step(DT));
-                let e = energy(&w);
-                assert!(e <= prev, "{solver:?} {speed} m/s: energy rose");
-                prev = e;
-            }
-            assert_eq!(prev, 0.0, "{solver:?} {speed} m/s: still moving after 8 s");
-            assert_eq!(w.tunnels(), Some(0), "{solver:?} {speed} m/s");
-            let p = w.particles();
-            for (x, r) in p.pos().iter().zip(p.radius()) {
-                let on = x.x.abs() < POOL_LENGTH / 2.0 && x.y.abs() < POOL_WIDTH / 2.0;
+                world.step(time_step(DT));
+                let current_energy = energy(&world);
                 assert!(
-                    *r == 0.0 || on,
-                    "{solver:?} {speed} m/s: a ball off the table at {x:?}"
+                    current_energy <= previous_energy,
+                    "{solver:?} {speed} m/s: energy rose"
+                );
+                previous_energy = current_energy;
+            }
+            assert_eq!(
+                previous_energy, 0.0,
+                "{solver:?} {speed} m/s: still moving after 8 s"
+            );
+            assert_eq!(world.tunnels(), Some(0), "{solver:?} {speed} m/s");
+            let particles = world.particles();
+            for (position, radius) in particles.pos().iter().zip(particles.radius()) {
+                let on_table =
+                    position.x.abs() < POOL_LENGTH / 2.0 && position.y.abs() < POOL_WIDTH / 2.0;
+                assert!(
+                    *radius == 0.0 || on_table,
+                    "{solver:?} {speed} m/s: a ball off the table at {position:?}"
                 );
             }
         }
