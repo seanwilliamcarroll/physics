@@ -18,12 +18,10 @@ use crate::Scalar;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Mass<S> {
     mass: S,
-    /// `1 / mass`, computed once in [`Mass::new`].
     inv: S,
 }
 
 impl<S: Scalar> Mass<S> {
-    /// One kilogram.
     pub const ONE: Self = Self {
         mass: S::ONE,
         inv: S::ONE,
@@ -49,7 +47,6 @@ impl<S: Scalar> Mass<S> {
         (inv > S::ZERO && inv.to_f64().is_finite()).then_some(Self { mass, inv })
     }
 
-    /// The mass, kg.
     #[must_use]
     pub const fn get(self) -> S {
         self.mass

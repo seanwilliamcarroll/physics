@@ -14,7 +14,6 @@ checked_param! {
 }
 
 impl<S: Scalar> Softening<S> {
-    /// No softening: pure 1/r².
     pub const ZERO: Self = Self(S::ZERO);
 
     /// ε², m²: the only form the force uses.

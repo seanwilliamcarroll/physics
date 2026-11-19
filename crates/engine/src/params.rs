@@ -28,14 +28,11 @@ macro_rules! checked_param {
         pub struct $name<S>(S);
 
         impl<S: crate::Scalar> $name<S> {
-            /// `Some` if the value is finite and passes this type's check
-            /// (see the type).
             #[must_use]
             pub fn new($value: S) -> Option<Self> {
                 ($value.to_f64().is_finite() && $valid).then_some(Self($value))
             }
 
-            /// The value.
             #[must_use]
             pub const fn get(self) -> S {
                 self.0

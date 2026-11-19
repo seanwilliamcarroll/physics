@@ -10,7 +10,6 @@ checked_param! {
 }
 
 impl<S: crate::Scalar> Compliance<S> {
-    /// α = 0: rigid.
     pub const RIGID: Self = Self(S::ZERO);
 }
 

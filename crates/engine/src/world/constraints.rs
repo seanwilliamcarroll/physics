@@ -17,9 +17,7 @@ use crate::{
 /// invariants live in one place: `lambda` always matches `list` in
 /// length, and switching solver always resets it.
 pub(super) struct Constraints<S> {
-    /// With any present, the solver steps instead of the integrator.
     list: Vec<DistanceConstraint<S>>,
-    /// The solver's multipliers.
     lambda: Vec<S>,
     pub(super) solver: Solver,
     /// Gauss–Seidel passes over the constraints per substep.
@@ -31,7 +29,6 @@ pub(super) struct Constraints<S> {
     /// XPBD's start-of-substep positions, or split impulses'
     /// pseudo-velocities.
     scratch: Vec<Vec2<S>>,
-    /// This substep's contacts and their multipliers.
     contacts: Contacts<S>,
 }
 
@@ -50,8 +47,6 @@ impl<S: Scalar> Constraints<S> {
         }
     }
 
-    /// Adds `constraint` if both its bodies are among the `particle_count`
-    /// particles.
     pub(super) fn add(
         &mut self,
         constraint: DistanceConstraint<S>,
@@ -115,15 +110,12 @@ impl<S: Scalar> Constraints<S> {
         self.list.is_empty()
     }
 
-    /// Resets every λ: one solver's multipliers mean nothing to the other.
     pub(super) fn set_solver(&mut self, solver: Solver) {
         self.solver = solver;
         self.lambda.fill(S::ZERO);
         self.contacts.clear();
     }
 
-    /// One substep of length `substep_dt` by the current solver; `collision`
-    /// when the world can collide.
     pub(super) fn substep(
         &mut self,
         forces: &[Box<dyn Force<S>>],
@@ -172,7 +164,6 @@ impl<S: Scalar> Constraints<S> {
     }
 }
 
-/// What a substep needs to collide, borrowed from `World`.
 pub(super) struct Collision<'a, S> {
     pub(super) statics: Statics<'a, S>,
     pub(super) restitution: Restitution<S>,

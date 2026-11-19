@@ -6,7 +6,6 @@ use crate::collision::Pocket;
 use crate::{Mass, ParticleId, Radius, Scalar, Vec2};
 
 impl<S: Scalar> World<S> {
-    /// Adds a pocket; checked after every substep the solver steps.
     pub fn add_pocket(&mut self, pocket: Pocket<S>) {
         self.pockets.push(pocket);
     }
@@ -23,9 +22,8 @@ impl<S: Scalar> World<S> {
         &self.potted
     }
 
-    /// Takes particle `id` out of play: static, radius 0 (it collides with
-    /// nothing), at rest, its spin zeroed, left where it is. Every other
-    /// index is kept. `false` past the end.
+    /// Takes `id` out of play: static, radius 0, at rest, left in place so
+    /// every other index is kept. `false` past the end.
     pub fn retire(&mut self, id: ParticleId) -> bool {
         let index = id.index();
         let Some(&position) = self.particles.pos.get(index) else {
@@ -37,9 +35,6 @@ impl<S: Scalar> World<S> {
         self.particles.set_body(index, position, S::ZERO, S::ZERO)
     }
 
-    /// Puts particle `id` back in play at `position`, at rest, as a ball of
-    /// `mass` and `radius` (a scratched cue ball re-spotted). `false` past
-    /// the end.
     pub fn reinstate(
         &mut self,
         id: ParticleId,
@@ -55,7 +50,6 @@ impl<S: Scalar> World<S> {
             .set_body(index, position, mass.inv(), radius.get())
     }
 
-    /// Pots every moving ball whose centre is in a pocket.
     pub(super) fn pot(&mut self) {
         let hits: Vec<(ParticleId, usize)> = self
             .particles

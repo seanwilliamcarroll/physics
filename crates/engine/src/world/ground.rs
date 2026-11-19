@@ -13,20 +13,16 @@ impl<S: Scalar> World<S> {
         self.ground
     }
 
-    /// Sets the ground's height `y` (m), or removes it with `None`; from
-    /// the next step, for every stepper (integrator and both solvers).
-    /// A non-finite height is the caller's to avoid: `NaN` clamps nothing.
+    /// Sets the ground's height `y` (m), or removes it with `None`; `NaN`
+    /// clamps nothing.
     pub const fn set_ground(&mut self, y: Option<S>) {
         self.ground = y;
     }
 }
 
-/// Clamps every dynamic particle to `y >= ground_y`: one at or below it
-/// moves up to it, and a downward velocity becomes zero (horizontal
-/// velocity is kept: no friction). At the ground, not just below, so a
-/// resting particle that a stepper left on the ground with a downward
-/// velocity (explicit Euler moves before it accelerates) stops too. Static
-/// particles are left where they are.
+/// Clamps dynamic particles to `y >= ground_y`, zeroing downward velocity.
+/// "At or below", not just below: explicit Euler leaves a resting particle
+/// on the ground with a downward velocity.
 pub(super) fn clamp<S: Scalar>(particles: &mut Particles<S>, ground_y: S) {
     let dynamic = particles
         .inv_mass

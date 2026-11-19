@@ -6,8 +6,7 @@ use crate::table::Table;
 use crate::{ParticleId, Scalar, UnitVec2, Vec2};
 
 impl<S: Scalar> World<S> {
-    /// Puts the world on a cloth (`Some`) or takes it off (`None`, the
-    /// default), from the next step. Spins are kept either way.
+    /// Puts the world on a cloth, or takes it off (`None`, the default).
     pub const fn set_table(&mut self, table: Option<Table<S>>) {
         self.table = table;
     }
@@ -17,8 +16,6 @@ impl<S: Scalar> World<S> {
         self.table
     }
 
-    /// Each particle's spin about the horizontal axes, `(ω_x, ω_y)`,
-    /// rad/s, aligned with the particles (0 for any not yet stepped).
     #[must_use]
     pub fn spin(&self) -> &[Vec2<S>] {
         &self.spin
@@ -27,9 +24,7 @@ impl<S: Scalar> World<S> {
     /// Strikes ball `id` with the cue along `aim` at `speed` m/s, the tip
     /// `tip` m above the ball's centre (`docs/09-billiards.md`, "The cue"):
     /// `v = speed · aim`, `ω = (5 tip speed / 2R²) (ẑ × aim)`. `tip = 0`
-    /// is a stun, `2R/5` natural roll, above follow, below draw. `false`,
-    /// changing nothing, for a particle that isn't a ball (static, or no
-    /// radius) or isn't there.
+    /// is a stun, `2R/5` natural roll. `false` if `id` isn't a ball.
     pub fn strike(&mut self, id: ParticleId, aim: UnitVec2<S>, speed: S, tip: S) -> bool {
         let index = id.index();
         let particles = &mut self.particles;
@@ -57,10 +52,8 @@ impl<S: Scalar> World<S> {
 }
 
 impl<S: Scalar> World<S> {
-    /// Speculative contacts on (the default) or off, from the next step.
-    /// Off, a contact is only what touches (within the margin) at a
-    /// substep's start, so fast balls can pass through each other at low
-    /// substeps (`docs/09-billiards.md`, "Tunneling").
+    /// Speculative contacts (default on). Off, fast balls can pass through
+    /// each other at low substeps (`docs/09-billiards.md`, "Tunneling").
     pub const fn set_speculative(&mut self, on: bool) {
         self.speculative = on;
     }
@@ -70,9 +63,8 @@ impl<S: Scalar> World<S> {
         self.speculative
     }
 
-    /// Starts counting tunnels from zero (`collision::count_tunnels`, after
-    /// every substep the solver steps), or stops (`false`, the default:
-    /// counting costs a broadphase a substep).
+    /// Starts counting tunnels from zero, or stops (default: it costs a
+    /// broadphase a substep).
     pub fn count_tunnels(&mut self, on: bool) {
         self.tunnels = on.then(|| super::TunnelCount {
             count: 0,
@@ -81,7 +73,6 @@ impl<S: Scalar> World<S> {
         });
     }
 
-    /// Tunnels counted since counting started, or `None` if it's off.
     #[must_use]
     pub fn tunnels(&self) -> Option<u64> {
         self.tunnels.as_ref().map(|tunnels| tunnels.count)

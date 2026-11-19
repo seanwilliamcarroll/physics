@@ -13,7 +13,6 @@ impl<S: crate::Scalar> Restitution<S> {
     /// e = 0: perfectly inelastic. A new world's default, so nothing
     /// bounces until asked to.
     pub const INELASTIC: Self = Self(S::ZERO);
-    /// e = 1: elastic.
     pub const ELASTIC: Self = Self(S::ONE);
 }
 

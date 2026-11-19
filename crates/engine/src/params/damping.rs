@@ -10,7 +10,6 @@ checked_param! {
 }
 
 impl<S: Scalar> Damping<S> {
-    /// No damping.
     pub const NONE: Self = Self(S::ZERO);
 }
 
