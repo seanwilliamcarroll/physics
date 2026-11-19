@@ -17,8 +17,11 @@ fn set_integrator_switches_how_later_steps_integrate() {
         switched.step(time_step(1.0 / 60.0));
         built.step(time_step(1.0 / 60.0));
     }
-    assert_eq!(switched.particles.pos(), built.particles.pos());
-    assert_eq!(switched.particles.vel(), built.particles.vel());
+    assert_eq!(switched.particles.positions(), built.particles.positions());
+    assert_eq!(
+        switched.particles.velocities(),
+        built.particles.velocities()
+    );
 }
 
 #[test]
@@ -35,15 +38,15 @@ fn clear_forces_leaves_particles_coasting() {
     // straight line at its launch velocity.
     let mut world = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let (start_positions, start_velocities) = (
-        world.particles.pos().to_vec(),
-        world.particles.vel().to_vec(),
+        world.particles.positions().to_vec(),
+        world.particles.velocities().to_vec(),
     );
     world.clear_forces();
     world.step(time_step(0.5));
-    assert_eq!(world.particles.vel(), start_velocities.as_slice());
+    assert_eq!(world.particles.velocities(), start_velocities.as_slice());
     for ((position, start_position), start_velocity) in world
         .particles
-        .pos()
+        .positions()
         .iter()
         .zip(&start_positions)
         .zip(&start_velocities)
@@ -64,7 +67,7 @@ fn forces_re_added_after_clear_apply_again() {
         kept.step(time_step(0.01));
         rebuilt.step(time_step(0.01));
     }
-    assert_eq!(kept.particles.pos(), rebuilt.particles.pos());
+    assert_eq!(kept.particles.positions(), rebuilt.particles.positions());
 }
 
 #[test]
@@ -175,8 +178,11 @@ fn velocities_written_in_place_reach_the_particles() {
     let _ = world
         .particles
         .add(crate::Vec2::ZERO, crate::Vec2::ZERO, crate::params::kg(1.0));
-    world.vel_mut()[0] = crate::Vec2::new(1.0, 2.0);
-    assert_eq!(world.particles().vel()[0], crate::Vec2::new(1.0, 2.0));
+    world.velocities_mut()[0] = crate::Vec2::new(1.0, 2.0);
+    assert_eq!(
+        world.particles().velocities()[0],
+        crate::Vec2::new(1.0, 2.0)
+    );
     let on = world.speculative();
     world.set_speculative(!on);
     assert_eq!(world.speculative(), !on);

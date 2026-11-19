@@ -15,7 +15,7 @@ fn pin_and_two_rods_level_with_it() {
     let particles = &world.particles;
     let length = DOUBLE_PENDULUM_LENGTH;
     assert_eq!(
-        particles.pos(),
+        particles.positions(),
         [
             Vec2::ZERO,
             Vec2::new(length, 0.0),
@@ -24,13 +24,13 @@ fn pin_and_two_rods_level_with_it() {
     );
     assert!(
         particles
-            .vel()
+            .velocities()
             .iter()
             .all(|&velocity| velocity == Vec2::ZERO)
     );
     let bob_inverse_mass = 1.0 / DOUBLE_PENDULUM_MASS;
     assert_eq!(
-        particles.inv_mass(),
+        particles.inverse_mass(),
         [0.0, bob_inverse_mass, bob_inverse_mass]
     );
     let rods = world.constraints();
@@ -59,7 +59,8 @@ fn offset_moves_only_the_tip_and_only_in_y() {
         1e-9,
     )
     .unwrap();
-    let (base_positions, nudged_positions) = (base.particles.pos(), nudged.particles.pos());
+    let (base_positions, nudged_positions) =
+        (base.particles.positions(), nudged.particles.positions());
     assert_eq!(base_positions[..2], nudged_positions[..2]);
     assert_eq!(
         nudged_positions[2],
@@ -89,7 +90,7 @@ fn raised_start_puts_both_rods_at_135_degrees() {
     )
     .unwrap();
     let component = 0.5_f64.sqrt();
-    let positions = world.particles.pos();
+    let positions = world.particles.positions();
     assert_eq!(positions[1], crate::Vec2::new(component, component));
     assert_eq!(
         positions[2],
@@ -115,7 +116,7 @@ fn offset_from_the_raised_start_is_perpendicular_to_the_rods() {
         )
         .unwrap()
         .particles
-        .pos()[2]
+        .positions()[2]
     };
     let component = 0.5_f64.sqrt();
     let moved = tip_at(0.01) - tip_at(0.0);

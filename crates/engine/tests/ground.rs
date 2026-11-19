@@ -52,11 +52,11 @@ fn max_energy_gain<S: Scalar>(world: &mut World<S>) -> f64 {
 fn rest_error<S: Scalar>(world: &World<S>) -> (f64, f64) {
     let particles = world.particles();
     let gap = particles
-        .pos()
+        .positions()
         .iter()
         .map(|position| (position.y.to_f64() - GROUND).abs());
     let speed = particles
-        .vel()
+        .velocities()
         .iter()
         .map(|velocity| velocity.length().to_f64());
     (gap.fold(0.0, f64::max), speed.fold(0.0, f64::max))
@@ -75,8 +75,16 @@ fn a_dropped_particle_lands_and_rests<S: Scalar>() {
         for _ in 0..STEPS {
             world.step(time_step(DT));
         }
-        assert_eq!(world.particles().pos(), &[v(0.0, GROUND)], "{integrator:?}");
-        assert_eq!(world.particles().vel(), &[Vec2::ZERO], "{integrator:?}");
+        assert_eq!(
+            world.particles().positions(),
+            &[v(0.0, GROUND)],
+            "{integrator:?}"
+        );
+        assert_eq!(
+            world.particles().velocities(),
+            &[Vec2::ZERO],
+            "{integrator:?}"
+        );
     }
 }
 for_each_scalar!(a_dropped_particle_lands_and_rests);
@@ -152,25 +160,25 @@ fn static_particles_below_the_ground_are_not_moved() {
             world.step(time_step(DT));
         }
         assert_eq!(
-            world.particles().pos()[pin.index()],
+            world.particles().positions()[pin.index()],
             v(0.0, GROUND),
             "{integrator:?}"
         );
         assert_eq!(
-            world.particles().vel()[pin.index()],
+            world.particles().velocities()[pin.index()],
             Vec2::ZERO,
             "{integrator:?}"
         );
     }
     for solver in Solver::ALL {
         let mut world = pendulum::<f64>(solver, nonzero(SUBSTEPS)).unwrap();
-        let pin = world.particles().pos()[0];
+        let pin = world.particles().positions()[0];
         world.set_ground(Some(pin.y + ABOVE));
         for _ in 0..STEPS {
             world.step(time_step(DT));
         }
-        assert_eq!(world.particles().pos()[0], pin, "{solver:?}");
-        assert_eq!(world.particles().vel()[0], Vec2::ZERO, "{solver:?}");
+        assert_eq!(world.particles().positions()[0], pin, "{solver:?}");
+        assert_eq!(world.particles().velocities()[0], Vec2::ZERO, "{solver:?}");
     }
 }
 

@@ -55,10 +55,10 @@ impl Fountain {
         let particles = &mut world.particles;
         let mut respawned = 0;
         for ((position, velocity), &inverse_mass) in particles
-            .pos
+            .positions
             .iter_mut()
-            .zip(&mut particles.vel)
-            .zip(&particles.inv_mass)
+            .zip(&mut particles.velocities)
+            .zip(&particles.inverse_mass)
         {
             if inverse_mass != S::ZERO && position.y < S::ZERO {
                 *position = Vec2::ZERO;

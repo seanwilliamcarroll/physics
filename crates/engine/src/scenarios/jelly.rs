@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// Default grid, particles per side: 64 particles, ~300 springs with bend.
-pub const JELLY_COLS: usize = 8;
+pub const JELLY_COLUMNS: usize = 8;
 pub const JELLY_ROWS: usize = 8;
 
 /// Distance between grid neighbors, m: an 8 × 8 jelly is 0.7 m across.

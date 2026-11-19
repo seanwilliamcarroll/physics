@@ -60,8 +60,8 @@ fn free_fall_matches_each_integrators_closed_form<S: Tol>() {
         }
         let time = step_size * f64::from(step_count);
         let offset = discrete_offset(integrator);
-        let position = world.particles().pos()[0];
-        let velocity = world.particles().vel()[0];
+        let position = world.particles().positions()[0];
+        let velocity = world.particles().velocities()[0];
         let expected_y = start_position.1
             + start_velocity.1 * time
             + 0.5 * GRAVITY_Y * time * (time + offset * step_size);
@@ -90,7 +90,7 @@ fn euler_free_fall_error_is_first_order_in_dt<S: Tol>() {
                 world.step(time_step(step_size));
             }
             let time = step_size * f64::from(step_count);
-            world.particles().pos()[0].y.to_f64() - 0.5 * GRAVITY_Y * time * time
+            world.particles().positions()[0].y.to_f64() - 0.5 * GRAVITY_Y * time * time
         };
         let coarse = error_at(1.0 / 32.0, 32);
         let fine = error_at(1.0 / 64.0, 64);
@@ -112,12 +112,12 @@ fn static_particle_is_bit_identical<S: Tol>() {
             world.step(time_step(1.0 / 60.0));
         }
         assert_eq!(
-            bits(world.particles().pos()[1]),
+            bits(world.particles().positions()[1]),
             bits(pin),
             "{integrator:?}"
         );
         assert_eq!(
-            bits(world.particles().vel()[1]),
+            bits(world.particles().velocities()[1]),
             bits(Vec2::<S>::ZERO),
             "{integrator:?}"
         );
@@ -125,22 +125,22 @@ fn static_particle_is_bit_identical<S: Tol>() {
 }
 for_each_scalar!(static_particle_is_bit_identical);
 
-/// A static particle never moves, even with a velocity (`vel_mut` can give
-/// it one): `kick` and `drift` skip `inv_mass = 0` in every stepper, the
+/// A static particle never moves, even with a velocity (`velocities_mut` can give
+/// it one): `kick` and `drift` skip `inverse_mass = 0` in every stepper, the
 /// three integrators and both solvers (a rod from the pin puts a world in
 /// a solver's hands).
 fn a_static_with_a_velocity_stays_put<S: Tol>() {
     let pin = v::<S>(1.5, -2.25);
     let run = |mut world: World<S>, label: &str| {
         let id = world.add_static(pin);
-        if let Some(velocity) = world.vel_mut().get_mut(id.index()) {
+        if let Some(velocity) = world.velocities_mut().get_mut(id.index()) {
             *velocity = v(3.0, 4.0);
         }
         for _ in 0..100 {
             world.step(time_step(1.0 / 60.0));
         }
         assert_eq!(
-            bits(world.particles().pos()[id.index()]),
+            bits(world.particles().positions()[id.index()]),
             bits(pin),
             "{label}"
         );
@@ -199,16 +199,16 @@ fn substeps_equal_repeated_smaller_steps<S: Tol>() {
                 <= 300.0 * S::EPSILON * reference.length().to_f64().max(1.0)
         };
         let (position, small_position) = (
-            with_substeps.particles().pos()[0],
-            with_small_steps.particles().pos()[0],
+            with_substeps.particles().positions()[0],
+            with_small_steps.particles().positions()[0],
         );
         assert!(
             close(position, small_position),
             "{integrator:?}: {position:?} vs {small_position:?}"
         );
         let (velocity, small_velocity) = (
-            with_substeps.particles().vel()[0],
-            with_small_steps.particles().vel()[0],
+            with_substeps.particles().velocities()[0],
+            with_small_steps.particles().velocities()[0],
         );
         assert!(
             close(velocity, small_velocity),
@@ -243,7 +243,7 @@ fn center_of_mass_moves_at_constant_velocity<S: Tol>() {
     let mut world = cluster::<S>(CLUSTER_BODIES, 1).unwrap();
     let total_mass: f64 = world
         .particles()
-        .inv_mass()
+        .inverse_mass()
         .iter()
         .map(|inverse_mass| 1.0 / inverse_mass.to_f64())
         .sum();

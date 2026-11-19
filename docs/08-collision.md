@@ -29,7 +29,7 @@ was; corrected there.) So:
 ## Shapes
 
 **Circles are particles with a radius.** `Particles` gains a `radius`
-column (SoA, like `inv_mass`); `0` means a point that never collides, so
+column (SoA, like `inverse_mass`); `0` means a point that never collides, so
 every existing scene, and its golden hash, is unchanged. No rotation: a
 frictionless circle's contact force passes through its center, so it can't
 spin. (M7's cloth gives balls spin about horizontal axes, kept on a

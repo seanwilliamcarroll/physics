@@ -39,7 +39,7 @@ fn a_break_settles_on_the_table() {
             );
             assert_eq!(world.tunnels(), Some(0), "{solver:?} {speed} m/s");
             let particles = world.particles();
-            for (position, radius) in particles.pos().iter().zip(particles.radius()) {
+            for (position, radius) in particles.positions().iter().zip(particles.radius()) {
                 let on_table =
                     position.x.abs() < POOL_LENGTH / 2.0 && position.y.abs() < POOL_WIDTH / 2.0;
                 assert!(

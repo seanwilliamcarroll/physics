@@ -19,7 +19,7 @@ pub(super) fn accumulate<S: Scalar, const L: usize>(
         x: &bodies.x,
         y: &bodies.y,
         mass: &bodies.mass,
-        inv_mass: &bodies.inv_mass,
+        inverse_mass: &bodies.inverse_mass,
         acceleration_x: &mut acceleration_x,
         acceleration_y: &mut acceleration_y,
     };
@@ -31,11 +31,11 @@ pub(super) fn accumulate<S: Scalar, const L: usize>(
                 gravity_times_mass: gravity.gravitational_constant * first.mass,
             },
             gravity.softening_sq,
-            (later.x, later.y, later.mass, later.inv_mass),
+            (later.x, later.y, later.mass, later.inverse_mass),
             (&mut *later.acceleration_x, &mut *later.acceleration_y),
         );
-        *first.acceleration_x += lane_total(&lanes_x) * first.inv_mass;
-        *first.acceleration_y += lane_total(&lanes_y) * first.inv_mass;
+        *first.acceleration_x += lane_total(&lanes_x) * first.inverse_mass;
+        *first.acceleration_y += lane_total(&lanes_y) * first.inverse_mass;
         remaining = later;
     }
     for ((acceleration, &x), &y) in accelerations
@@ -59,7 +59,7 @@ struct Remaining<'a, S> {
     x: &'a [S],
     y: &'a [S],
     mass: &'a [S],
-    inv_mass: &'a [S],
+    inverse_mass: &'a [S],
     acceleration_x: &'a mut [S],
     acceleration_y: &'a mut [S],
 }
@@ -68,7 +68,7 @@ struct First<'a, S> {
     x: S,
     y: S,
     mass: S,
-    inv_mass: S,
+    inverse_mass: S,
     acceleration_x: &'a mut S,
     acceleration_y: &'a mut S,
 }
@@ -77,8 +77,8 @@ impl<'a, S: Copy> Remaining<'a, S> {
     /// The first body, and the rest after it; `None` when empty.
     fn split_first(self) -> Option<(First<'a, S>, Self)> {
         let ((&x, x_rest), (&y, y_rest)) = (self.x.split_first()?, self.y.split_first()?);
-        let ((&mass, mass_rest), (&inv_mass, inv_mass_rest)) =
-            (self.mass.split_first()?, self.inv_mass.split_first()?);
+        let ((&mass, mass_rest), (&inverse_mass, inv_mass_rest)) =
+            (self.mass.split_first()?, self.inverse_mass.split_first()?);
         let ((acceleration_x, acceleration_x_rest), (acceleration_y, acceleration_y_rest)) = (
             self.acceleration_x.split_first_mut()?,
             self.acceleration_y.split_first_mut()?,
@@ -88,7 +88,7 @@ impl<'a, S: Copy> Remaining<'a, S> {
                 x,
                 y,
                 mass,
-                inv_mass,
+                inverse_mass,
                 acceleration_x,
                 acceleration_y,
             },
@@ -96,7 +96,7 @@ impl<'a, S: Copy> Remaining<'a, S> {
                 x: x_rest,
                 y: y_rest,
                 mass: mass_rest,
-                inv_mass: inv_mass_rest,
+                inverse_mass: inv_mass_rest,
                 acceleration_x: acceleration_x_rest,
                 acceleration_y: acceleration_y_rest,
             },
@@ -165,12 +165,16 @@ fn sweep<S: Scalar, const L: usize>(
         let force_y = map2(offset_y, scale, |offset, scale| offset * scale);
         *acceleration_x = map2(
             *acceleration_x,
-            map2(force_x, *inv_mass_block, |force, inv_mass| force * inv_mass),
+            map2(force_x, *inv_mass_block, |force, inverse_mass| {
+                force * inverse_mass
+            }),
             |acceleration, force| acceleration - force,
         );
         *acceleration_y = map2(
             *acceleration_y,
-            map2(force_y, *inv_mass_block, |force, inv_mass| force * inv_mass),
+            map2(force_y, *inv_mass_block, |force, inverse_mass| {
+                force * inverse_mass
+            }),
             |acceleration, force| acceleration - force,
         );
         lanes_x = map2(lanes_x, force_x, |lane, force| lane + force);
@@ -188,8 +192,10 @@ fn sweep<S: Scalar, const L: usize>(
                 .iter_mut()
                 .zip(acceleration_y_tail.iter_mut()),
         );
-    for ((lane_x, lane_y), ((((&x, &y), &mass), &inv_mass), (acceleration_x, acceleration_y))) in
-        lanes.zip(tail)
+    for (
+        (lane_x, lane_y),
+        ((((&x, &y), &mass), &inverse_mass), (acceleration_x, acceleration_y)),
+    ) in lanes.zip(tail)
     {
         let (offset_x, offset_y) = (x - first.x, y - first.y);
         let distance_sq = offset_x * offset_x + offset_y * offset_y + softening_sq;
@@ -200,8 +206,8 @@ fn sweep<S: Scalar, const L: usize>(
             scale
         };
         let (force_x, force_y) = (offset_x * scale, offset_y * scale);
-        *acceleration_x -= force_x * inv_mass;
-        *acceleration_y -= force_y * inv_mass;
+        *acceleration_x -= force_x * inverse_mass;
+        *acceleration_y -= force_y * inverse_mass;
         *lane_x += force_x;
         *lane_y += force_y;
     }

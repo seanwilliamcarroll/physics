@@ -32,12 +32,12 @@ fn both_realizations_share_particles_and_topology() {
     )
     .unwrap();
     assert_eq!(
-        spring_jelly.world.particles.pos(),
-        constraint_jelly.world.particles.pos()
+        spring_jelly.world.particles.positions(),
+        constraint_jelly.world.particles.positions()
     );
     assert_eq!(
-        spring_jelly.world.particles.inv_mass(),
-        constraint_jelly.world.particles.inv_mass()
+        spring_jelly.world.particles.inverse_mass(),
+        constraint_jelly.world.particles.inverse_mass()
     );
     let springs = spring_jelly.springs.unwrap();
     let spring_ends: Vec<_> = springs

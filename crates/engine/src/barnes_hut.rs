@@ -29,12 +29,12 @@ pub struct BarnesHut<S> {
 }
 
 impl<S: Scalar> BarnesHut<S> {
-    /// `g_const` and `softening` as for `PairwiseGravity::new`. `theta`: the
+    /// `gravitational_constant` and `softening` as for `PairwiseGravity::new`. `theta`: the
     /// opening angle; 0 is direct summation, Barnes & Hut used about 1.
     #[must_use]
-    pub fn new(g_const: S, softening: Softening<S>, theta: OpeningAngle<S>) -> Self {
+    pub fn new(gravitational_constant: S, softening: Softening<S>, theta: OpeningAngle<S>) -> Self {
         Self {
-            gravitational_constant: g_const,
+            gravitational_constant,
             softening_sq: softening.squared(),
             theta: theta.get(),
             theta_sq: theta.get() * theta.get(),
@@ -46,7 +46,7 @@ impl<S: Scalar> BarnesHut<S> {
     #[must_use]
     pub fn approximating(exact: &PairwiseGravity<S>, theta: OpeningAngle<S>) -> Self {
         Self {
-            gravitational_constant: exact.g_const(),
+            gravitational_constant: exact.gravitational_constant(),
             softening_sq: exact.softening_sq(),
             theta: theta.get(),
             theta_sq: theta.get() * theta.get(),
@@ -117,11 +117,11 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
     fn accumulate(&self, particles: &Particles<S>, accelerations: &mut [Vec2<S>]) {
         let dynamic = || {
             particles
-                .pos()
+                .positions()
                 .iter()
-                .zip(particles.inv_mass())
+                .zip(particles.inverse_mass())
                 .enumerate()
-                .filter(|&(_, (_, &inv_mass))| inv_mass != S::ZERO)
+                .filter(|&(_, (_, &inverse_mass))| inverse_mass != S::ZERO)
         };
         let Some(root) = Root::around(
             dynamic().map(|(_, (&position, _))| position),
@@ -143,13 +143,13 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
             .into_iter()
             .filter_map(|(high, low, index)| {
                 let key = u64_from_key(high, low);
-                let (&pos, &inv_mass) = particles
-                    .pos()
+                let (&pos, &inverse_mass) = particles
+                    .positions()
                     .get(index)
-                    .zip(particles.inv_mass().get(index))?;
+                    .zip(particles.inverse_mass().get(index))?;
                 Some(Body {
                     pos,
-                    mass: S::ONE / inv_mass,
+                    mass: S::ONE / inverse_mass,
                     key,
                     index,
                 })
@@ -161,12 +161,12 @@ impl<S: Scalar> Force<S> for BarnesHut<S> {
         let side = root.half_side + root.half_side;
         let _ = build(&bodies, 0, side, root.center, root.half, &mut nodes);
 
-        for (index, (acceleration, (&x, &inv_mass))) in accelerations
+        for (index, (acceleration, (&x, &inverse_mass))) in accelerations
             .iter_mut()
-            .zip(particles.pos().iter().zip(particles.inv_mass()))
+            .zip(particles.positions().iter().zip(particles.inverse_mass()))
             .enumerate()
         {
-            if inv_mass != S::ZERO {
+            if inverse_mass != S::ZERO {
                 *acceleration += self.accel_on(&nodes, x, root.key(x), index);
             }
         }

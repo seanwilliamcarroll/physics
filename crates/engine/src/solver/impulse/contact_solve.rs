@@ -27,7 +27,7 @@ pub(super) fn apply<S: Scalar>(particles: &mut Particles<S>, contact: &Contact<S
         return;
     };
     push_apart(
-        &mut particles.vel,
+        &mut particles.velocities,
         first,
         second,
         contact.normal * (first_inv_mass * lambda),
@@ -96,7 +96,7 @@ pub(super) fn solve<S: Scalar>(
     };
     let current_normal_velocity = normal_velocity(particles, contact, contact.normal);
     solve_toward(
-        &mut particles.vel,
+        &mut particles.velocities,
         contact_bodies,
         contact,
         current_normal_velocity,

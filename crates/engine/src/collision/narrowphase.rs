@@ -39,7 +39,7 @@ pub(crate) struct Contact<S> {
 pub fn broadphase_cell<S: Scalar>(particles: &Particles<S>, dt: S) -> S {
     let two = S::ONE + S::ONE;
     let max_speed = particles
-        .vel()
+        .velocities()
         .iter()
         .zip(particles.radius())
         .filter(|(_, radius)| **radius > S::ZERO)
@@ -66,7 +66,7 @@ pub(crate) fn find_contacts<S: Scalar>(
     out.clear();
     let margin = S::from_f64(CONTACT_MARGIN);
     candidate_pairs(
-        particles.pos(),
+        particles.positions(),
         particles.radius(),
         broadphase_cell(particles, dt),
         pairs,
@@ -76,16 +76,24 @@ pub(crate) fn find_contacts<S: Scalar>(
             out.push(contact);
         }
     }
-    for (index, (&position, &radius)) in particles.pos().iter().zip(particles.radius()).enumerate()
+    for (index, (&position, &radius)) in particles
+        .positions()
+        .iter()
+        .zip(particles.radius())
+        .enumerate()
     {
         let movable = particles
-            .inv_mass()
+            .inverse_mass()
             .get(index)
-            .is_some_and(|&inv_mass| inv_mass != S::ZERO);
+            .is_some_and(|&inverse_mass| inverse_mass != S::ZERO);
         if radius == S::ZERO || !movable {
             continue;
         }
-        let velocity = particles.vel().get(index).copied().unwrap_or(Vec2::ZERO);
+        let velocity = particles
+            .velocities()
+            .get(index)
+            .copied()
+            .unwrap_or(Vec2::ZERO);
         for (wall_index, wall) in statics.walls.iter().enumerate() {
             let normal = -wall.normal();
             let gap = wall.distance(position) - radius;
@@ -125,13 +133,17 @@ fn pair_contact<S: Scalar>(
     dt: S,
     margin: S,
 ) -> Option<Contact<S>> {
-    let (first_position, second_position) =
-        (*particles.pos().get(first)?, *particles.pos().get(second)?);
-    let (first_velocity, second_velocity) =
-        (*particles.vel().get(first)?, *particles.vel().get(second)?);
+    let (first_position, second_position) = (
+        *particles.positions().get(first)?,
+        *particles.positions().get(second)?,
+    );
+    let (first_velocity, second_velocity) = (
+        *particles.velocities().get(first)?,
+        *particles.velocities().get(second)?,
+    );
     let (first_inv_mass, second_inv_mass) = (
-        *particles.inv_mass().get(first)?,
-        *particles.inv_mass().get(second)?,
+        *particles.inverse_mass().get(first)?,
+        *particles.inverse_mass().get(second)?,
     );
     let reach = *particles.radius().get(first)? + *particles.radius().get(second)?;
     if first_inv_mass == S::ZERO && second_inv_mass == S::ZERO {

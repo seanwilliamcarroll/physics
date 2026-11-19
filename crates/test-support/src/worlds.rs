@@ -15,7 +15,7 @@ pub const PROP_MASS_KG: (f64, f64) = (1.0e9, 1.0e10);
 pub const PROP_SOFTENING_M: f64 = 0.1;
 pub const PROP_DEFAULT_CASES: u32 = 64;
 
-/// One generated body; `mass: None` means static (`inv_mass = 0`).
+/// One generated body; `mass: None` means static (`inverse_mass = 0`).
 #[derive(Clone, Debug)]
 pub struct BodySpec {
     pub pos: (f64, f64),

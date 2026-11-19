@@ -72,7 +72,7 @@ fn run(links: &[LinkSpec], order: &[usize], solver: Solver, steps: u32) -> (Vec<
                 .0,
         );
     }
-    (world.particles().pos().to_vec(), worst)
+    (world.particles().positions().to_vec(), worst)
 }
 
 proptest! {

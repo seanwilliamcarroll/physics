@@ -113,7 +113,7 @@ fn momentum_drift_is_bounded_by_force_error<S: Tol>() {
             * tree
                 .iter()
                 .zip(&exact)
-                .zip(world.particles().inv_mass())
+                .zip(world.particles().inverse_mass())
                 .map(|((&approximate, &direct), &inverse_mass)| {
                     (approximate - direct).length().to_f64() / inverse_mass.to_f64()
                 })
@@ -164,8 +164,14 @@ fn cluster_runs_finite_for_every_theta<S: Tol>() {
         }
         let finite =
             |vector: &Vec2<S>| vector.x.to_f64().is_finite() && vector.y.to_f64().is_finite();
-        assert!(world.particles().pos().iter().all(finite), "θ {theta}");
-        assert!(world.particles().vel().iter().all(finite), "θ {theta}");
+        assert!(
+            world.particles().positions().iter().all(finite),
+            "θ {theta}"
+        );
+        assert!(
+            world.particles().velocities().iter().all(finite),
+            "θ {theta}"
+        );
     }
 }
 for_each_scalar!(cluster_runs_finite_for_every_theta);

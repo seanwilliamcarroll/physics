@@ -57,7 +57,7 @@ pub fn gravity_potential<S: Scalar>(p: &Particles<S>, g: &PairwiseGravity<S>) ->
 pub fn center_of_mass<S: Scalar>(p: &Particles<S>) -> Vec2<S>;
 ```
 
-Static particles (`inv_mass = 0`) are excluded from momentum and kinetic energy.
+Static particles (`inverse_mass = 0`) are excluded from momentum and kinetic energy.
 
 **Consequence for `Scalar`:** comparisons against tolerances need a lossless
 readout, so `to_f32` becomes **`to_f64`** (see `02-core-types.md`). The
@@ -108,7 +108,7 @@ tolerance or the physics is wrong, and record why in the test.
 | Momentum conservation | Cluster, pairwise gravity only | `|Δp|` < tol after N steps |
 | Center of mass | Same | COM moves linearly (constant velocity) |
 | Free fall | One particle, uniform gravity | Matches `x0 + v0 t + ½ g t²` within integrator's known error |
-| Static particles | `inv_mass = 0` under gravity | Position bit-identical after N steps |
+| Static particles | `inverse_mass = 0` under gravity | Position bit-identical after N steps |
 | Bounded energy (symplectic) | Two-body circular orbit | Relative energy error stays below bound over 100 orbits; **does not trend** |
 | Orbit radius | Same | Radius within band over 100 orbits |
 | Zero `dt` | Any | State unchanged |
@@ -210,7 +210,7 @@ Strategies generate random worlds:
 ```rust
 fn particles<S: Scalar>(n: Range<usize>) -> impl Strategy<Value = Particles<S>> {
     // positions in a box, velocities bounded, masses in [0.1, 10],
-    // occasionally inv_mass = 0
+    // occasionally inverse_mass = 0
 }
 ```
 

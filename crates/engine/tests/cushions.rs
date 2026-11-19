@@ -61,7 +61,7 @@ fn a_cushion_reflects_at_the_angle_it_was_hit_scaled_by_its_restitution() {
             let (vx, vy) = (2.0 * angle.cos(), -2.0 * angle.sin());
             add_ball(&mut world, (-0.3, 0.2), (vx, vy));
             run(&mut world, 30);
-            let velocity = world.particles().vel()[0];
+            let velocity = world.particles().velocities()[0];
             assert!(
                 (velocity.x - vx).abs() < REFLECT_TOL,
                 "{solver:?} e {cushion_restitution}: vx {}",
@@ -175,7 +175,10 @@ fn a_ball_pushed_into_a_cushion_rests_against_it() {
         add_cushion(&mut world, (-1.0, 0.0), (1.0, 0.0), 0.8);
         add_ball(&mut world, (0.0, BALL_RADIUS), (0.0, 0.0));
         run(&mut world, 120);
-        let (position, velocity) = (world.particles().pos()[0], world.particles().vel()[0]);
+        let (position, velocity) = (
+            world.particles().positions()[0],
+            world.particles().velocities()[0],
+        );
         assert!(
             (position.y - BALL_RADIUS).abs() < 1e-12,
             "{solver:?}: depth {}",
@@ -200,7 +203,7 @@ fn a_ball_glancing_off_a_cushions_end_reflects_about_the_corner() {
         add_cushion(&mut world, (0.0, 0.0), (1.0, 0.0), 1.0);
         add_ball(&mut world, (-0.3, 0.01), (2.0, 0.0));
         run(&mut world, 30);
-        let velocity = world.particles().vel()[0];
+        let velocity = world.particles().velocities()[0];
         let normal =
             Vec2::new(-(BALL_RADIUS * BALL_RADIUS - 0.01 * 0.01).sqrt(), 0.01) / BALL_RADIUS;
         let incoming = Vec2::new(2.0, 0.0);
@@ -219,7 +222,7 @@ fn nothing_passes_through_a_cushion_at_one_substep() {
         add_cushion(&mut world, (-1.0, 0.0), (1.0, 0.0), 0.8);
         add_ball(&mut world, (0.0, 0.537), (0.0, -12.0));
         run(&mut world, 30);
-        let y = world.particles().pos()[0].y;
+        let y = world.particles().positions()[0].y;
         assert!(y > BALL_RADIUS, "{solver:?}: y {y}");
     }
 }
@@ -241,7 +244,7 @@ fn a_cut_shot_leaves_along_the_line_of_centres() {
                     add_ball(&mut world, (0.0, 0.0), (0.0, 0.0));
                     add_ball(&mut world, (-0.4123, offset), (speed, 0.0));
                     run(&mut world, 60);
-                    let velocity = world.particles().vel()[0];
+                    let velocity = world.particles().velocities()[0];
                     let error = velocity.y.atan2(velocity.x).to_degrees() + cut;
                     assert!(
                         error.abs() < 2e-10,

@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use engine::scenarios::{
-    BOX_BALLS, CHAIN_LINKS, CRADLE_BALLS, DoublePendulumStart, Fountain, JELLY_COLS, JELLY_ROWS,
+    BOX_BALLS, CHAIN_LINKS, CRADLE_BALLS, DoublePendulumStart, Fountain, JELLY_COLUMNS, JELLY_ROWS,
     JellyBody, ball_box, break_shot, chain, cluster, collapse, cradle, disk, double_pendulum,
     jelly, orbit, pendulum, pool_break,
 };
@@ -116,7 +116,7 @@ fn run<S: Scalar>(reference_run: Run) -> Vec<u64> {
                 1e5
             };
             let mut jelly_world =
-                jelly::<S>(body, nonzero(10), JELLY_COLS, JELLY_ROWS, stiffness, 0.5).unwrap();
+                jelly::<S>(body, nonzero(10), JELLY_COLUMNS, JELLY_ROWS, stiffness, 0.5).unwrap();
             for _ in 0..300 {
                 jelly_world.world.step(time_step(DT));
             }

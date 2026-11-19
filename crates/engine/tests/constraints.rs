@@ -37,8 +37,8 @@ fn the_pin_never_moves() {
     for _ in 0..STEPS {
         world.step(time_step(DT));
     }
-    assert_eq!(world.particles().pos()[0], Vec2::ZERO);
-    assert_eq!(world.particles().vel()[0], Vec2::ZERO);
+    assert_eq!(world.particles().positions()[0], Vec2::ZERO);
+    assert_eq!(world.particles().velocities()[0], Vec2::ZERO);
 }
 
 /// XPBD dissipates through projection, less with smaller substeps (`01`,
@@ -99,7 +99,7 @@ fn integrator_is_ignored_with_constraints() {
         for _ in 0..60 {
             world.step(time_step(DT));
         }
-        world.particles().pos().to_vec()
+        world.particles().positions().to_vec()
     };
     let reference = run(Integrator::SymplecticEuler);
     for integrator in Integrator::ALL {
@@ -130,7 +130,7 @@ fn small_angle_period(solver: Solver, amplitude: f64) -> f64 {
         (PENDULUM_LENGTH * amplitude.sin(), None, 0.0, 0_u32);
     for step in 1..=1200_u32 {
         world.step(time_step(DT));
-        let x = world.particles().pos()[1].x;
+        let x = world.particles().positions()[1].x;
         if previous_x.signum() != x.signum() {
             let time = (f64::from(step) - x / (x - previous_x)) * DT;
             first_crossing.get_or_insert(time);

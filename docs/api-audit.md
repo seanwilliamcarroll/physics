@@ -50,7 +50,7 @@ site`.
   test-only: only the offline fit runs it). Kept on purpose: the
   scenarios' constants (their functions' docs link them: a scenario's
   parameters are its contract), constants public docs cite
-  (`RELEASE_T60`, `PREDATOR_RANGE`), trait methods.
+  (`RELEASE_DECAY_TIME_60DB`, `PREDATOR_RANGE`), trait methods.
 - **Split:** `swarm`'s `ants.rs` (610 lines, the largest library file;
   next 392): the painting in `ants/paint.rs`.
 - **The workspace version** inherited by every crate (cargo warned on

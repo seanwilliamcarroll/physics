@@ -22,9 +22,10 @@ pub use ball_box::{
     BOX_SPEED, ball_box,
 };
 pub use billiards::{
-    POOL_BALL_MASS, POOL_BALL_RADIUS, POOL_CORNER_MOUTH, POOL_CUE, POOL_E_BALL, POOL_E_CUSHION,
-    POOL_G, POOL_LENGTH, POOL_MAX_SPEED, POOL_MU_ROLL, POOL_MU_SLIDE, POOL_RACK, POOL_SIDE_MOUTH,
-    POOL_WIDTH, pool_break, pool_rack, pool_table,
+    POOL_BALL_MASS, POOL_BALL_RADIUS, POOL_BALL_RESTITUTION, POOL_CORNER_MOUTH, POOL_CUE_BALL,
+    POOL_CUSHION_RESTITUTION, POOL_GRAVITY, POOL_LENGTH, POOL_MAX_SPEED, POOL_RACK,
+    POOL_ROLLING_RESISTANCE, POOL_SIDE_MOUTH, POOL_SLIDING_FRICTION, POOL_WIDTH, pool_break,
+    pool_rack, pool_table,
 };
 pub use break_shot::{
     BREAK_BALL_MASS, BREAK_BALL_RADIUS, BREAK_CUE_DISTANCE, BREAK_ROWS, BREAK_SPEED, break_shot,
@@ -32,7 +33,7 @@ pub use break_shot::{
 pub use chain::{CHAIN_LENGTH, CHAIN_LINK_MASS, CHAIN_LINKS, chain};
 pub use cluster::{
     CLUSTER_RADIUS, CLUSTER_SOFTENING, CLUSTER_SPEED, CLUSTER_SUBSTEPS, CLUSTER_TOTAL_MASS,
-    CLUSTER_WEIGHT, cluster, cluster_gravity,
+    CLUSTER_WEIGHT_RANGE, cluster, cluster_gravity,
 };
 pub use collapse::{COLLAPSE_TOTAL_MASS, collapse};
 pub use cradle::{CRADLE_BALLS, CRADLE_LENGTH, CRADLE_MASS, CRADLE_RADIUS, cradle};
@@ -42,8 +43,8 @@ pub use double_pendulum::{
 };
 pub use fountain::{FOUNTAIN_SUBSTEPS, FOUNTAIN_VX, FOUNTAIN_VY, Fountain};
 pub use jelly::{
-    JELLY_COLS, JELLY_DROP, JELLY_GROUND, JELLY_MASS, JELLY_ROWS, JELLY_SPACING, Jelly, JellyBody,
-    SpringKind, SpringNetwork, compliance_for, jelly,
+    JELLY_COLUMNS, JELLY_DROP, JELLY_GROUND, JELLY_MASS, JELLY_ROWS, JELLY_SPACING, Jelly,
+    JellyBody, SpringKind, SpringNetwork, compliance_for, jelly,
 };
 pub use orbit::{
     ORBIT_CIRCULAR, ORBIT_MASS_RATIO, ORBIT_NOMINAL_PERIOD, ORBIT_SEPARATION, ORBIT_SOFTENING,

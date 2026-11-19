@@ -23,11 +23,17 @@ fn clamp_lifts_a_particle_below_and_stops_its_fall_only() {
     let rising = particles.add(Vec2::new(2.0, -0.5), Vec2::new(-1.0, 4.0), kg(1.0));
     clamp(&mut particles, GROUND);
     // Up to the ground; downward velocity gone, sideways kept (no friction).
-    assert_eq!(particles.pos()[falling.index()], Vec2::new(1.0, GROUND));
-    assert_eq!(particles.vel()[falling.index()], Vec2::new(3.0, 0.0));
+    assert_eq!(
+        particles.positions()[falling.index()],
+        Vec2::new(1.0, GROUND)
+    );
+    assert_eq!(particles.velocities()[falling.index()], Vec2::new(3.0, 0.0));
     // Already moving up: only the position changes.
-    assert_eq!(particles.pos()[rising.index()], Vec2::new(2.0, GROUND));
-    assert_eq!(particles.vel()[rising.index()], Vec2::new(-1.0, 4.0));
+    assert_eq!(
+        particles.positions()[rising.index()],
+        Vec2::new(2.0, GROUND)
+    );
+    assert_eq!(particles.velocities()[rising.index()], Vec2::new(-1.0, 4.0));
 }
 
 #[test]
@@ -35,8 +41,8 @@ fn clamp_stops_a_particle_on_the_ground_moving_down() {
     let mut particles = Particles::new();
     let _ = particles.add(Vec2::new(0.0, GROUND), Vec2::new(0.0, -1.0), kg(1.0));
     clamp(&mut particles, GROUND);
-    assert_eq!(particles.pos()[0], Vec2::new(0.0, GROUND));
-    assert_eq!(particles.vel()[0], Vec2::ZERO);
+    assert_eq!(particles.positions()[0], Vec2::new(0.0, GROUND));
+    assert_eq!(particles.velocities()[0], Vec2::ZERO);
 }
 
 #[test]
@@ -46,6 +52,6 @@ fn clamp_leaves_particles_above_and_static_ones_alone() {
     let _ = particles.add_static(Vec2::new(0.0, -3.0));
     let before = particles.clone();
     clamp(&mut particles, GROUND);
-    assert_eq!(particles.pos(), before.pos());
-    assert_eq!(particles.vel(), before.vel());
+    assert_eq!(particles.positions(), before.positions());
+    assert_eq!(particles.velocities(), before.velocities());
 }

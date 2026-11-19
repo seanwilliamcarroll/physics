@@ -66,10 +66,10 @@ pub fn momentum_drift_bound<S: Tol>(steps: u32, scale: f64) -> f64 {
 #[must_use]
 pub fn momentum_scale<S: Scalar>(particles: &Particles<S>) -> f64 {
     particles
-        .vel()
+        .velocities()
         .iter()
-        .zip(particles.inv_mass())
-        .filter(|&(_, &inv_mass)| inv_mass != S::ZERO)
-        .map(|(vel, inv_mass)| vel.length().to_f64() / inv_mass.to_f64())
+        .zip(particles.inverse_mass())
+        .filter(|&(_, &inverse_mass)| inverse_mass != S::ZERO)
+        .map(|(vel, inverse_mass)| vel.length().to_f64() / inverse_mass.to_f64())
         .sum()
 }

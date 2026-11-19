@@ -29,7 +29,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// 2020's, at `e = 0`; `docs/08-collision.md`).
     pub(crate) fn xpbd(self, dt: S) {
         let particles = self.particles;
-        evaluate(self.forces, particles, self.acc);
+        evaluate(self.forces, particles, self.accelerations);
         let contacts = self.contacts;
         let mut cloth = self.cloth;
         if self.collides {
@@ -38,21 +38,21 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                 particles,
                 self.statics,
                 self.restitution,
-                self.acc,
+                self.accelerations,
                 dt,
                 self.speculative,
             );
-            kick(particles, self.acc, half);
+            kick(particles, self.accelerations, half);
             on_cloth(&mut cloth, particles, half);
             impacts::resolve(particles, contacts, dt);
-            kick(particles, self.acc, half);
+            kick(particles, self.accelerations, half);
             on_cloth(&mut cloth, particles, half);
         } else {
-            kick(particles, self.acc, dt);
+            kick(particles, self.accelerations, dt);
             on_cloth(&mut cloth, particles, dt);
         }
         self.scratch.clear();
-        self.scratch.extend_from_slice(&particles.pos);
+        self.scratch.extend_from_slice(&particles.positions);
         drift(particles, dt);
 
         self.lambda.fill(S::ZERO);
@@ -81,9 +81,9 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
         }
 
         for ((velocity, &position), &start_position) in particles
-            .vel
+            .velocities
             .iter_mut()
-            .zip(&particles.pos)
+            .zip(&particles.positions)
             .zip(self.scratch.iter())
         {
             *velocity = (position - start_position) / dt;
@@ -124,7 +124,7 @@ fn project_contact<S: Scalar>(
     let delta_lambda = -gap / inv_mass_sum;
     *lambda += delta_lambda;
     push_apart(
-        &mut particles.pos,
+        &mut particles.positions,
         first,
         second,
         normal * (first_inv_mass * delta_lambda),
@@ -149,7 +149,7 @@ fn settle<S: Scalar>(particles: &mut Particles<S>, statics: Statics<'_, S>, cont
     }
     let closing_speed = -normal_velocity(particles, contact, normal);
     push_apart(
-        &mut particles.vel,
+        &mut particles.velocities,
         first,
         second,
         normal * (first_inv_mass / inv_mass_sum * closing_speed),
@@ -176,13 +176,14 @@ fn project<S: Scalar, C: Constraint<S>>(
 ) {
     let [first, second] = constraint.bodies().map(crate::ParticleId::index);
     let (Some(&first_inv_mass), Some(&second_inv_mass)) = (
-        particles.inv_mass.get(first),
-        particles.inv_mass.get(second),
+        particles.inverse_mass.get(first),
+        particles.inverse_mass.get(second),
     ) else {
         return;
     };
     // Disjoint by construction (`between` rejects the same body twice).
-    let Ok([first_position, second_position]) = particles.pos.get_disjoint_mut([first, second])
+    let Ok([first_position, second_position]) =
+        particles.positions.get_disjoint_mut([first, second])
     else {
         return;
     };

@@ -38,7 +38,10 @@ fn head_on(solver: Solver, restitution: f64) -> (Vec2<f64>, Vec2<f64>) {
     for _ in 0..60 {
         world.step(time_step(DT));
     }
-    (world.particles().vel()[0], world.particles().vel()[1])
+    (
+        world.particles().velocities()[0],
+        world.particles().velocities()[1],
+    )
 }
 
 const HEAD_ON_TOL: f64 = 1e-9;
@@ -107,8 +110,8 @@ fn drop(solver: Solver, restitution: f64, height: f64, steps: u32) -> (f64, f64,
     for _ in 0..steps {
         world.step(time_step(DT));
         let (y, vy) = (
-            world.particles().pos()[0].y - BALL_RADIUS,
-            world.particles().vel()[0].y,
+            world.particles().positions()[0].y - BALL_RADIUS,
+            world.particles().velocities()[0].y,
         );
         deepest = deepest.max(-y);
         bounced |= previous_vy < 0.0 && vy > 0.0;
@@ -212,7 +215,7 @@ fn stack(solver: Solver) -> (f64, f64) {
     let mut deepest = 0.0_f64;
     for _ in 0..120 {
         world.step(time_step(DT));
-        let y = |index: usize| world.particles().pos()[index].y;
+        let y = |index: usize| world.particles().positions()[index].y;
         deepest = deepest.max(BALL_RADIUS - y(0));
         deepest = deepest.max(2.0 * BALL_RADIUS - (y(1) - y(0)));
         deepest = deepest.max(2.0 * BALL_RADIUS - (y(2) - y(1)));
@@ -241,9 +244,9 @@ fn bullet(solver: Solver, speed: f64) -> (bool, Vec2<f64>) {
     let mut inside = false;
     for _ in 0..60 {
         world.step(time_step(DT));
-        inside |= world.particles().pos()[0].x + BALL_RADIUS > 1.0 + 1e-9;
+        inside |= world.particles().positions()[0].x + BALL_RADIUS > 1.0 + 1e-9;
     }
-    (inside, world.particles().vel()[0])
+    (inside, world.particles().velocities()[0])
 }
 
 #[test]
@@ -275,13 +278,13 @@ fn fast_circles_dont_pass_through_each_other() {
         add_ball(&mut world, (10.0, 0.0), (-1e3, 0.0), 1.0);
         for _ in 0..60 {
             world.step(time_step(DT));
-            let positions = world.particles().pos();
+            let positions = world.particles().positions();
             assert!(
                 positions[0].x < positions[1].x,
                 "{solver:?}: they passed through"
             );
         }
-        let velocities = world.particles().vel();
+        let velocities = world.particles().velocities();
         assert!(
             (velocities[0].x + 1e3).abs() < 1e-9 && (velocities[1].x - 1e3).abs() < 1e-9,
             "{solver:?}: {velocities:?}"
@@ -308,7 +311,7 @@ fn a_one_to_a_million_collision_is_exact_and_finite() {
         for _ in 0..60 {
             world.step(time_step(DT));
         }
-        let velocities = world.particles().vel();
+        let velocities = world.particles().velocities();
         assert!(
             velocities
                 .iter()

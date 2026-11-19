@@ -153,8 +153,8 @@ impl<S: Scalar> World<S> {
         self.particles.add_static(position)
     }
 
-    pub fn vel_mut(&mut self) -> &mut [Vec2<S>] {
-        self.particles.vel_mut()
+    pub fn velocities_mut(&mut self) -> &mut [Vec2<S>] {
+        self.particles.velocities_mut()
     }
 
     #[must_use]
@@ -268,9 +268,9 @@ impl<S: Scalar> World<S> {
     fn substep(&mut self, substep_dt: S) {
         if self.constraints.is_empty() && !self.collides() {
             let scratch = VerletScratch {
-                acc: &mut self.accelerations,
-                acc_next: &mut self.next_accelerations,
-                vel_start: &mut self.start_velocities,
+                accelerations: &mut self.accelerations,
+                next_accelerations: &mut self.next_accelerations,
+                start_velocities: &mut self.start_velocities,
             };
             self.integrator
                 .substep(&self.forces, &mut self.particles, scratch, substep_dt);
@@ -279,7 +279,7 @@ impl<S: Scalar> World<S> {
                 tunnels.starting_positions.clear();
                 tunnels
                     .starting_positions
-                    .extend_from_slice(self.particles.pos());
+                    .extend_from_slice(self.particles.positions());
             }
             self.spin.resize(self.particles.len(), Vec2::ZERO);
             let statics = Statics {

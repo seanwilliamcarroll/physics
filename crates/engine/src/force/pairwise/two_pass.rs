@@ -19,7 +19,7 @@ pub(super) fn accumulate<S: Scalar, const L: usize>(
         bodies.x.as_slice(),
         bodies.y.as_slice(),
         bodies.mass.as_slice(),
-        bodies.inv_mass.as_slice(),
+        bodies.inverse_mass.as_slice(),
     );
     while let (
         Some((acceleration_i, acceleration_tail)),

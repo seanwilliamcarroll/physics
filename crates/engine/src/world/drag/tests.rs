@@ -56,13 +56,13 @@ fn drag_pulls_the_particle_and_release_restores_the_world() {
         world.step(time_step(1.0 / 60.0));
     }
     // Held near the anchor against gravity (sag m g α ≈ 1 cm at k = 1000).
-    let bob = world.particles.pos()[2];
+    let bob = world.particles.positions()[2];
     assert!((bob - Vec2::new(3.0, 2.0)).length() < 0.05, "{bob:?}");
-    let before = world.particles.pos()[..3].to_vec();
+    let before = world.particles.positions()[..3].to_vec();
     assert_eq!(world.release(grab), Ok(()));
     assert_eq!((world.particles.len(), world.constraints().len()), (3, 1));
     assert_eq!(
-        world.particles.pos(),
+        world.particles.positions(),
         before.as_slice(),
         "release moves nothing"
     );
@@ -92,7 +92,10 @@ fn only_static_particles_can_be_moved() {
     let mut world = bare_two_bobs(); // slots: 0 a pin, 1 and 2 bobs
     let pin = world.add_static(Vec2::new(5.0, 5.0));
     assert!(world.set_static_position(pin, Vec2::new(0.0, 1.0)));
-    assert_eq!(world.particles.pos()[pin.index()], Vec2::new(0.0, 1.0));
+    assert_eq!(
+        world.particles.positions()[pin.index()],
+        Vec2::new(0.0, 1.0)
+    );
     let mut other = World::<f64>::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
     let _ = other.add_static(Vec2::ZERO);
     let foreign = other.add_static(Vec2::ZERO); // slot 1: a bob in `world`
@@ -101,7 +104,7 @@ fn only_static_particles_can_be_moved() {
         "slot 1 is a bob here"
     );
     assert_eq!(
-        world.particles.pos()[1],
+        world.particles.positions()[1],
         Vec2::new(1.0, 0.0),
         "the bob didn't move"
     );
@@ -129,7 +132,7 @@ fn update_constraints_skips_the_held_grabs_rod() {
     let rod_count = world.constraints().len();
     let grab = world
         .grab(
-            world.particles.pos()[4],
+            world.particles.positions()[4],
             0.05,
             Compliance::new(SOFT).unwrap(),
         )

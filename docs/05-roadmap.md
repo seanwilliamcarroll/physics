@@ -137,7 +137,7 @@ loss, and substeps as the great equalizer.
 **New:**
 - Constraint definitions: `C(x)`, `∇C(x)`, compliance. Geometry only, no
   resolution logic.
-- `DistanceConstraint`, `PinConstraint` (or pin via `inv_mass = 0`)
+- `DistanceConstraint`, `PinConstraint` (or pin via `inverse_mass = 0`)
 - `Solver` trait; `XpbdSolver`; `ImpulseSolver` (Baumgarte, accumulated λ)
 - `World::step` restructured: forces → solver
 - Diagnostics: constraint error (max, RMS)

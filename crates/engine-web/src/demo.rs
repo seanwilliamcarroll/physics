@@ -143,7 +143,7 @@ impl Demo {
     /// spacing near 2 m is ~2.4e-7 m). `None` past the last particle.
     #[must_use]
     pub(crate) fn particle_position(&self, index: usize) -> Option<(f64, f64)> {
-        each_scalar!(&self.world, sim => sim.world.particles().pos().get(index).map(|position| (position.x.to_f64(), position.y.to_f64())))
+        each_scalar!(&self.world, sim => sim.world.particles().positions().get(index).map(|position| (position.x.to_f64(), position.y.to_f64())))
     }
 
     /// Interleaved particle positions, `f32`, in meters.

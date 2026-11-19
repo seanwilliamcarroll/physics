@@ -30,8 +30,8 @@ and a test are cheaper.
 
 | Where | Invariant | How |
 |---|---|---|
-| `Particles` | `pos`, `vel`, `inv_mass` stay the same length | Private `Vec`s; accessors return slices (can edit elements, can't resize) |
-| `Particles::add_static` | Static means `inv_mass = 0` and zero velocity, never `1 / 0` | A separate constructor instead of `add(mass = 0)` |
+| `Particles` | `pos`, `vel`, `inverse_mass` stay the same length | Private `Vec`s; accessors return slices (can edit elements, can't resize) |
+| `Particles::add_static` | Static means `inverse_mass = 0` and zero velocity, never `1 / 0` | A separate constructor instead of `add(mass = 0)` |
 | `World::new`, `set_substeps` | `substeps ≥ 1` | `NonZeroU32` (since the M3/M4 audit; was a `Result`) |
 | `ScalarKind`, `DemoKind`, xtask `Command` | Only known codes/commands | Enums parsed once at the boundary (`from_code`, `parse`); `None`/`Err` otherwise |
 | `Vec2`, scalar-returning methods | Results aren't silently discarded | `#[must_use]` (`docs/lint-policy.md`) |
@@ -105,14 +105,14 @@ constants, and one enum variant per invariant is cheap. Item 3
   survives solver switches.
 
 - **`Mass<S>`** (item 1; trigger: M3's constraint solvers weight every
-  correction by `inv_mass`). `Mass::new(m) -> Option`: `None` for
+  correction by `inverse_mass`). `Mass::new(m) -> Option`: `None` for
   `m ≤ 0`, NaN, ±∞, or an `m` so small that `1 / m` overflows (e.g.
   `1e-39` in `f32`). `Scalar` has no `is_finite`, so finiteness is read
   through the lossless `to_f64()` (a fixed-point scalar passes trivially);
   `1 / m > 0` is also checked, which only fixed point can fail. The
   inverse is computed once in `new`, the same `1 / m` `add` used to
   compute, so every golden hash is unchanged. `Particles::add` takes a
-  `Mass`; `add_static` stays the only way to get `inv_mass = 0`. Scene
+  `Mass`; `add_static` stays the only way to get `inverse_mass = 0`. Scene
   masses go through `Mass::new` once (`ConfigError::InvalidMass`, like
   `InvalidSoftening`); storage is still a plain `Vec<S>` of inverses.
 - **`ParticleId`** (item 5, plain-index variant): `add` and `add_static`
@@ -190,7 +190,7 @@ are macro-built now. `World::step` takes a **`TimeStep`** (dt > 0,
 finite), the same idea for the engine's most-called function. Statics
 got a handle, **`StaticId`** (from `add_static`, taken by
 `set_static_position`), and immobility by construction: `kick`, `drift`
-and the split impulse drift skip `inv_mass = 0`, so a static given a
+and the split impulse drift skip `inverse_mass = 0`, so a static given a
 velocity still stays put (it drifted before).
 
 **Triggers re-checked at the end of A3:** A1's note asked to revisit
@@ -227,8 +227,8 @@ adopt it in that milestone's PR and move the row up.
 1. **Mass types: `Mass<S>` / `InvMass<S>` (positive, or zero meaning static).**
    ✅ *`Mass<S>` adopted in M3 (above); no separate `InvMass` type.*
    *Adopt when* constraint solvers start dividing by or weighting with
-   `inv_mass` (**M3**), or masses become user input (a slider). An infinite
-   `inv_mass` then corrupts every constraint the particle touches, far from
+   `inverse_mass` (**M3**), or masses become user input (a slider). An infinite
+   `inverse_mass` then corrupts every constraint the particle touches, far from
    the cause. Storage stays a plain `Vec<S>`; the type guards `add` only.
 
 2. **Parameter types for physical constants:** `Softening` (ε ≥ 0),

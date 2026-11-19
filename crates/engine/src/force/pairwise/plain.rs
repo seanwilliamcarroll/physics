@@ -12,18 +12,18 @@ pub(super) fn accumulate<S: Scalar>(
     // Masses once per call: n divisions here instead of n² in the pair
     // loop. Static particles get mass 0, so they exert no pull.
     let bodies: Vec<(Vec2<S>, S, S)> = particles
-        .pos()
+        .positions()
         .iter()
-        .zip(particles.inv_mass())
-        .map(|(&position, &inv_mass)| {
+        .zip(particles.inverse_mass())
+        .map(|(&position, &inverse_mass)| {
             (
                 position,
-                if inv_mass == S::ZERO {
+                if inverse_mass == S::ZERO {
                     S::ZERO
                 } else {
-                    S::ONE / inv_mass
+                    S::ONE / inverse_mass
                 },
-                inv_mass,
+                inverse_mass,
             )
         })
         .collect();
@@ -51,7 +51,7 @@ pub(super) fn accumulate<S: Scalar>(
                 // Coincident and unsoftened: no direction; skip, not 0/0.
                 continue;
             }
-            // One force per pair, applied +/-; times inv_mass, so statics stay put.
+            // One force per pair, applied +/-; times inverse_mass, so statics stay put.
             let force = offset
                 * (gravity.gravitational_constant * mass_i * mass_j
                     / (distance_sq * distance_sq.sqrt()));

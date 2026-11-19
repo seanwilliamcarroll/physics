@@ -128,7 +128,7 @@ fn broadphase_of<S: Scalar>(
     let particles = world.particles();
     let cell = broadphase_cell(particles, substep_length);
     let mut pairs = Vec::new();
-    candidate_pairs(particles.pos(), particles.radius(), cell, &mut pairs);
+    candidate_pairs(particles.positions(), particles.radius(), cell, &mut pairs);
     // Indices past `u32::MAX` can't occur in a wasm32 address space; a pair
     // with one would be skipped, not wrapped.
     for (first, second) in pairs {

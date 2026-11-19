@@ -14,26 +14,26 @@ fn add_stores_inverse_mass() {
     let mut particles = Particles::<f64>::new();
     particles.add(Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0), kg(4.0));
     assert_eq!(particles.len(), 1);
-    assert_eq!(particles.pos(), &[Vec2::new(1.0, 2.0)]);
-    assert_eq!(particles.vel(), &[Vec2::new(3.0, 4.0)]);
-    assert_eq!(particles.inv_mass(), &[0.25]);
+    assert_eq!(particles.positions(), &[Vec2::new(1.0, 2.0)]);
+    assert_eq!(particles.velocities(), &[Vec2::new(3.0, 4.0)]);
+    assert_eq!(particles.inverse_mass(), &[0.25]);
 }
 
 #[test]
 fn add_static_has_zero_inverse_mass_and_velocity() {
     let mut particles = Particles::<f32>::new();
     particles.add_static(Vec2::new(5.0, 6.0));
-    assert_eq!(particles.pos(), &[Vec2::new(5.0, 6.0)]);
-    assert_eq!(particles.vel(), &[Vec2::ZERO]);
-    assert_eq!(particles.inv_mass(), &[0.0]);
+    assert_eq!(particles.positions(), &[Vec2::new(5.0, 6.0)]);
+    assert_eq!(particles.velocities(), &[Vec2::ZERO]);
+    assert_eq!(particles.inverse_mass(), &[0.0]);
 }
 
 #[test]
 fn vel_mut_edits_in_place() {
     let mut particles = Particles::<f64>::new();
     particles.add(Vec2::ZERO, Vec2::ZERO, kg(1.0));
-    particles.vel_mut()[0] = Vec2::new(7.0, 0.0);
-    assert_eq!(particles.vel(), &[Vec2::new(7.0, 0.0)]);
+    particles.velocities_mut()[0] = Vec2::new(7.0, 0.0);
+    assert_eq!(particles.velocities(), &[Vec2::new(7.0, 0.0)]);
 }
 
 #[test]
@@ -44,10 +44,10 @@ fn ids_are_sequential_slot_indices() {
     let last = particles.add(Vec2::new(3.0, 0.0), Vec2::ZERO, kg(1.0));
     assert_eq!([first.index(), pin.index(), last.index()], [0, 1, 2]);
     assert_eq!(
-        particles.pos().get(last.index()),
+        particles.positions().get(last.index()),
         Some(&Vec2::new(3.0, 0.0))
     );
-    assert_eq!(particles.inv_mass().get(pin.index()), Some(&0.0));
+    assert_eq!(particles.inverse_mass().get(pin.index()), Some(&0.0));
 }
 
 #[test]

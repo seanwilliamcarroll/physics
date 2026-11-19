@@ -13,7 +13,7 @@ use crate::{Particles, Scalar, Vec2};
 pub trait Force<S: Scalar> {
     /// Adds this force's acceleration into `accelerations` (one entry per
     /// particle, zeroed before the first force runs): add, never overwrite.
-    /// Static particles (`inv_mass = 0`) are skipped.
+    /// Static particles (`inverse_mass = 0`) are skipped.
     fn accumulate(&self, particles: &Particles<S>, accelerations: &mut [Vec2<S>]);
 }
 
@@ -31,15 +31,16 @@ impl<S: Scalar> UniformGravity<S> {
     }
 
     /// The acceleration, m/s².
-    pub const fn g(&self) -> Vec2<S> {
+    pub const fn acceleration(&self) -> Vec2<S> {
         self.acceleration
     }
 }
 
 impl<S: Scalar> Force<S> for UniformGravity<S> {
     fn accumulate(&self, particles: &Particles<S>, accelerations: &mut [Vec2<S>]) {
-        for (acceleration, &inv_mass) in accelerations.iter_mut().zip(particles.inv_mass()) {
-            if inv_mass != S::ZERO {
+        for (acceleration, &inverse_mass) in accelerations.iter_mut().zip(particles.inverse_mass())
+        {
+            if inverse_mass != S::ZERO {
                 *acceleration += self.acceleration;
             }
         }

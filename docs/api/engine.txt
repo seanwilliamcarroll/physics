@@ -77,7 +77,7 @@ pub const engine::scenarios::CLUSTER_SOFTENING: f64
 pub const engine::scenarios::CLUSTER_SPEED: f64
 pub const engine::scenarios::CLUSTER_SUBSTEPS: core::num::nonzero::NonZeroU32
 pub const engine::scenarios::CLUSTER_TOTAL_MASS: f64
-pub const engine::scenarios::CLUSTER_WEIGHT: (f64, f64)
+pub const engine::scenarios::CLUSTER_WEIGHT_RANGE: (f64, f64)
 pub const engine::scenarios::COLLAPSE_TOTAL_MASS: f64
 pub const engine::scenarios::CRADLE_BALLS: usize
 pub const engine::scenarios::CRADLE_LENGTH: f64
@@ -93,7 +93,7 @@ pub const engine::scenarios::FOUNTAIN_SUBSTEPS: core::num::nonzero::NonZeroU32
 pub const engine::scenarios::FOUNTAIN_VX: (f64, f64)
 pub const engine::scenarios::FOUNTAIN_VY: (f64, f64)
 pub const engine::scenarios::GRAVITATIONAL_CONSTANT: f64
-pub const engine::scenarios::JELLY_COLS: usize
+pub const engine::scenarios::JELLY_COLUMNS: usize
 pub const engine::scenarios::JELLY_DROP: f64
 pub const engine::scenarios::JELLY_GROUND: f64
 pub const engine::scenarios::JELLY_MASS: f64
@@ -110,17 +110,17 @@ pub const engine::scenarios::PENDULUM_LENGTH: f64
 pub const engine::scenarios::PENDULUM_MASS: f64
 pub const engine::scenarios::POOL_BALL_MASS: f64
 pub const engine::scenarios::POOL_BALL_RADIUS: f64
+pub const engine::scenarios::POOL_BALL_RESTITUTION: f64
 pub const engine::scenarios::POOL_CORNER_MOUTH: f64
-pub const engine::scenarios::POOL_CUE: engine::ParticleId
-pub const engine::scenarios::POOL_E_BALL: f64
-pub const engine::scenarios::POOL_E_CUSHION: f64
-pub const engine::scenarios::POOL_G: f64
+pub const engine::scenarios::POOL_CUE_BALL: engine::ParticleId
+pub const engine::scenarios::POOL_CUSHION_RESTITUTION: f64
+pub const engine::scenarios::POOL_GRAVITY: f64
 pub const engine::scenarios::POOL_LENGTH: f64
 pub const engine::scenarios::POOL_MAX_SPEED: f64
-pub const engine::scenarios::POOL_MU_ROLL: f64
-pub const engine::scenarios::POOL_MU_SLIDE: f64
 pub const engine::scenarios::POOL_RACK: [u8; 15]
+pub const engine::scenarios::POOL_ROLLING_RESISTANCE: f64
 pub const engine::scenarios::POOL_SIDE_MOUTH: f64
+pub const engine::scenarios::POOL_SLIDING_FRICTION: f64
 pub const engine::scenarios::POOL_WIDTH: f64
 pub const engine::scenarios::STANDARD_GRAVITY: f64
 pub fn engine::scenarios::ball_box<S: math::scalar::Scalar>(engine::Solver, core::num::nonzero::NonZeroU32, usize, u64) -> core::result::Result<engine::World<S>, engine::ConfigError>
@@ -147,10 +147,10 @@ pub fn engine::scenarios::pool_table<S: math::scalar::Scalar>(engine::Solver, co
 pub mod engine::table
 pub struct engine::table::Table<S>
 impl<S: math::scalar::Scalar> engine::table::Table<S>
-pub const fn engine::table::Table<S>::g(self) -> S
-pub const fn engine::table::Table<S>::mu_roll(self) -> S
-pub const fn engine::table::Table<S>::mu_slide(self) -> S
+pub const fn engine::table::Table<S>::gravity(self) -> S
 pub fn engine::table::Table<S>::new(S, S, S) -> core::option::Option<Self>
+pub const fn engine::table::Table<S>::rolling_resistance(self) -> S
+pub const fn engine::table::Table<S>::sliding_friction(self) -> S
 pub fn engine::table::slip<S: math::scalar::Scalar>(math::vec2::Vec2<S>, math::vec2::Vec2<S>, S) -> math::vec2::Vec2<S>
 pub enum engine::ConfigError
 pub engine::ConfigError::ChangedBodies
@@ -232,7 +232,7 @@ pub struct engine::Mass<S>
 impl<S: math::scalar::Scalar> engine::Mass<S>
 pub const engine::Mass<S>::ONE: Self
 pub const fn engine::Mass<S>::get(self) -> S
-pub const fn engine::Mass<S>::inv(self) -> S
+pub const fn engine::Mass<S>::inverse(self) -> S
 pub fn engine::Mass<S>::new(S) -> core::option::Option<Self>
 pub struct engine::OpeningAngle<S>(_)
 impl<S: math::scalar::Scalar> engine::OpeningAngle<S>
@@ -241,7 +241,7 @@ pub const fn engine::OpeningAngle<S>::get(self) -> S
 pub fn engine::OpeningAngle<S>::new(S) -> core::option::Option<Self>
 pub struct engine::PairwiseGravity<S>
 impl<S: math::scalar::Scalar> engine::PairwiseGravity<S>
-pub const fn engine::PairwiseGravity<S>::g_const(&self) -> S
+pub const fn engine::PairwiseGravity<S>::gravitational_constant(&self) -> S
 pub fn engine::PairwiseGravity<S>::new(S, engine::Softening<S>) -> Self
 pub const fn engine::PairwiseGravity<S>::softening_sq(&self) -> S
 impl<S: math::scalar::Scalar> engine::Force<S> for engine::PairwiseGravity<S>
@@ -256,17 +256,17 @@ impl<S: math::scalar::Scalar> engine::Particles<S>
 pub fn engine::Particles<S>::add(&mut self, math::vec2::Vec2<S>, math::vec2::Vec2<S>, engine::Mass<S>) -> engine::ParticleId
 pub fn engine::Particles<S>::add_circle(&mut self, math::vec2::Vec2<S>, math::vec2::Vec2<S>, engine::Mass<S>, engine::Radius<S>) -> engine::ParticleId
 pub fn engine::Particles<S>::add_static(&mut self, math::vec2::Vec2<S>) -> engine::StaticId
-pub fn engine::Particles<S>::inv_mass(&self) -> &[S]
+pub fn engine::Particles<S>::inverse_mass(&self) -> &[S]
 pub fn engine::Particles<S>::is_empty(&self) -> bool
 pub fn engine::Particles<S>::len(&self) -> usize
 pub const fn engine::Particles<S>::max_radius(&self) -> S
 pub fn engine::Particles<S>::nearest_dynamic(&self, math::vec2::Vec2<S>, S) -> core::option::Option<engine::ParticleId>
 pub const fn engine::Particles<S>::new() -> Self
-pub fn engine::Particles<S>::pos(&self) -> &[math::vec2::Vec2<S>]
+pub fn engine::Particles<S>::positions(&self) -> &[math::vec2::Vec2<S>]
 pub fn engine::Particles<S>::radius(&self) -> &[S]
 pub fn engine::Particles<S>::set_static_position(&mut self, engine::StaticId, math::vec2::Vec2<S>) -> bool
-pub fn engine::Particles<S>::vel(&self) -> &[math::vec2::Vec2<S>]
-pub fn engine::Particles<S>::vel_mut(&mut self) -> &mut [math::vec2::Vec2<S>]
+pub fn engine::Particles<S>::velocities(&self) -> &[math::vec2::Vec2<S>]
+pub fn engine::Particles<S>::velocities_mut(&mut self) -> &mut [math::vec2::Vec2<S>]
 impl<S: math::scalar::Scalar> core::default::Default for engine::Particles<S>
 pub fn engine::Particles<S>::default() -> Self
 pub struct engine::Radius<S>(_)
@@ -318,10 +318,10 @@ pub const fn engine::Stiffness<S>::get(self) -> S
 pub fn engine::Stiffness<S>::new(S) -> core::option::Option<Self>
 pub struct engine::Table<S>
 impl<S: math::scalar::Scalar> engine::table::Table<S>
-pub const fn engine::table::Table<S>::g(self) -> S
-pub const fn engine::table::Table<S>::mu_roll(self) -> S
-pub const fn engine::table::Table<S>::mu_slide(self) -> S
+pub const fn engine::table::Table<S>::gravity(self) -> S
 pub fn engine::table::Table<S>::new(S, S, S) -> core::option::Option<Self>
+pub const fn engine::table::Table<S>::rolling_resistance(self) -> S
+pub const fn engine::table::Table<S>::sliding_friction(self) -> S
 pub struct engine::TimeStep<S>(_)
 impl<S: math::scalar::Scalar> engine::TimeStep<S>
 pub fn engine::TimeStep<S>::cast<T: math::scalar::Scalar>(self) -> core::option::Option<engine::TimeStep<T>>
@@ -331,7 +331,7 @@ impl<S: math::scalar::Scalar> engine::TimeStep<S>
 pub fn engine::TimeStep<S>::per_second(f64) -> core::option::Option<Self>
 pub struct engine::UniformGravity<S>
 impl<S: math::scalar::Scalar> engine::UniformGravity<S>
-pub const fn engine::UniformGravity<S>::g(&self) -> math::vec2::Vec2<S>
+pub const fn engine::UniformGravity<S>::acceleration(&self) -> math::vec2::Vec2<S>
 pub const fn engine::UniformGravity<S>::new(math::vec2::Vec2<S>) -> Self
 impl<S: math::scalar::Scalar> engine::Force<S> for engine::UniformGravity<S>
 pub fn engine::UniformGravity<S>::accumulate(&self, &engine::Particles<S>, &mut [math::vec2::Vec2<S>])
@@ -372,7 +372,7 @@ pub const fn engine::World<S>::solver(&self) -> engine::Solver
 pub const fn engine::World<S>::stabilization(&self) -> engine::Stabilization
 pub fn engine::World<S>::step(&mut self, engine::TimeStep<S>)
 pub const fn engine::World<S>::substeps(&self) -> core::num::nonzero::NonZeroU32
-pub fn engine::World<S>::vel_mut(&mut self) -> &mut [math::vec2::Vec2<S>]
+pub fn engine::World<S>::velocities_mut(&mut self) -> &mut [math::vec2::Vec2<S>]
 impl<S: math::scalar::Scalar> engine::World<S>
 pub fn engine::World<S>::add_pocket(&mut self, engine::collision::Pocket<S>)
 pub fn engine::World<S>::pockets(&self) -> &[engine::collision::Pocket<S>]

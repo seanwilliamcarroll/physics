@@ -9,11 +9,11 @@ use crate::{Force, Integrator, Vec2};
 #[test]
 fn orbit_starts_centered_at_rest_and_at_the_separation() {
     let world = orbit::<f64>(Integrator::VelocityVerlet, 1.0).unwrap();
-    let (positions, velocities) = (world.particles.pos(), world.particles.vel());
+    let (positions, velocities) = (world.particles.positions(), world.particles.velocities());
     assert_eq!(positions.len(), 2);
     assert!((positions[1] - positions[0]).length() - ORBIT_SEPARATION < 1e-12);
     assert!(center_of_mass(&world.particles).unwrap().length() < 1e-12);
-    let planet_momentum = velocities[1].length() / world.particles.inv_mass()[1];
+    let planet_momentum = velocities[1].length() / world.particles.inverse_mass()[1];
     assert!(momentum(&world.particles).length() <= 1e-12 * planet_momentum);
 }
 
@@ -27,7 +27,8 @@ fn circular_speed_balances_the_softened_pull() {
         .unwrap()
         .accumulate(&world.particles, &mut accelerations);
     let relative_acceleration = (accelerations[0] - accelerations[1]).length();
-    let relative_speed = (world.particles.vel()[1] - world.particles.vel()[0]).length();
+    let relative_speed =
+        (world.particles.velocities()[1] - world.particles.velocities()[0]).length();
     let centripetal = relative_speed * relative_speed / ORBIT_SEPARATION;
     assert!(
         (relative_acceleration - centripetal).abs() <= 1e-12 * centripetal,
@@ -48,7 +49,8 @@ fn softened_period_is_close_to_the_nominal_one() {
 fn speed_ratio_scales_the_launch_speed() {
     let circular = orbit::<f64>(Integrator::SymplecticEuler, 1.0).unwrap();
     let slow = orbit::<f64>(Integrator::SymplecticEuler, 0.8).unwrap();
-    let ratio = slow.particles.vel()[1].length() / circular.particles.vel()[1].length();
+    let ratio =
+        slow.particles.velocities()[1].length() / circular.particles.velocities()[1].length();
     assert!((ratio - 0.8).abs() < 1e-12);
 }
 
@@ -60,11 +62,11 @@ fn orbit_gravity_is_the_force_the_scenario_uses() {
         .unwrap()
         .accumulate(&world.particles, &mut accelerations);
     let mut stepped = orbit::<f64>(Integrator::ExplicitEuler, 1.0).unwrap();
-    let start_velocities = stepped.particles.vel().to_vec();
+    let start_velocities = stepped.particles.velocities().to_vec();
     stepped.step(time_step(1.0)); // explicit Euler: v1 = v0 + a(x0) * 1
     for ((end, start), acceleration) in stepped
         .particles
-        .vel()
+        .velocities()
         .iter()
         .zip(&start_velocities)
         .zip(&accelerations)

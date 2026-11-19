@@ -28,20 +28,23 @@ impl<S: Scalar> World<S> {
     pub fn strike(&mut self, id: ParticleId, aim: UnitVec2<S>, speed: S, tip: S) -> bool {
         let index = id.index();
         let particles = &mut self.particles;
-        let (Some(&radius), Some(&inv_mass)) =
-            (particles.radius.get(index), particles.inv_mass.get(index))
-        else {
+        let (Some(&radius), Some(&inverse_mass)) = (
+            particles.radius.get(index),
+            particles.inverse_mass.get(index),
+        ) else {
             return false;
         };
-        if radius == S::ZERO || inv_mass == S::ZERO {
+        if radius == S::ZERO || inverse_mass == S::ZERO {
             return false;
         }
-        self.spin.resize(particles.pos.len(), Vec2::ZERO);
+        self.spin.resize(particles.positions.len(), Vec2::ZERO);
         let direction = aim.get();
         let two = S::ONE + S::ONE;
         let five = S::from_f64(5.0);
-        let (Some(velocity), Some(spin)) = (particles.vel.get_mut(index), self.spin.get_mut(index))
-        else {
+        let (Some(velocity), Some(spin)) = (
+            particles.velocities.get_mut(index),
+            self.spin.get_mut(index),
+        ) else {
             return false;
         };
         *velocity = direction * speed;

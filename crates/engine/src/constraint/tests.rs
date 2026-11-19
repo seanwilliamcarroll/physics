@@ -54,8 +54,11 @@ fn with_length_takes_an_explicit_length_and_compliance() {
     let c = DistanceConstraint::with_length(&p, a, b, 0.0, soft).unwrap();
     assert_eq!((c.length(), c.compliance()), (0.0, 0.01));
     assert_eq!(
-        c.evaluate(*p.pos().first().unwrap(), *p.pos().last().unwrap())
-            .0,
+        c.evaluate(
+            *p.positions().first().unwrap(),
+            *p.positions().last().unwrap()
+        )
+        .0,
         5.0
     );
     assert!(

@@ -46,7 +46,7 @@ own about the measured cost.
 `accumulate` copies positions, masses and inverse masses into one
 `Vec<(Vec2, m, w)>` per call: an allocation and an array of structs made
 from the particles' struct of arrays. Tried: `Particles` keeps `mass`
-next to `inv_mass` (written with it in `push`, `set_body` and
+next to `inverse_mass` (written with it in `push`, `set_body` and
 `pop_if_last`), and the loop reads the three arrays directly, with no
 allocation. Bit-identical results.
 

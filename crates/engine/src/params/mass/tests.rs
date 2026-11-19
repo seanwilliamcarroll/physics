@@ -3,15 +3,18 @@ use super::Mass;
 #[test]
 fn accepts_positive_finite_and_stores_the_inverse() {
     let mass = Mass::new(4.0_f64).unwrap();
-    assert_eq!((mass.get(), mass.inv()), (4.0, 0.25));
+    assert_eq!((mass.get(), mass.inverse()), (4.0, 0.25));
     // Exactly `1 / mass`.
-    assert_eq!(Mass::new(3.0_f64).map(Mass::inv), Some(1.0 / 3.0));
-    assert_eq!(Mass::new(3.0_f32).map(Mass::inv), Some(1.0 / 3.0));
+    assert_eq!(Mass::new(3.0_f64).map(Mass::inverse), Some(1.0 / 3.0));
+    assert_eq!(Mass::new(3.0_f32).map(Mass::inverse), Some(1.0 / 3.0));
 }
 
 #[test]
 fn one_is_unit_mass() {
-    assert_eq!((Mass::<f64>::ONE.get(), Mass::<f64>::ONE.inv()), (1.0, 1.0));
+    assert_eq!(
+        (Mass::<f64>::ONE.get(), Mass::<f64>::ONE.inverse()),
+        (1.0, 1.0)
+    );
     assert_eq!(Mass::new(1.0_f32), Some(Mass::ONE));
 }
 
@@ -44,6 +47,6 @@ fn rejects_masses_whose_inverse_overflows() {
 fn accepts_the_largest_finite_mass() {
     // 1 / f64::MAX is subnormal but positive, so not mistaken for static.
     let mass = Mass::new(f64::MAX).unwrap();
-    assert!(mass.inv() > 0.0);
+    assert!(mass.inverse() > 0.0);
     assert!(Mass::new(f32::MAX).is_some());
 }

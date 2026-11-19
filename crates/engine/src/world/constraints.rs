@@ -144,7 +144,7 @@ impl<S: Scalar> Constraints<S> {
             particles,
             constraints: &self.list,
             lambda: &mut self.lambda,
-            acc: accelerations,
+            accelerations,
             scratch: &mut self.scratch,
             iterations: self.iterations,
             order: self.order,

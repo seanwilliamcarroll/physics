@@ -129,7 +129,7 @@ fn the_table_matches_the_specification() {
 #[test]
 fn the_rack_is_sixteen_balls_on_the_table_touching_not_overlapping() {
     let world = pool_rack::<f64>(Solver::Xpbd, NonZeroU32::MIN).unwrap();
-    let positions = world.particles().pos();
+    let positions = world.particles().positions();
     assert_eq!(positions.len(), 16);
     let radius = POOL_BALL_RADIUS;
     for (index, position) in positions.iter().enumerate() {
@@ -155,9 +155,9 @@ fn the_rack_is_sixteen_balls_on_the_table_touching_not_overlapping() {
 #[test]
 fn a_break_is_checked_and_moves_only_the_cue_ball() {
     let world = pool_break::<f64>(Solver::Impulse, NonZeroU32::MIN, 10.0, 0.0).unwrap();
-    assert_eq!(world.particles().vel()[0], Vec2::new(10.0, 0.0));
+    assert_eq!(world.particles().velocities()[0], Vec2::new(10.0, 0.0));
     assert!(
-        world.particles().vel()[1..]
+        world.particles().velocities()[1..]
             .iter()
             .all(|velocity| *velocity == Vec2::ZERO)
     );
