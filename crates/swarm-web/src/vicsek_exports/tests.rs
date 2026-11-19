@@ -16,7 +16,7 @@ use crate::abi;
 
 #[test]
 fn round_trip_and_the_boundary() {
-    for (n, side, eta, view) in [
+    for (particle_count, side, noise, view) in [
         (0, 10.0, 1.0, 400),
         (abi::MAX_PARTICLES + 1, 10.0, 1.0, 400),
         (10, 0.0, 1.0, 400),
@@ -26,29 +26,35 @@ fn round_trip_and_the_boundary() {
         (10, 10.0, 1.0, abi::MAX_VIEW + 1),
     ] {
         assert!(
-            vicsek_new(n, side, eta, view, 1).is_null(),
-            "{n} {side} {eta} {view}"
+            vicsek_new(particle_count, side, noise, view, 1).is_null(),
+            "{particle_count} {side} {noise} {view}"
         );
     }
-    let d = vicsek_new(400, 10.0, 2.0, 400, 1);
-    assert!(!d.is_null());
-    // SAFETY: `d` from `vicsek_new`, freed once, last; null allowed.
+    let demo = vicsek_new(400, 10.0, 2.0, 400, 1);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` from `vicsek_new`, freed once, last; null allowed.
     unsafe {
-        assert_eq!((vicsek_len(d), vicsek_view(d)), (400, 400));
-        assert_eq!(vicsek_advance(d, 1.0 / 60.0 + 1e-9), 1);
-        assert_eq!((vicsek_set_noise(d, 3.0), vicsek_set_noise(d, 9.0)), (1, 0));
+        assert_eq!((vicsek_len(demo), vicsek_view(demo)), (400, 400));
+        assert_eq!(vicsek_advance(demo, 1.0 / 60.0 + 1e-9), 1);
         assert_eq!(
-            (vicsek_set_speed(d, 0.1), vicsek_set_speed(d, -1.0)),
+            (vicsek_set_noise(demo, 3.0), vicsek_set_noise(demo, 9.0)),
             (1, 0)
         );
-        assert_eq!((vicsek_set_rate(d, 30), vicsek_set_step_cap(d, 2)), (1, 1));
-        let v = vicsek_mean_order(d, 50, 50);
-        assert!((0.0..=1.0).contains(&v), "{v}");
-        assert!(vicsek_mean_order(d, abi::MAX_RUN, 1).is_nan());
-        assert_eq!(vicsek_annihilations(d), 0.0);
-        let px = core::slice::from_raw_parts(vicsek_render(d), 400 * 400);
-        assert!(px.iter().all(|&p| p >> 24 == 0xff));
-        vicsek_free(d);
+        assert_eq!(
+            (vicsek_set_speed(demo, 0.1), vicsek_set_speed(demo, -1.0)),
+            (1, 0)
+        );
+        assert_eq!(
+            (vicsek_set_rate(demo, 30), vicsek_set_step_cap(demo, 2)),
+            (1, 1)
+        );
+        let order = vicsek_mean_order(demo, 50, 50);
+        assert!((0.0..=1.0).contains(&order), "{order}");
+        assert!(vicsek_mean_order(demo, abi::MAX_RUN, 1).is_nan());
+        assert_eq!(vicsek_annihilations(demo), 0.0);
+        let pixels = core::slice::from_raw_parts(vicsek_render(demo), 400 * 400);
+        assert!(pixels.iter().all(|&pixel| pixel >> 24 == 0xff));
+        vicsek_free(demo);
         let null = ptr::null_mut();
         assert_eq!(
             (
@@ -75,8 +81,6 @@ enum Call {
     Render,
 }
 
-/// What a page could pass (`test_support::hostile_f64`), around this
-/// module's usual values.
 fn hostile() -> impl Strategy<Value = f64> {
     test_support::hostile_f64(0.0..7.0)
 }
@@ -88,7 +92,7 @@ fn call() -> impl Strategy<Value = Call> {
         2 => hostile().prop_map(Call::Speed),
         1 => prop_oneof![0_u32..300, any::<u32>()].prop_map(Call::Rate),
         1 => prop_oneof![0_u32..300, any::<u32>()].prop_map(Call::Cap),
-        1 => (prop_oneof![0_u32..20, any::<u32>()], prop_oneof![0_u32..20, any::<u32>()]).prop_map(|(t, w)| Call::Measure(t, w)),
+        1 => (prop_oneof![0_u32..20, any::<u32>()], prop_oneof![0_u32..20, any::<u32>()]).prop_map(|(transient, window)| Call::Measure(transient, window)),
         1 => Just(Call::Render),
     ]
 }
@@ -99,29 +103,40 @@ fn call() -> impl Strategy<Value = Call> {
 /// epsilons: 1 + 1e-6.
 const V_A_MAX: f64 = 1.0 + 1e-6;
 
-fn run(n: u32, calls: &[Call]) -> Result<(), TestCaseError> {
-    let d = vicsek_new(n, 5.0, 1.0, 64, 3);
-    prop_assert!(!d.is_null());
-    // SAFETY: `d` is live until freed at the end, once.
+fn run(particle_count: u32, calls: &[Call]) -> Result<(), TestCaseError> {
+    let demo = vicsek_new(particle_count, 5.0, 1.0, 64, 3);
+    prop_assert!(!demo.is_null());
+    // SAFETY: `demo` is live until freed at the end, once.
     unsafe {
-        for c in calls {
-            match *c {
-                Call::Advance(t) => prop_assert!(vicsek_advance(d, t) <= abi::MAX_RATE_HZ / 4 + 1),
-                Call::Noise(v) => prop_assert!(vicsek_set_noise(d, v) <= 1),
-                Call::Speed(v) => prop_assert!(vicsek_set_speed(d, v) <= 1),
-                Call::Rate(hz) => prop_assert!(vicsek_set_rate(d, hz) <= 1),
-                Call::Cap(k) => prop_assert!(vicsek_set_step_cap(d, k) <= 1),
-                Call::Measure(t, w) => {
-                    let v = vicsek_mean_order(d, t, w);
-                    prop_assert!(v.is_nan() || (0.0..=V_A_MAX).contains(&v), "{}", v);
+        for action in calls {
+            match *action {
+                Call::Advance(seconds) => {
+                    prop_assert!(vicsek_advance(demo, seconds) <= abi::MAX_RATE_HZ / 4 + 1);
                 }
-                Call::Render => prop_assert!(!vicsek_render(d).is_null()),
+                Call::Noise(value) => prop_assert!(vicsek_set_noise(demo, value) <= 1),
+                Call::Speed(value) => prop_assert!(vicsek_set_speed(demo, value) <= 1),
+                Call::Rate(rate_hz) => prop_assert!(vicsek_set_rate(demo, rate_hz) <= 1),
+                Call::Cap(max_steps) => prop_assert!(vicsek_set_step_cap(demo, max_steps) <= 1),
+                Call::Measure(transient, window) => {
+                    let order = vicsek_mean_order(demo, transient, window);
+                    prop_assert!(
+                        order.is_nan() || (0.0..=V_A_MAX).contains(&order),
+                        "{}",
+                        order
+                    );
+                }
+                Call::Render => prop_assert!(!vicsek_render(demo).is_null()),
             }
-            prop_assert_eq!(vicsek_len(d), n);
-            let v = vicsek_order(d);
-            prop_assert!((0.0..=V_A_MAX).contains(&v), "v_a {} after {:?}", v, c);
+            prop_assert_eq!(vicsek_len(demo), particle_count);
+            let order = vicsek_order(demo);
+            prop_assert!(
+                (0.0..=V_A_MAX).contains(&order),
+                "v_a {} after {:?}",
+                order,
+                action
+            );
         }
-        vicsek_free(d);
+        vicsek_free(demo);
     }
     Ok(())
 }
@@ -130,7 +145,7 @@ proptest! {
     #![proptest_config(test_support::proptest_config())]
 
     #[test]
-    fn any_call_sequence_is_safe(n in 1_u32..100, calls in prop::collection::vec(call(), 0..25)) {
-        run(n, &calls)?;
+    fn any_call_sequence_is_safe(particle_count in 1_u32..100, calls in prop::collection::vec(call(), 0..25)) {
+        run(particle_count, &calls)?;
     }
 }
