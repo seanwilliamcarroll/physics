@@ -34,17 +34,17 @@ impl<S: Scalar> Vec2<S> {
 
     /// Dot product: `x1*x2 + y1*y2`.
     #[must_use]
-    pub fn dot(self, o: Self) -> S {
-        self.x * o.x + self.y * o.y
+    pub fn dot(self, other: Self) -> S {
+        self.x * other.x + self.y * other.y
     }
 
     /// 2D cross product: the z component of the 3D cross, `x1*y2 - y1*x2`.
     ///
-    /// Positive when `o` is counterclockwise from `self`. Equals
-    /// `self.perp().dot(o)`.
+    /// Positive when `other` is counterclockwise from `self`. Equals
+    /// `self.perp().dot(other)`.
     #[must_use]
-    pub fn cross(self, o: Self) -> S {
-        self.x * o.y - self.y * o.x
+    pub fn cross(self, other: Self) -> S {
+        self.x * other.y - self.y * other.x
     }
 
     /// Rotates by +90° (counterclockwise): `(x, y) -> (-y, x)`.
@@ -71,15 +71,15 @@ impl<S: Scalar> Vec2<S> {
 
 impl<S: Scalar> Add for Vec2<S> {
     type Output = Self;
-    fn add(self, o: Self) -> Self {
-        Self::new(self.x + o.x, self.y + o.y)
+    fn add(self, other: Self) -> Self {
+        Self::new(self.x + other.x, self.y + other.y)
     }
 }
 
 impl<S: Scalar> Sub for Vec2<S> {
     type Output = Self;
-    fn sub(self, o: Self) -> Self {
-        Self::new(self.x - o.x, self.y - o.y)
+    fn sub(self, other: Self) -> Self {
+        Self::new(self.x - other.x, self.y - other.y)
     }
 }
 
@@ -91,35 +91,35 @@ impl<S: Scalar> Neg for Vec2<S> {
 }
 
 impl<S: Scalar> AddAssign for Vec2<S> {
-    fn add_assign(&mut self, o: Self) {
-        self.x += o.x;
-        self.y += o.y;
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
     }
 }
 
 impl<S: Scalar> SubAssign for Vec2<S> {
-    fn sub_assign(&mut self, o: Self) {
-        self.x -= o.x;
-        self.y -= o.y;
+    fn sub_assign(&mut self, other: Self) {
+        self.x -= other.x;
+        self.y -= other.y;
     }
 }
 
 /// Scale: `v * s`.
 impl<S: Scalar> Mul<S> for Vec2<S> {
     type Output = Self;
-    fn mul(self, k: S) -> Self {
-        Self::new(self.x * k, self.y * k)
+    fn mul(self, factor: S) -> Self {
+        Self::new(self.x * factor, self.y * factor)
     }
 }
 
 /// Divide by a scalar: `v / s`.
 ///
-/// Two divisions, not one reciprocal and two multiplies: `x * (1/k)` rounds
-/// differently from `x / k`, and on fixed point a reciprocal loses precision.
+/// Two divisions, not one reciprocal and two multiplies: `x * (1/s)` rounds
+/// differently from `x / s`, and on fixed point a reciprocal loses precision.
 impl<S: Scalar> Div<S> for Vec2<S> {
     type Output = Self;
-    fn div(self, k: S) -> Self {
-        Self::new(self.x / k, self.y / k)
+    fn div(self, divisor: S) -> Self {
+        Self::new(self.x / divisor, self.y / divisor)
     }
 }
 
