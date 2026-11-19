@@ -10,8 +10,7 @@ fn constants_are_identities<S: Scalar>() {
 for_each_scalar!(constants_are_identities);
 
 fn round_trip_is_exact_for_representable_values<S: Scalar>() {
-    // Dyadic rationals with few bits are exact in both f32 and f64
-    // (and in Q16.16 later), so the round trip must be lossless.
+    // Dyadic rationals with few bits are exact, so the round trip is lossless.
     for value in [0.0, 1.0, -1.0, 0.5, -3.25, 1024.0, 1.0 / 64.0] {
         assert_eq!(s::<S>(value).to_f64(), value, "value {value}");
     }
