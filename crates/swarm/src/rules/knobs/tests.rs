@@ -13,14 +13,14 @@ fn the_settings_parse_and_default() {
     assert_eq!(sum(Some("ordered")), Sum::Ordered);
     assert_eq!(sum(Some("algebraic")), Sum::Algebraic);
     assert_eq!(mask(None), None);
-    for (text, m) in [
+    for (text, expected) in [
         ("convert", Mask::Convert),
         ("select", Mask::Select),
         ("bits", Mask::Bits),
         ("value", Mask::Value),
         ("branch", Mask::Branch),
     ] {
-        assert_eq!(mask(Some(text)), Some(m));
+        assert_eq!(mask(Some(text)), Some(expected));
     }
 }
 

@@ -100,12 +100,12 @@ pub(crate) const fn lanes(setting: Option<&str>) -> Option<usize> {
     let Some(text) = setting else {
         return None;
     };
-    let Some(n) = number(text) else {
+    let Some(lanes) = number(text) else {
         panic_at_build("SWARM_LANES: not a number")
     };
-    assert!(n.is_power_of_two(), "SWARM_LANES: not a power of two");
-    assert!(n <= 64, "SWARM_LANES: at most 64");
-    Some(n)
+    assert!(lanes.is_power_of_two(), "SWARM_LANES: not a power of two");
+    assert!(lanes <= 64, "SWARM_LANES: at most 64");
+    Some(lanes)
 }
 
 /// `SWARM_SUM` as a [`Sum`]; a bad value fails the build.
@@ -123,16 +123,16 @@ pub(crate) const fn mask(setting: Option<&str>) -> Option<Mask> {
     let Some(text) = setting else {
         return None;
     };
-    let t = text.as_bytes();
-    if same(t, b"convert") {
+    let bytes = text.as_bytes();
+    if same(bytes, b"convert") {
         Some(Mask::Convert)
-    } else if same(t, b"select") {
+    } else if same(bytes, b"select") {
         Some(Mask::Select)
-    } else if same(t, b"bits") {
+    } else if same(bytes, b"bits") {
         Some(Mask::Bits)
-    } else if same(t, b"value") {
+    } else if same(bytes, b"value") {
         Some(Mask::Value)
-    } else if same(t, b"branch") {
+    } else if same(bytes, b"branch") {
         Some(Mask::Branch)
     } else {
         panic_at_build("SWARM_MASK: `convert`, `select`, `bits`, `value` or `branch`")
@@ -144,12 +144,12 @@ pub(crate) const fn tail(setting: Option<&str>) -> Option<Tail> {
     let Some(text) = setting else {
         return None;
     };
-    let t = text.as_bytes();
-    if same(t, b"scalar") {
+    let bytes = text.as_bytes();
+    if same(bytes, b"scalar") {
         Some(Tail::Scalar)
-    } else if same(t, b"masked") {
+    } else if same(bytes, b"masked") {
         Some(Tail::Masked)
-    } else if same(t, b"table") {
+    } else if same(bytes, b"table") {
         Some(Tail::Table)
     } else {
         panic_at_build("SWARM_TAIL: `scalar`, `masked` or `table`")
@@ -179,29 +179,31 @@ const fn number(text: &str) -> Option<usize> {
     if digits.is_empty() {
         return None;
     }
-    let mut n: usize = 0;
-    while let [d, rest @ ..] = digits {
-        if !d.is_ascii_digit() {
+    let mut value: usize = 0;
+    while let [digit, rest @ ..] = digits {
+        if !digit.is_ascii_digit() {
             return None;
         }
         // Checked: a long string is refused, not overflowed.
-        let Some(tens) = n.checked_mul(10) else {
+        let Some(tens) = value.checked_mul(10) else {
             return None;
         };
-        let Some(next) = tens.checked_add((*d - b'0') as usize) else {
+        let Some(next) = tens.checked_add((*digit - b'0') as usize) else {
             return None;
         };
-        n = next;
+        value = next;
         digits = rest;
     }
-    if n > 1_000 { None } else { Some(n) }
+    if value > 1_000 { None } else { Some(value) }
 }
 
 /// Byte equality, usable in a `const fn`.
-const fn same(a: &[u8], b: &[u8]) -> bool {
-    match (a, b) {
+const fn same(left: &[u8], right: &[u8]) -> bool {
+    match (left, right) {
         ([], []) => true,
-        ([x, a_rest @ ..], [y, b_rest @ ..]) => *x == *y && same(a_rest, b_rest),
+        ([left_byte, left_rest @ ..], [right_byte, right_rest @ ..]) => {
+            *left_byte == *right_byte && same(left_rest, right_rest)
+        }
         _ => false,
     }
 }
