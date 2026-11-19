@@ -16,30 +16,31 @@ impl Flock {
     // listings (once a step: free; see `step_grid`).
     #[inline(never)]
     pub(super) fn step_sorted(&mut self) {
-        let (p, arena, predator) = (&self.params, self.arena, self.predator);
+        let (params, arena, predator) = (&self.params, self.arena, self.predator);
         let grid = &mut self.grid;
         grid.rebuild(
             arena.width(),
             arena.height(),
-            p.visual_range,
-            &self.cur.x,
-            &self.cur.y,
+            params.visual_range,
+            &self.now.x,
+            &self.now.y,
         );
-        // Into cell order: gathered into `next`, which then becomes `cur`.
-        self.next.gather(&self.cur, grid.order());
-        core::mem::swap(&mut self.cur, &mut self.next);
-        let (cur, ranges) = (&self.cur, Ranges::of(p));
-        for i in 0..cur.len() {
-            let Some(me) = cur.get(i) else { continue };
+        // Into cell order: gathered into `next`, which then becomes `now`.
+        self.next.gather(&self.now, grid.order());
+        core::mem::swap(&mut self.now, &mut self.next);
+        let (now, ranges) = (&self.now, Ranges::of(params));
+        for index in 0..now.len() {
+            let Some(me) = now.get(index) else { continue };
             let mut seen = Seen::default();
             let flock = [
-                cur.x.as_slice(),
-                cur.y.as_slice(),
-                cur.vx.as_slice(),
-                cur.vy.as_slice(),
+                now.x.as_slice(),
+                now.y.as_slice(),
+                now.vx.as_slice(),
+                now.vy.as_slice(),
             ];
             seen.add_spans::<SORTED_LANES>(ranges, me, flock, grid.spans_around(me.x, me.y));
-            self.next.set(i, finish(p, arena, predator, me, &seen));
+            self.next
+                .set(index, finish(params, arena, predator, me, &seen));
         }
     }
 }

@@ -20,22 +20,23 @@ impl Flock {
     // 42.5), the same on the M4 (`experiments/swarm-mask/README.md`).
     #[inline(never)]
     pub(super) fn step_grid(&mut self) {
-        let (cur, p, arena, predator) = (&self.cur, &self.params, self.arena, self.predator);
+        let (now, params, arena, predator) = (&self.now, &self.params, self.arena, self.predator);
         let grid = &mut self.grid;
         grid.rebuild(
             arena.width(),
             arena.height(),
-            p.visual_range,
-            &cur.x,
-            &cur.y,
+            params.visual_range,
+            &now.x,
+            &now.y,
         );
-        for i in 0..cur.len() {
-            let Some(me) = cur.get(i) else { continue };
+        for index in 0..now.len() {
+            let Some(me) = now.get(index) else { continue };
             let others = grid
                 .around(me.x, me.y)
-                .filter(|&j| j != i)
-                .filter_map(|j| cur.get(j));
-            self.next.set(i, steer(p, arena, predator, me, others));
+                .filter(|&other| other != index)
+                .filter_map(|other| now.get(other));
+            self.next
+                .set(index, steer(params, arena, predator, me, others));
         }
     }
 }
