@@ -3,9 +3,9 @@ use super::{f64_key, index_key, sort, u64_from_key, u64_key};
 #[test]
 fn index_keys_keep_the_order_of_indices() {
     // Sorted on 32- and 64-bit alike (wasm32 runs this too).
-    let ix = [0, 1, 7, usize::MAX >> 1, usize::MAX];
-    for w in ix.windows(2) {
-        assert!(index_key(w[0]) <= index_key(w[1]), "{w:?}");
+    let indices = [0, 1, 7, usize::MAX >> 1, usize::MAX];
+    for pair in indices.windows(2) {
+        assert!(index_key(pair[0]) <= index_key(pair[1]), "{pair:?}");
     }
     // Only a 64-bit index can exceed i64 (wasm32's all fit).
     if usize::BITS == 64 {
@@ -22,7 +22,7 @@ fn sorts_lexicographically() {
 
 #[test]
 fn u64_keys_keep_order_and_round_trip() {
-    let ks = [
+    let values = [
         0,
         1,
         u64::from(u32::MAX),
@@ -31,18 +31,18 @@ fn u64_keys_keep_order_and_round_trip() {
         u64::MAX - 1,
         u64::MAX,
     ];
-    for w in ks.windows(2) {
-        assert!(u64_key(w[0]) < u64_key(w[1]), "{w:?}");
+    for pair in values.windows(2) {
+        assert!(u64_key(pair[0]) < u64_key(pair[1]), "{pair:?}");
     }
-    for k in ks {
-        let (hi, lo) = u64_key(k);
-        assert_eq!(u64_from_key(hi, lo), k);
+    for value in values {
+        let (high, low) = u64_key(value);
+        assert_eq!(u64_from_key(high, low), value);
     }
 }
 
 #[test]
 fn f64_keys_follow_total_cmp() {
-    let xs = [
+    let values = [
         f64::NEG_INFINITY,
         -1e300,
         -1.0,
@@ -55,9 +55,13 @@ fn f64_keys_follow_total_cmp() {
         f64::INFINITY,
         f64::NAN,
     ];
-    for (i, a) in xs.iter().enumerate() {
-        for b in &xs[i..] {
-            assert_eq!(f64_key(*a).cmp(&f64_key(*b)), a.total_cmp(b), "{a} vs {b}");
+    for (index, left) in values.iter().enumerate() {
+        for right in &values[index..] {
+            assert_eq!(
+                f64_key(*left).cmp(&f64_key(*right)),
+                left.total_cmp(right),
+                "{left} vs {right}"
+            );
         }
     }
 }
