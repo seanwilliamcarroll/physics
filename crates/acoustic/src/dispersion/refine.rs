@@ -1,7 +1,5 @@
 //! The refinement (`docs/14-piano.md`, "Dispersion in the loop"): damped
-//! Gauss–Newton (Levenberg–Marquardt) on every pole's radius and angle,
-//! against the partials' round-trip delays in cents, from where the
-//! placement put them.
+//! Gauss–Newton on every pole, against the partials' delays in cents.
 
 use core::f64::consts::PI;
 
@@ -9,97 +7,112 @@ use super::{ANGLE_MARGIN, Angles, RADIUS_RANGE, Target};
 
 /// Iterations, and the damping's start and its factors.
 pub(super) const ITERATIONS: u32 = 80;
-/// A refit's while the pole count is still being chosen: enough to
-/// estimate the delay that count's fit will have, not to converge.
+/// A refit while the pole count is still being chosen: estimates, no convergence.
 pub(super) const ESTIMATE_ITERATIONS: u32 = 10;
 const DAMPING_START: f64 = 1e-3;
 const DAMPING_DOWN: f64 = 0.3;
 const DAMPING_UP: f64 = 10.0;
-/// An accepted step that lowers the cost by less than this fraction of
-/// it: converged. Without it most keys ran all [`ITERATIONS`] for gains
-/// of no audible consequence; at 1e-4 no key's worst partial moved by
-/// 0.0001 cent (all 88 checked, 2026-11-17), at 1e-3 one moved 2.2.
+/// A step gaining less than this fraction of the cost: converged. At 1e-4
+/// no key's worst partial moved by 0.0001 cent (all 88 checked); at 1e-3 one
+/// moved 2.2.
 const CONVERGED: f64 = 1e-4;
-/// Past this, steps are ~1e-8 of a gradient step: stop early (still
-/// deterministic, the same inputs stop at the same iteration).
+/// Past this, steps are ~1e-8 of a gradient step: stop early.
 const DAMPING_STOP: f64 = 1e8;
 
-/// Each target's error in cents for the cascade `params`, and each
-/// biquad's [`Angles`] at `w1` then at each target (for the Jacobian).
-/// The cascade's delay at a frequency is its biquads' in order, as
-/// [`cascade_delay`] adds them.
-fn residuals(params: &[f64], w1: f64, targets: &[Target]) -> (Vec<f64>, Vec<Vec<Angles>>) {
-    let ws: Vec<f64> = core::iter::once(w1)
-        .chain(targets.iter().map(|t| t.w))
+/// Each target's error in cents for `params`, and each biquad's [`Angles`]
+/// at `omega_lowest` then at each target (for the Jacobian).
+fn residuals(
+    params: &[f64],
+    omega_lowest: f64,
+    targets: &[Target],
+) -> (Vec<f64>, Vec<Vec<Angles>>) {
+    let omegas: Vec<f64> = core::iter::once(omega_lowest)
+        .chain(targets.iter().map(|target| target.omega))
         .collect();
     let pairs = params.as_chunks::<2>().0;
     let angles: Vec<Vec<Angles>> = pairs
         .iter()
-        .map(|&[_, th]| ws.iter().map(|&w| Angles::new(th, w)).collect())
+        .map(|&[_, angle]| {
+            omegas
+                .iter()
+                .map(|&omega| Angles::new(angle, omega))
+                .collect()
+        })
         .collect();
-    let delay = |at: usize, w: f64| {
+    let delay = |frequency_index: usize, omega: f64| {
         pairs
             .iter()
             .zip(&angles)
-            .map(|(&[r, _], a)| a.get(at).map_or(0.0, |a| a.delay(r, w)))
+            .map(|(&[radius, _], biquad_angles)| {
+                biquad_angles
+                    .get(frequency_index)
+                    .map_or(0.0, |at| at.delay(radius, omega))
+            })
             .sum::<f64>()
     };
-    let d1 = delay(0, w1);
-    let r = targets
+    let delay_lowest = delay(0, omega_lowest);
+    let errors = targets
         .iter()
         .enumerate()
-        .map(|(t, target)| (delay(t + 1, target.w) - d1 - target.want) * target.weight)
+        .map(|(index, target)| {
+            (delay(index + 1, target.omega) - delay_lowest - target.want) * target.weight
+        })
         .collect();
-    (r, angles)
+    (errors, angles)
 }
 
-/// Damped Gauss–Newton (Levenberg–Marquardt) on `params` (radius, angle,
-/// …), minimizing the squared cents error, for at most `iterations`
-/// (stopping early once a step gains less than [`CONVERGED`] of the cost).
-pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterations: u32) {
-    let (mut r, mut angles) = residuals(params, w1, targets);
-    let mut cost: f64 = r.iter().map(|x| x * x).sum();
+/// Minimizes the squared cents error of `params` (radius, angle, …) for at
+/// most `iterations`, stopping early at [`CONVERGED`].
+pub(super) fn refine(
+    params: &mut Vec<f64>,
+    omega_lowest: f64,
+    targets: &[Target],
+    iterations: u32,
+) {
+    let (mut errors, mut angles) = residuals(params, omega_lowest, targets);
+    let mut cost: f64 = errors.iter().map(|error| error * error).sum();
     let mut damping = DAMPING_START;
-    // JᵀJ and −Jᵀr at the current parameters: they change only when a step
-    // is taken. A rejected step just raises the damping and solves again.
+    // JᵀJ and −Jᵀr change only when a step is accepted.
     let mut normal: Option<(Vec<Vec<f64>>, Vec<f64>)> = None;
     for _ in 0..iterations {
         let (jtj, jtr) = normal.get_or_insert_with(|| {
-            // One column per parameter: a parameter moves only its own
-            // biquad's delay, so its column is that biquad's derivative,
-            // in closed form (`Angles::gradient`, from the residuals'
-            // `sin` and `cos`), the pole's (r, θ) pair together.
+            // One column per parameter: it moves only its own biquad's delay.
             let jacobian: Vec<Vec<f64>> = params
                 .as_chunks::<2>()
                 .0
                 .iter()
                 .zip(&angles)
-                .flat_map(|(&[r, _], at)| {
-                    let mut at = at.iter();
-                    let (dr1, dth1) = at.next().map_or((0.0, 0.0), |a| a.gradient(r, w1));
-                    let (col_r, col_th): (Vec<f64>, Vec<f64>) = targets
+                .flat_map(|(&[radius, _], biquad_angles)| {
+                    let mut biquad_angles = biquad_angles.iter();
+                    let (d_radius_lowest, d_angle_lowest) = biquad_angles
+                        .next()
+                        .map_or((0.0, 0.0), |at| at.gradient(radius, omega_lowest));
+                    let (column_radius, column_angle): (Vec<f64>, Vec<f64>) = targets
                         .iter()
-                        .zip(at)
-                        .map(|(t, a)| {
-                            let (dr, dth) = a.gradient(r, t.w);
-                            ((dr - dr1) * t.weight, (dth - dth1) * t.weight)
+                        .zip(biquad_angles)
+                        .map(|(target, at)| {
+                            let (d_radius, d_angle) = at.gradient(radius, target.omega);
+                            (
+                                (d_radius - d_radius_lowest) * target.weight,
+                                (d_angle - d_angle_lowest) * target.weight,
+                            )
                         })
                         .unzip();
-                    [col_r, col_th]
+                    [column_radius, column_angle]
                 })
                 .collect();
-            normal_equations(&jacobian, &r)
+            normal_equations(&jacobian, &errors)
         });
         let mut system: Vec<Vec<f64>> = jtj
             .iter()
             .zip(jtr.iter())
             .enumerate()
-            .map(|(i, (row, &b))| {
+            .map(|(index, (row, &right_side))| {
                 let mut row = row.clone();
-                if let Some(d) = row.get_mut(i) {
-                    *d += damping;
+                if let Some(diagonal) = row.get_mut(index) {
+                    *diagonal += damping;
                 }
-                row.push(b);
+                row.push(right_side);
                 row
             })
             .collect();
@@ -110,21 +123,21 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterati
             .iter()
             .zip(&step)
             .enumerate()
-            .map(|(i, (p, s))| {
-                let v = p + s;
-                if i % 2 == 0 {
-                    v.clamp(RADIUS_RANGE.0, RADIUS_RANGE.1)
+            .map(|(index, (param, delta))| {
+                let moved = param + delta;
+                if index % 2 == 0 {
+                    moved.clamp(RADIUS_RANGE.0, RADIUS_RANGE.1)
                 } else {
-                    v.clamp(ANGLE_MARGIN, PI - ANGLE_MARGIN)
+                    moved.clamp(ANGLE_MARGIN, PI - ANGLE_MARGIN)
                 }
             })
             .collect();
-        let (trial_r, trial_angles) = residuals(&trial, w1, targets);
-        let trial_cost: f64 = trial_r.iter().map(|x| x * x).sum();
+        let (trial_errors, trial_angles) = residuals(&trial, omega_lowest, targets);
+        let trial_cost: f64 = trial_errors.iter().map(|error| error * error).sum();
         if trial_cost < cost {
             let gain = cost - trial_cost;
             *params = trial;
-            r = trial_r;
+            errors = trial_errors;
             angles = trial_angles;
             cost = trial_cost;
             normal = None;
@@ -142,31 +155,39 @@ pub(super) fn refine(params: &mut Vec<f64>, w1: f64, targets: &[Target], iterati
     }
 }
 
-/// `JᵀJ` and `−Jᵀr` for the Jacobian's columns `jacobian` and the
-/// residuals `r`. `JᵀJ` is symmetric: the lower half computed, the upper
-/// mirrored from it.
-fn normal_equations(jacobian: &[Vec<f64>], r: &[f64]) -> (Vec<Vec<f64>>, Vec<f64>) {
-    let dot = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(x, y)| x * y).sum::<f64>();
+/// `JᵀJ` (symmetric: lower half computed, upper mirrored) and `−Jᵀr`.
+fn normal_equations(jacobian: &[Vec<f64>], errors: &[f64]) -> (Vec<Vec<f64>>, Vec<f64>) {
+    let dot = |left: &[f64], right: &[f64]| left.iter().zip(right).map(|(x, y)| x * y).sum::<f64>();
     let lower: Vec<Vec<f64>> = jacobian
         .iter()
         .enumerate()
-        .map(|(i, ji)| jacobian.iter().take(i + 1).map(|jj| dot(ji, jj)).collect())
+        .map(|(index, column)| {
+            jacobian
+                .iter()
+                .take(index + 1)
+                .map(|earlier| dot(column, earlier))
+                .collect()
+        })
         .collect();
-    let n = jacobian.len();
-    let jtj = (0..n)
-        .map(|i| {
-            (0..n)
-                .map(|j| {
-                    let (row, col) = if j <= i { (i, j) } else { (j, i) };
+    let size = jacobian.len();
+    let jtj = (0..size)
+        .map(|row_index| {
+            (0..size)
+                .map(|column_index| {
+                    let (row, column) = if column_index <= row_index {
+                        (row_index, column_index)
+                    } else {
+                        (column_index, row_index)
+                    };
                     lower
                         .get(row)
-                        .and_then(|l| l.get(col))
+                        .and_then(|lower_row| lower_row.get(column))
                         .copied()
                         .unwrap_or(0.0)
                 })
                 .collect()
         })
         .collect();
-    let jtr = jacobian.iter().map(|ji| -dot(ji, r)).collect();
+    let jtr = jacobian.iter().map(|column| -dot(column, errors)).collect();
     (jtj, jtr)
 }

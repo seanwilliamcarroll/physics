@@ -1,7 +1,7 @@
 //! Physical-modeling sound synthesis, the acoustic track
-//! (`docs/12-acoustic-foundations.md`): a Karplus–Strong string (A1), a
-//! waveguide (A2, `docs/13-waveguide.md`), a piano voice (A3,
-//! `docs/14-piano.md`), and the measurements that check them, offline.
+//! (`docs/12-acoustic-foundations.md`): a Karplus–Strong string, a
+//! waveguide (`docs/13-waveguide.md`), a piano voice (`docs/14-piano.md`),
+//! and the measurements that check them, offline.
 //!
 //! Generic over [`Scalar`]: `f32` at run time (the audio worklet), `f32`
 //! and `f64` in tests. Independent of the physics engine; shares only

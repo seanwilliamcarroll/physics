@@ -9,46 +9,40 @@ use crate::{KsString, Scalar, Waveguide};
 /// The shape a pluck leaves in the loop.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Excitation {
-    /// Uniform noise in ±1 (Karplus & Strong's): bright, every partial
-    /// excited.
+    /// Uniform noise in ±1 (Karplus & Strong's): every partial excited.
     Noise,
-    /// A triangle rising to 1 at `peak` (a fraction of the line, 0 to 1)
-    /// and back to 0: the Piano Gloves hit. Rounder than noise (its
-    /// partials fall as `1/k²`). Peaks outside `(0, 1)` are clamped in.
+    /// A triangle rising to 1 at `peak` (a fraction of the line) and back
+    /// to 0; partials fall as `1/k²`. Peaks outside `(0, 1)` are clamped in.
     Triangle { peak: f64 },
 }
 
-/// The triangle's peak is kept this far inside the line's ends, so both
-/// sides of the triangle have a slope.
+/// The triangle's peak stays this far inside the ends, so both sides slope.
 const PEAK_MARGIN: f64 = 0.01;
 
 impl Excitation {
-    /// Fills `string`'s delay line with this shape (noise drawn from
-    /// `rng`), then removes the mean: the loop passes DC at full gain, so
-    /// an offset would linger.
+    /// Fills the delay line (noise from `rng`), then removes the mean: the
+    /// loop passes DC at full gain.
     pub(crate) fn excite<S: Scalar>(self, string: &mut KsString<S>, rng: &mut SplitMix64) {
         match self {
             Self::Noise => string.pluck(|_, _| S::from_f64(rng.range(-1.0, 1.0))),
             Self::Triangle { peak } => {
                 let peak = peak.clamp(PEAK_MARGIN, 1.0 - PEAK_MARGIN);
-                string.pluck(|i, n| {
-                    let x = usize_to_f64(i) / usize_to_f64(n);
-                    let y = if x < peak {
+                string.pluck(|slot, loop_length| {
+                    let x = usize_to_f64(slot) / usize_to_f64(loop_length);
+                    let height = if x < peak {
                         x / peak
                     } else {
                         (1.0 - x) / (1.0 - peak)
                     };
-                    S::from_f64(y)
+                    S::from_f64(height)
                 });
             }
         }
         string.remove_mean();
     }
 
-    /// Plucks a [`Waveguide`] with this shape, at rest: noise is random
-    /// displacement in ±1 (each cell once), the triangle peaks at `peak`
-    /// along the string from the bridge (`docs/13-waveguide.md`, "Plucking
-    /// at a point"). No mean to remove: the loop's content cancels.
+    /// Plucks a [`Waveguide`] at rest, `peak` measured from the bridge
+    /// (`docs/13-waveguide.md`, "Plucking at a point"). No mean to remove.
     pub(crate) fn excite_waveguide<S: Scalar>(
         self,
         string: &mut Waveguide<S>,
@@ -58,11 +52,11 @@ impl Excitation {
             Self::Noise => string.pluck(|_| S::from_f64(rng.range(-1.0, 1.0))),
             Self::Triangle { peak } => {
                 let peak = peak.clamp(PEAK_MARGIN, 1.0 - PEAK_MARGIN);
-                string.pluck(|s| {
-                    S::from_f64(if s < peak {
-                        s / peak
+                string.pluck(|position| {
+                    S::from_f64(if position < peak {
+                        position / peak
                     } else {
-                        (1.0 - s) / (1.0 - peak)
+                        (1.0 - position) / (1.0 - peak)
                     })
                 });
             }

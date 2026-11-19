@@ -14,27 +14,26 @@ use acoustic::hammer::FORTISSIMO;
 use acoustic::{Model, VOICES, Voices};
 use criterion::{Criterion, criterion_group, criterion_main};
 
-const FS: f64 = 48_000.0;
+const SAMPLE_RATE: f64 = 48_000.0;
 const QUANTUM: usize = 128;
-/// Three-string keys (from A2 up), spread over the keyboard.
 const FIRST_TRIO: u8 = 45;
 const SPACING: u8 = 4;
 
-fn piano(c: &mut Criterion) {
-    let mut v = Voices::<f32>::new(FS, 1).unwrap();
-    v.set_model(Model::Piano);
-    for i in 0..u8::try_from(VOICES).unwrap() {
-        assert!(v.strike(FIRST_TRIO + i * SPACING % 60, FORTISSIMO));
+fn piano(criterion: &mut Criterion) {
+    let mut voices = Voices::<f32>::new(SAMPLE_RATE, 1).unwrap();
+    voices.set_model(Model::Piano);
+    for voice_index in 0..u8::try_from(VOICES).unwrap() {
+        assert!(voices.strike(FIRST_TRIO + voice_index * SPACING % 60, FORTISSIMO));
     }
     let mut out = vec![0.0_f32; QUANTUM];
-    c.bench_function("piano_16_voices_x3_strings/128", |b| {
-        b.iter(|| v.render(black_box(&mut out)));
+    criterion.bench_function("piano_16_voices_x3_strings/128", |bencher| {
+        bencher.iter(|| voices.render(black_box(&mut out)));
     });
-    c.bench_function("piano_design_88_keys", |b| {
-        b.iter(|| {
-            let mut v = Voices::<f32>::new(FS, 1).unwrap();
-            v.set_model(black_box(Model::Piano));
-            v
+    criterion.bench_function("piano_design_88_keys", |bencher| {
+        bencher.iter(|| {
+            let mut voices = Voices::<f32>::new(SAMPLE_RATE, 1).unwrap();
+            voices.set_model(black_box(Model::Piano));
+            voices
         });
     });
 }

@@ -6,9 +6,8 @@
 use acoustic::{Decay, Excitation, Model, Scalar, Voices, Voicing, inharmonicity};
 use math::convert::usize_to_f64;
 
-const FS: f64 = 48_000.0;
+const SAMPLE_RATE: f64 = 48_000.0;
 const BLOCK: usize = 128;
-/// Blocks in the 1 s performance: 48000 / 128.
 const BLOCKS: usize = 375;
 const VOICING: Voicing = Voicing {
     tuned: true,
@@ -16,49 +15,46 @@ const VOICING: Voicing = Voicing {
     inharmonicity: 0.0,
 };
 
-/// A short performance, 1 s: a seven-note chord (noise), a
-/// triangle-plucked melody note, a release, and one more note. Returns
-/// the samples and how many were clipped.
 fn perform<S: Scalar>() -> (Vec<S>, u64) {
     perform_with::<S>(Model::Loop)
 }
 
-/// The same performance played by `model`.
 fn perform_with<S: Scalar>(model: Model) -> (Vec<S>, u64) {
     perform_voiced::<S>(model, |_| VOICING)
 }
 
-/// The same performance, each key voiced by `voicing`.
 fn perform_voiced<S: Scalar>(model: Model, voicing: impl Fn(u8) -> Voicing) -> (Vec<S>, u64) {
-    let mut v = Voices::<S>::new(FS, 7).unwrap();
-    v.set_model(model);
+    let mut voices = Voices::<S>::new(SAMPLE_RATE, 7).unwrap();
+    voices.set_model(model);
     let mut out = Vec::new();
     let mut block = vec![S::ZERO; BLOCK];
-    for b in 0..BLOCKS {
-        match b {
+    for block_number in 0..BLOCKS {
+        match block_number {
             0 => {
                 for key in [48, 52, 55, 60, 64, 67, 72] {
-                    v.note_on(key, voicing(key), Excitation::Noise);
+                    voices.note_on(key, voicing(key), Excitation::Noise);
                 }
             }
             40 => {
-                v.note_on(76, voicing(76), Excitation::Triangle { peak: 0.1 });
+                voices.note_on(76, voicing(76), Excitation::Triangle { peak: 0.1 });
             }
-            100 => v.note_off(48),
+            100 => voices.note_off(48),
             200 => {
-                v.note_on(79, voicing(79), Excitation::Noise);
+                voices.note_on(79, voicing(79), Excitation::Noise);
             }
             _ => {}
         }
-        v.render(&mut block);
+        voices.render(&mut block);
         out.extend_from_slice(&block);
     }
-    (out, v.clipped())
+    (out, voices.clipped())
 }
 
-/// Every sample's `f64` bits, in order.
 fn bits<S: Scalar>(samples: &[S]) -> Vec<u64> {
-    samples.iter().map(|x| x.to_f64().to_bits()).collect()
+    samples
+        .iter()
+        .map(|sample| sample.to_f64().to_bits())
+        .collect()
 }
 
 #[test]
@@ -67,18 +63,18 @@ fn a_performance_is_repeatable() {
     assert_eq!(bits(&perform::<f64>().0), bits(&perform::<f64>().0));
 }
 
-/// Measured (A1.4): a seven-note chord at the default gain (¼) peaks at
-/// 0.824, so nothing reaches the ±1 clamp.
+/// Measured: a seven-note chord at the default gain (¼) peaks at 0.824, so
+/// nothing reaches the ±1 clamp.
 #[test]
 fn a_chord_at_the_default_gain_is_not_clipped() {
     let (samples, clipped) = perform::<f64>();
-    let peak = samples.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
+    let peak = samples
+        .iter()
+        .fold(0.0_f64, |peak, sample| peak.max(sample.abs()));
     assert_eq!(clipped, 0, "peak {peak}");
     assert!(peak < 0.9, "{peak}");
 }
 
-/// The performance played by A2's waveguide (pickup at the default):
-/// repeatable, and unclipped.
 #[test]
 fn the_waveguide_performance_is_repeatable_and_unclipped() {
     assert_eq!(
@@ -90,8 +86,6 @@ fn the_waveguide_performance_is_repeatable_and_unclipped() {
     assert_eq!(bits(&first), bits(&perform_with::<f64>(Model::Waveguide).0));
 }
 
-/// The waveguide performance with each key's stiffness
-/// (`docs/14-piano.md`): repeatable, and not the same sound as without.
 #[test]
 fn the_stiff_performance_is_repeatable_and_differs() {
     let stiff = |key| Voicing {
@@ -114,33 +108,30 @@ fn the_stiff_performance_is_repeatable_and_differs() {
     );
 }
 
-/// The piano's performance: the chord struck at mixed velocities, a
-/// melody note ff, a release, one more note pp; through the body.
 fn perform_piano<S: Scalar>() -> (Vec<S>, u64) {
-    let mut v = Voices::<S>::new(FS, 7).unwrap();
-    v.set_model(Model::Piano);
+    let mut voices = Voices::<S>::new(SAMPLE_RATE, 7).unwrap();
+    voices.set_model(Model::Piano);
     let mut out = Vec::new();
     let mut block = vec![S::ZERO; BLOCK];
-    for b in 0..BLOCKS {
-        match b {
+    for block_number in 0..BLOCKS {
+        match block_number {
             0 => {
-                for (i, key) in [48_u8, 52, 55, 60, 64, 67, 72].into_iter().enumerate() {
-                    let velocity = 0.5 + 0.6 * usize_to_f64(i);
-                    assert!(v.strike(key, velocity));
+                for (index, key) in [48_u8, 52, 55, 60, 64, 67, 72].into_iter().enumerate() {
+                    let velocity = 0.5 + 0.6 * usize_to_f64(index);
+                    assert!(voices.strike(key, velocity));
                 }
             }
-            40 => assert!(v.strike(76, acoustic::hammer::FORTISSIMO)),
-            100 => v.note_off(48),
-            200 => assert!(v.strike(79, acoustic::hammer::PIANISSIMO)),
+            40 => assert!(voices.strike(76, acoustic::hammer::FORTISSIMO)),
+            100 => voices.note_off(48),
+            200 => assert!(voices.strike(79, acoustic::hammer::PIANISSIMO)),
             _ => {}
         }
-        v.render(&mut block);
+        voices.render(&mut block);
         out.extend_from_slice(&block);
     }
-    (out, v.clipped())
+    (out, voices.clipped())
 }
 
-/// [`perform_piano`]: repeatable, and unclipped.
 #[test]
 fn the_piano_performance_is_repeatable_and_unclipped() {
     let (f64_samples, clipped) = perform_piano::<f64>();

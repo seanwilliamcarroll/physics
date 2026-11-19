@@ -17,142 +17,129 @@ use crate::voicing::Coefficients;
 /// y[n] = C l[n] + l[n − 1] − C y[n − 1]      (tuned; else y[n] = l[n])
 /// ```
 ///
-/// A1's loop runs it on the sample leaving its delay line; A2's waveguide
-/// runs it at the bridge. One implementation, so that where the two models
-/// are equivalent they do the same arithmetic in the same order, and the
-/// equivalence test can be bit-exact.
+/// One implementation for both models, so the equivalence test is bit-exact.
 #[derive(Clone, Debug)]
 pub(crate) struct Bridge<S> {
     /// `ρ (1 − S)` and `ρ S`: the lowpass's taps with the loss folded in.
     tap_now: S,
-    tap_prev: S,
+    tap_previous: S,
     /// The previous input (`x[n − 1]`).
-    prev: S,
-    /// The allpass coefficient `C`, if tuned, and its state (last input
-    /// and output).
+    previous_input: S,
+    /// The allpass coefficient `C`, if tuned, and its last input and output.
     allpass: Option<S>,
-    ap_in: S,
-    ap_out: S,
-    /// The dispersion cascade: each biquad's feedback coefficients
-    /// `(a1, a2)` and its last two inputs and outputs, `count` of them in
-    /// use (fixed arrays: nothing allocates).
-    disp: [(S, S); MAX_BIQUADS],
-    disp_count: usize,
-    disp_x: [(S, S); MAX_BIQUADS],
-    disp_y: [(S, S); MAX_BIQUADS],
+    allpass_input: S,
+    allpass_output: S,
+    /// The dispersion cascade: each biquad's `(a1, a2)` and last two inputs
+    /// and outputs, `dispersion_count` in use.
+    dispersion_coefficients: [(S, S); MAX_BIQUADS],
+    dispersion_count: usize,
+    dispersion_inputs: [(S, S); MAX_BIQUADS],
+    dispersion_outputs: [(S, S); MAX_BIQUADS],
     /// The pitch the loop plays, Hz.
     pitch: f64,
-    /// A release coming in: the taps' per-sample factor, and the samples
-    /// left (see [`damp`](Self::damp)).
+    /// A release in progress: the taps' per-sample factor, samples left.
     ramp: Option<(S, usize)>,
 }
 
 impl<S: Scalar> Bridge<S> {
-    /// A silent bridge with the note's coefficients.
-    pub(crate) fn new(c: &Coefficients) -> Self {
-        let mut b = Self {
+    pub(crate) fn new(coefficients: &Coefficients) -> Self {
+        let mut bridge = Self {
             tap_now: S::ZERO,
-            tap_prev: S::ZERO,
-            prev: S::ZERO,
+            tap_previous: S::ZERO,
+            previous_input: S::ZERO,
             allpass: None,
-            ap_in: S::ZERO,
-            ap_out: S::ZERO,
-            disp: [(S::ZERO, S::ZERO); MAX_BIQUADS],
-            disp_count: 0,
-            disp_x: [(S::ZERO, S::ZERO); MAX_BIQUADS],
-            disp_y: [(S::ZERO, S::ZERO); MAX_BIQUADS],
+            allpass_input: S::ZERO,
+            allpass_output: S::ZERO,
+            dispersion_coefficients: [(S::ZERO, S::ZERO); MAX_BIQUADS],
+            dispersion_count: 0,
+            dispersion_inputs: [(S::ZERO, S::ZERO); MAX_BIQUADS],
+            dispersion_outputs: [(S::ZERO, S::ZERO); MAX_BIQUADS],
             pitch: 0.0,
             ramp: None,
         };
-        b.apply(c);
-        b
+        bridge.apply(coefficients);
+        bridge
     }
 
-    /// Takes a new note's coefficients, and clears the memory.
-    pub(crate) fn apply(&mut self, c: &Coefficients) {
-        self.tap_now = S::from_f64(c.rho * (1.0 - c.stretch));
-        self.tap_prev = S::from_f64(c.rho * c.stretch);
-        self.allpass = c.allpass.map(S::from_f64);
-        self.disp_count = 0;
-        if let Some(d) = c.dispersion {
-            for (slot, (a1, a2)) in self.disp.iter_mut().zip(d.coefficients()) {
+    pub(crate) fn apply(&mut self, coefficients: &Coefficients) {
+        self.tap_now = S::from_f64(coefficients.rho * (1.0 - coefficients.stretch));
+        self.tap_previous = S::from_f64(coefficients.rho * coefficients.stretch);
+        self.allpass = coefficients.allpass.map(S::from_f64);
+        self.dispersion_count = 0;
+        if let Some(dispersion) = coefficients.dispersion {
+            for (slot, (a1, a2)) in self
+                .dispersion_coefficients
+                .iter_mut()
+                .zip(dispersion.coefficients())
+            {
                 *slot = (S::from_f64(a1), S::from_f64(a2));
-                self.disp_count += 1;
+                self.dispersion_count += 1;
             }
         }
-        self.pitch = c.pitch;
+        self.pitch = coefficients.pitch;
         self.ramp = None;
         self.clear();
     }
 
-    /// Clears the filters' memory (a new pluck).
     pub(crate) fn clear(&mut self) {
-        self.prev = S::ZERO;
-        self.ap_in = S::ZERO;
-        self.ap_out = S::ZERO;
-        self.disp_x = [(S::ZERO, S::ZERO); MAX_BIQUADS];
-        self.disp_y = [(S::ZERO, S::ZERO); MAX_BIQUADS];
+        self.previous_input = S::ZERO;
+        self.allpass_input = S::ZERO;
+        self.allpass_output = S::ZERO;
+        self.dispersion_inputs = [(S::ZERO, S::ZERO); MAX_BIQUADS];
+        self.dispersion_outputs = [(S::ZERO, S::ZERO); MAX_BIQUADS];
     }
 
-    /// The loop filter's next output for input `x`.
-    pub(crate) fn process(&mut self, x: S) -> S {
-        if let Some((k, left)) = self.ramp.as_mut() {
-            self.tap_now = self.tap_now * *k;
-            self.tap_prev = self.tap_prev * *k;
-            *left -= 1;
-            if *left == 0 {
+    pub(crate) fn process(&mut self, input: S) -> S {
+        if let Some((factor, samples_left)) = self.ramp.as_mut() {
+            self.tap_now = self.tap_now * *factor;
+            self.tap_previous = self.tap_previous * *factor;
+            *samples_left -= 1;
+            if *samples_left == 0 {
                 self.ramp = None;
             }
         }
-        let mut low = self.tap_now * x + self.tap_prev * self.prev;
-        self.prev = x;
-        // The dispersion cascade (none for an ideal string, so A1 and A2
-        // are untouched).
-        // Each biquad: H = (a2 + a1 z⁻¹ + z⁻²) / (1 + a1 z⁻¹ + a2 z⁻²), in
-        // direct form I.
+        let mut lowpassed = self.tap_now * input + self.tap_previous * self.previous_input;
+        self.previous_input = input;
+        // Each biquad: H = (a2 + a1 z⁻¹ + z⁻²) / (1 + a1 z⁻¹ + a2 z⁻²), direct form I.
         let biquads = self
-            .disp
+            .dispersion_coefficients
             .iter()
-            .zip(self.disp_x.iter_mut())
-            .zip(self.disp_y.iter_mut());
-        for ((&(a1, a2), x), y) in biquads.take(self.disp_count) {
-            let out = a2 * low + a1 * x.0 + x.1 - a1 * y.0 - a2 * y.1;
-            *x = (low, x.0);
-            *y = (out, y.0);
-            low = out;
+            .zip(self.dispersion_inputs.iter_mut())
+            .zip(self.dispersion_outputs.iter_mut());
+        for ((&(a1, a2), inputs), outputs) in biquads.take(self.dispersion_count) {
+            let out = a2 * lowpassed + a1 * inputs.0 + inputs.1 - a1 * outputs.0 - a2 * outputs.1;
+            *inputs = (lowpassed, inputs.0);
+            *outputs = (out, outputs.0);
+            lowpassed = out;
         }
         match self.allpass {
-            Some(c) => {
-                let y = c * low + self.ap_in - c * self.ap_out;
-                self.ap_in = low;
-                self.ap_out = y;
-                y
+            Some(coefficient) => {
+                let output = coefficient * lowpassed + self.allpass_input
+                    - coefficient * self.allpass_output;
+                self.allpass_input = lowpassed;
+                self.allpass_output = output;
+                output
             }
-            None => low,
+            None => lowpassed,
         }
     }
 
-    /// Adds a loss so the fundamental falls 60 dB in about `t60` more
-    /// seconds (the release); the pitch is unchanged. Ignored unless
-    /// `t60 > 0`.
-    ///
-    /// The loss comes in over `ramp` samples, as a damper settles on a
-    /// string. Applied in one sample it's a step in the
-    /// reflected wave, and the piano sounds that wave's change: a click
-    /// on every release (A3, found after the health audit).
-    pub(crate) fn damp(&mut self, t60: f64, ramp: NonZeroUsize) {
-        // `t60 > 0` is false for NaN too.
-        let positive = t60 > 0.0;
+    /// The release: the fundamental falls 60 dB in about `decay_time_60db`
+    /// more seconds; ignored unless positive. The loss comes in over `ramp`
+    /// samples: in one step it clicks on every release.
+    pub(crate) fn damp(&mut self, decay_time_60db: f64, ramp: NonZeroUsize) {
+        // `decay_time_60db > 0` is false for NaN too.
+        let positive = decay_time_60db > 0.0;
         if !positive {
             return;
         }
-        let r = libm::exp10(-3.0 / (self.pitch * t60));
-        // r^(1/ramp) per sample: r in all, after `ramp` samples.
-        let k = libm::pow(r, 1.0 / math::convert::usize_to_f64(ramp.get()));
-        self.ramp = Some((S::from_f64(k), ramp.get()));
+        let total_gain = libm::exp10(-3.0 / (self.pitch * decay_time_60db));
+        // total_gain^(1/ramp) per sample reaches total_gain after `ramp`.
+        let per_sample_factor =
+            libm::pow(total_gain, 1.0 / math::convert::usize_to_f64(ramp.get()));
+        self.ramp = Some((S::from_f64(per_sample_factor), ramp.get()));
     }
 
-    /// The pitch the loop plays, Hz.
     pub(crate) const fn pitch(&self) -> f64 {
         self.pitch
     }

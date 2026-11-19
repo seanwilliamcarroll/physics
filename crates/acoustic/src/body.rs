@@ -1,15 +1,13 @@
-//! [`Body`]: the instrument's body, as a few fixed resonances on the
-//! strings' bridge force (`docs/14-piano.md`, "The body"): the direct
-//! sound plus parallel bandpass biquads. Soundboard-like coloring, **our
-//! choice** of frequencies, Q and gains, not a measured soundboard.
+//! [`Body`]: the direct sound plus parallel bandpass resonances
+//! (`docs/14-piano.md`, "The body"). **Our choice** of frequencies, Q and
+//! gains, not a measured soundboard.
 
 use core::f64::consts::TAU;
 
 use crate::Scalar;
 
-/// The resonances: (frequency Hz, Q, gain), **our choice**: a soundboard's
-/// lowest modes sit near 50–100 Hz and get denser upward; a few broad
-/// peaks across the range stand in for them.
+/// (frequency Hz, Q, gain): a few broad peaks standing in for a soundboard's
+/// modes, which start near 50–100 Hz and thicken upward.
 const RESONANCES: [(f64, f64, f64); 5] = [
     (90.0, 4.0, 1.0),
     (200.0, 5.0, 0.8),
@@ -19,67 +17,66 @@ const RESONANCES: [(f64, f64, f64); 5] = [
 ];
 pub(crate) const RESONANCE_COUNT: usize = RESONANCES.len();
 
-/// Test-only: the resonances' frequencies, Hz.
 #[cfg(test)]
 #[must_use]
 pub(crate) fn resonances() -> [f64; RESONANCE_COUNT] {
-    RESONANCES.map(|(f, _, _)| f)
+    RESONANCES.map(|(frequency, _, _)| frequency)
 }
 
-/// A biquad's coefficients `(b0, a1, a2)` (`b1 = 0`, `b2 = −b0`) and its
-/// last two inputs and outputs.
+/// A biquad with `b1 = 0`, `b2 = −b0`.
 #[derive(Copy, Clone, Debug)]
 struct Bandpass<S> {
     b0: S,
     a1: S,
     a2: S,
     gain: S,
-    x: (S, S),
-    y: (S, S),
+    inputs: (S, S),
+    outputs: (S, S),
 }
 
-/// The body's filter.
 #[derive(Clone, Debug)]
 pub(crate) struct Body<S> {
     bands: [Bandpass<S>; RESONANCE_COUNT],
 }
 
 impl<S: Scalar> Body<S> {
-    /// The body at `fs` Hz; `None` if a resonance isn't below Nyquist.
+    /// `None` if a resonance isn't below Nyquist.
     #[must_use]
-    pub(crate) fn new(fs: f64) -> Option<Self> {
-        let usable = fs > 0.0 && RESONANCES.iter().all(|&(f, _, _)| f < 0.5 * fs);
+    pub(crate) fn new(sample_rate: f64) -> Option<Self> {
+        let usable =
+            sample_rate > 0.0 && RESONANCES.iter().all(|&(hz, _, _)| hz < 0.5 * sample_rate);
         if !usable {
             return None;
         }
         // Constant 0 dB peak (Bristow-Johnson's cookbook): the band's gain
         // at its center is `gain`.
-        let bands = RESONANCES.map(|(f, q, gain)| {
-            let w = TAU * f / fs;
-            let alpha = libm::sin(w) / (2.0 * q);
+        let bands = RESONANCES.map(|(hz, quality, gain)| {
+            let omega = TAU * hz / sample_rate;
+            let alpha = libm::sin(omega) / (2.0 * quality);
             let a0 = 1.0 + alpha;
             Bandpass {
                 b0: S::from_f64(alpha / a0),
-                a1: S::from_f64(-2.0 * libm::cos(w) / a0),
+                a1: S::from_f64(-2.0 * libm::cos(omega) / a0),
                 a2: S::from_f64((1.0 - alpha) / a0),
                 gain: S::from_f64(gain),
-                x: (S::ZERO, S::ZERO),
-                y: (S::ZERO, S::ZERO),
+                inputs: (S::ZERO, S::ZERO),
+                outputs: (S::ZERO, S::ZERO),
             }
         });
         Some(Self { bands })
     }
 
-    /// The next output for input `x`: the direct sound and each band.
-    pub(crate) fn process(&mut self, x: S) -> S {
-        let mut out = x;
-        for b in &mut self.bands {
-            let y = b.b0 * (x - b.x.1) - b.a1 * b.y.0 - b.a2 * b.y.1;
-            b.x = (x, b.x.0);
-            b.y = (y, b.y.0);
-            out += b.gain * y;
+    pub(crate) fn process(&mut self, input: S) -> S {
+        let mut sum = input;
+        for band in &mut self.bands {
+            let output = band.b0 * (input - band.inputs.1)
+                - band.a1 * band.outputs.0
+                - band.a2 * band.outputs.1;
+            band.inputs = (input, band.inputs.0);
+            band.outputs = (output, band.outputs.0);
+            sum += band.gain * output;
         }
-        out
+        sum
     }
 }
 
