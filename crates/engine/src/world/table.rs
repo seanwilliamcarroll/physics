@@ -1,5 +1,5 @@
-//! The billiards table on a world (M7, `docs/09-billiards.md`): the
-//! cloth, the balls' spin, and the cue.
+//! The billiards table on a world (`docs/09-billiards.md`): the cloth, the
+//! balls' spin, and the cue.
 
 use super::World;
 use crate::table::Table;
@@ -31,23 +31,27 @@ impl<S: Scalar> World<S> {
     /// changing nothing, for a particle that isn't a ball (static, or no
     /// radius) or isn't there.
     pub fn strike(&mut self, id: ParticleId, aim: UnitVec2<S>, speed: S, tip: S) -> bool {
-        let i = id.index();
-        let p = &mut self.particles;
-        let (Some(&r), Some(&w)) = (p.radius.get(i), p.inv_mass.get(i)) else {
+        let index = id.index();
+        let particles = &mut self.particles;
+        let (Some(&radius), Some(&inv_mass)) =
+            (particles.radius.get(index), particles.inv_mass.get(index))
+        else {
             return false;
         };
-        if r == S::ZERO || w == S::ZERO {
+        if radius == S::ZERO || inv_mass == S::ZERO {
             return false;
         }
-        self.spin.resize(p.pos.len(), Vec2::ZERO);
-        let d = aim.get();
+        self.spin.resize(particles.pos.len(), Vec2::ZERO);
+        let direction = aim.get();
         let two = S::ONE + S::ONE;
         let five = S::from_f64(5.0);
-        let (Some(v), Some(om)) = (p.vel.get_mut(i), self.spin.get_mut(i)) else {
+        let (Some(velocity), Some(spin)) = (particles.vel.get_mut(index), self.spin.get_mut(index))
+        else {
             return false;
         };
-        *v = d * speed;
-        *om = Vec2::new(-d.y, d.x) * (five * tip * speed / (two * r * r));
+        *velocity = direction * speed;
+        *spin =
+            Vec2::new(-direction.y, direction.x) * (five * tip * speed / (two * radius * radius));
         true
     }
 }
@@ -72,7 +76,7 @@ impl<S: Scalar> World<S> {
     pub fn count_tunnels(&mut self, on: bool) {
         self.tunnels = on.then(|| super::TunnelCount {
             count: 0,
-            before: Vec::new(),
+            starting_positions: Vec::new(),
             pairs: Vec::new(),
         });
     }
@@ -80,6 +84,6 @@ impl<S: Scalar> World<S> {
     /// Tunnels counted since counting started, or `None` if it's off.
     #[must_use]
     pub fn tunnels(&self) -> Option<u64> {
-        self.tunnels.as_ref().map(|t| t.count)
+        self.tunnels.as_ref().map(|tunnels| tunnels.count)
     }
 }

@@ -38,28 +38,22 @@ pub struct World<S: Scalar> {
     /// Per-substep acceleration scratch, reused to avoid allocating each
     /// step. Lives here, not in `Particles`: forces borrow the particles
     /// immutably while writing into this buffer.
-    acc: Vec<Vec2<S>>,
-    /// Second scratch buffer: velocity Verlet's accelerations at the new
-    /// positions.
-    acc_next: Vec<Vec2<S>>,
+    accelerations: Vec<Vec2<S>>,
+    /// Velocity Verlet's accelerations at the new positions.
+    next_accelerations: Vec<Vec2<S>>,
     /// Velocity Verlet's start-of-substep velocities (its second evaluation
     /// sees predicted ones).
-    vel_start: Vec<Vec2<S>>,
-    /// Constraints and the solver state; with any constraints, the solver
-    /// steps instead of `integrator`.
+    start_velocities: Vec<Vec2<S>>,
+    /// With any constraints, the solver steps instead of `integrator`.
     constraints: Constraints<S>,
-    /// The ground's height, m, if any: a half-plane clamp after every
-    /// substep (`world/ground.rs`).
+    /// The ground's height, m, if any (`world/ground.rs`).
     ground: Option<S>,
-    /// Static half-planes circles collide with (M6).
     walls: Vec<Wall<S>>,
-    /// Static segments circles collide with, each with its own
-    /// restitution (M7: cushions).
+    /// Static segments circles collide with, each with its own restitution.
     segments: Vec<Segment<S>>,
-    /// Restitution for circle–circle and wall collisions (segments carry
-    /// their own).
+    /// Restitution for circle–circle and wall collisions.
     restitution: Restitution<S>,
-    /// The cloth, if this is a billiards table (M7); off by default.
+    /// The cloth, if this is a billiards table.
     table: Option<Table<S>>,
     /// Each particle's spin about the horizontal axes, `(ω_x, ω_y)`, rad/s,
     /// aligned with the particles; only a table moves it.
@@ -67,18 +61,18 @@ pub struct World<S: Scalar> {
     /// Speculative contacts: on by default (`docs/09-billiards.md`,
     /// "Tunneling").
     speculative: bool,
-    /// Tunnel counting (`collision::count_tunnels`), when on: the count
-    /// so far, each substep's starting positions, and broadphase scratch.
+    /// Tunnel counting (`collision::count_tunnels`), when on.
     tunnels: Option<TunnelCount<S>>,
-    /// Sensors that pot balls (M7), and what the last step potted.
+    /// Sensors that pot balls, and what the last step potted.
     pockets: Vec<Pocket<S>>,
     potted: Vec<(ParticleId, usize)>,
 }
 
-/// What counting tunnels keeps between substeps.
+/// What counting tunnels keeps between substeps: the count so far, each
+/// substep's starting positions, and broadphase scratch.
 struct TunnelCount<S> {
     count: u64,
-    before: Vec<Vec2<S>>,
+    starting_positions: Vec<Vec2<S>>,
     pairs: Vec<(usize, usize)>,
 }
 
@@ -92,9 +86,9 @@ impl<S: Scalar> World<S> {
             forces: Vec::new(),
             integrator,
             substeps,
-            acc: Vec::new(),
-            acc_next: Vec::new(),
-            vel_start: Vec::new(),
+            accelerations: Vec::new(),
+            next_accelerations: Vec::new(),
+            start_velocities: Vec::new(),
             constraints: Constraints::new(Baumgarte::default()),
             ground: None,
             walls: Vec::new(),
@@ -119,20 +113,17 @@ impl<S: Scalar> World<S> {
         self.segments.push(segment);
     }
 
-    /// The segments, in the order added (the page draws them).
     #[must_use]
     pub fn segments(&self) -> &[Segment<S>] {
         &self.segments
     }
 
-    /// Test-only: the walls, in the order added.
     #[cfg(test)]
     #[must_use]
     pub(crate) fn walls(&self) -> &[Wall<S>] {
         &self.walls
     }
 
-    /// Test-only: the restitution contacts use.
     #[cfg(test)]
     #[must_use]
     pub(crate) const fn restitution(&self) -> Restitution<S> {
@@ -141,8 +132,8 @@ impl<S: Scalar> World<S> {
 
     /// Restitution for every collision, from the next step. A new world's
     /// is [`Restitution::INELASTIC`].
-    pub const fn set_restitution(&mut self, e: Restitution<S>) {
-        self.restitution = e;
+    pub const fn set_restitution(&mut self, restitution: Restitution<S>) {
+        self.restitution = restitution;
     }
 
     /// Whether anything can collide: any wall or segment, or any circle (a
@@ -160,24 +151,29 @@ impl<S: Scalar> World<S> {
     }
 
     /// Adds a dynamic particle (see [`Particles::add`]).
-    pub fn add_particle(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: Mass<S>) -> ParticleId {
-        self.particles.add(pos, vel, mass)
+    pub fn add_particle(
+        &mut self,
+        position: Vec2<S>,
+        velocity: Vec2<S>,
+        mass: Mass<S>,
+    ) -> ParticleId {
+        self.particles.add(position, velocity, mass)
     }
 
     /// Adds a dynamic circle, which collides (see [`Particles::add_circle`]).
     pub fn add_circle(
         &mut self,
-        pos: Vec2<S>,
-        vel: Vec2<S>,
+        position: Vec2<S>,
+        velocity: Vec2<S>,
         mass: Mass<S>,
         radius: Radius<S>,
     ) -> ParticleId {
-        self.particles.add_circle(pos, vel, mass, radius)
+        self.particles.add_circle(position, velocity, mass, radius)
     }
 
     /// Adds an immovable particle (see [`Particles::add_static`]).
-    pub fn add_static(&mut self, pos: Vec2<S>) -> StaticId {
-        self.particles.add_static(pos)
+    pub fn add_static(&mut self, position: Vec2<S>) -> StaticId {
+        self.particles.add_static(position)
     }
 
     /// Velocities, mutable in place (see [`Particles::vel_mut`]).
@@ -187,8 +183,8 @@ impl<S: Scalar> World<S> {
 
     /// Moves a static particle (see [`Particles::set_static_position`]).
     #[must_use]
-    pub fn set_static_position(&mut self, id: StaticId, pos: Vec2<S>) -> bool {
-        self.particles.set_static_position(id, pos)
+    pub fn set_static_position(&mut self, id: StaticId, position: Vec2<S>) -> bool {
+        self.particles.set_static_position(id, position)
     }
 
     pub fn add_force(&mut self, force: impl Force<S> + 'static) {
@@ -210,8 +206,8 @@ impl<S: Scalar> World<S> {
     /// [`ConfigError::UnknownParticle`] if it names a particle this world
     /// doesn't have (built from another world's particles). Nothing is
     /// added then.
-    pub fn add_constraint(&mut self, c: DistanceConstraint<S>) -> Result<(), ConfigError> {
-        self.constraints.add(c, self.particles.len())
+    pub fn add_constraint(&mut self, constraint: DistanceConstraint<S>) -> Result<(), ConfigError> {
+        self.constraints.add(constraint, self.particles.len())
     }
 
     #[must_use]
@@ -236,8 +232,8 @@ impl<S: Scalar> World<S> {
     }
 
     /// The impulse solver's β, from the next step (XPBD ignores it).
-    pub const fn set_baumgarte(&mut self, beta: Baumgarte<S>) {
-        self.constraints.baumgarte = beta;
+    pub const fn set_baumgarte(&mut self, baumgarte: Baumgarte<S>) {
+        self.constraints.baumgarte = baumgarte;
     }
 
     #[must_use]
@@ -271,12 +267,10 @@ impl<S: Scalar> World<S> {
         self.constraints.stabilization = stabilization;
     }
 
-    /// The type makes 0 unrepresentable, so there's nothing to report.
     pub const fn set_substeps(&mut self, substeps: NonZeroU32) {
         self.substeps = substeps;
     }
 
-    /// Substeps per step.
     #[must_use]
     pub const fn substeps(&self) -> NonZeroU32 {
         self.substeps
@@ -298,32 +292,34 @@ impl<S: Scalar> World<S> {
     /// substeps`. A [`TimeStep`] is positive and finite, so time can't run
     /// backward, stand still (XPBD's velocity is `Δx / h`), or turn NaN.
     pub fn step(&mut self, dt: TimeStep<S>) {
-        let h = dt.get() / S::from_f64(f64::from(self.substeps.get()));
+        let substep_dt = dt.get() / S::from_f64(f64::from(self.substeps.get()));
         self.potted.clear();
         for _ in 0..self.substeps.get() {
-            self.substep(h);
+            self.substep(substep_dt);
         }
     }
 
-    /// No constraints: the integrator, exactly as before M3. With
-    /// constraints: the solver owns the whole substep, and the integrator
-    /// setting is ignored (`docs/06-constraints.md`). Then the ground, if
-    /// any, clamps the result: after the stepper, so it applies to all of
-    /// them alike, and after XPBD derives its velocities, so the next
-    /// substep starts from a clamped position *and* velocity.
-    fn substep(&mut self, h: S) {
+    /// No constraints and nothing colliding: the integrator. Otherwise the
+    /// solver owns the whole substep and the integrator setting is ignored
+    /// (`docs/06-constraints.md`). Then the ground, if any, clamps the
+    /// result: after the stepper, so it applies to all of them alike, and
+    /// after XPBD derives its velocities, so the next substep starts from a
+    /// clamped position *and* velocity.
+    fn substep(&mut self, substep_dt: S) {
         if self.constraints.is_empty() && !self.collides() {
             let scratch = VerletScratch {
-                acc: &mut self.acc,
-                acc_next: &mut self.acc_next,
-                vel_start: &mut self.vel_start,
+                acc: &mut self.accelerations,
+                acc_next: &mut self.next_accelerations,
+                vel_start: &mut self.start_velocities,
             };
             self.integrator
-                .substep(&self.forces, &mut self.particles, scratch, h);
+                .substep(&self.forces, &mut self.particles, scratch, substep_dt);
         } else {
-            if let Some(t) = &mut self.tunnels {
-                t.before.clear();
-                t.before.extend_from_slice(self.particles.pos());
+            if let Some(tunnels) = &mut self.tunnels {
+                tunnels.starting_positions.clear();
+                tunnels
+                    .starting_positions
+                    .extend_from_slice(self.particles.pos());
             }
             self.spin.resize(self.particles.len(), Vec2::ZERO);
             let statics = Statics {
@@ -333,26 +329,31 @@ impl<S: Scalar> World<S> {
             let collision = self.collides().then(|| Collision {
                 statics,
                 restitution: self.restitution,
-                cloth: self.table.map(|t| (t, self.spin.as_mut_slice())),
+                cloth: self.table.map(|table| (table, self.spin.as_mut_slice())),
                 speculative: self.speculative,
             });
             self.constraints.substep(
                 &self.forces,
                 &mut self.particles,
-                &mut self.acc,
+                &mut self.accelerations,
                 collision,
-                h,
+                substep_dt,
             );
-            if let Some(t) = &mut self.tunnels {
-                let n = count_tunnels(&t.before, &self.particles, statics, &mut t.pairs);
-                t.count += u64::from(n);
+            if let Some(tunnels) = &mut self.tunnels {
+                let new_tunnels = count_tunnels(
+                    &tunnels.starting_positions,
+                    &self.particles,
+                    statics,
+                    &mut tunnels.pairs,
+                );
+                tunnels.count += u64::from(new_tunnels);
             }
             if !self.pockets.is_empty() {
                 self.pot();
             }
         }
-        if let Some(y) = self.ground {
-            ground::clamp(&mut self.particles, y);
+        if let Some(ground_y) = self.ground {
+            ground::clamp(&mut self.particles, ground_y);
         }
     }
 }

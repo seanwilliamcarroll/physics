@@ -17,24 +17,21 @@ use crate::{
 /// invariants live in one place: `lambda` always matches `list` in
 /// length, and switching solver always resets it.
 pub(super) struct Constraints<S> {
-    /// Rods etc. With any present, the solver steps instead of the
-    /// integrator.
+    /// With any present, the solver steps instead of the integrator.
     list: Vec<DistanceConstraint<S>>,
     /// The solver's multipliers.
     lambda: Vec<S>,
     pub(super) solver: Solver,
     /// Gauss–Seidel passes over the constraints per substep.
     pub(super) iterations: NonZeroU32,
-    /// The order each pass visits the constraints in.
     pub(super) order: Order,
-    /// How the impulse solver corrects rigid rods' position error.
     pub(super) stabilization: Stabilization,
     /// The impulse solver's β; kept across solver switches.
     pub(super) baumgarte: Baumgarte<S>,
-    /// Scratch: XPBD's start-of-substep positions, or split impulses'
+    /// XPBD's start-of-substep positions, or split impulses'
     /// pseudo-velocities.
     scratch: Vec<Vec2<S>>,
-    /// This substep's contacts and their multipliers (M6).
+    /// This substep's contacts and their multipliers.
     contacts: Contacts<S>,
 }
 
@@ -53,17 +50,21 @@ impl<S: Scalar> Constraints<S> {
         }
     }
 
-    /// Adds `c` if both its bodies are among the `particle_count`
+    /// Adds `constraint` if both its bodies are among the `particle_count`
     /// particles.
     pub(super) fn add(
         &mut self,
-        c: DistanceConstraint<S>,
+        constraint: DistanceConstraint<S>,
         particle_count: usize,
     ) -> Result<(), ConfigError> {
-        if c.bodies().iter().any(|id| id.index() >= particle_count) {
+        if constraint
+            .bodies()
+            .iter()
+            .any(|id| id.index() >= particle_count)
+        {
             return Err(ConfigError::UnknownParticle);
         }
-        self.list.push(c);
+        self.list.push(constraint);
         self.lambda.push(S::ZERO);
         Ok(())
     }
@@ -79,28 +80,28 @@ impl<S: Scalar> Constraints<S> {
         true
     }
 
-    /// Replaces every constraint but the one at `skip` with `f` of itself,
-    /// if `f` keeps every one's bodies (so each still names particles that
-    /// exist, and λ stays aligned); otherwise changes nothing. Two passes,
-    /// so a refusal leaves no constraint half-updated: `f` is called twice
-    /// per constraint, so it should be pure.
+    /// Replaces every constraint but the one at `skip` with `change` of
+    /// itself, if `change` keeps every one's bodies (so each still names
+    /// particles that exist, and λ stays aligned); otherwise changes
+    /// nothing. Two passes, so a refusal leaves no constraint half-updated:
+    /// `change` is called twice per constraint, so it should be pure.
     pub(super) fn update(
         &mut self,
         skip: Option<usize>,
-        f: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
+        change: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
     ) -> Result<(), ConfigError> {
         let others = || {
             self.list
                 .iter()
                 .enumerate()
-                .filter(|&(i, _)| Some(i) != skip)
+                .filter(|&(index, _)| Some(index) != skip)
         };
-        if others().any(|(_, c)| f(*c).bodies() != c.bodies()) {
+        if others().any(|(_, constraint)| change(*constraint).bodies() != constraint.bodies()) {
             return Err(ConfigError::ChangedBodies);
         }
-        for (i, c) in self.list.iter_mut().enumerate() {
-            if Some(i) != skip {
-                *c = f(*c);
+        for (index, constraint) in self.list.iter_mut().enumerate() {
+            if Some(index) != skip {
+                *constraint = change(*constraint);
             }
         }
         Ok(())
@@ -121,15 +122,15 @@ impl<S: Scalar> Constraints<S> {
         self.contacts.clear();
     }
 
-    /// One substep of length `h` by the current solver; `collision` when
-    /// the world can collide.
+    /// One substep of length `substep_dt` by the current solver; `collision`
+    /// when the world can collide.
     pub(super) fn substep(
         &mut self,
         forces: &[Box<dyn Force<S>>],
         particles: &mut Particles<S>,
-        acc: &mut Vec<Vec2<S>>,
+        accelerations: &mut Vec<Vec2<S>>,
         collision: Option<Collision<'_, S>>,
-        h: S,
+        substep_dt: S,
     ) {
         let collides = collision.is_some();
         let Collision {
@@ -151,7 +152,7 @@ impl<S: Scalar> Constraints<S> {
             particles,
             constraints: &self.list,
             lambda: &mut self.lambda,
-            acc,
+            acc: accelerations,
             scratch: &mut self.scratch,
             iterations: self.iterations,
             order: self.order,
@@ -165,8 +166,8 @@ impl<S: Scalar> Constraints<S> {
             speculative,
         };
         match self.solver {
-            Solver::Xpbd => step.xpbd(h),
-            Solver::Impulse => step.impulse(h),
+            Solver::Xpbd => step.xpbd(substep_dt),
+            Solver::Impulse => step.impulse(substep_dt),
         }
     }
 }

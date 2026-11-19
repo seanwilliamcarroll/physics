@@ -1,5 +1,5 @@
-//! Pockets on a world (M7, `docs/09-billiards.md`, "Pockets"): sensors
-//! that take balls out of play, and the events the page reads.
+//! Pockets on a world (`docs/09-billiards.md`, "Pockets"): sensors that take
+//! balls out of play, and the events the page reads.
 
 use super::World;
 use crate::collision::Pocket;
@@ -27,31 +27,32 @@ impl<S: Scalar> World<S> {
     /// nothing), at rest, its spin zeroed, left where it is. Every other
     /// index is kept. `false` past the end.
     pub fn retire(&mut self, id: ParticleId) -> bool {
-        let i = id.index();
-        let Some(&x) = self.particles.pos.get(i) else {
+        let index = id.index();
+        let Some(&position) = self.particles.pos.get(index) else {
             return false;
         };
-        if let Some(om) = self.spin.get_mut(i) {
-            *om = Vec2::ZERO;
+        if let Some(spin) = self.spin.get_mut(index) {
+            *spin = Vec2::ZERO;
         }
-        self.particles.set_body(i, x, S::ZERO, S::ZERO)
+        self.particles.set_body(index, position, S::ZERO, S::ZERO)
     }
 
-    /// Puts particle `id` back in play at `pos`, at rest, as a ball of
+    /// Puts particle `id` back in play at `position`, at rest, as a ball of
     /// `mass` and `radius` (a scratched cue ball re-spotted). `false` past
     /// the end.
     pub fn reinstate(
         &mut self,
         id: ParticleId,
-        pos: Vec2<S>,
+        position: Vec2<S>,
         mass: Mass<S>,
         radius: Radius<S>,
     ) -> bool {
-        let i = id.index();
-        if let Some(om) = self.spin.get_mut(i) {
-            *om = Vec2::ZERO;
+        let index = id.index();
+        if let Some(spin) = self.spin.get_mut(index) {
+            *spin = Vec2::ZERO;
         }
-        self.particles.set_body(i, pos, mass.inv(), radius.get())
+        self.particles
+            .set_body(index, position, mass.inv(), radius.get())
     }
 
     /// Pots every moving ball whose centre is in a pocket.
@@ -62,10 +63,13 @@ impl<S: Scalar> World<S> {
             .iter()
             .zip(self.particles.inv_mass.iter().zip(&self.particles.radius))
             .enumerate()
-            .filter(|(_, (_, (w, r)))| **w != S::ZERO && **r != S::ZERO)
-            .filter_map(|(i, (&x, _))| {
-                let k = self.pockets.iter().position(|p| p.holds(x))?;
-                Some((ParticleId(i), k))
+            .filter(|(_, (_, (inv_mass, radius)))| **inv_mass != S::ZERO && **radius != S::ZERO)
+            .filter_map(|(index, (&position, _))| {
+                let pocket_index = self
+                    .pockets
+                    .iter()
+                    .position(|pocket| pocket.holds(position))?;
+                Some((ParticleId(index), pocket_index))
             })
             .collect();
         for &(id, _) in &hits {

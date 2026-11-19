@@ -19,7 +19,6 @@ pub struct Grab {
 }
 
 impl Grab {
-    /// The particle being dragged.
     #[must_use]
     pub const fn particle(&self) -> ParticleId {
         self.particle
@@ -27,29 +26,27 @@ impl Grab {
 }
 
 impl<S: Scalar> World<S> {
-    /// Replaces every constraint `c` with `f(c)`, except the rod of
+    /// Replaces every constraint `c` with `change(c)`, except the rod of
     /// `except` (a held grab: its stiffness is the drag's, not the
     /// scene's). For live changes that keep the world running, e.g. a
-    /// stiffness slider (`docs/07-soft-bodies.md`, "Live stiffness"). `f`
-    /// gets each constraint by value and its result replaces it in place
-    /// (so λ stays aligned).
+    /// stiffness slider (`docs/07-soft-bodies.md`, "Live stiffness"). The
+    /// result replaces each constraint in place (so λ stays aligned).
     ///
     /// # Errors
-    /// [`ConfigError::ChangedBodies`], changing nothing, if `f` changes
+    /// [`ConfigError::ChangedBodies`], changing nothing, if `change` changes
     /// which particles any constraint joins.
     pub fn update_constraints(
         &mut self,
         except: Option<&Grab>,
-        f: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
+        change: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
     ) -> Result<(), ConfigError> {
-        self.constraints.update(except.map(|g| g.rod), f)
+        self.constraints.update(except.map(|grab| grab.rod), change)
     }
 
     /// Whether this world can be grabbed: only if a solver already steps it
     /// (it has constraints, or something collides). A grab is a rod; in a
     /// world the integrator steps, adding one would hand the whole world to
-    /// a solver for as long as it's held (M5's force-spring jelly would
-    /// stop being stepped by symplectic Euler), so such a world refuses.
+    /// a solver for as long as it's held, so such a world refuses.
     #[must_use]
     pub fn grabbable(&self) -> bool {
         !self.constraints.is_empty() || self.collides()
@@ -69,7 +66,7 @@ impl<S: Scalar> World<S> {
         let rod = self.constraints().len();
         let link =
             DistanceConstraint::with_length(&self.particles, anchor, particle, S::ZERO, softness);
-        if link.is_some_and(|c| self.add_constraint(c).is_ok()) {
+        if link.is_some_and(|constraint| self.add_constraint(constraint).is_ok()) {
             Some(Grab {
                 anchor,
                 particle,
