@@ -74,17 +74,17 @@ impl FixedStep {
     /// it: `false` (and nothing changed) for 0 or above `max`. The parse
     /// every `*_set_rate` export does, in one place.
     pub fn set_rate_hz(&mut self, hz: u32, max: u32) -> bool {
-        let rate = NonZeroU32::new(hz).filter(|r| r.get() <= max);
-        rate.map(|r| self.set_rate(r)).is_some()
+        let rate = NonZeroU32::new(hz).filter(|rate| rate.get() <= max);
+        rate.map(|rate| self.set_rate(rate)).is_some()
     }
 
     /// [`set_cap`](Self::set_cap) from a bare number, as an export gets
     /// it: 0 is no cap; `false` (and nothing changed) above `max`.
-    pub const fn set_cap_steps(&mut self, n: u32, max: u32) -> bool {
-        if n > max {
+    pub const fn set_cap_steps(&mut self, steps: u32, max: u32) -> bool {
+        if steps > max {
             return false;
         }
-        self.set_cap(NonZeroU32::new(n));
+        self.set_cap(NonZeroU32::new(steps));
         true
     }
 
@@ -116,7 +116,7 @@ impl FixedStep {
         self.leftover += elapsed;
         let mut steps = 0;
         while self.leftover >= self.dt {
-            if self.cap.is_some_and(|c| steps >= c.get()) {
+            if self.cap.is_some_and(|cap| steps >= cap.get()) {
                 // Over budget: drop the whole steps still owed, keep the
                 // fraction (slow motion, not a backlog).
                 self.leftover %= self.dt;
