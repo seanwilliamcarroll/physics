@@ -24,8 +24,7 @@ fn nan_has_no_direction<S: Scalar>() {
 }
 for_each_scalar!(nan_has_no_direction);
 
-/// Each component divided by the length (correctly rounded), not
-/// multiplied by `1 / length`: bit-identical to `vector / length`.
+/// Bit-identical to `vector / length`, not `vector * (1 / length)`.
 fn divides_componentwise<S: Scalar>() {
     let vector = v::<S>(1.0, 2.0);
     let length = vector.length();
