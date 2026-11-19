@@ -30,11 +30,9 @@ pub const PIANISSIMO: f64 = 0.5;
 pub const FORTISSIMO: f64 = 5.0;
 
 /// The fastest strike a [`Hammer`](super::Hammer) accepts, m/s: twice ff
-/// (ours; beyond any real piano's). The model is fitted and tested from
-/// pp to ff; without a bound, a finite but huge speed (the ABI's
-/// `synth_note_on_velocity` takes any `f64`) launched waves past `f32`'s
-/// range, and the next sample's `∞ − ∞` panicked in the felt's solver
-/// (found by the ABI property test).
+/// (ours; beyond any real piano's). Without a bound, a finite but huge
+/// speed launched waves past `f32`'s range, and the next sample's `∞ − ∞`
+/// panicked in the felt's solver.
 pub const MAX_VELOCITY: f64 = 2.0 * FORTISSIMO;
 
 /// Contact at pp over contact at ff: "about ±20 % from p to ff"
@@ -42,9 +40,9 @@ pub const MAX_VELOCITY: f64 = 2.0 * FORTISSIMO;
 #[cfg(test)]
 pub(super) const SPREAD: f64 = 1.5;
 
-/// Where `midi` sits from `a` to `b`, 0 to 1.
-fn along(midi: u8, a: f64, b: f64) -> f64 {
-    ((f64::from(midi) - a) / (b - a)).clamp(0.0, 1.0)
+/// Where `midi` sits from `from` to `to`, 0 to 1.
+fn along(midi: u8, from: f64, to: f64) -> f64 {
+    ((f64::from(midi) - from) / (to - from)).clamp(0.0, 1.0)
 }
 
 /// Where `midi` sits on the keyboard, −1 (A0) to 1 (C8): the variable of
@@ -55,9 +53,9 @@ pub(crate) fn key_coordinate(midi: u8) -> f64 {
     (f64::from(midi) - middle) / half_span
 }
 
-/// `a` to `b`, geometrically, at `t`.
-fn geometric(a: f64, b: f64, t: f64) -> f64 {
-    a * libm::pow(b / a, t)
+/// `from` to `to`, geometrically, at `fraction`.
+fn geometric(from: f64, to: f64, fraction: f64) -> f64 {
+    from * libm::pow(to / from, fraction)
 }
 
 /// The string's wave impedance for `midi`, kg/s.

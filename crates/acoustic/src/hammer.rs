@@ -19,10 +19,9 @@
 //! hammer's kinetic energy plus the felt's potential changes by exactly
 //! the work done on the string. The new compression is linear in `F̄`
 //! (the hammer slows, the string gives), so `c₁ = c_free − a F̄(c₁)` has
-//! one root, found by a safeguarded Newton iteration. Both simpler
-//! schemes failed in a prototype: explicit (the force a sample late) put
-//! up to 16× the hammer's momentum into the string, and backward Euler
-//! lost 30–50 % of the energy of an elastic bounce to numerical damping.
+//! one root, found by a safeguarded Newton iteration. Explicit stepping
+//! (the force a sample late) put up to 16× the hammer's momentum into the
+//! string, and backward Euler lost 30–50 % of an elastic bounce's energy.
 //!
 //! **Re-contact.** The near end's reflection can kick the string away from
 //! a hammer still flying forward (several contact pulses in one blow, in
@@ -45,7 +44,6 @@ use keys::SPREAD;
 pub(crate) use keys::mezzo_forte;
 pub use keys::{FORTISSIMO, MAX_VELOCITY, PIANISSIMO, STRIKE, contact_target, exponent, impedance};
 
-/// The rate the hammers were fitted at, Hz.
 #[cfg(test)]
 const FITTED_AT: f64 = 48_000.0;
 
@@ -57,8 +55,13 @@ pub fn felt(midi: u8) -> Option<Felt> {
     if !(table::FIRST..=table::LAST).contains(&midi) {
         return None;
     }
-    let t = keys::key_coordinate(midi);
-    let cubic = |c: &[f64]| c.iter().rev().fold(0.0, |acc, &a| acc * t + a);
+    let key_coordinate = keys::key_coordinate(midi);
+    let cubic = |coefficients: &[f64]| {
+        coefficients
+            .iter()
+            .rev()
+            .fold(0.0, |sum, &coefficient| sum * key_coordinate + coefficient)
+    };
     Some(Felt {
         mass: libm::exp(cubic(&table::MASS)),
         stiffness: libm::exp(cubic(&table::STIFFNESS)),
@@ -91,7 +94,7 @@ pub struct Hammer {
     felt: Felt,
     /// `1 / 2Z`, m per N·s: the displacement a unit impulse launches.
     admittance: f64,
-    dt: f64,
+    time_step: f64,
     /// How the compression falls per newton of this sample's force,
     /// `dt² / 2M + dt / 2Z`.
     give: f64,
@@ -105,25 +108,33 @@ pub struct Hammer {
 }
 
 impl Hammer {
-    /// A hammer with `felt` striking a string of impedance `z` (kg/s) at
-    /// `velocity` (m/s), stepped at `fs` Hz; `None` for values that aren't
-    /// positive and finite, or a velocity above [`MAX_VELOCITY`].
+    /// A hammer with `felt` striking a string of impedance
+    /// `string_impedance` (kg/s) at `velocity` (m/s), stepped at
+    /// `sample_rate` Hz; `None` for values that aren't positive and finite,
+    /// or a velocity above [`MAX_VELOCITY`].
     #[must_use]
-    pub fn new(felt: Felt, z: f64, fs: f64, velocity: f64) -> Option<Self> {
+    pub fn new(felt: Felt, string_impedance: f64, sample_rate: f64, velocity: f64) -> Option<Self> {
         let ok = |x: f64| x > 0.0 && x.is_finite();
-        let valid = [felt.mass, felt.stiffness, felt.exponent, z, fs, velocity]
-            .into_iter()
-            .all(ok);
+        let valid = [
+            felt.mass,
+            felt.stiffness,
+            felt.exponent,
+            string_impedance,
+            sample_rate,
+            velocity,
+        ]
+        .into_iter()
+        .all(ok);
         if !valid || velocity > MAX_VELOCITY {
             return None;
         }
-        let dt = 1.0 / fs;
-        let admittance = 1.0 / (2.0 * z);
+        let time_step = 1.0 / sample_rate;
+        let admittance = 1.0 / (2.0 * string_impedance);
         Some(Self {
             felt,
             admittance,
-            dt,
-            give: 0.5 * dt * dt / felt.mass + dt * admittance,
+            time_step,
+            give: 0.5 * time_step * time_step / felt.mass + time_step * admittance,
             position: 0.0,
             velocity,
             impulse: 0.0,
@@ -141,14 +152,14 @@ impl Hammer {
             return self.launched();
         }
         // The compression if the felt pushed nothing this sample.
-        let free = self.position + self.velocity * self.dt - (incoming + self.launched());
+        let free = self.position + self.velocity * self.time_step - (incoming + self.launched());
         let before = self.compression;
         let after = solve_compression(free, before, self.felt, self.give, self.force);
         self.force = mean_force(after, before, self.felt);
         self.compression = after;
-        self.impulse += self.force * self.dt;
-        let slowed = self.velocity - self.force / self.felt.mass * self.dt;
-        self.position += f64::midpoint(self.velocity, slowed) * self.dt;
+        self.impulse += self.force * self.time_step;
+        let slowed = self.velocity - self.force / self.felt.mass * self.time_step;
+        self.position += f64::midpoint(self.velocity, slowed) * self.time_step;
         self.velocity = slowed;
         if self.force <= 0.0 && self.velocity < 0.0 {
             self.retired = true;
@@ -194,38 +205,38 @@ impl Hammer {
     }
 }
 
-/// The felt's potential energy at compression `c`, J.
-fn potential(c: f64, felt: Felt) -> f64 {
-    let c = c.max(0.0);
-    felt.stiffness * libm::pow(c, felt.exponent + 1.0) / (felt.exponent + 1.0)
+/// The felt's potential energy at `compression`, J.
+fn potential(compression: f64, felt: Felt) -> f64 {
+    let compression = compression.max(0.0);
+    felt.stiffness * libm::pow(compression, felt.exponent + 1.0) / (felt.exponent + 1.0)
 }
 
-/// The felt's force at compression `c`, `V′(c)`, N.
-fn spring(c: f64, felt: Felt) -> f64 {
-    felt.stiffness * libm::pow(c.max(0.0), felt.exponent)
+/// The felt's force at `compression`, `V′(c)`, N.
+fn spring(compression: f64, felt: Felt) -> f64 {
+    felt.stiffness * libm::pow(compression.max(0.0), felt.exponent)
 }
 
-/// The felt's mean force from compression `c0` to `c1`: the potential's
-/// difference quotient (its slope at the midpoint when they're close).
-/// Rises with `c1` (the potential is convex).
-fn mean_force(c1: f64, c0: f64, felt: Felt) -> f64 {
-    let scale = c1.abs().max(c0.abs());
-    if (c1 - c0).abs() <= CLOSE * scale {
-        spring(f64::midpoint(c1, c0), felt)
+/// The felt's mean force from compression `before` to `after`: the
+/// potential's difference quotient (its slope at the midpoint when they're
+/// close). Rises with `after` (the potential is convex).
+fn mean_force(after: f64, before: f64, felt: Felt) -> f64 {
+    let scale = after.abs().max(before.abs());
+    if (after - before).abs() <= CLOSE * scale {
+        spring(f64::midpoint(after, before), felt)
     } else {
-        (potential(c1, felt) - potential(c0, felt)) / (c1 - c0)
+        (potential(after, felt) - potential(before, felt)) / (after - before)
     }
 }
 
-/// How the mean force changes with `c1`.
-fn mean_force_slope(c1: f64, c0: f64, felt: Felt) -> f64 {
-    let scale = c1.abs().max(c0.abs());
-    if (c1 - c0).abs() <= CLOSE * scale {
+/// How the mean force changes with `after`.
+fn mean_force_slope(after: f64, before: f64, felt: Felt) -> f64 {
+    let scale = after.abs().max(before.abs());
+    if (after - before).abs() <= CLOSE * scale {
         // Half the spring's own slope, `V″ / 2`, at the midpoint.
-        let mid = f64::midpoint(c1, c0).max(0.0);
-        0.5 * felt.stiffness * felt.exponent * libm::pow(mid, felt.exponent - 1.0)
+        let midpoint = f64::midpoint(after, before).max(0.0);
+        0.5 * felt.stiffness * felt.exponent * libm::pow(midpoint, felt.exponent - 1.0)
     } else {
-        (spring(c1, felt) - mean_force(c1, c0, felt)) / (c1 - c0)
+        (spring(after, felt) - mean_force(after, before, felt)) / (after - before)
     }
 }
 
@@ -239,31 +250,33 @@ fn solve_compression(free: f64, before: f64, felt: Felt, give: f64, guess: f64) 
     if free <= 0.0 && before <= 0.0 {
         return free;
     }
-    let (mut lo, mut hi) = (free - give * spring(free.max(before), felt), free);
-    let mut c = (free - give * guess).clamp(lo, hi);
+    let (mut lower, mut upper) = (free - give * spring(free.max(before), felt), free);
+    let mut compression = (free - give * guess).clamp(lower, upper);
     for _ in 0..ITERATIONS {
-        let h = c - free + give * mean_force(c, before, felt);
-        if h > 0.0 {
-            hi = c;
+        let residual = compression - free + give * mean_force(compression, before, felt);
+        if residual > 0.0 {
+            upper = compression;
         } else {
-            lo = c;
+            lower = compression;
         }
-        let next = c - h / (1.0 + give * mean_force_slope(c, before, felt));
-        let previous = c;
-        c = if next > lo && next < hi {
-            next
+        let newton =
+            compression - residual / (1.0 + give * mean_force_slope(compression, before, felt));
+        let previous = compression;
+        compression = if newton > lower && newton < upper {
+            newton
         } else {
-            f64::midpoint(lo, hi)
+            f64::midpoint(lower, upper)
         };
         // Newton closes in from one side, so test the step, not the
         // bracket.
-        let scale = c.abs().max(free.abs());
-        let settled = (c - previous).abs() <= TOLERANCE * scale || hi - lo <= TOLERANCE * scale;
+        let scale = compression.abs().max(free.abs());
+        let settled = (compression - previous).abs() <= TOLERANCE * scale
+            || upper - lower <= TOLERANCE * scale;
         if settled {
             break;
         }
     }
-    c
+    compression
 }
 
 #[cfg(test)]

@@ -9,7 +9,7 @@ use acoustic::piano::frequency;
 use acoustic::{Decay, Scalar, Voicing, Waveguide, inharmonicity};
 use math::convert::{f64_to_usize, usize_to_f64};
 
-const FS: f64 = 48_000.0;
+const SAMPLE_RATE: f64 = 48_000.0;
 /// Keys across the keyboard, A0 to C8.
 const KEYS: [u8; 8] = [21, 33, 45, 60, 72, 84, 96, 108];
 /// pp to ff, geometrically: mf is the middle one.
@@ -35,31 +35,39 @@ struct Blow {
 }
 
 fn strike<S: Scalar>(key: u8, velocity: f64, stiff: bool) -> Blow {
-    let b = if stiff { inharmonicity(key) } else { 0.0 };
+    let inharmonicity = if stiff { inharmonicity(key) } else { 0.0 };
     let voicing = Voicing {
         tuned: true,
         decay: Decay::T60(4.0),
-        inharmonicity: b,
+        inharmonicity,
     };
-    let mut s = Waveguide::<S>::new(FS, frequency(key), voicing).unwrap();
-    let z = hammer::impedance(key);
-    let h = Hammer::new(hammer::felt(key).unwrap(), z, FS, velocity).unwrap();
-    let start_energy = h.energy();
-    assert!(s.strike(h, 1.0 - STRIKE));
+    let mut string = Waveguide::<S>::new(SAMPLE_RATE, frequency(key), voicing).unwrap();
+    let string_impedance = hammer::impedance(key);
+    let hammer = Hammer::new(
+        hammer::felt(key).unwrap(),
+        string_impedance,
+        SAMPLE_RATE,
+        velocity,
+    )
+    .unwrap();
+    let start_energy = hammer.energy();
+    assert!(string.strike(hammer, 1.0 - STRIKE));
     let (mut contact, mut at_retire, mut previous) = (0.0, None, 0.0);
     let mut bridge_force = Vec::new();
-    let samples = f64_to_usize(RENDER * FS).unwrap();
-    for n in 0..samples {
-        let y = s.step().to_f64();
-        bridge_force.push(2.0 * z * FS * (y - previous));
-        previous = y;
-        let h = s.hammer().unwrap();
-        if h.force() > 0.0 {
-            let t = usize_to_f64(n + 1) / FS;
-            contact = t;
+    let sample_count = f64_to_usize(RENDER * SAMPLE_RATE).unwrap();
+    for sample in 0..sample_count {
+        let output = string.step().to_f64();
+        bridge_force.push(2.0 * string_impedance * SAMPLE_RATE * (output - previous));
+        previous = output;
+        let hammer = string.hammer().unwrap();
+        if hammer.force() > 0.0 {
+            contact = usize_to_f64(sample + 1) / SAMPLE_RATE;
         }
-        if h.retired() && at_retire.is_none() {
-            at_retire = Some((s.energy(z, FS), h.energy()));
+        if hammer.retired() && at_retire.is_none() {
+            at_retire = Some((
+                string.energy(string_impedance, SAMPLE_RATE),
+                hammer.energy(),
+            ));
         }
     }
     let (string_energy, hammer_energy) = at_retire.expect("the hammer leaves");
@@ -75,29 +83,33 @@ fn strike<S: Scalar>(key: u8, velocity: f64, stiff: bool) -> Blow {
 /// The bridge force's spectral centroid over the stiff string's partials
 /// (Hz), and its RMS (N), after the contact.
 fn brightness_and_level(key: u8, blow: &Blow) -> (f64, f64) {
-    let (f1, b) = (frequency(key), inharmonicity(key));
-    let tail = &blow.bridge_force[f64_to_usize(SETTLE * FS).unwrap()..];
-    let partial = |k: f64| k * f1 / (1.0 + b).sqrt() * (1.0 + b * k * k).sqrt();
+    let (fundamental_hz, inharmonicity) = (frequency(key), inharmonicity(key));
+    let tail = &blow.bridge_force[f64_to_usize(SETTLE * SAMPLE_RATE).unwrap()..];
+    let partial_hz = |number: f64| {
+        number * fundamental_hz / (1.0 + inharmonicity).sqrt()
+            * (1.0 + inharmonicity * number * number).sqrt()
+    };
     let (mut weighted, mut total) = (0.0, 0.0);
-    for k in (1..=PARTIALS)
+    for number in (1..=PARTIALS)
         .map(f64::from)
-        .take_while(|&k| partial(k) < BAND * FS)
+        .take_while(|&number| partial_hz(number) < BAND * SAMPLE_RATE)
     {
-        let a = amplitude(tail, FS, partial(k));
-        weighted += partial(k) * a * a;
-        total += a * a;
+        let partial_amplitude = amplitude(tail, SAMPLE_RATE, partial_hz(number));
+        weighted += partial_hz(number) * partial_amplitude * partial_amplitude;
+        total += partial_amplitude * partial_amplitude;
     }
-    let rms = (tail.iter().map(|x| x * x).sum::<f64>() / usize_to_f64(tail.len())).sqrt();
+    let rms =
+        (tail.iter().map(|force| force * force).sum::<f64>() / usize_to_f64(tail.len())).sqrt();
     (weighted / total, rms)
 }
 
-/// Measured (A3.3): the worst key's mf contact 27 % short of its target
-/// (MIDI 33, at a jump in the smoothed fit); ±35 %.
+/// Measured: the worst key's mf contact 27 % short of its target (MIDI 33,
+/// at a jump in the smoothed fit); ±35 %.
 const CONTACT_TOL: f64 = 0.35;
 /// "Under 1 ms in the highest treble" (measured).
 const TOP_CONTACT: f64 = 1.0e-3;
-/// Measured (A3.3): pp/ff contact from 1.34 to 2.17 across the keyboard,
-/// against the measured ~1.5.
+/// Measured: pp/ff contact from 1.34 to 2.17 across the keyboard, against
+/// the measured ~1.5.
 const SPREAD_RANGE: (f64, f64) = (1.2, 2.5);
 
 #[test]
@@ -105,7 +117,7 @@ fn contact_shortens_with_velocity_and_matches_the_measurements() {
     for key in KEYS {
         let contacts: Vec<f64> = VELOCITIES
             .iter()
-            .map(|&v| strike::<f64>(key, v, true).contact)
+            .map(|&velocity| strike::<f64>(key, velocity, true).contact)
             .collect();
         let target = hammer::contact_target(key);
         let (pp, mf, ff) = (contacts[0], contacts[2], contacts[4]);
@@ -113,7 +125,7 @@ fn contact_shortens_with_velocity_and_matches_the_measurements() {
             "MIDI {key}: contact pp→ff {} ms (mf target {:.2}, {:+.0}%); spread {:.2}",
             contacts
                 .iter()
-                .map(|c| format!("{:.2}", c * 1e3))
+                .map(|contact| format!("{:.2}", contact * 1e3))
                 .collect::<Vec<_>>()
                 .join(" "),
             target * 1e3,
@@ -121,7 +133,7 @@ fn contact_shortens_with_velocity_and_matches_the_measurements() {
             pp / ff
         );
         assert!(
-            contacts.windows(2).all(|w| w[1] < w[0]),
+            contacts.windows(2).all(|pair| pair[1] < pair[0]),
             "MIDI {key}: harder isn't shorter: {contacts:?}"
         );
         assert!((mf / target - 1.0).abs() < CONTACT_TOL, "MIDI {key}: {mf}");
@@ -138,26 +150,26 @@ fn contact_shortens_with_velocity_and_matches_the_measurements() {
 /// period (bass to C5). Higher (C6 up), the contact outlasts a period: the
 /// string takes 0.2–13 % of the hammer's energy and every partial sits in
 /// the force pulse's spectral sidelobes, so neither rises reliably
-/// (measured, A3.3: C6's centroid 1100 → 1049 Hz pp → ff; C8's level
-/// 0.128, 0.169, 0.138 N at pp to mf). A known gap of our treble
-/// (`TASKS.md`), printed, not required.
+/// (measured: C6's centroid 1100 → 1049 Hz pp → ff; C8's level 0.128,
+/// 0.169, 0.138 N at pp to mf). A known gap of our treble (`TASKS.md`),
+/// printed, not required.
 #[test]
 fn harder_is_brighter_and_louder() {
     for key in KEYS {
         let measured: Vec<(f64, f64)> = VELOCITIES
             .iter()
-            .map(|&v| brightness_and_level(key, &strike::<f64>(key, v, true)))
+            .map(|&velocity| brightness_and_level(key, &strike::<f64>(key, velocity, true)))
             .collect();
         println!(
             "MIDI {key}: centroid pp→ff {} Hz; bridge force {} N rms",
             measured
                 .iter()
-                .map(|m| format!("{:.0}", m.0))
+                .map(|(centroid, _)| format!("{centroid:.0}"))
                 .collect::<Vec<_>>()
                 .join(" "),
             measured
                 .iter()
-                .map(|m| format!("{:.3}", m.1))
+                .map(|(_, level)| format!("{level:.3}"))
                 .collect::<Vec<_>>()
                 .join(" ")
         );
@@ -167,19 +179,19 @@ fn harder_is_brighter_and_louder() {
             continue;
         }
         assert!(
-            measured.windows(2).all(|w| w[1].0 > w[0].0),
+            measured.windows(2).all(|pair| pair[1].0 > pair[0].0),
             "MIDI {key}: not brighter: {measured:?}"
         );
         assert!(
-            measured.windows(2).all(|w| w[1].1 > w[0].1),
+            measured.windows(2).all(|pair| pair[1].1 > pair[0].1),
             "MIDI {key}: not louder: {measured:?}"
         );
     }
 }
 
-/// Measured (A3.3): at most 1.0000 at retirement (none from nowhere: the
-/// scheme conserves the hammer's and felt's energy exactly), and at least
-/// 0.966 (C4 pp). The shortfall is the rails' measure, not a leak: after
+/// Measured: at most 1.0000 at retirement (none from nowhere: the scheme
+/// conserves the hammer's and felt's energy exactly), and at least 0.966
+/// (C4 pp). The shortfall is the rails' measure, not a leak: after
 /// retirement the string's energy wobbles by ~1–3 % (C4: 0.9875 to
 /// 1.0000) as the waves pass through the bridge's filters and odd sample,
 /// which `energy` doesn't see.
@@ -193,16 +205,16 @@ const ENERGY_BELOW: f64 = 0.05;
 #[test]
 fn no_energy_from_nowhere() {
     for key in KEYS {
-        for v in [PIANISSIMO, FORTISSIMO] {
-            let blow = strike::<f64>(key, v, false);
+        for velocity in [PIANISSIMO, FORTISSIMO] {
+            let blow = strike::<f64>(key, velocity, false);
             let kept = (blow.string_energy + blow.hammer_energy) / blow.start_energy;
             println!(
-                "MIDI {key} at {v} m/s: string {:.3} + hammer {:.3} = {kept:.4} of the impact's energy",
+                "MIDI {key} at {velocity} m/s: string {:.3} + hammer {:.3} = {kept:.4} of the impact's energy",
                 blow.string_energy / blow.start_energy,
                 blow.hammer_energy / blow.start_energy
             );
-            assert!(kept < 1.0 + ENERGY_ABOVE, "MIDI {key} {v}: {kept}");
-            assert!(kept > 1.0 - ENERGY_BELOW, "MIDI {key} {v}: {kept}");
+            assert!(kept < 1.0 + ENERGY_ABOVE, "MIDI {key} {velocity}: {kept}");
+            assert!(kept > 1.0 - ENERGY_BELOW, "MIDI {key} {velocity}: {kept}");
         }
     }
 }
@@ -212,15 +224,18 @@ fn no_energy_from_nowhere() {
 #[test]
 fn f32_strikes_like_f64() {
     for key in KEYS {
-        let (a, b) = (
+        let (single, double) = (
             strike::<f32>(key, VELOCITIES[2], true),
             strike::<f64>(key, VELOCITIES[2], true),
         );
         println!(
             "MIDI {key}: contact f32 {:.4} ms, f64 {:.4} ms",
-            a.contact * 1e3,
-            b.contact * 1e3
+            single.contact * 1e3,
+            double.contact * 1e3
         );
-        assert!((a.contact - b.contact).abs() <= 1.0 / FS, "MIDI {key}");
+        assert!(
+            (single.contact - double.contact).abs() <= 1.0 / SAMPLE_RATE,
+            "MIDI {key}"
+        );
     }
 }
