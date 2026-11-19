@@ -8,9 +8,9 @@ use acoustic::measure::{amplitude, partial};
 use acoustic::{Decay, Scalar, Voicing, Waveguide};
 use math::convert::f64_to_usize;
 
-const FS: f64 = 48_000.0;
+const SAMPLE_RATE: f64 = 48_000.0;
 /// 220 Hz: a 218-sample loop, 109 cells a rail.
-const F0: f64 = 220.0;
+const FUNDAMENTAL_HZ: f64 = 220.0;
 /// A long decay, so the first harmonics are measured before they fade.
 const VOICING: Voicing = Voicing {
     tuned: true,
@@ -19,16 +19,16 @@ const VOICING: Voicing = Voicing {
 };
 /// Skip the first periods, then measure over this long (many periods of
 /// every harmonic measured).
-const SKIP_S: f64 = 0.02;
-const WINDOW_S: f64 = 0.1;
+const SKIP_SECONDS: f64 = 0.02;
+const WINDOW_SECONDS: f64 = 0.1;
 
 /// A triangle peaked at `beta` (from the bridge), unit height.
 fn triangle(beta: f64) -> impl Fn(f64) -> f64 {
-    move |s| {
-        if s < beta {
-            s / beta
+    move |position| {
+        if position < beta {
+            position / beta
         } else {
-            (1.0 - s) / (1.0 - beta)
+            (1.0 - position) / (1.0 - beta)
         }
     }
 }
@@ -36,50 +36,51 @@ fn triangle(beta: f64) -> impl Fn(f64) -> f64 {
 /// The amplitudes of harmonics 1..=`count`, plucked at `beta` and heard
 /// at `pickup`.
 fn harmonics<S: Scalar>(beta: f64, pickup: f64, count: u32) -> Vec<f64> {
-    let mut wg = Waveguide::<S>::new(FS, F0, VOICING).unwrap();
+    let mut waveguide = Waveguide::<S>::new(SAMPLE_RATE, FUNDAMENTAL_HZ, VOICING).unwrap();
     let shape = triangle(beta);
-    wg.pluck(|s| S::from_f64(shape(s)));
-    wg.set_pickup(pickup);
-    let (skip, len) = (
-        f64_to_usize(SKIP_S * FS).unwrap(),
-        f64_to_usize(WINDOW_S * FS).unwrap(),
+    waveguide.pluck(|position| S::from_f64(shape(position)));
+    waveguide.set_pickup(pickup);
+    let (skip, window) = (
+        f64_to_usize(SKIP_SECONDS * SAMPLE_RATE).unwrap(),
+        f64_to_usize(WINDOW_SECONDS * SAMPLE_RATE).unwrap(),
     );
-    let mut out = vec![S::ZERO; skip + len];
-    wg.render(&mut out);
-    let sig: Vec<f64> = out
+    let mut out = vec![S::ZERO; skip + window];
+    waveguide.render(&mut out);
+    let signal: Vec<f64> = out
         .get(skip..)
         .unwrap()
         .iter()
-        .map(|x| x.to_f64())
+        .map(|sample| sample.to_f64())
         .collect();
     (1..=count)
-        .map(|k| {
-            let guess = F0 * f64::from(k);
+        .map(|number| {
+            let guess_hz = FUNDAMENTAL_HZ * f64::from(number);
             // The partial's own frequency (the bridge filters stretch it a
-            // hair), then its amplitude there.
-            // Its window spans 8 periods of the *fundamental*, so
-            // neighbors 220 Hz away fall outside the Hann main lobe.
-            let f = partial(&sig, FS, guess, 8.0 * f64::from(k)).unwrap_or(guess);
-            amplitude(&sig, FS, f)
+            // hair), then its amplitude there. Its window spans 8 periods
+            // of the *fundamental*, so neighbors 220 Hz away fall outside
+            // the Hann main lobe.
+            let partial_hz = partial(&signal, SAMPLE_RATE, guess_hz, 8.0 * f64::from(number))
+                .unwrap_or(guess_hz);
+            amplitude(&signal, SAMPLE_RATE, partial_hz)
         })
         .collect()
 }
 
-fn db(x: f64) -> f64 {
-    20.0 * x.max(1e-12).log10()
+fn db(amplitude: f64) -> f64 {
+    20.0 * amplitude.max(1e-12).log10()
 }
 
-/// Measured (A2.4, positions on the effective length): moving the pluck
-/// onto `1/n` drops harmonic `n` by 45–46 dB against `1/n ± 0.05`, the
-/// pickup by 50–51 dB, to about −73 dB under the fundamental (`n` = 2–5).
-/// (On the bare `M` cells the nulls only reached −40 dB: `13-waveguide.md`.)
+/// Measured (positions on the effective length): moving the pluck onto
+/// `1/n` drops harmonic `n` by 45–46 dB against `1/n ± 0.05`, the pickup
+/// by 50–51 dB, to about −73 dB under the fundamental (`n` = 2–5). (On the
+/// bare `M` cells the nulls only reached −40 dB: `13-waveguide.md`.)
 const MIN_DROP_DB: f64 = 30.0;
 /// How far `1/n ± ` to compare against.
 const OFF: f64 = 0.05;
 
 fn slider_drops_the_nth_harmonic<S: Scalar>() {
     for n in [2_u32, 3, 4, 5] {
-        let nth = |beta: f64, p: f64| db(harmonics::<S>(beta, p, n)[(n - 1) as usize]);
+        let nth = |beta: f64, pickup: f64| db(harmonics::<S>(beta, pickup, n)[(n - 1) as usize]);
         let at = 1.0 / f64::from(n);
         let pluck = nth(at + OFF, 0.1).max(nth(at - OFF, 0.1)) - nth(at, 0.1);
         let pickup = nth(0.1, at + OFF).max(nth(0.1, at - OFF)) - nth(0.1, at);
@@ -102,7 +103,7 @@ fn plucking_or_listening_at_1_over_n_removes_the_nth_harmonic_f32() {
     slider_drops_the_nth_harmonic::<f32>();
 }
 
-/// Measured (A2.4): harmonics 2–4 and 6 within 0.5 dB of
+/// Measured: harmonics 2–4 and 6 within 0.5 dB of
 /// `sin(kπβ) sin(kπp) / k²` (relative to the fundamental; the rest is the
 /// bridge taking a little more from the higher ones), and harmonic 5,
 /// which β = 0.2 nulls, at −60 dB. ~3x.
@@ -110,26 +111,26 @@ const SHAPE_TOL_DB: f64 = 1.5;
 const NULL_DB: f64 = -50.0;
 
 fn harmonics_follow_the_prediction<S: Scalar>() {
-    let (beta, p) = (0.2, 0.1);
-    let h = harmonics::<S>(beta, p, 6);
-    let predict = |k: u32| {
-        let k = f64::from(k);
+    let (beta, pickup) = (0.2, 0.1);
+    let measured = harmonics::<S>(beta, pickup, 6);
+    let predict = |number: u32| {
+        let number = f64::from(number);
         let pi = core::f64::consts::PI;
-        ((k * pi * beta).sin() * (k * pi * p).sin() / (k * k)).abs()
+        ((number * pi * beta).sin() * (number * pi * pickup).sin() / (number * number)).abs()
     };
-    for k in [2_u32, 3, 4, 6] {
-        let got = db(h[(k - 1) as usize] / h[0]);
-        let want = db(predict(k) / predict(1));
+    for number in [2_u32, 3, 4, 6] {
+        let got = db(measured[(number - 1) as usize] / measured[0]);
+        let want = db(predict(number) / predict(1));
         println!(
-            "{} harmonic {k}: {got:.2} dB, predicted {want:.2}",
+            "{} harmonic {number}: {got:.2} dB, predicted {want:.2}",
             core::any::type_name::<S>()
         );
         assert!(
             (got - want).abs() < SHAPE_TOL_DB,
-            "harmonic {k}: {got} vs {want}"
+            "harmonic {number}: {got} vs {want}"
         );
     }
-    let fifth = db(h[4] / h[0]);
+    let fifth = db(measured[4] / measured[0]);
     assert!(fifth < NULL_DB, "β = 0.2 nulls the 5th: {fifth} dB");
 }
 
@@ -147,15 +148,15 @@ fn harmonics_follow_the_prediction_f32() {
 /// as bits, compared whole.
 fn waveguide_bits<S: Scalar>() -> Vec<u64> {
     let mut all = Vec::new();
-    for f0 in [110.0, 261.63, 659.26] {
-        let mut wg = Waveguide::<S>::new(FS, f0, VOICING).unwrap();
+    for fundamental_hz in [110.0, 261.63, 659.26] {
+        let mut waveguide = Waveguide::<S>::new(SAMPLE_RATE, fundamental_hz, VOICING).unwrap();
         let shape = triangle(0.2);
-        wg.pluck(|s| S::from_f64(shape(s)));
+        waveguide.pluck(|position| S::from_f64(shape(position)));
         let mut out = vec![S::ZERO; 24_000];
-        wg.render(&mut out);
+        waveguide.render(&mut out);
         all.extend(out);
     }
-    all.iter().map(|x| x.to_f64().to_bits()).collect()
+    all.iter().map(|sample| sample.to_f64().to_bits()).collect()
 }
 
 #[test]

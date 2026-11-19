@@ -13,21 +13,25 @@ use std::time::Duration;
 use acoustic::{Decay, Voicing, Waveguide, inharmonicity};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
-const FS: f64 = 48_000.0;
+const SAMPLE_RATE: f64 = 48_000.0;
 /// A0, C2, C4, A4, C6: the bass's many partials to the treble's few.
 const KEYS: [u8; 5] = [21, 36, 60, 69, 84];
 
-fn design(c: &mut Criterion) {
-    let mut group = c.benchmark_group("stiff_waveguide_new");
+fn design(criterion: &mut Criterion) {
+    let mut group = criterion.benchmark_group("stiff_waveguide_new");
     for key in KEYS {
-        let f0 = 440.0 * 2f64.powf((f64::from(key) - 69.0) / 12.0);
+        let fundamental_hz = 440.0 * 2f64.powf((f64::from(key) - 69.0) / 12.0);
         let voicing = Voicing {
             tuned: true,
             decay: Decay::T60(4.0),
             inharmonicity: inharmonicity(key),
         };
-        group.bench_with_input(BenchmarkId::from_parameter(key), &key, |b, _| {
-            b.iter(|| black_box(Waveguide::<f32>::new(FS, black_box(f0), voicing).unwrap()));
+        group.bench_with_input(BenchmarkId::from_parameter(key), &key, |bencher, _| {
+            bencher.iter(|| {
+                black_box(
+                    Waveguide::<f32>::new(SAMPLE_RATE, black_box(fundamental_hz), voicing).unwrap(),
+                )
+            });
         });
     }
     group.finish();
