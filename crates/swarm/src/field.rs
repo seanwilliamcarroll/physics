@@ -1,16 +1,15 @@
 //! [`Field`]: a scalar field on a grid of cells, deposited into, diffused
-//! and decayed (`docs/15-swarm.md`, S3: "Deposit, diffuse, decay"). Ant
-//! pheromone in S3; Physarum's trail in S4.
+//! and decayed (`docs/15-swarm.md`, "Deposit, diffuse, decay"). The ants'
+//! pheromone and Physarum's trail.
 
 /// The most cells a field holds: 2²² (4M; 400 × 225 is 90k).
 pub const MAX_CELLS: usize = 1 << 22;
 
 /// The most one deposit may add (an agent's, an ant's, a node's): a
-/// million. Values are `f32`, and nothing else bounds what's laid down
-/// each step: a deposit near `f32::MAX` (finite, so it passed) summed to
-/// infinity in a few steps and every reading after was NaN (found by the
-/// slow tier's export sequences). At a million a step, a cell is 10²⁰
-/// times further from overflow than any run is long.
+/// million. Values are `f32` and nothing else bounds what is laid down
+/// each step: a deposit near `f32::MAX` (finite, so it passes) sums to
+/// infinity in a few steps and every reading after is NaN. At a million a
+/// step, a cell is 10²⁰ times further from overflow than any run is long.
 pub const MAX_DEPOSIT: f32 = 1.0e6;
 
 /// A `width × height` grid of non-negative `f32` values, row-major.
@@ -18,7 +17,8 @@ pub const MAX_DEPOSIT: f32 = 1.0e6;
 pub struct Field {
     width: usize,
     height: usize,
-    value: Vec<f32>,
+    values: Vec<f32>,
+    /// The next step's values, built here and swapped in.
     scratch: Vec<f32>,
 }
 
@@ -26,28 +26,31 @@ impl Field {
     /// A zero field; `None` for a zero side or more than [`MAX_CELLS`].
     #[must_use]
     pub fn new(width: usize, height: usize) -> Option<Self> {
-        let cells = width.checked_mul(height)?;
-        if width == 0 || height == 0 || cells > MAX_CELLS {
+        let cell_count = width.checked_mul(height)?;
+        if width == 0 || height == 0 || cell_count > MAX_CELLS {
             return None;
         }
         Some(Self {
             width,
             height,
-            value: vec![0.0; cells],
-            scratch: vec![0.0; cells],
+            values: vec![0.0; cell_count],
+            scratch: vec![0.0; cell_count],
         })
     }
 
+    /// Cells across.
     #[must_use]
     pub const fn width(&self) -> usize {
         self.width
     }
 
+    /// Cells down.
     #[must_use]
     pub const fn height(&self) -> usize {
         self.height
     }
 
+    /// The row-major index of cell `(x, y)`, or `None` outside.
     fn index(&self, x: usize, y: usize) -> Option<usize> {
         (x < self.width && y < self.height).then(|| y * self.width + x)
     }
@@ -55,7 +58,7 @@ impl Field {
     /// The value at `(x, y)`, or `None` outside.
     #[must_use]
     pub fn get(&self, x: usize, y: usize) -> Option<f32> {
-        self.value.get(self.index(x, y)?).copied()
+        self.values.get(self.index(x, y)?).copied()
     }
 
     /// Adds `amount` at `(x, y)`; `false` (nothing added) outside or for a
@@ -64,152 +67,164 @@ impl Field {
         if !(amount.is_finite() && amount >= 0.0) {
             return false;
         }
-        let Some(v) = self.index(x, y).and_then(|i| self.value.get_mut(i)) else {
+        let Some(value) = self
+            .index(x, y)
+            .and_then(|index| self.values.get_mut(index))
+        else {
             return false;
         };
-        *v += amount;
+        *value += amount;
         true
     }
 
     /// Every value, row-major (rendering).
     #[must_use]
     pub fn values(&self) -> &[f32] {
-        &self.value
+        &self.values
     }
 
     /// The sum of every value, in `f64` (accounting).
     #[must_use]
     pub fn total(&self) -> f64 {
-        self.value.iter().map(|&v| f64::from(v)).sum()
+        self.values.iter().map(|&value| f64::from(value)).sum()
     }
 
     /// Each cell's count of open neighbours (of eight), for
-    /// [`Self::diffuse_counted`]: it changes only when walls do, so a caller
-    /// that diffuses every step computes it once (S3's ants: the count was
-    /// 95% of a step, found by profiling; `docs/profiling.md`).
+    /// [`Self::diffuse_counted`]. It changes only when walls do, so a
+    /// caller that diffuses every step computes it once: recounted each
+    /// step it was 95% of the ants' step (`docs/profiling.md`).
     #[must_use]
     pub fn open_neighbours(&self, open: &[bool]) -> Vec<u8> {
-        let (w, h) = (self.width, self.height);
-        let is_open = |x: usize, y: usize| open.get(y * w + x).copied().unwrap_or(false);
-        let mut out = Vec::with_capacity(w * h);
-        for y in 0..h {
-            for x in 0..w {
-                let (x0, x1, y0, y1) = (
+        let (width, height) = (self.width, self.height);
+        let is_open = |x: usize, y: usize| open.get(y * width + x).copied().unwrap_or(false);
+        let mut counts = Vec::with_capacity(width * height);
+        for y in 0..height {
+            for x in 0..width {
+                let (first_x, last_x, first_y, last_y) = (
                     x.saturating_sub(1),
-                    (x + 1).min(w - 1),
+                    (x + 1).min(width - 1),
                     y.saturating_sub(1),
-                    (y + 1).min(h - 1),
+                    (y + 1).min(height - 1),
                 );
-                let mut k = 0_u8;
-                for ny in y0..=y1 {
-                    for nx in x0..=x1 {
-                        k += u8::from((nx, ny) != (x, y) && is_open(nx, ny));
+                let mut open_count = 0_u8;
+                for neighbour_y in first_y..=last_y {
+                    for neighbour_x in first_x..=last_x {
+                        open_count += u8::from(
+                            (neighbour_x, neighbour_y) != (x, y)
+                                && is_open(neighbour_x, neighbour_y),
+                        );
                     }
                 }
-                out.push(k);
+                counts.push(open_count);
             }
         }
-        out
+        counts
     }
 
-    /// Diffusion that conserves mass: every open cell keeps `1 − d` of its
-    /// value and gives `d`, split equally among its open neighbours (of
-    /// eight; `open[i]` false is a wall, and walls give and take
+    /// Diffusion that conserves mass: every open cell keeps `1 − rate` of
+    /// its value and gives `rate`, split equally among its open neighbours
+    /// (of eight; `open[i]` false is a wall, and walls give and take
     /// nothing). A cell with no open neighbour keeps everything. `open`
-    /// must be one flag per cell; `d` is clamped to `[0, 1]`. Counts the
+    /// must be one flag per cell; `rate` is clamped to `[0, 1]`. Counts the
     /// neighbours each call: a caller diffusing every step should use
     /// [`Self::diffuse_counted`].
-    pub fn diffuse(&mut self, open: &[bool], d: f32) {
+    pub fn diffuse(&mut self, open: &[bool], rate: f32) {
         let counts = self.open_neighbours(open);
-        self.diffuse_counted(open, &counts, d);
+        self.diffuse_counted(open, &counts, rate);
     }
 
     /// [`Self::diffuse`] with the open-neighbour counts given (from
     /// [`Self::open_neighbours`] for the same `open`). The same arithmetic in
     /// the same order: bit-identical results.
-    pub fn diffuse_counted(&mut self, open: &[bool], counts: &[u8], d: f32) {
-        let d = if d.is_finite() {
-            d.clamp(0.0, 1.0)
+    pub fn diffuse_counted(&mut self, open: &[bool], counts: &[u8], rate: f32) {
+        let rate = if rate.is_finite() {
+            rate.clamp(0.0, 1.0)
         } else {
             0.0
         };
-        let (w, h) = (self.width, self.height);
+        let (width, height) = (self.width, self.height);
         self.scratch.fill(0.0);
-        for y in 0..h {
-            let (y0, y1) = (y.saturating_sub(1), (y + 1).min(h - 1));
-            for x in 0..w {
-                let i = y * w + x;
-                let v = self.value.get(i).copied().unwrap_or(0.0);
-                if v == 0.0 || !open.get(i).copied().unwrap_or(false) {
+        for y in 0..height {
+            let (first_y, last_y) = (y.saturating_sub(1), (y + 1).min(height - 1));
+            for x in 0..width {
+                let index = y * width + x;
+                let value = self.values.get(index).copied().unwrap_or(0.0);
+                if value == 0.0 || !open.get(index).copied().unwrap_or(false) {
                     continue;
                 }
-                let k = counts.get(i).copied().unwrap_or(0);
-                if k == 0 {
-                    if let Some(s) = self.scratch.get_mut(i) {
-                        *s += v;
+                let open_count = counts.get(index).copied().unwrap_or(0);
+                if open_count == 0 {
+                    if let Some(slot) = self.scratch.get_mut(index) {
+                        *slot += value;
                     }
                     continue;
                 }
-                let give = v * d;
-                let share = give / f32::from(k);
-                if let Some(s) = self.scratch.get_mut(i) {
-                    *s += v - give;
+                let given = value * rate;
+                let share = given / f32::from(open_count);
+                if let Some(slot) = self.scratch.get_mut(index) {
+                    *slot += value - given;
                 }
-                if k == 8 && x > 0 && x + 1 < w && y > 0 && y + 1 < h {
+                if open_count == 8 && x > 0 && x + 1 < width && y > 0 && y + 1 < height {
                     // All eight open, which only an interior cell can be
                     // (checked all the same: the counts are the caller's):
                     // the three rows of three, nothing to test per
                     // neighbour. Each target gets one add from this cell
                     // either way, so the sums are the same bits.
-                    let rows = [i - w - 1, i - 1, i + w - 1].map(|at| at..at + 3);
+                    let rows = [index - width - 1, index - 1, index + width - 1]
+                        .map(|first| first..first + 3);
                     let [above, beside, below] = rows;
-                    if let Some([a, b, c]) = self.scratch.get_mut(above) {
-                        (*a, *b, *c) = (*a + share, *b + share, *c + share);
+                    if let Some([left, middle, right]) = self.scratch.get_mut(above) {
+                        (*left, *middle, *right) = (*left + share, *middle + share, *right + share);
                     }
-                    if let Some([a, _, c]) = self.scratch.get_mut(beside) {
-                        (*a, *c) = (*a + share, *c + share);
+                    if let Some([left, _, right]) = self.scratch.get_mut(beside) {
+                        (*left, *right) = (*left + share, *right + share);
                     }
-                    if let Some([a, b, c]) = self.scratch.get_mut(below) {
-                        (*a, *b, *c) = (*a + share, *b + share, *c + share);
+                    if let Some([left, middle, right]) = self.scratch.get_mut(below) {
+                        (*left, *middle, *right) = (*left + share, *middle + share, *right + share);
                     }
                     continue;
                 }
-                let (x0, x1) = (x.saturating_sub(1), (x + 1).min(w - 1));
-                for ny in y0..=y1 {
-                    let row = ny * w;
-                    for nx in x0..=x1 {
-                        let n = row + nx;
-                        if n != i
-                            && open.get(n).copied().unwrap_or(false)
-                            && let Some(s) = self.scratch.get_mut(n)
+                let (first_x, last_x) = (x.saturating_sub(1), (x + 1).min(width - 1));
+                for neighbour_y in first_y..=last_y {
+                    let row_start = neighbour_y * width;
+                    for neighbour_x in first_x..=last_x {
+                        let neighbour = row_start + neighbour_x;
+                        if neighbour != index
+                            && open.get(neighbour).copied().unwrap_or(false)
+                            && let Some(slot) = self.scratch.get_mut(neighbour)
                         {
-                            *s += share;
+                            *slot += share;
                         }
                     }
                 }
             }
         }
-        core::mem::swap(&mut self.value, &mut self.scratch);
+        core::mem::swap(&mut self.values, &mut self.scratch);
     }
 
     /// Diffusion on a periodic grid (no walls, the edges wrapped): every
-    /// cell keeps `1 − d` and takes `d / 8` of each of its eight
+    /// cell keeps `1 − rate` and takes `rate / 8` of each of its eight
     /// neighbours' values, so the total is conserved (in reals; to
-    /// rounding in f32). `d = 8/9` is the 3 × 3 mean filter. Written as a
-    /// gather (each cell reads its neighbours), which reads in order.
-    pub(crate) fn diffuse_periodic(&mut self, d: f32) {
-        let d = if d.is_finite() {
-            d.clamp(0.0, 1.0)
+    /// rounding in f32). `rate = 8/9` is the 3 × 3 mean filter. Written as
+    /// a gather (each cell reads its neighbours), which reads in order.
+    pub(crate) fn diffuse_periodic(&mut self, rate: f32) {
+        let rate = if rate.is_finite() {
+            rate.clamp(0.0, 1.0)
         } else {
             0.0
         };
-        let (w, h) = (self.width, self.height);
-        let (keep, share) = (1.0 - d, d / 8.0);
-        for y in 0..h {
-            let (up, down) = ((y + h - 1) % h, (y + 1) % h);
-            for x in 0..w {
-                let (left, right) = ((x + w - 1) % w, (x + 1) % w);
-                let at = |cx: usize, cy: usize| self.value.get(cy * w + cx).copied().unwrap_or(0.0);
+        let (width, height) = (self.width, self.height);
+        let (keep, share) = (1.0 - rate, rate / 8.0);
+        for y in 0..height {
+            let (up, down) = ((y + height - 1) % height, (y + 1) % height);
+            for x in 0..width {
+                let (left, right) = ((x + width - 1) % width, (x + 1) % width);
+                let at = |cell_x: usize, cell_y: usize| {
+                    self.values
+                        .get(cell_y * width + cell_x)
+                        .copied()
+                        .unwrap_or(0.0)
+                };
                 let around = at(left, up)
                     + at(x, up)
                     + at(right, up)
@@ -218,61 +233,66 @@ impl Field {
                     + at(left, down)
                     + at(x, down)
                     + at(right, down);
-                if let Some(s) = self.scratch.get_mut(y * w + x) {
-                    *s = keep * at(x, y) + share * around;
+                if let Some(slot) = self.scratch.get_mut(y * width + x) {
+                    *slot = keep * at(x, y) + share * around;
                 }
             }
         }
-        core::mem::swap(&mut self.value, &mut self.scratch);
+        core::mem::swap(&mut self.values, &mut self.scratch);
     }
 
     /// The share of the total in the `fraction` of cells holding most
-    /// (S4's concentration: 0.1 of a uniform field's mass is in its top
-    /// 10%; a network's is far more). 0 for an empty field.
+    /// (0.1 of a uniform field's mass is in its top 10%; a network's is
+    /// far more). 0 for an empty field.
     #[must_use]
     pub fn top_share(&self, fraction: f64) -> f64 {
         let total = self.total();
         if total.is_nan() || total <= 0.0 {
             return 0.0;
         }
-        let n = self.value.len();
-        let k = math::convert::f64_to_usize(
-            (fraction.clamp(0.0, 1.0) * math::convert::usize_to_f64(n)).round(),
+        let cell_count = self.values.len();
+        let top_count = math::convert::f64_to_usize(
+            (fraction.clamp(0.0, 1.0) * math::convert::usize_to_f64(cell_count)).round(),
         )
         .unwrap_or(0)
-        .min(n);
-        if k == 0 {
+        .min(cell_count);
+        if top_count == 0 {
             return 0.0;
         }
-        let mut v = self.value.clone();
-        // The k largest to the front (descending), in linear time.
-        v.select_nth_unstable_by(k - 1, |a, b| b.total_cmp(a));
-        v.iter().take(k).map(|&x| f64::from(x)).sum::<f64>() / total
+        let mut sorted = self.values.clone();
+        // The largest `top_count` to the front (descending), in linear time.
+        sorted.select_nth_unstable_by(top_count - 1, |a, b| b.total_cmp(a));
+        sorted
+            .iter()
+            .take(top_count)
+            .map(|&value| f64::from(value))
+            .sum::<f64>()
+            / total
     }
 
-    /// Every value times `1 − e` (`e` clamped to `[0, 1]`).
-    pub fn decay(&mut self, e: f32) {
+    /// Every value times `1 − rate` (`rate` clamped to `[0, 1]`).
+    pub fn decay(&mut self, rate: f32) {
         let keep = 1.0
-            - if e.is_finite() {
-                e.clamp(0.0, 1.0)
+            - if rate.is_finite() {
+                rate.clamp(0.0, 1.0)
             } else {
                 0.0
             };
-        for v in &mut self.value {
-            *v *= keep;
+        for value in &mut self.values {
+            *value *= keep;
         }
     }
 
-    /// Sets cell `i` (row-major) to zero.
-    pub fn zero(&mut self, i: usize) {
-        if let Some(v) = self.value.get_mut(i) {
-            *v = 0.0;
+    /// Sets cell `index` (row-major) to zero.
+    pub fn zero(&mut self, index: usize) {
+        if let Some(value) = self.values.get_mut(index) {
+            *value = 0.0;
         }
     }
 
     /// Sets every value to zero.
     pub fn clear(&mut self) {
-        self.value.fill(0.0);
+        self.values.fill(0.0);
     }
 }
 
