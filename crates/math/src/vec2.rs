@@ -114,8 +114,8 @@ impl<S: Scalar> Mul<S> for Vec2<S> {
 
 /// Divide by a scalar: `v / s`.
 ///
-/// Two divisions, not one reciprocal and two multiplies: `x * (1/s)` rounds
-/// differently from `x / s`, and on fixed point a reciprocal loses precision.
+/// Two divisions, not one reciprocal and two multiplies: `x * (1/divisor)` rounds
+/// differently from `x / divisor`, and on fixed point a reciprocal loses precision.
 impl<S: Scalar> Div<S> for Vec2<S> {
     type Output = Self;
     fn div(self, divisor: S) -> Self {
