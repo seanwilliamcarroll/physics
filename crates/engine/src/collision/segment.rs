@@ -16,8 +16,7 @@ pub struct Segment<S> {
 }
 
 impl<S: Scalar> Segment<S> {
-    /// The segment from `start` to `end`. `start = end` is a point (a round
-    /// post), which is fine: the closest point is that point.
+    /// `start = end` is a point (a round post).
     pub const fn new(start: Vec2<S>, end: Vec2<S>, restitution: Restitution<S>) -> Self {
         Self {
             start,

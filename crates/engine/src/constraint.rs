@@ -91,14 +91,12 @@ impl<S: Scalar> DistanceConstraint<S> {
         self.length
     }
 
-    /// The same constraint with the given damping
-    /// (`docs/07-soft-bodies.md`, "Damping in all three steppers").
+    /// The same constraint with the given damping (`docs/07-soft-bodies.md`).
     #[must_use]
     pub const fn with_damping(self, damping: Damping<S>) -> Self {
         Self { damping, ..self }
     }
 
-    /// The same constraint with the given compliance (live stiffness).
     #[must_use]
     pub const fn with_compliance(self, compliance: Compliance<S>) -> Self {
         Self { compliance, ..self }

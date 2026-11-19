@@ -20,12 +20,9 @@ const HALF_NEIGHBORS: [(i64, i64); 4] = [(1, 0), (-1, 1), (0, 1), (1, 1)];
 /// (`tests/broadphase_properties.rs`). Points (radius 0) never pair. A
 /// `cell_size` that isn't positive and finite gives no pairs.
 ///
-/// A *sorted cell list* rather than a dense array of cells: each circle's
-/// cell `(⌊x / cell⌋, ⌊y / cell⌋)` is sorted, and a neighbor cell's
-/// circles are found in the sorted list (by cursors that follow the
-/// visiting order). Memory is proportional to the circles, not to the area
-/// they span, so one runaway particle can't make the grid huge; and the
-/// sort makes the output deterministic.
+/// A *sorted cell list* rather than a dense array: memory is proportional
+/// to the circles, not to the area they span, so one runaway particle
+/// can't make the grid huge, and the sort makes the output deterministic.
 pub fn candidate_pairs<S: Scalar>(
     positions: &[Vec2<S>],
     radii: &[S],
@@ -53,12 +50,10 @@ pub fn candidate_pairs<S: Scalar>(
         })
         .collect();
     sort(&mut keys);
-    // Each run of equal cells is one occupied cell: listed once, in
-    // order. The cells are visited in that order, so each of the four
-    // neighbors' positions in the list only moves forward: a cursor per
-    // offset finds it in a step or two (two binary searches over every
-    // circle, per neighbor, were over half of this function;
-    // `docs/profiling.md`).
+    // Each run of equal cells is one occupied cell. Cells are visited in
+    // order, so a neighbor's position only moves forward: a cursor per
+    // offset finds it in a step or two (binary searches were over half of
+    // this function; `docs/profiling.md`).
     let mut runs: Vec<Run> = Vec::new();
     let mut run_start = 0;
     for run_keys in keys.chunk_by(|first, second| (first.0, first.1) == (second.0, second.1)) {

@@ -25,31 +25,26 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// ```
     ///
     /// λ is the impulse applied this substep, accumulated over the
-    /// iterations and kept for the next substep's warm start. One
-    /// constraint is solved exactly in one pass, so for a single pendulum
-    /// warm starting only changes rounding; chains need it.
+    /// iterations and kept for the next substep's warm start.
     ///
     /// With [`Stabilization::Split`], a rigid rod's bias goes to a separate
     /// pseudo-velocity instead (`solve_split`), and `x += h (v + v_pseudo)`.
     ///
-    /// With contacts: found before the kick; impacts resolved by the
-    /// impact stage (Generalized Reflections, `solver/impacts.rs`)
-    /// between two half kicks; then warm-started by pair and solved after
-    /// the rods each pass, inelastically (accumulated clamp, speculative
-    /// targets, a one-sided pseudo-impulse in split mode); their impulses
-    /// are kept for the next substep's warm start (`docs/08-collision.md`).
+    /// With contacts: found before the kick; impacts resolved between two
+    /// half kicks (`solver/impacts.rs`); then warm-started by pair and
+    /// solved after the rods each pass, inelastically
+    /// (`docs/08-collision.md`).
     #[expect(clippy::too_many_lines, reason = "one substep, read top to bottom")]
     pub(crate) fn impulse(self, dt: S) {
         let particles = self.particles;
         evaluate(self.forces, particles, self.acc);
         let contacts = self.contacts;
         let mut cloth = self.cloth;
-        // Impacts resolve between two half kicks. A bounce's true outcome
-        // depends on when in the substep it lands (`v − g h (1 − 2τ)` for a
-        // falling ball hitting at fraction τ): reflecting after the whole
-        // kick assumes τ = 1 and gains `g h` a bounce (a lone bounce rose
-        // 2% above its drop), before it τ = 0 and loses it (−0.86% a
-        // bounce). Between halves is τ = ½: unbiased.
+        // Impacts resolve between two half kicks: a bounce landing at
+        // fraction τ of the substep ends at `v − g h (1 − 2τ)`, so reflecting
+        // after the whole kick (τ = 1) gains energy (a lone bounce rose 2%
+        // above its drop), before it (τ = 0) loses it (−0.86% a bounce).
+        // Between halves (τ = ½) is unbiased.
         let half = dt / (S::ONE + S::ONE);
         if self.collides {
             contacts.find(
@@ -81,12 +76,10 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
             slop: S::from_f64(CONTACT_SLOP),
             classic: self.stabilization == Stabilization::Baumgarte,
         };
-        // Warm start rigid constraints only. A soft constraint's λ feeds
-        // back into its own update (the `α̃ λ` term), so carrying it across
-        // substeps re-injects the previous substep's bias each time: on an
-        // unconverged network (the jelly, one pass) that pumps energy in
-        // without bound (`docs/07-soft-bodies.md`, "Soft constraints aren't
-        // warm-started").
+        // Warm start rigid constraints only: a soft constraint's λ feeds back
+        // into its own update, so carrying it over pumps energy into an
+        // unconverged network (`docs/07-soft-bodies.md`, "Soft constraints
+        // aren't warm-started").
         for (constraint, lambda) in self.constraints.iter().zip(self.lambda.iter_mut()) {
             if constraint.compliance() == S::ZERO {
                 apply_impulse(particles, constraint, *lambda);

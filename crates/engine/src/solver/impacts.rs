@@ -14,30 +14,27 @@
 //! add e λ̃ more: in all (1 + e) λ̃, V's approach reflected and scaled by e
 //! ```
 //!
-//! Each contact bounces with its own restitution (a cushion's against the
-//! balls'), except that a round's contacts **coupled through a shared
-//! ball** all bounce with the group's smallest `e`. With one `e` per
-//! group, a round's energy change is `−½ (1 − e²) λ̃ᵀ K λ̃ ≤ 0` per group
-//! (`K` is block-diagonal across groups); with mixed `e` inside a group it
-//! can be positive (a ball squeezed between a ball and a cushion gained
-//! 2.5% at e = 1 and 0.5: `docs/09-billiards.md`, "Restitution per
-//! contact").
+//! Each contact bounces with its own restitution, except that a round's
+//! contacts **coupled through a shared ball** all bounce with the group's
+//! smallest `e`: with one `e` per group a round's energy change is
+//! `−½ (1 − e²) λ̃ᵀ K λ̃ ≤ 0`; with mixed `e` it can be positive (a ball
+//! squeezed between a ball and a cushion gained 2.5% at e = 1 and 0.5:
+//! `docs/09-billiards.md`, "Restitution per contact").
 //!
 //! A contact joins a round only once something pushes into it, so an
 //! impact travels down a touching row one round per contact (Newton's
-//! cradle), and contacts struck at once are solved together, so a ball
-//! meeting two isn't bounced by each in full (`tests/impacts.rs`).
+//! cradle), and contacts struck at once are solved together
+//! (`tests/impacts.rs`).
 
 use crate::collision::{Body, Contact};
 use crate::solver::Contacts;
 use crate::solver::contacts::{bodies, normal_velocity, push_apart};
 use crate::{Particles, Scalar};
 
-/// Most rounds per substep, per contact in the substep (an impact passes
-/// one contact per round, so a row of `n` needs about `n`), and at most
-/// [`MAX_ROUNDS`] in all. Past it, what still approaches is left to the
-/// iterations, which treat it inelastically: with `e < 1` propagation can
-/// shrink geometrically without ending (the paper's inelastic collapse).
+/// Most rounds per substep, per contact (an impact passes one contact per
+/// round), and at most [`MAX_ROUNDS`]. Past it, what still approaches is
+/// left to the iterations, which treat it inelastically: with `e < 1`
+/// propagation can shrink without ending (the paper's inelastic collapse).
 const ROUNDS_PER_CONTACT: usize = 4;
 const MAX_ROUNDS: usize = 100;
 
@@ -85,10 +82,9 @@ pub(crate) fn resolve<S: Scalar>(particles: &mut Particles<S>, contacts: &mut Co
             .zip(round_impulse.iter_mut())
         {
             let current_normal_velocity = normal_velocity(particles, contact, contact.normal);
-            // Approaching faster than resting, and closing this substep
-            // once the second half kick (after this stage) is added: else
-            // the iterations' speculative stop would catch it at the
-            // surface with no bounce left.
+            // Approaching faster than resting, and closing this substep once
+            // the second half kick is added: else the speculative stop would
+            // catch it at the surface with no bounce left.
             *member = -current_normal_velocity > rest
                 && contact.gap + (current_normal_velocity + kick * half) * dt <= S::ZERO;
             *lambda = S::ZERO;

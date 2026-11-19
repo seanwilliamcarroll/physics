@@ -21,8 +21,7 @@ use crate::{Baumgarte, Force, Particles, Restitution, Scalar, Vec2};
 pub enum Solver {
     /// Extended position-based dynamics (Macklin et al. 2016): predict
     /// positions, project them onto the constraints, derive velocities.
-    /// Holds a rigid rod to rounding; dissipates energy, less with more
-    /// substeps.
+    /// Dissipates energy, less with more substeps.
     Xpbd,
     /// Sequential impulses (Catto 2005, 2006): solve the constraints'
     /// *velocities*, with a Baumgarte bias feeding position error back,
@@ -32,7 +31,6 @@ pub enum Solver {
 }
 
 impl Solver {
-    /// Both solvers, for tests and side-by-side demos.
     pub const ALL: [Self; 2] = [Self::Xpbd, Self::Impulse];
 }
 
@@ -71,10 +69,8 @@ pub enum Order {
 }
 
 impl Order {
-    /// Every order, for tests and controls.
     pub const ALL: [Self; 3] = [Self::Forward, Self::Reverse, Self::Alternating];
 
-    /// Whether pass `pass` (0-based) runs in reverse.
     #[must_use]
     pub const fn reversed(self, pass: u32) -> bool {
         match self {
@@ -120,12 +116,10 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     pub(crate) forces: &'a [Box<dyn Force<S>>],
     pub(crate) particles: &'a mut Particles<S>,
     pub(crate) constraints: &'a [C],
-    /// One λ per constraint, same order.
     pub(crate) lambda: &'a mut [S],
     pub(crate) acc: &'a mut Vec<Vec2<S>>,
-    /// Scratch, one entry per particle: XPBD's positions at the start of
-    /// the substep, or the impulse solver's pseudo-velocities (split
-    /// stabilization). A substep uses one or the other.
+    /// Scratch per particle: XPBD's start-of-substep positions, or the
+    /// impulse solver's pseudo-velocities (split stabilization).
     pub(crate) scratch: &'a mut Vec<Vec2<S>>,
     pub(crate) iterations: NonZeroU32,
     pub(crate) order: Order,
@@ -136,8 +130,7 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     pub(crate) collides: bool,
     pub(crate) contacts: &'a mut Contacts<S>,
     pub(crate) statics: Statics<'a, S>,
-    /// Restitution for circle–circle and wall contacts; segments carry
-    /// their own.
+    /// For circle–circle and wall contacts; segments carry their own.
     pub(crate) restitution: Restitution<S>,
     /// The cloth and every particle's spin, if the world has a table:
     /// applied after each kick.

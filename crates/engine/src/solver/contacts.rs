@@ -21,16 +21,12 @@ pub(crate) struct Contacts<S> {
     /// negative: a contact only pushes.
     pub(crate) lambda: Vec<S>,
     /// Approach speeds at or below this get no bounce: `2 |a_b − a_a| h`,
-    /// what the forces alone add in two substeps (Müller et al. 2020's
-    /// `2 |g| h`, for any force). Keeps resting contacts at rest.
+    /// what the forces alone add in two substeps (Müller et al. 2020).
     pub(crate) rest_speed: Vec<S>,
     /// What this substep's force kick adds to the normal velocity,
-    /// `h n · (a_b − a_a)`: the impact stage runs before the kick, but asks
-    /// whether a contact closes *after* it.
+    /// `h n · (a_b − a_a)`: the impact stage runs before the kick.
     pub(crate) kick_normal_velocity: Vec<S>,
-    /// Each contact's restitution: a segment's own, or the world's for
-    /// circles and walls (`docs/09-billiards.md`, "Restitution per
-    /// contact").
+    /// Each contact's restitution: a segment's own, or the world's.
     pub(crate) restitution: Vec<S>,
     /// The impulse solver's split pseudo-impulse per contact, this
     /// substep only (one-sided, like λ; never warm-started).
@@ -40,16 +36,14 @@ pub(crate) struct Contacts<S> {
     pub(crate) in_round: Vec<bool>,
     pub(crate) round_impulse: Vec<S>,
     /// The impact stage's scratch when restitutions differ: a union-find
-    /// parent per particle (the round's coupled groups), each group's
-    /// smallest restitution, and the one each contact bounces with this
-    /// round.
+    /// parent per particle, each group's smallest restitution, and each
+    /// contact's this round.
     pub(crate) group: Vec<usize>,
     pub(crate) group_restitution: Vec<S>,
     pub(crate) round_restitution: Vec<S>,
     /// Last substep's contacts as sorted keys `(first, second, index)`,
     /// `index` into `warm_lambda`: the impulse solver's warm start. Keys,
-    /// not `(first, second, λ)` tuples, so the sort is the engine's one
-    /// shared instantiation (`sort_key.rs`) rather than one more per scalar.
+    /// not λ tuples, share the engine's one sort (`sort_key.rs`).
     warm: Vec<SortKey>,
     /// Last substep's impulses, in contact order.
     warm_lambda: Vec<S>,
@@ -77,10 +71,9 @@ impl<S: Scalar> Contacts<S> {
         }
     }
 
-    /// Finds this substep's contacts (`collision::find_contacts`) and
-    /// records each one's resting threshold, the kick's normal part and
-    /// its restitution (`world_restitution` for circles and walls).
-    /// `acc` is this substep's per-particle acceleration from the forces.
+    /// Finds this substep's contacts and records each one's resting
+    /// threshold, kick and restitution. `acc` is the per-particle
+    /// acceleration from the forces.
     pub(crate) fn find(
         &mut self,
         particles: &Particles<S>,
@@ -90,9 +83,8 @@ impl<S: Scalar> Contacts<S> {
         dt: S,
         speculative: bool,
     ) {
-        // Without speculation, contacts are only what touches (within the
-        // margin) at the substep's start: the narrowphase with no time to
-        // close in (`docs/09-billiards.md`, "Tunneling").
+        // Without speculation: only what touches (within the margin) now
+        // (`docs/09-billiards.md`, "Tunneling").
         let reach = if speculative { dt } else { S::ZERO };
         find_contacts(particles, statics, reach, &mut self.pairs, &mut self.list);
         self.list
@@ -127,9 +119,8 @@ impl<S: Scalar> Contacts<S> {
 }
 
 impl<S: Scalar> Contacts<S> {
-    /// Sets each contact's λ to its impulse from the previous substep, if
-    /// the same pair was in contact then (0 for new contacts): the impulse
-    /// solver's warm start, matched by bodies.
+    /// Sets each contact's λ to its impulse from the previous substep (0 for
+    /// a new contact): the impulse solver's warm start, matched by bodies.
     pub(crate) fn recall(&mut self) {
         for (contact, lambda) in self.list.iter().zip(self.lambda.iter_mut()) {
             let key = pair_key(contact);
@@ -157,8 +148,6 @@ impl<S: Scalar> Contacts<S> {
         self.warm_lambda.extend_from_slice(&self.lambda);
     }
 
-    /// Forgets everything (a world that stopped colliding, or a solver
-    /// switch).
     pub(crate) fn clear(&mut self) {
         self.list.clear();
         self.lambda.clear();
@@ -169,8 +158,7 @@ impl<S: Scalar> Contacts<S> {
 
 /// A contact's bodies as the first two fields of a [`SortKey`]: the first
 /// body's index, then the second's for a particle or `−1 − i` for wall `i`.
-/// Any consistent order serves the warm start's lookup; each pair of
-/// bodies has one contact per substep, so keys are distinct.
+/// Each pair of bodies has one contact per substep, so keys are distinct.
 fn pair_key<S>(contact: &Contact<S>) -> (i64, i64) {
     let second = match contact.b {
         Body::Particle(particle) => index_key(particle.index()),
@@ -183,19 +171,16 @@ fn pair_key<S>(contact: &Contact<S>) -> (i64, i64) {
 
 /// Moves a speculative contact (separated, approaching) to the moment of
 /// impact: the normal and gap where the pair first touches this substep,
-/// if it does, moving in straight lines at their current velocities. The
-/// normal found at the substep's start is still turning as the gap closes
-/// on a glancing hit: cut shots went 1–8° off at 10 substeps
-/// (`tests/cushions.rs`, `docs/09-billiards.md`). A head-on hit, a
-/// touching contact and walls (whose normal never turns) are unchanged.
-/// The gap becomes `(closing speed along the new normal) · t`, so the
-/// contact still closes at the time of impact.
+/// moving in straight lines at their current velocities. The normal found
+/// at the substep's start is still turning on a glancing hit: cut shots
+/// went 1–8° off at 10 substeps (`tests/cushions.rs`). Head-on hits,
+/// touching contacts and walls are unchanged. The gap becomes `(closing
+/// speed along the new normal) · t`.
 ///
 /// Returns whether to keep the contact: one that doesn't touch this
 /// substep is dropped, unless it's within [`CONTACT_MARGIN`] (resting).
 /// Kept otherwise, a glancing pair bounced a substep early at the stale
-/// normal (an 80° cut left at 60°); next substep it's found again, closer,
-/// with the right normal.
+/// normal (an 80° cut left at 60°).
 fn at_impact<S: Scalar>(
     particles: &Particles<S>,
     statics: Statics<'_, S>,
@@ -205,8 +190,7 @@ fn at_impact<S: Scalar>(
     if contact.gap <= S::ZERO {
         return true;
     }
-    // Within the margin but not touching this substep: a resting
-    // neighbour, kept as found (`CONTACT_MARGIN`'s reason).
+    // Within the margin but not touching: a resting neighbour, kept as found.
     let near = contact.gap <= S::from_f64(CONTACT_MARGIN);
     let first = contact.a.index();
     let (Some(&first_position), Some(&first_velocity), Some(&first_radius)) = (
@@ -270,8 +254,7 @@ pub(crate) fn bodies<S: Scalar>(
 }
 
 /// The contact's gap and normal (first body toward second) at the
-/// *current* positions: XPBD re-measures as positions move within a
-/// substep.
+/// *current* positions: XPBD re-measures within a substep.
 pub(crate) fn geometry<S: Scalar>(
     particles: &Particles<S>,
     statics: Statics<'_, S>,

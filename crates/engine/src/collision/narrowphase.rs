@@ -6,16 +6,13 @@ use crate::{ParticleId, Particles, Scalar, UnitVec2, Vec2};
 
 /// Pairs this close (m) are contacts even when they aren't approaching.
 ///
-/// Without it, a ball resting on another (gap ~0 from rounding, both
-/// falling at the same rate, so no approach) isn't a contact. During that
-/// substep the lower ball is held up by its own contact while the upper
-/// one falls freely, so they overlap by `g h²`, get pushed apart, separate
-/// by a hair, and miss each other again: a stack of three or more never
-/// settles (six balls jittered at ~5 cm/s, forever). With 1 mm, every
-/// stack measured settles to exactly zero velocity. Extra contacts cost
-/// nothing physically: XPBD corrects only overlap, and the impulse solver
-/// lets a speculative gap close. `Box2D` keeps a margin for the same
-/// reason.
+/// Without it, a ball resting on another (gap ~0 from rounding, no
+/// approach) isn't a contact, so in a stack the upper ball falls freely
+/// for a substep, overlaps by `g h²`, is pushed apart, and misses again:
+/// six balls jittered at ~5 cm/s forever. With 1 mm every stack settles to
+/// exactly zero velocity. Extra contacts cost nothing physically: XPBD
+/// corrects only overlap, and the impulse solver lets a speculative gap
+/// close. `Box2D` keeps a margin for the same reason.
 pub(crate) const CONTACT_MARGIN: f64 = 1e-3;
 
 /// What a contact's second body is.
