@@ -6,12 +6,12 @@ pub const EXCITATION_NOISE: u32 = 0;
 /// [`Excitation::Triangle`](acoustic::Excitation::Triangle).
 pub const EXCITATION_TRIANGLE: u32 = 1;
 
-/// [`Model::Loop`](acoustic::Model::Loop): A1's Karplus–Strong loop.
+/// [`Model::Loop`](acoustic::Model::Loop).
 pub const MODEL_LOOP: u32 = 0;
-/// [`Model::Waveguide`](acoustic::Model::Waveguide): A2's waveguide.
+/// [`Model::Waveguide`](acoustic::Model::Waveguide).
 pub const MODEL_WAVEGUIDE: u32 = 1;
-/// [`Model::Piano`](acoustic::Model::Piano): A3's piano. Choosing it the
-/// first time designs every key (a one-time pause, `docs/14-piano.md`).
+/// [`Model::Piano`](acoustic::Model::Piano). Choosing it the first time
+/// designs every key (a one-time pause, `docs/14-piano.md`).
 pub const MODEL_PIANO: u32 = 2;
 
 /// Status returned by setters: 1 = applied, 0 = refused (bad value or
