@@ -1,4 +1,4 @@
-# TASKS — between milestones (S5 done; the next to plan)
+# TASKS — between milestones (S5 and the perf audit done; the next to plan)
 
 Source: `docs/05-roadmap.md`. The last milestone, S5, is summarized
 below; its sources, goal and results are in `docs/15-swarm.md`, S5.
@@ -243,65 +243,53 @@ have found; two genes at their ranges' edges. `AntParams::EVOLVED`; the
 
 ---
 
-## Gravity, the site, then the next milestone (from 2026-11-15)
+## ✅ Gravity and the site (done, PRs #276–#286)
 
-Done: wasm `simd128` everywhere with a message where it's missing
-(#276); pairwise gravity's vector loops and build knobs (#277,
-`docs/gravity-vectorize.md`); the 8,192-body cap; the slim benchmark
-record (#279); both machines recorded on the new `main` (#278, #280);
-the flock's step split by technique (#286). In order:
+wasm `simd128` everywhere, with a message where it's missing; pairwise
+gravity's vector loops (two-pass, 16 lanes, everywhere:
+`docs/gravity-vectorize.md`) and the 8,192-body cap; the slim benchmark
+record, both machines recorded; physics-engine 0.2.0 released and in
+`personal_site` (#18–#20, with the post "AI-Assisted Performance
+Optimization" and the 4,096-body cluster as its demo); the flock's step
+split by technique.
 
-1. ~~**Per-target gravity settings.**~~ Decided 2026-11-15: none. At 16
-   lanes `blocked` wins by ~2% at most, and loses 30–40% in wasm;
-   two-pass, 16 lanes, everywhere (`gravity-vectorize.md`, step 10).
-2. **Cranelift vs LLVM.** Explained (`gravity-vectorize.md`, step 11):
-   LLVM's ordered FP reductions on AArch64. Reproducer, loops side by
-   side and a draft issue: `experiments/llvm-ordered-reductions/`.
-   Still to do, by hand: try it on LLVM's main branch (Compiler
-   Explorer), and decide whether to file the issue.
-3. ~~**Release** the physics package.~~ physics-engine 0.2.0, 2026-11-16.
-4. ~~**`personal_site` PR.**~~ 0.2.0 pulled in, and a demo the browser
-   can't run says why (personal_site #18); math in posts (#19).
-5. **Smaller:** swarm's boids render is 2× slower with `simd128`
-   (`15-swarm.md`); the notebook's open questions (a cutoff per row,
-   base's +30% at 16 bodies); a targeted mutation run on `llm` for the
-   new code (`force/pairwise`, the bench record, `github.rs`, coverage,
-   the broadphase); keep checking the nightly runs.
-6. ~~**A post** on the gravity work.~~ "AI-Assisted Performance
-   Optimization", published 2026-11-16 (personal_site #20).
-7. ~~**A second demo for the website.**~~ The gravity post's: the
-   4,096-body cluster. (Still candidates for later: cradle, break shot,
-   double pendulum, jelly.)
-8. **The next milestone:** M10, the A4 drum, collective construction,
-   M8 fixed point (`docs/05-roadmap.md`).
+## ✅ Performance audit and health check (done, PRs #301–#334)
+
+`docs/perf-audit.md`: profiles on both machines and in V8, floors, a
+ranking by time to be saved, each change measured under "Done". The
+piano design 231 → 40 ms in V8; per-target kernels for pairwise gravity
+and the boids' lane loop (`tuning.rs`; `experiments/perf-audit/
+kernels.py` checks them: run it after any tuning change); exact-bit
+tests reviewed, hashes gone; the boids' Grid, Sorted's span edges
+(−38% natively on Zen 5, −17% in V8), sand's chunk waking and dispatch;
+Vicsek's branches kept (a negative result). The health check (#334):
+narrower public APIs, `ants.rs` split, the workspace version
+(`docs/api-audit.md`).
 
 ---
 
-## Performance audit, then a health check (from 2026-11-17)
+## Next (from 2026-11-19)
 
-The audit is `docs/perf-audit.md` (its guide `perf-code-audit-guide.md`):
-profiles on both machines and in V8, floors, and a ranking by time to be
-saved; each change's measurements under its "Done" entry there.
-
-Done: the piano design 231 → 40 ms in V8 (#303, #304); per-target
-kernels for pairwise gravity and the boids' lane loop (`tuning.rs` in
-each; `experiments/perf-audit/kernels.py` checks what each target
-compiled them to: run it after any tuning change); exact-bit tests
-reviewed, hashes gone (#301, `docs/04-testing.md`, "Exact bits,
-reviewed"); the boids' Grid (#320, #324), Vicsek (a negative result,
-#325), sand's chunk waking (#326) and dispatch (#328), Sorted's span
-edges (#332); the health check (file sizes, module layout, API
-surfaces: this PR). Still open:
-
-1. **Piano design:** maybe vectorized trig (a polynomial `sincos`,
-   `atan` across the target frequencies: half of what's left); 11 keys
-   miss the design tests' 1-cent tolerance (key 107: 10.9 cents, found
-   by #303's probe): look into it, and test all 88.
-2. **The ranking's rest:** Barnes–Hut, Physarum; phase 2, a recorded
-   wasm baseline. Zen 5's x86 levels for gravity's kernels to confirm
-   on `llm`.
-3. **Sand:** the empty-run skip (+16% on the bench's uniform scene,
-   −26% settled) needs a busy scene like the page's brush to judge.
+1. **Piano: 11 keys miss the design tests' 1-cent tolerance** (key 107:
+   10.9 cents, found by #303's probe): look into it, and test all 88.
+2. **The next milestone:** M10, the A4 drum, collective construction,
+   M8 fixed point (`docs/05-roadmap.md`).
+3. **Performance, left from the audit:** Barnes–Hut and Physarum (the
+   ranking's rest); a recorded wasm baseline; the piano's trig
+   vectorized (a polynomial `sincos`, `atan`: half the design's 40 ms);
+   sand's empty-run skip, to judge on a brush-made busy scene; Zen 5's
+   x86 levels for gravity's kernels, to confirm on `llm`; the benchmark
+   record after #332.
+4. **Smaller:** swarm's boids render is 2× slower with `simd128`
+   (`15-swarm.md`); the gravity notebook's open questions (a cutoff per
+   row, base's +30% at 16 bodies); a targeted mutation run on `llm` for
+   the newer code (`force/pairwise`, the bench record, `github.rs`,
+   coverage, the broadphase, the boids' lanes); keep checking the
+   nightly runs.
+5. **By hand:** LLVM's ordered FP reductions on AArch64
+   (`gravity-vectorize.md`, step 11; reproducer and draft issue in
+   `experiments/llvm-ordered-reductions/`): try it on LLVM's main
+   branch (Compiler Explorer), and decide whether to file the issue.
 
 ---
 
