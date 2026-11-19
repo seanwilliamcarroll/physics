@@ -233,7 +233,7 @@ pub(crate) extern "C" fn piano_inharmonicity(key: u32) -> f64 {
 #[unsafe(no_mangle)]
 pub(crate) extern "C" fn piano_strings(key: u32) -> u32 {
     on_keyboard(key).map_or(0, |piano_key| {
-        u32::try_from(acoustic::unison::strings(piano_key)).unwrap_or(0)
+        u32::try_from(acoustic::unison::string_count(piano_key)).unwrap_or(0)
     })
 }
 

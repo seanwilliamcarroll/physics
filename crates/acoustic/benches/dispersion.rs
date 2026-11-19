@@ -23,7 +23,7 @@ fn design(criterion: &mut Criterion) {
         let fundamental_hz = 440.0 * 2f64.powf((f64::from(key) - 69.0) / 12.0);
         let voicing = Voicing {
             tuned: true,
-            decay: Decay::T60(4.0),
+            decay: Decay::Time60Db(4.0),
             inharmonicity: inharmonicity(key),
         };
         group.bench_with_input(BenchmarkId::from_parameter(key), &key, |bencher, _| {

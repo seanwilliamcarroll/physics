@@ -24,15 +24,15 @@ fn reproduces_the_loop<S: Scalar>() {
     ] {
         let voicing = Voicing {
             tuned,
-            decay: Decay::T60(1.5),
+            decay: Decay::Time60Db(1.5),
             inharmonicity: 0.0,
         };
         let mut karplus = KsString::<S>::new(SAMPLE_RATE, fundamental_hz, voicing).unwrap();
         karplus.pluck(|index, _| S::from_f64(hash_noise(index)));
         let mut waveguide = Waveguide::<S>::new(SAMPLE_RATE, fundamental_hz, voicing).unwrap();
         assert_eq!(
-            waveguide.delay(),
-            karplus.delay(),
+            waveguide.loop_length(),
+            karplus.loop_length(),
             "{fundamental_hz}: the same loop length"
         );
         let state: Vec<S> = karplus.samples().collect();
@@ -43,7 +43,7 @@ fn reproduces_the_loop<S: Scalar>() {
                 (expected.to_f64() - actual.to_f64()).abs() <= 1e-12,
                 "{} {fundamental_hz} Hz (N = {}): sample {sample_number}: {expected:?} vs {actual:?}",
                 core::any::type_name::<S>(),
-                karplus.delay()
+                karplus.loop_length()
             );
         }
     }
@@ -64,9 +64,9 @@ fn odd_and_even_loops_split_their_rails() {
     let lossless = lossless_untuned();
     // 48000 / 440 = 109.09: N = 109 (odd); 48000 / 400 = 120: N = 120.
     let odd = Waveguide::<f64>::new(SAMPLE_RATE, 440.0, lossless).unwrap();
-    assert_eq!((odd.delay(), odd.rail()), (109, 54));
+    assert_eq!((odd.loop_length(), odd.rail_length()), (109, 54));
     let even = Waveguide::<f64>::new(SAMPLE_RATE, 400.0, lossless).unwrap();
-    assert_eq!((even.delay(), even.rail()), (120, 60));
+    assert_eq!((even.loop_length(), even.rail_length()), (120, 60));
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn a_random_pluck_starts_at_rest() {
         draws += 1;
         hash_noise(draws)
     });
-    for cell in 0..waveguide.rail() {
+    for cell in 0..waveguide.rail_length() {
         let (right, left) = waveguide.rails_at(cell);
         assert!(
             right.to_bits() == left.to_bits(),
@@ -141,7 +141,7 @@ fn a_random_pluck_starts_at_rest() {
 fn guide(fundamental_hz: f64) -> Waveguide<f64> {
     let voicing = Voicing {
         tuned: true,
-        decay: Decay::T60(1.5),
+        decay: Decay::Time60Db(1.5),
         inharmonicity: 0.0,
     };
     Waveguide::new(SAMPLE_RATE, fundamental_hz, voicing).unwrap()
@@ -178,7 +178,7 @@ fn the_pickup_reads_between_cells_linearly() {
 fn restringing_refuses_a_note_too_long_for_the_rails() {
     let voicing = Voicing {
         tuned: true,
-        decay: Decay::T60(1.5),
+        decay: Decay::Time60Db(1.5),
         inharmonicity: 0.0,
     };
     let mut guide = guide(220.0);

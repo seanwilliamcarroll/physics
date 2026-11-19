@@ -32,7 +32,8 @@ pub use math::Scalar;
 pub use stiffness::inharmonicity;
 pub use string::KsString;
 pub use voices::{
-    DEFAULT_GAIN, LOWEST_HZ, Model, RELEASE_RAMP, RELEASE_T60, TRACE_SECONDS, VOICES, Voices,
+    DEFAULT_GAIN, LOWEST_HZ, Model, RELEASE_DECAY_TIME_60DB, RELEASE_RAMP, TRACE_SECONDS, VOICES,
+    Voices,
 };
 pub use voicing::{Decay, Voicing};
 pub(crate) use waveguide::DEFAULT_PICKUP;

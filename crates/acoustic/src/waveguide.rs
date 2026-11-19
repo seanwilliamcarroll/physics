@@ -111,12 +111,12 @@ impl<S: Scalar> Waveguide<S> {
 
     /// The loop's length `N`, samples (`2M`, plus 1 when odd).
     #[must_use]
-    pub fn delay(&self) -> usize {
+    pub fn loop_length(&self) -> usize {
         2 * self.right.len() + usize::from(self.odd_sample.is_some())
     }
 
     #[must_use]
-    pub fn rail(&self) -> usize {
+    pub fn rail_length(&self) -> usize {
         self.right.len()
     }
 

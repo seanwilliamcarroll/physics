@@ -1,5 +1,5 @@
 use crate::Scalar;
-use crate::measure::{cents, pitch, t60};
+use crate::measure::{cents, decay_time_60db, pitch};
 use crate::test_util::hash_noise;
 use crate::{Decay, KsString, Voicing};
 use math::convert::f64_to_usize;
@@ -42,7 +42,7 @@ fn integer_loop_pitch_is_sample_rate_over_n_plus_half<S: Scalar>() {
             println!(
                 "{} {sample_rate} Hz, {fundamental_hz} Hz: N = {}, loop {want:.3} Hz, measured {got:.3} ({error:+.3} cents; {:+.1} from {fundamental_hz})",
                 core::any::type_name::<S>(),
-                string.delay(),
+                string.loop_length(),
                 cents(want, fundamental_hz)
             );
             assert!(
@@ -72,7 +72,7 @@ fn t60_matches_the_loop_gain<S: Scalar>() {
         let gain = loss * (core::f64::consts::PI * pitch / sample_rate).cos();
         let want = -3.0 / (pitch * gain.log10());
         // The fundamental's decay, fit away from the attack and the end.
-        let got = t60(
+        let got = decay_time_60db(
             &signal,
             sample_rate,
             pitch,
@@ -136,7 +136,7 @@ fn bad_settings_are_refused() {
     );
     let no_decay = Voicing {
         tuned: true,
-        decay: Decay::T60(0.0),
+        decay: Decay::Time60Db(0.0),
         inharmonicity: 0.0,
     };
     assert!(KsString::<f64>::new(48_000.0, 440.0, no_decay).is_none());
@@ -148,7 +148,7 @@ fn a_release_of_no_time_is_ignored() {
     // At 0 the loss would be total (10^−∞), so it's refused.
     let voicing = Voicing {
         tuned: true,
-        decay: Decay::T60(2.0),
+        decay: Decay::Time60Db(2.0),
         inharmonicity: 0.0,
     };
     let render = |damp: bool| {

@@ -22,7 +22,7 @@ const LAST_PAIR: u8 = 44;
 pub const DETUNE_CENTS: f64 = 1.0;
 
 #[must_use]
-pub const fn strings(midi: u8) -> usize {
+pub const fn string_count(midi: u8) -> usize {
     if midi <= LAST_SINGLE {
         1
     } else if midi <= LAST_PAIR {
@@ -35,7 +35,7 @@ pub const fn strings(midi: u8) -> usize {
 /// String `index`'s tuning of `count`, cents from the note: symmetric, so
 /// the group's mean is the note (−½, ½ for two; −1, 0, 1 for three).
 #[must_use]
-pub fn offset(index: usize, count: usize) -> f64 {
+pub fn string_offset_cents(index: usize, count: usize) -> f64 {
     let (index, count) = (usize_to_f64(index), usize_to_f64(count));
     (index - (count - 1.0) / 2.0) * DETUNE_CENTS
 }
@@ -74,7 +74,7 @@ impl<S: Scalar> Unison<S> {
         })
     }
 
-    /// Key `midi`'s strings, each detuned by [`offset`], struck at `velocity`
+    /// Key `midi`'s strings, each detuned by [`string_offset_cents`], struck at `velocity`
     /// m/s; designs the dispersion itself (milliseconds). `None` off the
     /// keyboard or for settings the strings or hammer can't take.
     #[must_use]
@@ -106,9 +106,10 @@ impl<S: Scalar> Unison<S> {
         };
         self.active = 0;
         let fundamental_hz = crate::piano::frequency(midi);
-        let count = strings(midi);
+        let count = string_count(midi);
         for (index, string) in self.strings.iter_mut().take(count).enumerate() {
-            let tuned_hz = fundamental_hz * libm::exp2(offset(index, count) / CENTS_PER_OCTAVE);
+            let tuned_hz =
+                fundamental_hz * libm::exp2(string_offset_cents(index, count) / CENTS_PER_OCTAVE);
             let restrung = string.restring_designed(self.sample_rate, tuned_hz, voicing, design);
             if !(restrung && string.strike(hammer, 1.0 - STRIKE)) {
                 return false;

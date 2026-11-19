@@ -12,7 +12,7 @@ const SAMPLE_RATE: f64 = 48_000.0;
 const FUNDAMENTAL_HZ: f64 = 220.0;
 const VOICING: Voicing = Voicing {
     tuned: true,
-    decay: Decay::T60(10.0),
+    decay: Decay::Time60Db(10.0),
     inharmonicity: 0.0,
 };
 const SKIP_SECONDS: f64 = 0.02;

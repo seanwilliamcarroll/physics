@@ -32,7 +32,7 @@ fn strike<S: Scalar>(key: u8, velocity: f64, stiff: bool) -> Blow {
     let inharmonicity = if stiff { inharmonicity(key) } else { 0.0 };
     let voicing = Voicing {
         tuned: true,
-        decay: Decay::T60(4.0),
+        decay: Decay::Time60Db(4.0),
         inharmonicity,
     };
     let mut string = Waveguide::<S>::new(SAMPLE_RATE, frequency(key), voicing).unwrap();

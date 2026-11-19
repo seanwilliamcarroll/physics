@@ -1,11 +1,14 @@
-use super::{Designs, FIRST_KEY, LAST_KEY, frequency, t60, voicing};
+use super::{Designs, FIRST_KEY, LAST_KEY, decay_time_60db, frequency, voicing};
 
 const SAMPLE_RATE: f64 = 48_000.0;
 
 #[test]
 fn the_decay_falls_from_bass_to_treble() {
-    assert!((t60(FIRST_KEY) - 20.0).abs() < 1e-9 && (t60(LAST_KEY) - 1.5).abs() < 1e-9);
-    assert!((FIRST_KEY..LAST_KEY).all(|key| t60(key + 1) < t60(key)));
+    assert!(
+        (decay_time_60db(FIRST_KEY) - 20.0).abs() < 1e-9
+            && (decay_time_60db(LAST_KEY) - 1.5).abs() < 1e-9
+    );
+    assert!((FIRST_KEY..LAST_KEY).all(|key| decay_time_60db(key + 1) < decay_time_60db(key)));
 }
 
 /// The stored design is the one the voicing would design itself: the

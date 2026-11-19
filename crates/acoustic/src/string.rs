@@ -64,7 +64,7 @@ impl<S: Scalar> KsString<S> {
     }
 
     #[must_use]
-    pub fn delay(&self) -> usize {
+    pub fn loop_length(&self) -> usize {
         self.line.len()
     }
 

@@ -38,14 +38,14 @@ pub mod acoustic::measure
 pub const acoustic::measure::CENTS_PER_OCTAVE: f64
 pub fn acoustic::measure::amplitude(&[f64], f64, f64) -> f64
 pub fn acoustic::measure::cents(f64, f64) -> f64
+pub fn acoustic::measure::decay_time_60db(&[f64], f64, f64, f64, f64, f64) -> core::option::Option<f64>
 pub fn acoustic::measure::partial(&[f64], f64, f64, f64) -> core::option::Option<f64>
 pub fn acoustic::measure::pitch(&[f64], f64, f64, f64) -> core::option::Option<f64>
-pub fn acoustic::measure::t60(&[f64], f64, f64, f64, f64, f64) -> core::option::Option<f64>
 pub mod acoustic::piano
 pub const acoustic::piano::FIRST_KEY: u8
 pub const acoustic::piano::LAST_KEY: u8
+pub fn acoustic::piano::decay_time_60db(u8) -> f64
 pub fn acoustic::piano::frequency(u8) -> f64
-pub fn acoustic::piano::t60(u8) -> f64
 pub fn acoustic::piano::voicing(u8, bool) -> acoustic::Voicing
 pub mod acoustic::unison
 pub struct acoustic::unison::Unison<S>
@@ -62,11 +62,11 @@ pub fn acoustic::unison::Unison<S>::render(&mut self, &mut [S])
 pub fn acoustic::unison::Unison<S>::with_capacity(f64) -> core::option::Option<Self>
 pub const acoustic::unison::DETUNE_CENTS: f64
 pub const acoustic::unison::MAX_STRINGS: usize
-pub fn acoustic::unison::offset(usize, usize) -> f64
-pub const fn acoustic::unison::strings(u8) -> usize
+pub const fn acoustic::unison::string_count(u8) -> usize
+pub fn acoustic::unison::string_offset_cents(usize, usize) -> f64
 pub enum acoustic::Decay
 pub acoustic::Decay::Loss(f64)
-pub acoustic::Decay::T60(f64)
+pub acoustic::Decay::Time60Db(f64)
 pub enum acoustic::Excitation
 pub acoustic::Excitation::Noise
 pub acoustic::Excitation::Triangle
@@ -78,7 +78,7 @@ pub acoustic::Model::Waveguide
 pub struct acoustic::KsString<S>
 impl<S: math::scalar::Scalar> acoustic::KsString<S>
 pub fn acoustic::KsString<S>::damp(&mut self, f64, core::num::nonzero::NonZeroUsize)
-pub fn acoustic::KsString<S>::delay(&self) -> usize
+pub fn acoustic::KsString<S>::loop_length(&self) -> usize
 pub fn acoustic::KsString<S>::new(f64, f64, acoustic::Voicing) -> core::option::Option<Self>
 pub fn acoustic::KsString<S>::next_sample(&mut self) -> S
 pub const fn acoustic::KsString<S>::pitch(&self) -> f64
@@ -113,14 +113,14 @@ pub acoustic::Voicing::tuned: bool
 pub struct acoustic::Waveguide<S>
 impl<S: math::scalar::Scalar> acoustic::Waveguide<S>
 pub fn acoustic::Waveguide<S>::damp(&mut self, f64, core::num::nonzero::NonZeroUsize)
-pub fn acoustic::Waveguide<S>::delay(&self) -> usize
 pub fn acoustic::Waveguide<S>::displacement(&self) -> S
+pub fn acoustic::Waveguide<S>::loop_length(&self) -> usize
 pub fn acoustic::Waveguide<S>::new(f64, f64, acoustic::Voicing) -> core::option::Option<Self>
 pub fn acoustic::Waveguide<S>::next_sample(&mut self) -> S
 pub const fn acoustic::Waveguide<S>::pitch(&self) -> f64
 pub fn acoustic::Waveguide<S>::pluck(&mut self, impl core::ops::function::FnMut(f64) -> S)
 pub fn acoustic::Waveguide<S>::position(&self, usize) -> f64
-pub fn acoustic::Waveguide<S>::rail(&self) -> usize
+pub fn acoustic::Waveguide<S>::rail_length(&self) -> usize
 pub fn acoustic::Waveguide<S>::render(&mut self, &mut [S])
 pub fn acoustic::Waveguide<S>::restring(&mut self, f64, f64, acoustic::Voicing) -> bool
 pub const fn acoustic::Waveguide<S>::set_pickup(&mut self, f64)
@@ -133,8 +133,8 @@ pub fn acoustic::Waveguide<S>::hammer(&self) -> core::option::Option<&acoustic::
 pub fn acoustic::Waveguide<S>::strike(&mut self, acoustic::hammer::Hammer, f64) -> bool
 pub const acoustic::DEFAULT_GAIN: f64
 pub const acoustic::LOWEST_HZ: f64
+pub const acoustic::RELEASE_DECAY_TIME_60DB: f64
 pub const acoustic::RELEASE_RAMP: f64
-pub const acoustic::RELEASE_T60: f64
 pub const acoustic::TRACE_SECONDS: f64
 pub const acoustic::VOICES: usize
 pub fn acoustic::inharmonicity(u8) -> f64

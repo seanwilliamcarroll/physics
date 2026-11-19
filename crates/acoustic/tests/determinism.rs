@@ -11,7 +11,7 @@ const BLOCK: usize = 128;
 const BLOCKS: usize = 375;
 const VOICING: Voicing = Voicing {
     tuned: true,
-    decay: Decay::T60(1.5),
+    decay: Decay::Time60Db(1.5),
     inharmonicity: 0.0,
 };
 

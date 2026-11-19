@@ -71,13 +71,13 @@ impl Synth {
                 inharmonicity: 0.0,
             },
         )?
-        .delay()
+        .loop_length()
             + 1;
         Some(Self {
             voices,
             voicing: Voicing {
                 tuned: true,
-                decay: Decay::T60(DEFAULT_T60),
+                decay: Decay::Time60Db(DEFAULT_T60),
                 inharmonicity: 0.0,
             },
             excitation: Excitation::Noise,
@@ -184,7 +184,7 @@ impl Synth {
     pub fn set_t60(&mut self, decay_time_60db: f64) -> bool {
         let valid = decay_time_60db > 0.0 && decay_time_60db.is_finite();
         if valid {
-            self.voicing.decay = Decay::T60(decay_time_60db);
+            self.voicing.decay = Decay::Time60Db(decay_time_60db);
         }
         valid
     }

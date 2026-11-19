@@ -1,4 +1,4 @@
-use super::{DETUNE_CENTS, Unison, offset, strings};
+use super::{DETUNE_CENTS, Unison, string_count, string_offset_cents};
 use crate::hammer::{self, Hammer, MAX_VELOCITY, STRIKE};
 use crate::{Decay, Voicing, Waveguide, inharmonicity};
 use math::convert::{f64_to_usize, usize_to_f64};
@@ -8,22 +8,24 @@ const SAMPLE_RATE: f64 = 48_000.0;
 fn voicing(key: u8) -> Voicing {
     Voicing {
         tuned: true,
-        decay: Decay::T60(4.0),
+        decay: Decay::Time60Db(4.0),
         inharmonicity: inharmonicity(key),
     }
 }
 
 #[test]
 fn one_two_or_three_strings_by_register() {
-    assert_eq!((strings(21), strings(28)), (1, 1));
-    assert_eq!((strings(29), strings(44)), (2, 2));
-    assert_eq!((strings(45), strings(108)), (3, 3));
+    assert_eq!((string_count(21), string_count(28)), (1, 1));
+    assert_eq!((string_count(29), string_count(44)), (2, 2));
+    assert_eq!((string_count(45), string_count(108)), (3, 3));
 }
 
 #[test]
 fn the_tuning_is_symmetric_about_the_note() {
     for count in 1..=3 {
-        let offsets: Vec<f64> = (0..count).map(|index| offset(index, count)).collect();
+        let offsets: Vec<f64> = (0..count)
+            .map(|index| string_offset_cents(index, count))
+            .collect();
         let mean = offsets.iter().sum::<f64>() / usize_to_f64(offsets.len());
         assert!(mean.abs() < 1e-12, "{offsets:?}");
         assert!(
@@ -41,7 +43,7 @@ fn each_string_plays_its_tuning() {
     for (index, pitch) in unison.pitches().enumerate() {
         let cents = 1200.0 * (pitch / fundamental_hz).log2();
         assert!(
-            (cents - offset(index, 3)).abs() < 1e-9,
+            (cents - string_offset_cents(index, 3)).abs() < 1e-9,
             "string {index}: {cents}"
         );
     }
@@ -175,11 +177,15 @@ fn a_struck_group_reads_back_its_strings() {
 #[test]
 fn three_strings_sit_one_detune_apart() {
     assert_eq!(
-        [offset(0, 3), offset(1, 3), offset(2, 3)],
+        [
+            string_offset_cents(0, 3),
+            string_offset_cents(1, 3),
+            string_offset_cents(2, 3)
+        ],
         [-DETUNE_CENTS, 0.0, DETUNE_CENTS]
     );
     assert_eq!(
-        [offset(0, 2), offset(1, 2)],
+        [string_offset_cents(0, 2), string_offset_cents(1, 2)],
         [-DETUNE_CENTS / 2.0, DETUNE_CENTS / 2.0]
     );
 }

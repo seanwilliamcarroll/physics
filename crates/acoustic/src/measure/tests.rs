@@ -1,4 +1,4 @@
-use super::{amplitude, cents, partial, pitch, t60};
+use super::{amplitude, cents, decay_time_60db, partial, pitch};
 use core::f64::consts::TAU;
 use math::convert::{f64_to_usize, usize_to_f64};
 
@@ -47,7 +47,7 @@ fn pitch_finds_a_tone_between_whole_samples() {
 #[test]
 fn t60_of_a_known_decay() {
     // 30 dB/s: T60 = 2 s.
-    let got = t60(&tone(220.0, 30.0, 3.0), SAMPLE_RATE, 220.0, 16.0, 0.2, 2.5).unwrap();
+    let got = decay_time_60db(&tone(220.0, 30.0, 3.0), SAMPLE_RATE, 220.0, 16.0, 0.2, 2.5).unwrap();
     assert!((got - 2.0).abs() < 0.01, "{got}");
 }
 
@@ -71,7 +71,10 @@ fn silence_has_no_pitch_or_partial() {
     let silence = vec![0.0; 48_000];
     assert_eq!(pitch(&silence, SAMPLE_RATE, 440.0, 0.06), None);
     assert_eq!(partial(&silence, SAMPLE_RATE, 440.0, 16.0), None);
-    assert_eq!(t60(&silence, SAMPLE_RATE, 220.0, 16.0, 0.0, 1.0), None);
+    assert_eq!(
+        decay_time_60db(&silence, SAMPLE_RATE, 220.0, 16.0, 0.0, 1.0),
+        None
+    );
 }
 
 #[test]
@@ -100,8 +103,8 @@ fn t60_fits_only_the_window_it_is_given() {
         .map(|sample| sample * level_at_one_second)
         .collect();
     let both: Vec<f64> = fast.iter().chain(&slow).copied().collect();
-    let late = t60(&both, SAMPLE_RATE, 220.0, 16.0, 1.2, 2.8).unwrap();
-    let early = t60(&both, SAMPLE_RATE, 220.0, 16.0, 0.1, 0.8).unwrap();
+    let late = decay_time_60db(&both, SAMPLE_RATE, 220.0, 16.0, 1.2, 2.8).unwrap();
+    let early = decay_time_60db(&both, SAMPLE_RATE, 220.0, 16.0, 0.1, 0.8).unwrap();
     assert!((late - 2.0).abs() < 0.02, "after the change: {late}");
     assert!((early - 1.0).abs() < 0.02, "before it: {early}");
 }
@@ -114,13 +117,16 @@ fn t60_skips_silent_windows_and_needs_two() {
     const WINDOW: usize = 3491;
     let mut signal = tone(220.0, 30.0, 1.0)[..13 * WINDOW].to_vec();
     signal.extend(core::iter::repeat_n(0.0, 13 * WINDOW));
-    let got = t60(&signal, SAMPLE_RATE, 220.0, 16.0, 0.1, 1.9).unwrap();
+    let got = decay_time_60db(&signal, SAMPLE_RATE, 220.0, 16.0, 0.1, 1.9).unwrap();
     assert!((got - 2.0).abs() < 0.02, "{got}");
     // A window is 72.7 ms: a span holding two window centers (36 and
     // 109 ms) measures, one holding one doesn't.
     let decay = tone(220.0, 30.0, 1.0);
-    assert!(t60(&decay, SAMPLE_RATE, 220.0, 16.0, 0.0, 0.12).is_some());
-    assert_eq!(t60(&decay, SAMPLE_RATE, 220.0, 16.0, 0.0, 0.05), None);
+    assert!(decay_time_60db(&decay, SAMPLE_RATE, 220.0, 16.0, 0.0, 0.12).is_some());
+    assert_eq!(
+        decay_time_60db(&decay, SAMPLE_RATE, 220.0, 16.0, 0.0, 0.05),
+        None
+    );
 }
 
 #[test]
@@ -129,11 +135,11 @@ fn t60_needs_a_window_of_two_samples() {
     // zero-length chunking.
     let signal = tone(220.0, 30.0, 0.5);
     assert_eq!(
-        t60(&signal, SAMPLE_RATE, 40.0 * SAMPLE_RATE, 16.0, 0.0, 0.4),
+        decay_time_60db(&signal, SAMPLE_RATE, 40.0 * SAMPLE_RATE, 16.0, 0.0, 0.4),
         None
     );
     assert_eq!(
-        t60(&signal, SAMPLE_RATE, 16.0 * SAMPLE_RATE, 16.0, 0.0, 0.4),
+        decay_time_60db(&signal, SAMPLE_RATE, 16.0 * SAMPLE_RATE, 16.0, 0.0, 0.4),
         None
     );
 }

@@ -15,7 +15,7 @@ const KEYS: usize = (LAST_KEY - FIRST_KEY + 1) as usize;
 const DECAY: (f64, f64) = (20.0, 1.5);
 
 #[must_use]
-pub fn t60(midi: u8) -> f64 {
+pub fn decay_time_60db(midi: u8) -> f64 {
     let fraction =
         (f64::from(midi.clamp(FIRST_KEY, LAST_KEY) - FIRST_KEY)) / f64::from(LAST_KEY - FIRST_KEY);
     DECAY.0 * libm::pow(DECAY.1 / DECAY.0, fraction)
@@ -31,7 +31,7 @@ pub fn frequency(midi: u8) -> f64 {
 pub fn voicing(midi: u8, stiff: bool) -> Voicing {
     Voicing {
         tuned: true,
-        decay: Decay::T60(t60(midi)),
+        decay: Decay::Time60Db(decay_time_60db(midi)),
         inharmonicity: if stiff { inharmonicity(midi) } else { 0.0 },
     }
 }

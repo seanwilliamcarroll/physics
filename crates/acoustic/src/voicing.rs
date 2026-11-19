@@ -12,7 +12,7 @@ pub enum Decay {
     Loss(f64),
     /// The fundamental's 60 dB decay time, seconds: `ρ` shortens it, stretching
     /// (`S < ½`) lengthens it (Jaffe & Smith 1983).
-    T60(f64),
+    Time60Db(f64),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -95,7 +95,7 @@ impl Voicing {
                 let ok = rho > 0.0 && rho <= 1.0;
                 ok.then_some((rho, 0.5))?
             }
-            Decay::T60(decay_time_60db) => decay_for(decay_time_60db, fundamental_hz, omega)?,
+            Decay::Time60Db(decay_time_60db) => decay_for(decay_time_60db, fundamental_hz, omega)?,
         };
         let period = sample_rate / fundamental_hz;
         // The dispersion cascade gets at most half the loop, leaving the
