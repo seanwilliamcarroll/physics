@@ -1,5 +1,10 @@
 //! The C-ABI surface of the Physarum page, over [`SlimeDemo`]: every
-//! argument parsed here; null handles refused.
+//! argument parsed here.
+//!
+//! Contract for every handle argument: null or a live handle from the `*_new`
+//! export, not yet freed, and unaliased for the `&mut` ones. Null is refused:
+//! exports return 0, NaN, -1 or a null pointer; `*_free` and
+//! `slime_clear_nodes` do nothing.
 
 use core::ptr;
 
@@ -44,19 +49,13 @@ pub(crate) unsafe extern "C" fn slime_free(demo: *mut SlimeDemo) {
 }
 
 /// Adds `elapsed_seconds` seconds of real time; returns steps taken.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_advance(demo: *mut SlimeDemo, elapsed_seconds: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
     unsafe { demo.as_mut() }.map_or(0, |demo| demo.advance(elapsed_seconds))
 }
 
-/// Steps per simulated second: 1, or 0 out of range or for null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// Steps per simulated second: 1, or 0 out of range.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_set_rate(demo: *mut SlimeDemo, rate_hz: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
@@ -66,10 +65,7 @@ pub(crate) unsafe extern "C" fn slime_set_rate(demo: *mut SlimeDemo, rate_hz: u3
 }
 
 /// At most `max_steps` steps per advance (0: no cap): 1, or 0 above
-/// [`MAX_RATE_HZ`](abi::MAX_RATE_HZ) or for null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// [`MAX_RATE_HZ`](abi::MAX_RATE_HZ).
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_set_step_cap(demo: *mut SlimeDemo, max_steps: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
@@ -78,10 +74,7 @@ pub(crate) unsafe extern "C" fn slime_set_step_cap(demo: *mut SlimeDemo, max_ste
     })
 }
 
-/// Sensing on (1) or off (0): 1, or 0 otherwise or for null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// Sensing on (1) or off (0): 1, or 0 otherwise.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_set_sensing(demo: *mut SlimeDemo, on: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
@@ -94,11 +87,7 @@ pub(crate) unsafe extern "C" fn slime_set_sensing(demo: *mut SlimeDemo, on: u32)
     }
 }
 
-/// A node at cell `(x, y)` depositing `amount` a step: 1, or 0 refused or
-/// null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// A node at cell `(x, y)` depositing `amount` a step: 1, or 0 refused.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_add_node(
     demo: *mut SlimeDemo,
@@ -110,10 +99,7 @@ pub(crate) unsafe extern "C" fn slime_add_node(
     unsafe { demo.as_mut() }.map_or(0, |demo| u32::from(demo.add_node(x, y, amount)))
 }
 
-/// Removes every node (a no-op for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// Removes every node.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_clear_nodes(demo: *mut SlimeDemo) {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
@@ -122,10 +108,7 @@ pub(crate) unsafe extern "C" fn slime_clear_nodes(demo: *mut SlimeDemo) {
     }
 }
 
-/// Sets a constant (`abi::SLIME_*`): 1, or 0 refused or null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// Sets a constant (`abi::SLIME_*`): 1, or 0 refused.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_set_param(
     demo: *mut SlimeDemo,
@@ -136,10 +119,7 @@ pub(crate) unsafe extern "C" fn slime_set_param(
     unsafe { demo.as_mut() }.map_or(0, |demo| u32::from(demo.set_param(code, value)))
 }
 
-/// A constant, or NaN for an unknown code or null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// A constant, or NaN for an unknown code.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_param(demo: *const SlimeDemo, code: u32) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live demo.
@@ -148,41 +128,29 @@ pub(crate) unsafe extern "C" fn slime_param(demo: *const SlimeDemo, code: u32) -
         .unwrap_or(f64::NAN)
 }
 
-/// Draws the field; a pointer to `view × view` RGBA `u32`s, or null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// Draws the field; a pointer to `view × view` RGBA `u32`s.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_render(demo: *mut SlimeDemo) -> *const u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
     unsafe { demo.as_mut() }.map_or(ptr::null(), |demo| demo.render().as_ptr())
 }
 
-/// The drawn side, pixels (0 for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// The drawn side, pixels.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_view(demo: *const SlimeDemo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live demo.
     unsafe { demo.as_ref() }.map_or(0, |demo| u32::try_from(demo.view()).unwrap_or(0))
 }
 
-/// The number of agents (0 for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
+/// The number of agents.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_len(demo: *const SlimeDemo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live demo.
     unsafe { demo.as_ref() }.map_or(0, |demo| u32::try_from(demo.slime().len()).unwrap_or(0))
 }
 
-/// The share of the field in its top 10% of cells (NaN for null).
+/// The share of the field in its top 10% of cells.
 /// Linear time in the field: call it now and then, not every frame.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`slime_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn slime_concentration(demo: *const SlimeDemo) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live demo.

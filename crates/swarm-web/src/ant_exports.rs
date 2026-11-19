@@ -1,5 +1,9 @@
 //! The C-ABI surface of the ants page, over [`AntDemo`]: every
-//! argument parsed here; null handles refused.
+//! argument parsed here.
+//!
+//! Contract for every handle argument: null or a live handle from the `*_new`
+//! export, not yet freed, and unaliased for the `&mut` ones. Null is refused:
+//! exports return 0, NaN, -1 or a null pointer; `*_free` does nothing.
 
 use core::ptr;
 
@@ -47,19 +51,13 @@ pub(crate) unsafe extern "C" fn ant_free(demo: *mut AntDemo) {
 }
 
 /// Adds `elapsed_seconds` seconds of real time; returns steps taken.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_advance(demo: *mut AntDemo, elapsed_seconds: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
     unsafe { demo.as_mut() }.map_or(0, |demo| demo.advance(elapsed_seconds))
 }
 
-/// Steps per simulated second: 1, or 0 out of range or for null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// Steps per simulated second: 1, or 0 out of range.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_set_rate(demo: *mut AntDemo, rate_hz: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
@@ -69,10 +67,7 @@ pub(crate) unsafe extern "C" fn ant_set_rate(demo: *mut AntDemo, rate_hz: u32) -
 }
 
 /// At most `max_steps` steps per advance (0: no cap): 1, or 0 above
-/// [`MAX_RATE_HZ`](abi::MAX_RATE_HZ) or for null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// [`MAX_RATE_HZ`](abi::MAX_RATE_HZ).
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_set_step_cap(demo: *mut AntDemo, max_steps: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
@@ -81,10 +76,7 @@ pub(crate) unsafe extern "C" fn ant_set_step_cap(demo: *mut AntDemo, max_steps: 
     })
 }
 
-/// Sensing on (1) or off (0, a random walk): 1, or 0 otherwise or null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// Sensing on (1) or off (0, a random walk): 1, or 0 otherwise.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_set_sensing(demo: *mut AntDemo, on: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
@@ -99,10 +91,7 @@ pub(crate) unsafe extern "C" fn ant_set_sensing(demo: *mut AntDemo, on: u32) -> 
 
 /// Paints with a tool (`abi::TOOL_*`) at cell `(x, y)`, radius in cells,
 /// `amount` food a cell for the food tool; returns what changed, as `f64`
-/// (−1 if refused or null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// (−1 if refused).
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_paint(
     demo: *mut AntDemo,
@@ -118,20 +107,14 @@ pub(crate) unsafe extern "C" fn ant_paint(
         .map_or(-1.0, math::convert::u64_to_f64)
 }
 
-/// Sets a constant (`abi::ANT_*`): 1, or 0 refused (nothing changed) or null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// Sets a constant (`abi::ANT_*`): 1, or 0 refused (nothing changed).
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_set_param(demo: *mut AntDemo, code: u32, value: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
     unsafe { demo.as_mut() }.map_or(0, |demo| u32::from(demo.set_param(code, value)))
 }
 
-/// A constant, or NaN for an unknown code or null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// A constant, or NaN for an unknown code.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_param(demo: *const AntDemo, code: u32) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live demo.
@@ -140,50 +123,35 @@ pub(crate) unsafe extern "C" fn ant_param(demo: *const AntDemo, code: u32) -> f6
         .unwrap_or(f64::NAN)
 }
 
-/// Draws the world; a pointer to the view's RGBA `u32`s, or null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// Draws the world; a pointer to the view's RGBA `u32`s.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_render(demo: *mut AntDemo) -> *const u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased demo.
     unsafe { demo.as_mut() }.map_or(ptr::null(), |demo| demo.render().as_ptr())
 }
 
-/// The drawn width, pixels (0 for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// The drawn width, pixels.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_view_width(demo: *const AntDemo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live demo.
     unsafe { demo.as_ref() }.map_or(0, |demo| u32::try_from(demo.view().0).unwrap_or(0))
 }
 
-/// The drawn height, pixels (0 for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// The drawn height, pixels.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_view_height(demo: *const AntDemo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live demo.
     unsafe { demo.as_ref() }.map_or(0, |demo| u32::try_from(demo.view().1).unwrap_or(0))
 }
 
-/// The number of ants (0 for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// The number of ants.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_len(demo: *const AntDemo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live demo.
     unsafe { demo.as_ref() }.map_or(0, |demo| u32::try_from(demo.colony().len()).unwrap_or(0))
 }
 
-/// Food delivered so far (NaN for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// Food delivered so far.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_delivered(demo: *const AntDemo) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live demo.
@@ -192,10 +160,7 @@ pub(crate) unsafe extern "C" fn ant_delivered(demo: *const AntDemo) -> f64 {
     })
 }
 
-/// Ants carrying food now (0 for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// Ants carrying food now.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_carrying(demo: *const AntDemo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live demo.
@@ -204,10 +169,7 @@ pub(crate) unsafe extern "C" fn ant_carrying(demo: *const AntDemo) -> u32 {
     })
 }
 
-/// Food lying in the world (NaN for null).
-///
-/// # Safety
-/// `demo` must be null or a live handle from [`ant_new`].
+/// Food lying in the world.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn ant_food(demo: *const AntDemo) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live demo.
