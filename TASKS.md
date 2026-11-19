@@ -270,8 +270,9 @@ narrower public APIs, `ants.rs` split, the workspace version
 
 ## Next (from 2026-11-19)
 
-1. **Piano: 11 keys miss the design tests' 1-cent tolerance** (key 107:
-   10.9 cents, found by #303's probe): look into it, and test all 88.
+1. ~~**Piano: 11 keys miss the design tests' 1-cent tolerance.**~~ All
+   88 tested at both rates, each against what limits it
+   (`docs/14-piano.md`, "All 88 keys"); one gap left (Known gaps).
 2. **The next milestone:** M10, the A4 drum, collective construction,
    M8 fixed point (`docs/05-roadmap.md`).
 3. **Performance, left from the audit:** Barnes–Hut and Physarum (the
@@ -376,6 +377,13 @@ What each milestone left out, kept for later planning.
   opponents.
 
 ## Known gaps
+
+**The top key's dispersion (2026-11-19):** one biquad for three
+partials (MIDI 106 at 44.1 kHz, 107 at 48), in the half loop the
+cascade may take: its partials 2–4 (8–16 kHz) up to 10.9 cents off.
+More room detunes the top keys' fundamentals (MIDI 106 111 cents flat
+at three quarters of the loop). Options: more room only as far as the
+tuning test allows, key by key; or design for fewer partials there.
 
 **A3 treble hammer (A3.3):** from C6 up the blow outlasts a period, the
 string takes 0.2–13 % of the hammer's energy, and brightness and level
