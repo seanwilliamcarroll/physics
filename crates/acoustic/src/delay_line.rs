@@ -11,7 +11,7 @@ use math::convert::usize_to_f64;
 /// sample costs O(1) and never allocates (the audio thread's rule).
 #[derive(Clone, Debug)]
 pub(crate) struct DelayLine<S> {
-    buf: Vec<S>,
+    samples: Vec<S>,
     /// The oldest sample's slot, which the next push overwrites.
     head: usize,
 }
@@ -22,44 +22,44 @@ impl<S: Scalar> DelayLine<S> {
     #[must_use]
     pub(crate) fn new(len: usize) -> Option<Self> {
         (len > 0).then(|| Self {
-            buf: vec![S::ZERO; len],
+            samples: vec![S::ZERO; len],
             head: 0,
         })
     }
 
     #[must_use]
     pub(crate) fn len(&self) -> usize {
-        self.buf.len()
+        self.samples.len()
     }
 
     /// The longest this line can [`reset`](Self::reset) to without
     /// allocating.
     #[must_use]
     pub(crate) fn capacity(&self) -> usize {
-        self.buf.capacity()
+        self.samples.capacity()
     }
 
     /// Never true: a line has at least one sample (see [`new`](Self::new)).
     #[cfg(test)]
     #[must_use]
     pub(crate) fn is_empty(&self) -> bool {
-        self.buf.is_empty()
+        self.samples.is_empty()
     }
 
     /// The oldest sample, written `len` pushes ago.
     #[must_use]
     pub(crate) fn front(&self) -> S {
-        self.buf.get(self.head).copied().unwrap_or(S::ZERO)
+        self.samples.get(self.head).copied().unwrap_or(S::ZERO)
     }
 
-    /// Sample `j` counting from the front (0 = the oldest, the next to
+    /// Sample `offset` counting from the front (0 = the oldest, the next to
     /// leave); 0 past the end.
     #[must_use]
-    pub(crate) fn at(&self, j: usize) -> S {
-        let n = self.buf.len();
-        if j < n {
-            self.buf
-                .get((self.head + j) % n)
+    pub(crate) fn at(&self, offset: usize) -> S {
+        let len = self.samples.len();
+        if offset < len {
+            self.samples
+                .get((self.head + offset) % len)
                 .copied()
                 .unwrap_or(S::ZERO)
         } else {
@@ -67,14 +67,15 @@ impl<S: Scalar> DelayLine<S> {
         }
     }
 
-    /// Adds `v` to sample `j` counting from the front (nothing past the
-    /// end): a force entering a string mid-rail (`docs/14-piano.md`).
-    pub(crate) fn add_at(&mut self, j: usize, v: S) {
-        let n = self.buf.len();
-        if j < n
-            && let Some(x) = self.buf.get_mut((self.head + j) % n)
+    /// Adds `amount` to sample `offset` counting from the front (nothing
+    /// past the end): a force entering a string mid-rail
+    /// (`docs/14-piano.md`).
+    pub(crate) fn add_at(&mut self, offset: usize, amount: S) {
+        let len = self.samples.len();
+        if offset < len
+            && let Some(sample) = self.samples.get_mut((self.head + offset) % len)
         {
-            *x += v;
+            *sample += amount;
         }
     }
 
@@ -82,46 +83,46 @@ impl<S: Scalar> DelayLine<S> {
     #[cfg(test)]
     #[must_use]
     pub(crate) fn back(&self) -> S {
-        self.at(self.buf.len() - 1)
+        self.at(self.samples.len() - 1)
     }
 
-    /// Replaces the oldest sample with `v`, the newest.
-    pub(crate) fn push(&mut self, v: S) {
-        if let Some(slot) = self.buf.get_mut(self.head) {
-            *slot = v;
+    /// Replaces the oldest sample with `sample`, the newest.
+    pub(crate) fn push(&mut self, sample: S) {
+        if let Some(slot) = self.samples.get_mut(self.head) {
+            *slot = sample;
         }
-        self.head = (self.head + 1) % self.buf.len();
+        self.head = (self.head + 1) % self.samples.len();
     }
 
-    /// The samples, oldest first: what the page draws.
+    /// The samples, oldest first.
     pub(crate) fn iter(&self) -> impl Iterator<Item = S> + '_ {
-        let (newer, older) = self.buf.split_at(self.head);
+        let (newer, older) = self.samples.split_at(self.head);
         older.iter().chain(newer).copied()
     }
 
-    /// A line of `len` zeros with room for `cap`
-    /// samples, so [`reset`](Self::reset) up to `cap` never allocates
-    /// (a voice's line, sized once for its lowest note). `None` for
-    /// `len == 0` or `len > cap`.
+    /// A line of `len` zeros with room for `capacity` samples, so
+    /// [`reset`](Self::reset) up to `capacity` never allocates (a voice's
+    /// line, sized once for its lowest note). `None` for `len == 0` or
+    /// `len > capacity`.
     #[must_use]
-    pub(crate) fn with_capacity(len: usize, cap: usize) -> Option<Self> {
-        if len == 0 || len > cap {
+    pub(crate) fn with_capacity(len: usize, capacity: usize) -> Option<Self> {
+        if len == 0 || len > capacity {
             return None;
         }
-        let mut buf = Vec::with_capacity(cap);
-        buf.resize(len, S::ZERO);
-        Some(Self { buf, head: 0 })
+        let mut samples = Vec::with_capacity(capacity);
+        samples.resize(len, S::ZERO);
+        Some(Self { samples, head: 0 })
     }
 
     /// Makes this a line of `len` zeros, reusing the buffer: no allocation
     /// while `len` fits the capacity. `false`, changing nothing, for
     /// `len == 0` or a `len` over the capacity.
     pub(crate) fn reset(&mut self, len: usize) -> bool {
-        if len == 0 || len > self.buf.capacity() {
+        if len == 0 || len > self.samples.capacity() {
             return false;
         }
-        self.buf.clear();
-        self.buf.resize(len, S::ZERO);
+        self.samples.clear();
+        self.samples.resize(len, S::ZERO);
         self.head = 0;
         true
     }
@@ -129,19 +130,24 @@ impl<S: Scalar> DelayLine<S> {
     /// Subtracts the mean from every sample: a pluck's DC offset would sit
     /// in the loop, which passes DC at full gain, and decay only by `ρ`.
     pub(crate) fn remove_mean(&mut self) {
-        let sum = self.buf.iter().fold(S::ZERO, |a, &x| a + x);
-        let mean = sum / S::from_f64(usize_to_f64(self.buf.len()));
-        for x in &mut self.buf {
-            *x -= mean;
+        let sum = self
+            .samples
+            .iter()
+            .fold(S::ZERO, |total, &sample| total + sample);
+        let mean = sum / S::from_f64(usize_to_f64(self.samples.len()));
+        for sample in &mut self.samples {
+            *sample -= mean;
         }
     }
 
-    /// Sets slot `i` (0 = oldest) to `f(i)`, every slot: a pluck.
-    pub(crate) fn fill(&mut self, mut f: impl FnMut(usize) -> S) {
-        let n = self.buf.len();
-        for (k, slot) in self.buf.iter_mut().enumerate() {
-            // Slot k holds the sample (k − head) mod n positions from the front.
-            *slot = f((k + n - self.head) % n);
+    /// Sets every slot to `value_at(offset)` for its `offset` from the
+    /// front (0 = oldest): a pluck.
+    pub(crate) fn fill(&mut self, mut value_at: impl FnMut(usize) -> S) {
+        let len = self.samples.len();
+        for (slot_index, slot) in self.samples.iter_mut().enumerate() {
+            // The slot holds the sample (slot_index − head) mod len positions
+            // from the front.
+            *slot = value_at((slot_index + len - self.head) % len);
         }
     }
 }

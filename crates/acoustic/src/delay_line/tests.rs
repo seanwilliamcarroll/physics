@@ -3,19 +3,19 @@ use math::convert::{f64_to_f32, usize_to_f64};
 
 #[test]
 fn front_is_the_sample_pushed_len_pushes_ago() {
-    let mut d = DelayLine::<f64>::new(3).unwrap();
-    for v in [1.0, 2.0, 3.0] {
-        assert_eq!(d.front(), 0.0, "starts silent");
-        d.push(v);
+    let mut line = DelayLine::<f64>::new(3).unwrap();
+    for value in [1.0, 2.0, 3.0] {
+        assert_eq!(line.front(), 0.0, "starts silent");
+        line.push(value);
     }
-    let mut out = Vec::new();
-    for v in [4.0, 5.0, 6.0, 7.0] {
-        out.push(d.front());
-        d.push(v);
+    let mut fronts = Vec::new();
+    for value in [4.0, 5.0, 6.0, 7.0] {
+        fronts.push(line.front());
+        line.push(value);
     }
-    assert_eq!(out, vec![1.0, 2.0, 3.0, 4.0]);
+    assert_eq!(fronts, vec![1.0, 2.0, 3.0, 4.0]);
     assert_eq!(
-        d.iter().collect::<Vec<_>>(),
+        line.iter().collect::<Vec<_>>(),
         vec![5.0, 6.0, 7.0],
         "oldest first"
     );
@@ -23,11 +23,11 @@ fn front_is_the_sample_pushed_len_pushes_ago() {
 
 #[test]
 fn fill_counts_from_the_front() {
-    let mut d = DelayLine::<f32>::new(4).unwrap();
-    d.push(9.0); // move the head off slot 0
-    d.fill(|i| f64_to_f32(usize_to_f64(i)));
-    assert_eq!(d.iter().collect::<Vec<_>>(), vec![0.0, 1.0, 2.0, 3.0]);
-    assert_eq!(d.front(), 0.0);
+    let mut line = DelayLine::<f32>::new(4).unwrap();
+    line.push(9.0); // move the head off slot 0
+    line.fill(|offset| f64_to_f32(usize_to_f64(offset)));
+    assert_eq!(line.iter().collect::<Vec<_>>(), vec![0.0, 1.0, 2.0, 3.0]);
+    assert_eq!(line.front(), 0.0);
 }
 
 #[test]
@@ -38,53 +38,53 @@ fn an_empty_line_is_refused() {
 #[test]
 fn a_line_is_never_empty() {
     // The smallest line `new` accepts still holds a sample.
-    let d = DelayLine::<f64>::new(1).unwrap();
-    assert!(!d.is_empty());
-    assert_eq!(d.len(), 1);
+    let line = DelayLine::<f64>::new(1).unwrap();
+    assert!(!line.is_empty());
+    assert_eq!(line.len(), 1);
 }
 
 /// A line of 3 whose head is off slot 0, holding `[1, 2, 3]` from the
-/// front: so a wrapped index (`j % 3`) would land on a real sample.
+/// front: so a wrapped index (`offset % 3`) would land on a real sample.
 fn shifted_line() -> DelayLine<f64> {
-    let mut d = DelayLine::<f64>::new(3).unwrap();
-    d.push(9.0);
-    d.fill(|i| usize_to_f64(i + 1));
-    d
+    let mut line = DelayLine::<f64>::new(3).unwrap();
+    line.push(9.0);
+    line.fill(|offset| usize_to_f64(offset + 1));
+    line
 }
 
 #[test]
 fn at_reads_from_the_front_and_zero_past_the_end() {
-    let d = shifted_line();
-    assert_eq!([d.at(0), d.at(1), d.at(2)], [1.0, 2.0, 3.0]);
+    let line = shifted_line();
+    assert_eq!([line.at(0), line.at(1), line.at(2)], [1.0, 2.0, 3.0]);
     // Not wrapped round to the front's 1.0 (or 2.0).
-    assert_eq!([d.at(3), d.at(4)], [0.0, 0.0]);
+    assert_eq!([line.at(3), line.at(4)], [0.0, 0.0]);
 }
 
 #[test]
 fn add_at_adds_from_the_front_and_nothing_past_the_end() {
-    let mut d = shifted_line();
-    d.add_at(1, 10.0);
-    d.add_at(3, 100.0); // past the end: would wrap onto the front
-    d.add_at(4, 100.0);
-    assert_eq!(d.iter().collect::<Vec<_>>(), vec![1.0, 12.0, 3.0]);
+    let mut line = shifted_line();
+    line.add_at(1, 10.0);
+    line.add_at(3, 100.0); // past the end: would wrap onto the front
+    line.add_at(4, 100.0);
+    assert_eq!(line.iter().collect::<Vec<_>>(), vec![1.0, 12.0, 3.0]);
 }
 
 #[test]
 fn reset_reuses_the_buffer_up_to_its_capacity() {
-    let mut d = DelayLine::<f64>::with_capacity(3, 10).unwrap();
-    d.push(1.0);
-    assert!(d.reset(10));
-    assert_eq!((d.len(), d.front()), (10, 0.0));
-    assert!(!d.reset(11), "over capacity");
-    assert!(!d.reset(0));
-    assert_eq!(d.len(), 10, "a refused reset changes nothing");
+    let mut line = DelayLine::<f64>::with_capacity(3, 10).unwrap();
+    line.push(1.0);
+    assert!(line.reset(10));
+    assert_eq!((line.len(), line.front()), (10, 0.0));
+    assert!(!line.reset(11), "over capacity");
+    assert!(!line.reset(0));
+    assert_eq!(line.len(), 10, "a refused reset changes nothing");
     assert!(DelayLine::<f64>::with_capacity(5, 4).is_none());
 }
 
 #[test]
 fn remove_mean_leaves_no_dc() {
-    let mut d = DelayLine::<f64>::new(4).unwrap();
-    d.fill(|i| [1.0, 2.0, 3.0, 6.0][i]);
-    d.remove_mean();
-    assert_eq!(d.iter().collect::<Vec<_>>(), vec![-2.0, -1.0, 0.0, 3.0]);
+    let mut line = DelayLine::<f64>::new(4).unwrap();
+    line.fill(|offset| [1.0, 2.0, 3.0, 6.0][offset]);
+    line.remove_mean();
+    assert_eq!(line.iter().collect::<Vec<_>>(), vec![-2.0, -1.0, 0.0, 3.0]);
 }

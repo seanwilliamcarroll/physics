@@ -21,51 +21,56 @@ pub struct KsString<S> {
 }
 
 impl<S: Scalar> KsString<S> {
-    /// A silent string for pitch `f0` Hz at sample rate `fs` Hz, voiced by
-    /// `voicing`. `None` for settings it can't play (see [`Voicing`]): a
+    /// A silent string for pitch `fundamental_hz` at `sample_rate`, voiced
+    /// by `voicing`. `None` for settings it can't play (see [`Voicing`]): a
     /// rate or pitch that isn't positive and finite, a pitch at or above
     /// Nyquist, a loop under 2 samples, `ρ` outside `(0, 1]`, `T₆₀ ≤ 0`.
     #[must_use]
-    pub fn new(fs: f64, f0: f64, voicing: Voicing) -> Option<Self> {
-        let n = voicing.coefficients(fs, f0)?.n;
-        Self::with_capacity(fs, f0, voicing, n)
+    pub fn new(sample_rate: f64, fundamental_hz: f64, voicing: Voicing) -> Option<Self> {
+        let loop_length = voicing.coefficients(sample_rate, fundamental_hz)?.n;
+        Self::with_capacity(sample_rate, fundamental_hz, voicing, loop_length)
     }
 
-    /// As [`new`](Self::new), with room in the delay line for `cap`
+    /// As [`new`](Self::new), with room in the delay line for `capacity`
     /// samples, so [`restring`](Self::restring) to any note up to that
     /// length never allocates (the audio thread's rule: a voice is sized
     /// once for its lowest note). `None` also if the note needs more than
-    /// `cap` samples.
+    /// `capacity` samples.
     #[must_use]
-    pub fn with_capacity(fs: f64, f0: f64, voicing: Voicing, cap: usize) -> Option<Self> {
-        let c = voicing.coefficients(fs, f0)?;
+    pub fn with_capacity(
+        sample_rate: f64,
+        fundamental_hz: f64,
+        voicing: Voicing,
+        capacity: usize,
+    ) -> Option<Self> {
+        let coefficients = voicing.coefficients(sample_rate, fundamental_hz)?;
         Some(Self {
-            line: DelayLine::with_capacity(c.n, cap)?,
-            bridge: Bridge::new(&c),
+            line: DelayLine::with_capacity(coefficients.n, capacity)?,
+            bridge: Bridge::new(&coefficients),
         })
     }
 
     /// Re-voices this string for a new note, silent, reusing its delay
     /// line. `false`, changing nothing, for settings it can't play or a
     /// note longer than the line's capacity.
-    pub fn restring(&mut self, fs: f64, f0: f64, voicing: Voicing) -> bool {
-        let Some(c) = voicing.coefficients(fs, f0) else {
+    pub fn restring(&mut self, sample_rate: f64, fundamental_hz: f64, voicing: Voicing) -> bool {
+        let Some(coefficients) = voicing.coefficients(sample_rate, fundamental_hz) else {
             return false;
         };
-        if !self.line.reset(c.n) {
+        if !self.line.reset(coefficients.n) {
             return false;
         }
-        self.bridge.apply(&c);
+        self.bridge.apply(&coefficients);
         true
     }
 
     /// Adds a loss on top of the voicing's, so the note's fundamental falls
-    /// 60 dB in about `t60` more seconds: the release at note off. The
-    /// pitch doesn't change (only the taps' gain does). Ignored unless
-    /// `t60 > 0`. The loss comes in over `ramp` samples: see
-    /// [`RELEASE_RAMP`](crate::RELEASE_RAMP).
-    pub fn damp(&mut self, t60: f64, ramp: core::num::NonZeroUsize) {
-        self.bridge.damp(t60, ramp);
+    /// 60 dB in about `decay_time_60db` more seconds: the release at note
+    /// off. The pitch doesn't change (only the taps' gain does). Ignored
+    /// unless `decay_time_60db > 0`. The loss comes in over `ramp` samples:
+    /// see [`RELEASE_RAMP`](crate::RELEASE_RAMP).
+    pub fn damp(&mut self, decay_time_60db: f64, ramp: core::num::NonZeroUsize) {
+        self.bridge.damp(decay_time_60db, ramp);
     }
 
     /// Subtracts the delay line's mean (`DelayLine::remove_mean`).
@@ -79,37 +84,37 @@ impl<S: Scalar> KsString<S> {
         self.line.len()
     }
 
-    /// The pitch this loop plays, Hz: `f0` when tuned, the nearest the
-    /// integer loop can do otherwise.
+    /// The pitch this loop plays, Hz: the requested one when tuned, the
+    /// nearest the integer loop can do otherwise.
     #[must_use]
     pub const fn pitch(&self) -> f64 {
         self.bridge.pitch()
     }
 
-    /// Fills the delay line with `f(i, N)` for slot `i` (0 = oldest): the
-    /// excitation. `N` is passed so a shape can be laid out across the
-    /// line. Clears the filters' memory.
-    pub fn pluck(&mut self, mut f: impl FnMut(usize, usize) -> S) {
-        let n = self.line.len();
-        self.line.fill(|i| f(i, n));
+    /// Fills the delay line with `shape(slot, N)` for each `slot` (0 =
+    /// oldest): the excitation. `N` is passed so a shape can be laid out
+    /// across the line. Clears the filters' memory.
+    pub fn pluck(&mut self, mut shape: impl FnMut(usize, usize) -> S) {
+        let loop_length = self.line.len();
+        self.line.fill(|slot| shape(slot, loop_length));
         self.bridge.clear();
     }
 
     /// The next output sample.
     pub fn next_sample(&mut self) -> S {
-        let y = self.bridge.process(self.line.front());
-        self.line.push(y);
-        y
+        let output = self.bridge.process(self.line.front());
+        self.line.push(output);
+        output
     }
 
     /// Fills `out` with the next samples.
     pub fn render(&mut self, out: &mut [S]) {
-        for s in out {
-            *s = self.next_sample();
+        for sample in out {
+            *sample = self.next_sample();
         }
     }
 
-    /// The delay line, oldest first: what the page draws.
+    /// The delay line, oldest first.
     pub fn samples(&self) -> impl Iterator<Item = S> + '_ {
         self.line.iter()
     }
