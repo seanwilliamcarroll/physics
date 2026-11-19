@@ -53,20 +53,20 @@ pub fn world_spec() -> impl Strategy<Value = Vec<BodySpec>> {
 /// A world of `bodies` under softened pairwise gravity.
 #[must_use]
 pub fn build_world<S: Scalar>(bodies: &[BodySpec], integrator: Integrator) -> World<S> {
-    let mut w = World::new(integrator, core::num::NonZeroU32::MIN);
-    w.add_force(newtonian(Softening::new(s::<S>(PROP_SOFTENING_M)).unwrap()));
-    for b in bodies {
-        let pos = v::<S>(b.pos.0, b.pos.1);
-        match b.mass {
-            Some(m) => {
-                w.add_particle(pos, v(b.vel.0, b.vel.1), kg(m));
+    let mut world = World::new(integrator, core::num::NonZeroU32::MIN);
+    world.add_force(newtonian(Softening::new(s::<S>(PROP_SOFTENING_M)).unwrap()));
+    for body in bodies {
+        let pos = v::<S>(body.pos.0, body.pos.1);
+        match body.mass {
+            Some(mass) => {
+                world.add_particle(pos, v(body.vel.0, body.vel.1), kg(mass));
             }
             None => {
-                w.add_static(pos);
+                world.add_static(pos);
             }
         }
     }
-    w
+    world
 }
 
 /// 64 cases by default (`PROP_DEFAULT_CASES`); `PROPTEST_CASES` overrides,

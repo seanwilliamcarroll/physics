@@ -25,7 +25,7 @@ pub trait Tol: Scalar {
     const PERMUTATION_ABS: f64;
 }
 
-// Measured (2026-11-02): free fall, 64 steps: max error 1.5e-6.
+// Measured: free fall, 64 steps: max error 1.5e-6.
 // Cluster, 1000 steps: COM error 1.5e-6 m.
 impl Tol for f32 {
     const POS_ABS: f64 = 1e-5;
@@ -39,7 +39,7 @@ impl Tol for f32 {
     const PERMUTATION_ABS: f64 = 5e-5;
 }
 
-// Measured (same runs): free fall 8.9e-16. Cluster: COM error 1.6e-14 m.
+// Measured: free fall 8.9e-16. Cluster: COM error 1.6e-14 m.
 impl Tol for f64 {
     const POS_ABS: f64 = 1e-14;
     const EPSILON: f64 = f64::EPSILON;
@@ -60,8 +60,7 @@ impl Tol for f64 {
 /// ulp (≤ ε/2 relative), moving that body's momentum by ≤ ε m|v|/2; summed
 /// over bodies and steps, with the momentum readout's own rounding, the
 /// drift stays under `steps · ε · Σ m|v|`. An error law in the scalar's ε,
-/// not a measured constant: a constant calibrated on one 16-body cluster
-/// (1e-6 for f32) was exceeded by a two-body world proptest found.
+/// not a measured constant, which a different world could exceed.
 /// Measured over 15,000 random worlds × 3 integrators: worst drift is 0.26
 /// (f32) and 0.10 (f64) of this bound.
 #[must_use]
@@ -73,11 +72,12 @@ pub fn momentum_drift_bound<S: Tol>(steps: u32, scale: f64) -> f64 {
 /// every body moved the same way, the scale momentum drift is judged on
 /// (with [`momentum_drift_bound`]).
 #[must_use]
-pub fn momentum_scale<S: Scalar>(p: &Particles<S>) -> f64 {
-    p.vel()
+pub fn momentum_scale<S: Scalar>(particles: &Particles<S>) -> f64 {
+    particles
+        .vel()
         .iter()
-        .zip(p.inv_mass())
-        .filter(|&(_, &w)| w != S::ZERO)
-        .map(|(v, w)| v.length().to_f64() / w.to_f64())
+        .zip(particles.inv_mass())
+        .filter(|&(_, &inv_mass)| inv_mass != S::ZERO)
+        .map(|(vel, inv_mass)| vel.length().to_f64() / inv_mass.to_f64())
         .sum()
 }
