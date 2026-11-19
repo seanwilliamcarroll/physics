@@ -9,12 +9,8 @@ use core::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
 /// A real-number stand-in: `f32`, `f64`, and (planned) fixed point.
 ///
-/// Swapped at compile time via generics, so arithmetic is monomorphized and
-/// costs nothing over using the concrete type directly.
-///
-/// `'static`: scalars are plain values that never borrow, so this rules out
-/// nothing, and it lets generic code box values containing `S` (e.g.
-/// `Box<dyn Force<S>>` in the engine) without repeating the bound everywhere.
+/// `'static` lets generic code box values containing `S` (e.g.
+/// `Box<dyn Force<S>>`) without repeating the bound.
 pub trait Scalar:
     'static
     + Copy
@@ -28,9 +24,7 @@ pub trait Scalar:
     + AddAssign
     + SubAssign
 {
-    /// Additive identity.
     const ZERO: Self;
-    /// Multiplicative identity.
     const ONE: Self;
 
     /// Converts from `f64`, rounding to the nearest representable value.
@@ -40,8 +34,7 @@ pub trait Scalar:
     #[must_use]
     fn from_f64(value: f64) -> Self;
 
-    /// Lossless readout for tests, diagnostics, and rendering.
-    /// Not a computation path.
+    /// Lossless readout for tests and rendering, not a computation path.
     #[must_use]
     fn to_f64(self) -> f64;
 
@@ -49,7 +42,6 @@ pub trait Scalar:
     #[must_use]
     fn sqrt(self) -> Self;
 
-    /// Absolute value.
     #[must_use]
     fn abs(self) -> Self;
 
@@ -60,9 +52,7 @@ pub trait Scalar:
     fn is_normal(self) -> bool;
 }
 
-// The impls call `f64::sqrt(self)` rather than `self.sqrt()`. Both resolve to
-// the inherent method (inherent methods win over trait methods), but the
-// explicit form makes it obvious this isn't recursing into `Scalar::sqrt`.
+// `f64::sqrt(self)`, not `self.sqrt()`: makes plain it isn't recursing into `Scalar::sqrt`.
 
 impl Scalar for f64 {
     const ZERO: Self = 0.0;

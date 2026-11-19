@@ -12,7 +12,6 @@ use crate::s;
 pub const PENDULUM_DT: f64 = 1.0 / 60.0;
 pub const PENDULUM_STEPS: u32 = 600;
 
-/// What `01`'s table reports for one run.
 #[derive(Copy, Clone, Debug)]
 pub struct PendulumRun {
     /// Largest |rod length − L| seen after any step, m.
@@ -21,7 +20,6 @@ pub struct PendulumRun {
     pub energy_lost: f64,
 }
 
-/// Pendulum energy (kinetic + gravity), J.
 #[must_use]
 pub fn pendulum_energy<S: Scalar>(world: &World<S>) -> f64 {
     (kinetic_energy(world.particles())
@@ -29,8 +27,6 @@ pub fn pendulum_energy<S: Scalar>(world: &World<S>) -> f64 {
     .to_f64()
 }
 
-/// Runs `01`'s pendulum with `solver`, Baumgarte `beta` (impulse only),
-/// and `substeps` per step.
 #[must_use]
 pub fn pendulum_run<S: Scalar>(solver: Solver, beta: f64, substeps: u32) -> PendulumRun {
     let mut world = pendulum::<S>(solver, crate::nonzero(substeps)).unwrap();

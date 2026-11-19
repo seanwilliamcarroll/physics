@@ -7,7 +7,7 @@
 use math::{Scalar, Vec2};
 use proptest::prelude::*;
 
-/// Cases per property (`PROPTEST_CASES` overrides), as in `test-support`.
+/// Cases per property (`PROPTEST_CASES` overrides).
 fn config() -> ProptestConfig {
     let mut config = ProptestConfig::default();
     if std::env::var_os("PROPTEST_CASES").is_none() {
@@ -38,7 +38,6 @@ fn same<S: Scalar>(left: S, right: S) -> bool {
     left.to_f64().to_bits() == right.to_f64().to_bits() || (left == S::ZERO && right == S::ZERO)
 }
 
-/// Machine epsilon of `S`.
 fn epsilon<S: Scalar>() -> f64 {
     if size_of::<S>() == size_of::<f32>() {
         f64::from(f32::EPSILON)
@@ -65,7 +64,6 @@ fn exact_identities<S: Scalar>(
     {
         return Ok(());
     }
-    // Products commute and negation is exact, so these are exact.
     prop_assert!(same(first.dot(second), second.dot(first)), "dot commutes");
     prop_assert!(
         same(first.cross(second), -second.cross(first)),

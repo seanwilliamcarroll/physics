@@ -45,9 +45,7 @@ fn range_maps_unit_interval_onto_bounds() {
     }
 }
 
-// Pins `next_unit_f64` and `range` exactly: the other crates' scenes were
-// their only users, so mutants (a constant, or `range` adding instead of
-// subtracting) would otherwise survive.
+// Pins `next_unit_f64` and `range` exactly, so constant mutants don't survive.
 #[test]
 fn unit_floats_and_ranges_match_the_reference() {
     // From the first two outputs of seed 0 (above), by the same bit trick

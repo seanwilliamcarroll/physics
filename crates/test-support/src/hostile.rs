@@ -5,10 +5,8 @@ use core::ops::Range;
 
 use proptest::prelude::{Just, Strategy, any, prop_oneof};
 
-/// Any `f64` a page could pass an export, weighted toward the edges: NaN,
-/// the infinities, the zeros, the largest and smallest magnitudes, any
-/// bit pattern at all, a wide ordinary range, and `usual` (the values the
-/// page really sends, so a sequence still does something).
+/// Any `f64` a page could pass an export, weighted toward the edges, with
+/// `usual` (what the page really sends) so a sequence still does something.
 pub fn hostile_f64(usual: Range<f64>) -> impl Strategy<Value = f64> {
     prop_oneof![
         1 => Just(f64::NAN),

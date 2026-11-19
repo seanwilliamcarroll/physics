@@ -40,8 +40,6 @@ fn not_a_count_is_none() {
     assert_eq!(f64_to_usize(-0.0), Some(0));
 }
 
-/// Truncation toward zero, exactly as `as` does it: callers that floor or
-/// round first keep their values.
 #[test]
 fn truncates_like_as() {
     for x in [0.0, 0.4, 0.99, 1.0, 1.5, 2.999_999, 123_456.7] {
