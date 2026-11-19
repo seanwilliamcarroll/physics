@@ -1,6 +1,5 @@
-//! [`SplitMix64`]: a tiny seeded PRNG, shared by the engine (scenario
-//! setup), the acoustic track (excitation noise), sand and the swarms. In-house per the
-//! dependency policy (`docs/00-scope.md`); not for cryptography or
+//! [`SplitMix64`]: a tiny seeded PRNG shared by every track. In-house per
+//! the dependency policy (`docs/00-scope.md`); not for cryptography or
 //! statistics.
 
 /// Added to the state on every call: the odd integer nearest 2⁶⁴/φ (φ, the
@@ -12,8 +11,8 @@ const GOLDEN_GAMMA: u64 = 0x9e37_79b9_7f4a_7c15;
 
 /// Output mixing function: David Stafford's "Mix13" variant of the
 /// `MurmurHash3` 64-bit finalizer ("Better Bit Mixing", 2011), chosen by
-/// Steele et al. for `SplitMix64`. Each round: `z = (z ^ (z >> s)) * m`,
-/// with a final xor-shift.
+/// Steele et al. for `SplitMix64`. Each round: `mixed = (mixed ^ (mixed >>
+/// shift)) * multiplier`, with a final xor-shift.
 const MIX13_SHIFTS: [u32; 3] = [30, 27, 31];
 const MIX13_MULTIPLIERS: [u64; 2] = [0xbf58_476d_1ce4_e5b9, 0x94d0_49bb_1331_11eb];
 
@@ -26,26 +25,28 @@ const ONE_BITS: u64 = 1.0_f64.to_bits();
 const MANTISSA_SHIFT: u32 = u64::BITS - (f64::MANTISSA_DIGITS - 1);
 
 /// `SplitMix64` (Steele, Lea & Flood 2014): one `u64` of state, full period
-/// 2⁶⁴, good enough output quality for scattering particles and for noise. Deterministic
-/// for a given seed on every platform (integer ops only).
+/// 2⁶⁴, good enough output quality for scattering particles and for noise.
+/// Deterministic for a given seed on every platform (integer ops only).
 #[derive(Clone, Debug)]
 pub struct SplitMix64(u64);
 
 impl SplitMix64 {
+    /// A generator whose first output is determined by `seed`.
     #[must_use]
     pub const fn new(seed: u64) -> Self {
         Self(seed)
     }
 
+    /// The next 64 random bits.
     #[must_use]
     pub const fn next_u64(&mut self) -> u64 {
-        let [s1, s2, s3] = MIX13_SHIFTS;
-        let [m1, m2] = MIX13_MULTIPLIERS;
+        let [first_shift, second_shift, final_shift] = MIX13_SHIFTS;
+        let [first_multiplier, second_multiplier] = MIX13_MULTIPLIERS;
         self.0 = self.0.wrapping_add(GOLDEN_GAMMA);
-        let mut z = self.0;
-        z = (z ^ (z >> s1)).wrapping_mul(m1);
-        z = (z ^ (z >> s2)).wrapping_mul(m2);
-        z ^ (z >> s3)
+        let mut mixed = self.0;
+        mixed = (mixed ^ (mixed >> first_shift)).wrapping_mul(first_multiplier);
+        mixed = (mixed ^ (mixed >> second_shift)).wrapping_mul(second_multiplier);
+        mixed ^ (mixed >> final_shift)
     }
 
     /// Uniform in `[0, 1)`.
@@ -58,10 +59,10 @@ impl SplitMix64 {
         f64::from_bits(ONE_BITS | (self.next_u64() >> MANTISSA_SHIFT)) - 1.0
     }
 
-    /// Uniform in `[lo, hi)`, up to rounding at the top end.
+    /// Uniform in `[start, end)`, up to rounding at the top end.
     #[must_use]
-    pub fn range(&mut self, lo: f64, hi: f64) -> f64 {
-        lo + (hi - lo) * self.next_unit_f64()
+    pub fn range(&mut self, start: f64, end: f64) -> f64 {
+        start + (end - start) * self.next_unit_f64()
     }
 }
 
