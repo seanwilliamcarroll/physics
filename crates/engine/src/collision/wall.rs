@@ -1,4 +1,4 @@
-//! [`Wall`]: a static half-plane (M6).
+//! [`Wall`]: a static half-plane.
 
 use crate::{Scalar, UnitVec2, Vec2};
 
@@ -6,10 +6,6 @@ use crate::{Scalar, UnitVec2, Vec2};
 /// The normal points into the free side, so a circle of radius `r` at `x`
 /// is clear of the wall while `normal · x − offset ≥ r`
 /// (`docs/08-collision.md`, "Shapes").
-///
-/// Not a particle: a wall has no position, mass or velocity, only a
-/// boundary. Its normal is a [`UnitVec2`], so the distance it measures is
-/// in meters.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Wall<S> {
     normal: UnitVec2<S>,
@@ -26,7 +22,6 @@ impl<S: Scalar> Wall<S> {
         }
     }
 
-    /// The direction into the free side.
     pub const fn normal(self) -> UnitVec2<S> {
         self.normal
     }

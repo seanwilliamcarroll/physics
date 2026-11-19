@@ -10,7 +10,7 @@ use crate::integrate::{drift, evaluate, kick};
 use crate::{Constraint, Particles, Scalar, Vec2};
 
 impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
-    /// One XPBD substep of length `h`:
+    /// One XPBD substep of `dt` seconds (`h` in the formulas):
     ///
     /// ```text
     /// v += h a;  x_prev = x;  x += h v          predict (symplectic Euler)
@@ -21,160 +21,193 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// v = (x − x_prev) / h                      derive
     /// ```
     ///
-    /// With contacts (M6): found before the kick, impacts resolved by the
+    /// With contacts: found before the kick, impacts resolved by the
     /// impact stage between two half kicks (Generalized Reflections,
-    /// `solver/impacts.rs`, as in the impulse solver); then projected
-    /// after the rods in every pass (only while overlapping), and the
-    /// derived velocities' leftover separation removed by an inelastic
-    /// velocity pass (Müller et al. 2020's, at `e = 0`: bouncing is the
-    /// impact stage's; `docs/08-collision.md`).
-    pub(crate) fn xpbd(self, h: S) {
-        let p = self.particles;
-        evaluate(self.forces, p, self.acc);
+    /// `solver/impacts.rs`); then projected after the rods in every pass
+    /// (only while overlapping), and the derived velocities' leftover
+    /// separation removed by an inelastic velocity pass (Müller et al.
+    /// 2020's, at `e = 0`; `docs/08-collision.md`).
+    pub(crate) fn xpbd(self, dt: S) {
+        let particles = self.particles;
+        evaluate(self.forces, particles, self.acc);
         let contacts = self.contacts;
         let mut cloth = self.cloth;
         if self.collides {
-            let half = h / (S::ONE + S::ONE);
+            let half = dt / (S::ONE + S::ONE);
             contacts.find(
-                p,
+                particles,
                 self.statics,
                 self.restitution,
                 self.acc,
-                h,
+                dt,
                 self.speculative,
             );
-            kick(p, self.acc, half);
-            on_cloth(&mut cloth, p, half);
-            impacts::resolve(p, contacts, h);
-            kick(p, self.acc, half);
-            on_cloth(&mut cloth, p, half);
+            kick(particles, self.acc, half);
+            on_cloth(&mut cloth, particles, half);
+            impacts::resolve(particles, contacts, dt);
+            kick(particles, self.acc, half);
+            on_cloth(&mut cloth, particles, half);
         } else {
-            kick(p, self.acc, h);
-            on_cloth(&mut cloth, p, h);
+            kick(particles, self.acc, dt);
+            on_cloth(&mut cloth, particles, dt);
         }
         self.scratch.clear();
-        self.scratch.extend_from_slice(&p.pos);
-        drift(p, h);
+        self.scratch.extend_from_slice(&particles.pos);
+        drift(particles, dt);
 
         self.lambda.fill(S::ZERO);
-        let alpha_scale = S::ONE / (h * h);
-        let prev = &*self.scratch;
+        let alpha_scale = S::ONE / (dt * dt);
+        let start_positions = &*self.scratch;
         for pass in 0..self.iterations.get() {
             self.order
-                .sweep(pass, self.constraints, self.lambda, |c, lambda| {
-                    project(p, prev, c, lambda, alpha_scale, h);
+                .sweep(pass, self.constraints, self.lambda, |constraint, lambda| {
+                    project(
+                        particles,
+                        start_positions,
+                        constraint,
+                        lambda,
+                        alpha_scale,
+                        dt,
+                    );
                 });
-            self.order
-                .sweep(pass, &contacts.list, &mut contacts.lambda, |c, lambda| {
-                    project_contact(p, self.statics, c, lambda);
-                });
+            self.order.sweep(
+                pass,
+                &contacts.list,
+                &mut contacts.lambda,
+                |contact, lambda| {
+                    project_contact(particles, self.statics, contact, lambda);
+                },
+            );
         }
 
-        for ((v, &x), &x0) in p.vel.iter_mut().zip(&p.pos).zip(self.scratch.iter()) {
-            *v = (x - x0) / h;
+        for ((velocity, &position), &start_position) in particles
+            .vel
+            .iter_mut()
+            .zip(&particles.pos)
+            .zip(self.scratch.iter())
+        {
+            *velocity = (position - start_position) / dt;
         }
 
         // Impacts already bounced in the impact stage: what still pushed
         // here is resting, or approached too slowly to bounce, so its
-        // derived normal velocity goes to 0 (no separation left over from
-        // the projection).
-        for (c, &lambda) in contacts.list.iter().zip(&contacts.lambda) {
+        // derived normal velocity goes to 0.
+        for (contact, &lambda) in contacts.list.iter().zip(&contacts.lambda) {
             if lambda > S::ZERO {
-                settle(p, self.statics, c);
+                settle(particles, self.statics, contact);
             }
         }
     }
 }
 
-/// One XPBD contact projection: while `c` overlaps (gap < 0), push its
-/// bodies apart along the current normal by the whole overlap, weighted by
-/// inverse mass, and add the correction to `lambda`. Rigid, and one-sided:
-/// a touching or separated contact does nothing, so λ never decreases.
+/// One XPBD contact projection: while `contact` overlaps (gap < 0), push
+/// its bodies apart along the current normal by the whole overlap,
+/// weighted by inverse mass, and add the correction to `lambda`. Rigid and
+/// one-sided: a touching or separated contact does nothing, so λ never
+/// decreases.
 fn project_contact<S: Scalar>(
-    p: &mut Particles<S>,
+    particles: &mut Particles<S>,
     statics: Statics<'_, S>,
-    c: &Contact<S>,
+    contact: &Contact<S>,
     lambda: &mut S,
 ) {
-    let Some((a, b, wa, wb)) = bodies(p, c) else {
+    let Some((first, second, first_inv_mass, second_inv_mass)) = bodies(particles, contact) else {
         return;
     };
-    let w = wa + wb;
-    let Some((gap, n)) = geometry(p, statics, c) else {
+    let inv_mass_sum = first_inv_mass + second_inv_mass;
+    let Some((gap, normal)) = geometry(particles, statics, contact) else {
         return;
     };
-    if gap >= S::ZERO || w == S::ZERO {
+    if gap >= S::ZERO || inv_mass_sum == S::ZERO {
         return;
     }
-    let d_lambda = -gap / w;
-    *lambda += d_lambda;
-    push_apart(&mut p.pos, a, b, n * (wa * d_lambda), n * (wb * d_lambda));
+    let delta_lambda = -gap / inv_mass_sum;
+    *lambda += delta_lambda;
+    push_apart(
+        &mut particles.pos,
+        first,
+        second,
+        normal * (first_inv_mass * delta_lambda),
+        normal * (second_inv_mass * delta_lambda),
+    );
 }
 
 /// The velocity pass for one contact that pushed this substep: its
 /// normal velocity, along the contact's **current** normal, goes to 0
 /// (Müller et al. 2020's pass at `e = 0`). The projection can leave a
-/// resting pair separating; this keeps stacks at rest. Bouncing is the
-/// impact stage's (`solver/impacts.rs`).
-fn settle<S: Scalar>(p: &mut Particles<S>, statics: Statics<'_, S>, c: &Contact<S>) {
-    let Some((a, b, wa, wb)) = bodies(p, c) else {
+/// resting pair separating; this keeps stacks at rest.
+fn settle<S: Scalar>(particles: &mut Particles<S>, statics: Statics<'_, S>, contact: &Contact<S>) {
+    let Some((first, second, first_inv_mass, second_inv_mass)) = bodies(particles, contact) else {
         return;
     };
-    let w = wa + wb;
-    let Some((_, n)) = geometry(p, statics, c) else {
+    let inv_mass_sum = first_inv_mass + second_inv_mass;
+    let Some((_, normal)) = geometry(particles, statics, contact) else {
         return;
     };
-    if w == S::ZERO {
+    if inv_mass_sum == S::ZERO {
         return;
     }
-    let dv = -normal_velocity(p, c, n);
-    push_apart(&mut p.vel, a, b, n * (wa / w * dv), n * (wb / w * dv));
+    let closing_speed = -normal_velocity(particles, contact, normal);
+    push_apart(
+        &mut particles.vel,
+        first,
+        second,
+        normal * (first_inv_mass / inv_mass_sum * closing_speed),
+        normal * (second_inv_mass / inv_mass_sum * closing_speed),
+    );
 }
 
-/// One XPBD projection of `c`, updating its `lambda`. `alpha_scale` is
-/// `1 / h²`, so `α̃ = α · alpha_scale`; `prev` holds positions at the start
-/// of the substep (for damping). Skipped (no correction) when the gradient
-/// is undefined or neither body can move.
+/// One XPBD projection of `constraint`, updating its `lambda`.
+/// `alpha_scale` is `1 / h²`, so `α̃ = α · alpha_scale`; `start_positions`
+/// holds positions at the start of the substep (for damping). Skipped (no
+/// correction) when the gradient is undefined or neither body can move.
 ///
 /// Damped (Macklin et al. 2016, eq. 26), with `γ = α̃ β̃ / h = α c / h`:
 /// `Δλ = (−C − α̃ λ − γ n · (Δx_b − Δx_a)) / ((1 + γ) w + α̃)`, where `Δx`
-/// is the motion since the substep began. Undamped keeps the M3 formula
-/// exactly (its own branch, so its results are bit-identical).
+/// is the motion since the substep began. Undamped keeps its own branch so
+/// its results are bit-identical to the formula without `γ`.
 fn project<S: Scalar, C: Constraint<S>>(
-    p: &mut Particles<S>,
-    prev: &[Vec2<S>],
-    c: &C,
+    particles: &mut Particles<S>,
+    start_positions: &[Vec2<S>],
+    constraint: &C,
     lambda: &mut S,
     alpha_scale: S,
-    h: S,
+    dt: S,
 ) {
-    let [a, b] = c.bodies().map(crate::ParticleId::index);
-    let (Some(&wa), Some(&wb)) = (p.inv_mass.get(a), p.inv_mass.get(b)) else {
+    let [first, second] = constraint.bodies().map(crate::ParticleId::index);
+    let (Some(&first_inv_mass), Some(&second_inv_mass)) = (
+        particles.inv_mass.get(first),
+        particles.inv_mass.get(second),
+    ) else {
         return;
     };
-    // Disjoint by construction (`between` rejects a == b); `Err` otherwise.
-    let Ok([xa, xb]) = p.pos.get_disjoint_mut([a, b]) else {
+    // Disjoint by construction (`between` rejects the same body twice).
+    let Ok([first_position, second_position]) = particles.pos.get_disjoint_mut([first, second])
+    else {
         return;
     };
-    let (value, Some(n)) = c.evaluate(*xa, *xb) else {
+    let (value, Some(normal)) = constraint.evaluate(*first_position, *second_position) else {
         return;
     };
-    let alpha = c.compliance() * alpha_scale;
-    let gamma = c.compliance() * c.damping() / h;
-    let d_lambda = if gamma == S::ZERO {
-        let denom = wa + wb + alpha;
-        if denom == S::ZERO {
+    let alpha = constraint.compliance() * alpha_scale;
+    let gamma = constraint.compliance() * constraint.damping() / dt;
+    let delta_lambda = if gamma == S::ZERO {
+        let denominator = first_inv_mass + second_inv_mass + alpha;
+        if denominator == S::ZERO {
             return;
         }
-        (-value - alpha * *lambda) / denom
+        (-value - alpha * *lambda) / denominator
     } else {
-        let (Some(&pa), Some(&pb)) = (prev.get(a), prev.get(b)) else {
+        let (Some(&first_start), Some(&second_start)) =
+            (start_positions.get(first), start_positions.get(second))
+        else {
             return;
         };
-        let rate = n.dot((*xb - pb) - (*xa - pa));
-        (-value - alpha * *lambda - gamma * rate) / ((S::ONE + gamma) * (wa + wb) + alpha)
+        let rate = normal.dot((*second_position - second_start) - (*first_position - first_start));
+        (-value - alpha * *lambda - gamma * rate)
+            / ((S::ONE + gamma) * (first_inv_mass + second_inv_mass) + alpha)
     };
-    *lambda += d_lambda;
-    *xa -= n * (wa * d_lambda);
-    *xb += n * (wb * d_lambda);
+    *lambda += delta_lambda;
+    *first_position -= normal * (first_inv_mass * delta_lambda);
+    *second_position += normal * (second_inv_mass * delta_lambda);
 }

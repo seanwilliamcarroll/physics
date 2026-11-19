@@ -10,8 +10,8 @@ fn accepts_positive_finite_only() {
 
 #[test]
 fn cast_fails_where_the_target_would_overflow() {
-    let k = Stiffness::new(1e39_f64).unwrap();
-    assert!(k.cast::<f32>().is_none(), "1e39 is +inf in f32");
+    let stiffness = Stiffness::new(1e39_f64).unwrap();
+    assert!(stiffness.cast::<f32>().is_none(), "1e39 is +inf in f32");
     assert_eq!(
         Stiffness::new(1e4_f64)
             .unwrap()

@@ -1,4 +1,4 @@
-//! [`TimeStep`]: a step's dt > 0, finite (audit, after A3).
+//! [`TimeStep`]: a step's dt > 0, finite.
 
 checked_param! {
     /// A step's duration, s: a value known to be positive and finite.
@@ -6,7 +6,7 @@ checked_param! {
     /// zero, NaN or infinite step can't be asked for. Zero isn't harmless:
     /// XPBD derives velocities as `(x − x_prev) / h`, which is `0 / 0` at
     /// `h = 0`.
-    TimeStep, |dt| dt > S::ZERO
+    TimeStep, |time_step| time_step > S::ZERO
 }
 
 impl<S: crate::Scalar> TimeStep<S> {

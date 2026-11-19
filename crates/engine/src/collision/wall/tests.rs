@@ -3,7 +3,6 @@ use crate::Vec2;
 
 #[test]
 fn distance_is_signed_along_the_normal() {
-    // A floor at y = -1, free above.
     let up = Vec2::new(0.0, 2.0).normalized().unwrap();
     let floor = Wall::<f64>::through(Vec2::new(5.0, -1.0), up);
     assert_eq!(floor.distance(Vec2::new(0.0, 0.5)), 1.5);
@@ -14,9 +13,8 @@ fn distance_is_signed_along_the_normal() {
 
 #[test]
 fn a_tilted_wall_measures_in_meters() {
-    // Free side toward +x+y, through the origin.
-    let n = Vec2::new(1.0, 1.0).normalized().unwrap();
-    let w = Wall::<f64>::through(Vec2::ZERO, n);
-    let d = w.distance(Vec2::new(1.0, 1.0));
-    assert!((d - 2.0_f64.sqrt()).abs() < 1e-15, "{d}");
+    let normal = Vec2::new(1.0, 1.0).normalized().unwrap();
+    let wall = Wall::<f64>::through(Vec2::ZERO, normal);
+    let distance = wall.distance(Vec2::new(1.0, 1.0));
+    assert!((distance - 2.0_f64.sqrt()).abs() < 1e-15, "{distance}");
 }

@@ -9,9 +9,9 @@ fn accepts_zero_and_positive_rejects_negative_and_nan() {
     assert_eq!(Compliance::<f32>::RIGID.get(), 0.0);
 }
 
-/// The audit's bug: `α = ∞` passed `α ≥ 0`, and XPBD's `α̃ · λ` with `λ = 0`
-/// is `∞ · 0 = NaN`. Refused now, and so is a finite `f64` α that
-/// overflows to `+∞` when cast to `f32`.
+/// `α = ∞` would pass `α ≥ 0`, and XPBD's `α̃ · λ` with `λ = 0` is
+/// `∞ · 0 = NaN`. Refused, and so is a finite `f64` α that overflows to
+/// `+∞` when cast to `f32`.
 #[test]
 fn infinite_compliance_is_refused() {
     assert!(Compliance::new(f64::INFINITY).is_none());

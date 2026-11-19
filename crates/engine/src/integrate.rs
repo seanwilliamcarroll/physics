@@ -2,105 +2,96 @@
 
 use crate::{Force, Particles, Scalar, Vec2};
 
-/// How a substep turns accelerations into motion.
-///
-/// An enum rather than a trait: the set is small and closed, and velocity
-/// Verlet needs a second force evaluation, which `substep` handles here
-/// rather than spreading across `World`.
+/// How a substep turns accelerations into motion. An enum, not a trait: the
+/// set is closed, and velocity Verlet's second force evaluation lives in
+/// `substep`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Integrator {
-    /// `v += a h; x += v h`: velocity first, then position with the *new*
-    /// velocity. First order, but symplectic: energy error stays bounded
-    /// instead of drifting.
+    /// `v += a h; x += v h`: first order, but symplectic: energy error
+    /// stays bounded instead of drifting.
     SymplecticEuler,
-    /// `x += v h; v += a h`: position with the *old* velocity. First order
-    /// and not symplectic: on an orbit, energy grows every step. The
-    /// cautionary tale (M1's demo).
+    /// `x += v h; v += a h`: first order and not symplectic: on an orbit,
+    /// energy grows every step.
     ExplicitEuler,
     /// `x += v h + ½ a h²; a' = a(x, v + a h); v += ½ (a + a') h`. Second
-    /// order; for forces of position alone also symplectic and
-    /// time-reversible in exact arithmetic, and exact for constant
-    /// acceleration.
+    /// order (symplectic for forces of position alone).
     ///
-    /// **The second evaluation sees a predicted velocity**, `v + a h`, not
-    /// the old `v`: a force that reads velocity (the springs' dampers) needs
-    /// the end of step's, which isn't known yet. With the old one, damping
-    /// was off by `c (v' − v) ~ c a h` and Verlet fell to **first order**
-    /// (measured, audit after A3: a damped spring 100× less accurate, the
-    /// error halving, not quartering, with `h`); predicted, it's off by
-    /// `O(h²)` and Verlet stays second order. Forces of position alone never
-    /// read it, so for them nothing changes, bit for bit.
-    ///
-    /// Two force evaluations per substep, and the second is **not cached**
-    /// for the next substep's first (they're at the same positions): beyond
-    /// simplicity, it would be wrong, since
-    /// positions change between substeps (the ground clamp runs after every
-    /// one, and a drag moves its anchor between steps), and the next
-    /// substep's velocities differ from the predicted ones.
+    /// The second evaluation sees a predicted velocity `v + a h`, not the
+    /// old `v`: with the old one a velocity-reading force (the springs'
+    /// dampers) is off by `~ c a h` and Verlet falls to first order. It is
+    /// not cached for the next substep: positions change in between (ground
+    /// clamp, drag anchor).
     VelocityVerlet,
 }
 
 impl Integrator {
-    /// Every integrator, for tests and side-by-side demos.
     pub const ALL: [Self; 3] = [
         Self::SymplecticEuler,
         Self::ExplicitEuler,
         Self::VelocityVerlet,
     ];
 
-    /// Advances `p` by `h`. `acc`, `acc_next` and `vel_start` are scratch
-    /// buffers owned by `World` (reused, so no allocation per substep); the
-    /// last two are only used by velocity Verlet. Static particles
-    /// (`inv_mass = 0`) never move, whatever their velocity.
+    /// Advances `particles` by `time_step`. The scratch buffers are `World`'s,
+    /// reused across substeps. Static particles never move.
     pub(crate) fn substep<S: Scalar>(
         self,
         forces: &[Box<dyn Force<S>>],
-        p: &mut Particles<S>,
+        particles: &mut Particles<S>,
         scratch: VerletScratch<'_, S>,
-        h: S,
+        time_step: S,
     ) {
         let VerletScratch {
             acc,
             acc_next,
             vel_start,
         } = scratch;
-        evaluate(forces, p, acc);
+        evaluate(forces, particles, acc);
         match self {
             Self::SymplecticEuler => {
-                kick(p, acc, h);
-                drift(p, h);
+                kick(particles, acc, time_step);
+                drift(particles, time_step);
             }
             Self::ExplicitEuler => {
-                drift(p, h);
-                kick(p, acc, h);
+                drift(particles, time_step);
+                kick(particles, acc, time_step);
             }
             Self::VelocityVerlet => {
-                // `h / 2` by dividing by ONE + ONE: exact, and no from_f64.
-                let half_h = h / (S::ONE + S::ONE);
-                let dynamic = p.inv_mass.iter().map(|&w| w != S::ZERO);
-                for (((x, &v), &a), d) in p.pos.iter_mut().zip(&p.vel).zip(acc.iter()).zip(dynamic)
+                // Divide by ONE + ONE: exact, and no from_f64.
+                let half_step = time_step / (S::ONE + S::ONE);
+                let dynamic = particles
+                    .inv_mass
+                    .iter()
+                    .map(|&inv_mass| inv_mass != S::ZERO);
+                for (((x, &vel), &accel), is_dynamic) in particles
+                    .pos
+                    .iter_mut()
+                    .zip(&particles.vel)
+                    .zip(acc.iter())
+                    .zip(dynamic)
                 {
-                    if d {
-                        *x += v * h + a * (h * half_h);
+                    if is_dynamic {
+                        *x += vel * time_step + accel * (time_step * half_step);
                     }
                 }
-                // The second evaluation at the predicted velocity `v + a h`
-                // (see the variant); the start's kept for the update.
+                // Second evaluation at the predicted velocity; keep the start's.
                 vel_start.clear();
-                vel_start.extend_from_slice(&p.vel);
-                kick(p, acc, h);
-                evaluate(forces, p, acc_next);
-                let dynamic = p.inv_mass.iter().map(|&w| w != S::ZERO);
-                let accs = acc.iter().zip(acc_next.iter());
-                for (((v, &v0), (&a0, &a1)), d) in p
+                vel_start.extend_from_slice(&particles.vel);
+                kick(particles, acc, time_step);
+                evaluate(forces, particles, acc_next);
+                let dynamic = particles
+                    .inv_mass
+                    .iter()
+                    .map(|&inv_mass| inv_mass != S::ZERO);
+                let accelerations = acc.iter().zip(acc_next.iter());
+                for (((vel, &start_vel), (&accel_start, &accel_end)), is_dynamic) in particles
                     .vel
                     .iter_mut()
                     .zip(vel_start.iter())
-                    .zip(accs)
+                    .zip(accelerations)
                     .zip(dynamic)
                 {
-                    if d {
-                        *v = v0 + (a0 + a1) * half_h;
+                    if is_dynamic {
+                        *vel = start_vel + (accel_start + accel_end) * half_step;
                     }
                 }
             }
@@ -111,55 +102,58 @@ impl Integrator {
 /// Fills `acc` with every force's acceleration at the current positions.
 pub(crate) fn evaluate<S: Scalar>(
     forces: &[Box<dyn Force<S>>],
-    p: &Particles<S>,
+    particles: &Particles<S>,
     acc: &mut Vec<Vec2<S>>,
 ) {
     acc.clear();
-    acc.resize(p.len(), Vec2::ZERO);
+    acc.resize(particles.len(), Vec2::ZERO);
     for force in forces {
-        force.accumulate(p, acc);
+        force.accumulate(particles, acc);
     }
 }
 
-/// Velocity Verlet's scratch, owned by `World`: this substep's
-/// accelerations, the second evaluation's, and the start's velocities.
+/// Velocity Verlet's scratch: both evaluations' accelerations and the start's velocities.
 pub(crate) struct VerletScratch<'a, S> {
     pub(crate) acc: &'a mut Vec<Vec2<S>>,
     pub(crate) acc_next: &'a mut Vec<Vec2<S>>,
     pub(crate) vel_start: &'a mut Vec<Vec2<S>>,
 }
 
-/// `v += a h`, for dynamic particles only: a static particle
-/// (`inv_mass = 0`) keeps its velocity whatever a force wrote for it.
-pub(crate) fn kick<S: Scalar>(p: &mut Particles<S>, acc: &[Vec2<S>], h: S) {
-    for ((v, &a), &w) in p.vel.iter_mut().zip(acc).zip(&p.inv_mass) {
-        if w != S::ZERO {
-            *v += a * h;
+/// `v += a h`, for dynamic particles only.
+pub(crate) fn kick<S: Scalar>(particles: &mut Particles<S>, acc: &[Vec2<S>], time_step: S) {
+    for ((vel, &accel), &inv_mass) in particles.vel.iter_mut().zip(acc).zip(&particles.inv_mass) {
+        if inv_mass != S::ZERO {
+            *vel += accel * time_step;
         }
     }
 }
 
 /// `x += (v + v_pseudo) h`, for dynamic particles only: the split impulse
-/// solver's drift, by the real and the pseudo-velocity (only the real one
-/// is kept). Its own path once, so a static moved here (audit after A3,
-/// found by `a_static_with_a_velocity_stays_put`); now the same rule as
-/// [`drift`].
-pub(crate) fn drift_split<S: Scalar>(p: &mut Particles<S>, pseudo: &[Vec2<S>], h: S) {
-    let moving = p.vel.iter().zip(pseudo).zip(&p.inv_mass);
-    for (x, ((&v, &pv), &w)) in p.pos.iter_mut().zip(moving) {
-        if w != S::ZERO {
-            *x += (v + pv) * h;
+/// solver's drift (only the real velocity is kept).
+pub(crate) fn drift_split<S: Scalar>(
+    particles: &mut Particles<S>,
+    pseudo: &[Vec2<S>],
+    time_step: S,
+) {
+    let moving = particles.vel.iter().zip(pseudo).zip(&particles.inv_mass);
+    for (x, ((&vel, &pseudo_vel), &inv_mass)) in particles.pos.iter_mut().zip(moving) {
+        if inv_mass != S::ZERO {
+            *x += (vel + pseudo_vel) * time_step;
         }
     }
 }
 
-/// `x += v h`, for dynamic particles only: a static one never moves,
-/// whatever its velocity (`vel_mut` can set one), so "static" holds in every
-/// stepper by construction, not by every force skipping statics.
-pub(crate) fn drift<S: Scalar>(p: &mut Particles<S>, h: S) {
-    for ((x, &v), &w) in p.pos.iter_mut().zip(&p.vel).zip(&p.inv_mass) {
-        if w != S::ZERO {
-            *x += v * h;
+/// `x += v h`, for dynamic particles only: a static one never moves, even
+/// with a velocity (`vel_mut` can set one).
+pub(crate) fn drift<S: Scalar>(particles: &mut Particles<S>, time_step: S) {
+    for ((x, &vel), &inv_mass) in particles
+        .pos
+        .iter_mut()
+        .zip(&particles.vel)
+        .zip(&particles.inv_mass)
+    {
+        if inv_mass != S::ZERO {
+            *x += vel * time_step;
         }
     }
 }

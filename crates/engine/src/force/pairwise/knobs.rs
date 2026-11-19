@@ -1,25 +1,17 @@
-//! Build settings for pairwise gravity, read at compile time from the
-//! environment (cargo rebuilds when they change). Unset, each target's own
-//! choice holds (`tuning.rs`); set, they override it for both scalars, for
-//! experiments (`experiments/gravity-vectorize/`):
+//! Build settings read from the environment at compile time; set, they
+//! override `tuning.rs` for both scalars (`experiments/gravity-vectorize/`):
 //!
-//! - `GRAVITY_LANES`: how many partial sums body i's sum is split into (a
-//!   power of two, 1 to 64). It sets the order of additions, so the
-//!   results' last bits.
-//! - `GRAVITY_PLAIN_BELOW`: below this many bodies the plain loop runs
-//!   instead.
-//! - `GRAVITY_LOOP`: `two-pass` or `blocked`. At the same lane count the
-//!   two give identical bits (tested); only speed differs.
+//! - `GRAVITY_LANES`: partial sums per body (a power of two, 1 to 64); sets
+//!   the order of additions, so the last bits.
+//! - `GRAVITY_PLAIN_BELOW`: below this many bodies the plain loop runs.
+//! - `GRAVITY_LOOP`: `two-pass` or `blocked` (same bits at equal lanes).
 
 use super::tuning::PairLoop;
 
-/// `GRAVITY_LANES`, if set.
 pub(super) const LANES: Option<usize> = lanes(option_env!("GRAVITY_LANES"));
 
-/// `GRAVITY_LOOP`, if set.
 pub(super) const LOOP: Option<PairLoop> = pair_loop(option_env!("GRAVITY_LOOP"));
 
-/// `GRAVITY_PLAIN_BELOW`, if set.
 pub(super) const PLAIN_BELOW: Option<usize> = plain_below(option_env!("GRAVITY_PLAIN_BELOW"));
 
 /// `GRAVITY_LANES` as a number; a bad value fails the build.
@@ -27,48 +19,49 @@ pub(super) const fn lanes(setting: Option<&str>) -> Option<usize> {
     let Some(text) = setting else {
         return None;
     };
-    let Some(n) = number(text) else {
+    let Some(lane_count) = number(text) else {
         panic_at_build("GRAVITY_LANES: not a number")
     };
-    assert!(n.is_power_of_two(), "GRAVITY_LANES: not a power of two");
-    assert!(n <= 64, "GRAVITY_LANES: at most 64");
-    Some(n)
+    assert!(
+        lane_count.is_power_of_two(),
+        "GRAVITY_LANES: not a power of two"
+    );
+    assert!(lane_count <= 64, "GRAVITY_LANES: at most 64");
+    Some(lane_count)
 }
 
-/// `GRAVITY_PLAIN_BELOW` as a number; a bad value fails the build.
 pub(super) const fn plain_below(setting: Option<&str>) -> Option<usize> {
     let Some(text) = setting else {
         return None;
     };
-    let Some(n) = number(text) else {
+    let Some(threshold) = number(text) else {
         panic_at_build("GRAVITY_PLAIN_BELOW: not a number")
     };
-    Some(n)
+    Some(threshold)
 }
 
-/// Decimal digits as a number, if that's all `text` is and it's at most a
-/// million (no setting here needs more).
+/// Decimal digits as a number, at most a million.
 const fn number(text: &str) -> Option<usize> {
-    let mut digits = text.as_bytes();
-    if digits.is_empty() {
+    let mut remaining = text.as_bytes();
+    if remaining.is_empty() {
         return None;
     }
-    let mut n: usize = 0;
-    while let [d, rest @ ..] = digits {
-        if !d.is_ascii_digit() {
+    let mut value: usize = 0;
+    while let [digit, rest @ ..] = remaining {
+        if !digit.is_ascii_digit() {
             return None;
         }
         // Checked: a long string is refused, not overflowed.
-        let Some(tens) = n.checked_mul(10) else {
+        let Some(tens) = value.checked_mul(10) else {
             return None;
         };
-        let Some(next) = tens.checked_add((*d - b'0') as usize) else {
+        let Some(next) = tens.checked_add((*digit - b'0') as usize) else {
             return None;
         };
-        n = next;
-        digits = rest;
+        value = next;
+        remaining = rest;
     }
-    if n > 1_000_000 { None } else { Some(n) }
+    if value > 1_000_000 { None } else { Some(value) }
 }
 
 /// A bad setting: evaluated in a `const`, the panic is a build error.
@@ -90,11 +83,12 @@ pub(super) const fn pair_loop(setting: Option<&str>) -> Option<PairLoop> {
     }
 }
 
-/// Byte equality, usable in a `const fn`.
-const fn same(a: &[u8], b: &[u8]) -> bool {
-    match (a, b) {
+const fn same(left: &[u8], right: &[u8]) -> bool {
+    match (left, right) {
         ([], []) => true,
-        ([x, a_rest @ ..], [y, b_rest @ ..]) => *x == *y && same(a_rest, b_rest),
+        ([left_byte, left_rest @ ..], [right_byte, right_rest @ ..]) => {
+            *left_byte == *right_byte && same(left_rest, right_rest)
+        }
         _ => false,
     }
 }

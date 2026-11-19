@@ -10,7 +10,7 @@ fn accepts_zero_and_positive() {
 #[test]
 fn rejects_negative_and_nan() {
     assert_eq!(Softening::new(-0.1_f64), None);
-    // NaN fails every comparison, so `eps >= 0` rejects it too.
+    // NaN fails every comparison, so `softening >= 0` rejects it too.
     assert_eq!(Softening::new(f64::NAN), None);
 }
 
@@ -21,8 +21,8 @@ fn reads_back_epsilon() {
 
 #[test]
 fn cast_keeps_the_value_up_to_rounding() {
-    let eps = Softening::new(0.1_f64).unwrap();
-    assert_eq!(eps.cast::<f32>().map(Softening::get), Some(0.1_f32));
+    let softening = Softening::new(0.1_f64).unwrap();
+    assert_eq!(softening.cast::<f32>().map(Softening::get), Some(0.1_f32));
     // Underflow to 0 is still a valid ε; overflow to +∞ isn't.
     assert_eq!(
         Softening::new(1e-50_f64)
@@ -34,8 +34,7 @@ fn cast_keeps_the_value_up_to_rounding() {
     assert!(Softening::new(1e300_f64).unwrap().cast::<f32>().is_none());
 }
 
-/// Finite always: ∞ passed `ε ≥ 0` before the audit (and switched gravity
-/// off).
+/// Finite always: ∞ would pass `ε ≥ 0` (and switch gravity off).
 #[test]
 fn infinity_is_refused() {
     assert!(Softening::new(f64::INFINITY).is_none());

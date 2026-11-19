@@ -3,8 +3,8 @@ use crate::params::kg;
 use crate::test_util::accel;
 use crate::{Damping, Particles, Stiffness, Vec2};
 
-fn k(v: f64) -> Stiffness<f64> {
-    Stiffness::new(v).unwrap()
+fn stiffness(value: f64) -> Stiffness<f64> {
+    Stiffness::new(value).unwrap()
 }
 
 fn two_bodies(gap: f64) -> Particles<f64> {
@@ -18,7 +18,7 @@ fn two_bodies(gap: f64) -> Particles<f64> {
 fn stretched_spring_pulls_both_ends_together_equal_and_opposite() {
     let mut p = two_bodies(1.0);
     let ids = (crate::ParticleId(0), crate::ParticleId(1));
-    let spring = Spring::between(&p, ids.0, ids.1, k(100.0), Damping::NONE).unwrap();
+    let spring = Spring::between(&p, ids.0, ids.1, stiffness(100.0), Damping::NONE).unwrap();
     assert_eq!(spring.rest(), 1.0);
     // Stretch by 0.1 m: |F| = k x = 10 N.
     p.pos[1] = Vec2::new(1.1, 0.0);
@@ -38,7 +38,7 @@ fn damper_resists_relative_velocity_only() {
         &p,
         crate::ParticleId(0),
         crate::ParticleId(1),
-        k(100.0),
+        stiffness(100.0),
         Damping::new(2.0).unwrap(),
     )
     .unwrap();
@@ -62,7 +62,7 @@ fn static_ends_are_not_moved_and_coincident_ends_are_skipped() {
     let mut p = Particles::new();
     let pin = p.add_static(Vec2::ZERO);
     let bob = p.add(Vec2::new(1.0, 0.0), Vec2::ZERO, kg(1.0));
-    let spring = Spring::with_rest(&p, pin, bob, 0.5, k(10.0), Damping::NONE).unwrap();
+    let spring = Spring::with_rest(&p, pin, bob, 0.5, stiffness(10.0), Damping::NONE).unwrap();
     let a = accel(&p, &SpringForce::new(vec![spring]));
     assert_eq!(a[0], Vec2::ZERO);
     assert!((a[1].x + 5.0).abs() < 1e-12, "{a:?}");
@@ -71,8 +71,8 @@ fn static_ends_are_not_moved_and_coincident_ends_are_skipped() {
         accel(&p, &SpringForce::new(vec![spring])),
         [Vec2::ZERO, Vec2::ZERO]
     );
-    assert!(Spring::with_rest(&p, pin, pin, 1.0, k(1.0), Damping::NONE).is_none());
-    assert!(Spring::with_rest(&p, pin, bob, -1.0, k(1.0), Damping::NONE).is_none());
+    assert!(Spring::with_rest(&p, pin, pin, 1.0, stiffness(1.0), Damping::NONE).is_none());
+    assert!(Spring::with_rest(&p, pin, bob, -1.0, stiffness(1.0), Damping::NONE).is_none());
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn potential_is_half_k_x_squared() {
         &p,
         crate::ParticleId(0),
         crate::ParticleId(1),
-        k(100.0),
+        stiffness(100.0),
         Damping::NONE,
     )
     .unwrap();
@@ -95,9 +95,6 @@ fn potential_is_half_k_x_squared() {
     );
 }
 
-// From the full cargo-mutants run: the ends check, live stiffness and
-// damping, and the potential's sign could each change unnoticed.
-
 #[test]
 fn a_spring_refuses_an_end_outside_the_particles() {
     let p = two_bodies(1.0);
@@ -106,7 +103,7 @@ fn a_spring_refuses_an_end_outside_the_particles() {
         crate::ParticleId(1),
         crate::ParticleId(2),
     );
-    let spring = |a, b| Spring::with_rest(&p, a, b, 1.0, k(1.0), Damping::NONE);
+    let spring = |a, b| Spring::with_rest(&p, a, b, 1.0, stiffness(1.0), Damping::NONE);
     assert!(spring(a, b).is_some());
     assert!(spring(outside, b).is_none() && spring(a, outside).is_none());
 }
@@ -118,7 +115,7 @@ fn the_potential_is_half_k_stretch_squared_and_follows_live_k() {
         &p,
         crate::ParticleId(0),
         crate::ParticleId(1),
-        k(100.0),
+        stiffness(100.0),
         Damping::NONE,
     )
     .unwrap();
@@ -130,7 +127,7 @@ fn the_potential_is_half_k_stretch_squared_and_follows_live_k() {
     }
     p.pos[1] = Vec2::new(1.1, 0.0);
     assert!(
-        (f.with_stiffness(k(200.0)).potential(&p) - 1.0).abs() < 1e-12,
+        (f.with_stiffness(stiffness(200.0)).potential(&p) - 1.0).abs() < 1e-12,
         "k doubled"
     );
 }
@@ -143,7 +140,7 @@ fn live_damping_reaches_every_spring() {
         &p,
         crate::ParticleId(0),
         crate::ParticleId(1),
-        k(100.0),
+        stiffness(100.0),
         Damping::NONE,
     )
     .unwrap();
@@ -158,8 +155,7 @@ fn live_damping_reaches_every_spring() {
     assert!((accel(&p, &damped)[0].x - 2.0).abs() < 1e-12);
 }
 
-/// `½ k x²` per spring, summed (the full mutation run: `L + rest` in
-/// place of `L − rest` survived; M5's energy plot reads this).
+/// `½ k x²` per spring, summed.
 #[test]
 fn potential_is_half_k_stretch_squared_summed() {
     let mut p = two_bodies(1.0);
@@ -169,8 +165,8 @@ fn potential_is_half_k_stretch_squared_summed() {
         crate::ParticleId(1),
         crate::ParticleId(2),
     ];
-    let a = Spring::between(&p, ids[0], ids[1], k(100.0), Damping::NONE).unwrap();
-    let b = Spring::between(&p, ids[0], ids[2], k(10.0), Damping::NONE).unwrap();
+    let a = Spring::between(&p, ids[0], ids[1], stiffness(100.0), Damping::NONE).unwrap();
+    let b = Spring::between(&p, ids[0], ids[2], stiffness(10.0), Damping::NONE).unwrap();
     let force = SpringForce::new(vec![a, b]);
     assert_eq!(force.potential(&p), 0.0, "at rest length");
     // Stretch the first by 0.1 and compress the second by 0.5.
@@ -184,9 +180,7 @@ fn potential_is_half_k_stretch_squared_summed() {
     );
 }
 
-/// From the full mutation run of 2026-11-12: the potential was only
-/// measured with one end at the origin, where `xb − xa` and `xb + xa`
-/// agree.
+/// With one end at the origin, `xb − xa` and `xb + xa` agree: test away from it.
 #[test]
 fn potential_is_the_same_away_from_the_origin() {
     let mut p = Particles::new();
@@ -194,7 +188,7 @@ fn potential_is_the_same_away_from_the_origin() {
     let _ = p.add(Vec2::new(6.0, 3.0), Vec2::ZERO, kg(1.0));
     let ids = (crate::ParticleId(0), crate::ParticleId(1));
     let f = SpringForce::new(vec![
-        Spring::between(&p, ids.0, ids.1, k(4.0), Damping::NONE).unwrap(),
+        Spring::between(&p, ids.0, ids.1, stiffness(4.0), Damping::NONE).unwrap(),
     ]);
     assert_eq!(f.potential(&p), 0.0, "at rest");
     p.pos[1] = Vec2::new(7.0, 3.0);

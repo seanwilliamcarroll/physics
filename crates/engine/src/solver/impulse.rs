@@ -12,7 +12,8 @@ use crate::integrate::{drift, drift_split, evaluate, kick};
 use crate::{Constraint, Particles, Scalar, Vec2};
 
 impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
-    /// One sequential-impulse substep of length `h`:
+    /// One sequential-impulse substep of `dt` seconds (`h` in the
+    /// formulas):
     ///
     /// ```text
     /// v += h a
@@ -24,150 +25,174 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     /// ```
     ///
     /// λ is the impulse applied this substep, accumulated over the
-    /// iterations and kept for the next substep's warm start. One
-    /// constraint is solved exactly in one pass, so for a single pendulum
-    /// warm starting only changes rounding; chains (M4) need it.
+    /// iterations and kept for the next substep's warm start.
     ///
     /// With [`Stabilization::Split`], a rigid rod's bias goes to a separate
     /// pseudo-velocity instead (`solve_split`), and `x += h (v + v_pseudo)`.
     ///
-    /// With contacts (M6): found before the kick; impacts resolved by the
-    /// impact stage (Generalized Reflections, `solver/impacts.rs`)
-    /// between two half kicks; then warm-started by pair and solved after
-    /// the rods each pass, inelastically (accumulated clamp, speculative
-    /// targets, a one-sided pseudo-impulse in split mode); their impulses
-    /// are kept for the next substep's warm start (`docs/08-collision.md`).
-    pub(crate) fn impulse(self, h: S) {
-        let p = self.particles;
-        evaluate(self.forces, p, self.acc);
+    /// With contacts: found before the kick; impacts resolved between two
+    /// half kicks (`solver/impacts.rs`); then warm-started by pair and
+    /// solved after the rods each pass, inelastically
+    /// (`docs/08-collision.md`).
+    #[expect(clippy::too_many_lines, reason = "one substep, read top to bottom")]
+    pub(crate) fn impulse(self, dt: S) {
+        let particles = self.particles;
+        evaluate(self.forces, particles, self.acc);
         let contacts = self.contacts;
         let mut cloth = self.cloth;
-        // Impacts resolve between two half kicks. A bounce's true outcome
-        // depends on when in the substep it lands (`v − g h (1 − 2τ)` for a
-        // falling ball hitting at fraction τ): reflecting after the whole
-        // kick assumes τ = 1 and gains `g h` a bounce (a lone bounce rose
-        // 2% above its drop), before it τ = 0 and loses it (−0.86% a
-        // bounce, a third of the box's energy in 20 s). Between halves is
-        // τ = ½: unbiased, off by `g h (τ − ½)` either way.
-        let half = h / (S::ONE + S::ONE);
+        // Impacts resolve between two half kicks: a bounce landing at
+        // fraction τ of the substep ends at `v − g h (1 − 2τ)`, so reflecting
+        // after the whole kick (τ = 1) gains energy (a lone bounce rose 2%
+        // above its drop), before it (τ = 0) loses it (−0.86% a bounce).
+        // Between halves (τ = ½) is unbiased.
+        let half = dt / (S::ONE + S::ONE);
         if self.collides {
             contacts.find(
-                p,
+                particles,
                 self.statics,
                 self.restitution,
                 self.acc,
-                h,
+                dt,
                 self.speculative,
             );
-            kick(p, self.acc, half);
-            on_cloth(&mut cloth, p, half);
-            impacts::resolve(p, contacts, h);
-            kick(p, self.acc, half);
-            on_cloth(&mut cloth, p, half);
+            kick(particles, self.acc, half);
+            on_cloth(&mut cloth, particles, half);
+            impacts::resolve(particles, contacts, dt);
+            kick(particles, self.acc, half);
+            on_cloth(&mut cloth, particles, half);
         } else {
-            kick(p, self.acc, h);
-            on_cloth(&mut cloth, p, h);
+            kick(particles, self.acc, dt);
+            on_cloth(&mut cloth, particles, dt);
         }
         if self.collides {
             contacts.recall();
-            for (c, &lambda) in contacts.list.iter().zip(&contacts.lambda) {
-                contact_solve::apply(p, c, lambda);
+            for (contact, &lambda) in contacts.list.iter().zip(&contacts.lambda) {
+                contact_solve::apply(particles, contact, lambda);
             }
         }
-        let cg = ContactGains {
-            h,
-            bias: self.baumgarte.get() / h,
+        let contact_gains = ContactGains {
+            dt,
+            bias: self.baumgarte.get() / dt,
             slop: S::from_f64(CONTACT_SLOP),
             classic: self.stabilization == Stabilization::Baumgarte,
         };
-        // Warm start rigid constraints only. A soft constraint's λ feeds
-        // back into its own update (the `α̃ λ` term), so carrying it across
-        // substeps re-injects the previous substep's bias each time: on an
-        // unconverged network (the jelly, one pass) that pumps energy in
-        // without bound, the M4 Baumgarte mechanism through the soft form.
-        // Soft λ restarts at 0 each substep instead (M5.5,
-        // `docs/07-soft-bodies.md`, "Soft constraints aren't warm-started").
-        for (c, lambda) in self.constraints.iter().zip(self.lambda.iter_mut()) {
-            if c.compliance() == S::ZERO {
-                apply_impulse(p, c, *lambda);
+        // Warm start rigid constraints only: a soft constraint's λ feeds back
+        // into its own update, so carrying it over pumps energy into an
+        // unconverged network (`docs/07-soft-bodies.md`, "Soft constraints
+        // aren't warm-started").
+        for (constraint, lambda) in self.constraints.iter().zip(self.lambda.iter_mut()) {
+            if constraint.compliance() == S::ZERO {
+                apply_impulse(particles, constraint, *lambda);
             } else {
                 *lambda = S::ZERO;
             }
         }
         let gains = Gains {
-            rigid_bias: self.baumgarte.get() / h,
-            soft_bias: S::ONE / h,
-            alpha_scale: S::ONE / (h * h),
-            h,
+            rigid_bias: self.baumgarte.get() / dt,
+            soft_bias: S::ONE / dt,
+            alpha_scale: S::ONE / (dt * dt),
+            dt,
         };
         match self.stabilization {
             Stabilization::Baumgarte => {
                 for pass in 0..self.iterations.get() {
                     self.order
-                        .sweep(pass, self.constraints, self.lambda, |c, lambda| {
-                            solve_velocity(p, c, lambda, gains);
-                        });
-                    self.order
-                        .sweep(pass, &contacts.list, &mut contacts.lambda, |c, lambda| {
-                            contact_solve::solve(p, c, lambda, cg);
-                        });
-                }
-                drift(p, h);
-                contacts.remember();
-            }
-            Stabilization::Split => {
-                let pseudo = self.scratch;
-                pseudo.clear();
-                pseudo.resize(p.pos.len(), Vec2::ZERO);
-                for pass in 0..self.iterations.get() {
-                    self.order
-                        .sweep(pass, self.constraints, self.lambda, |c, lambda| {
-                            solve_split(p, pseudo, c, lambda, gains);
-                        });
-                    self.order
-                        .sweep(pass, &contacts.list, &mut contacts.lambda, |c, lambda| {
-                            contact_solve::solve(p, c, lambda, cg);
+                        .sweep(pass, self.constraints, self.lambda, |constraint, lambda| {
+                            solve_velocity(particles, constraint, lambda, gains);
                         });
                     self.order.sweep(
                         pass,
                         &contacts.list,
+                        &mut contacts.lambda,
+                        |contact, lambda| {
+                            contact_solve::solve(particles, contact, lambda, contact_gains);
+                        },
+                    );
+                }
+                drift(particles, dt);
+                contacts.remember();
+            }
+            Stabilization::Split => {
+                let pseudo_velocities = self.scratch;
+                pseudo_velocities.clear();
+                pseudo_velocities.resize(particles.pos.len(), Vec2::ZERO);
+                for pass in 0..self.iterations.get() {
+                    self.order
+                        .sweep(pass, self.constraints, self.lambda, |constraint, lambda| {
+                            solve_split(particles, pseudo_velocities, constraint, lambda, gains);
+                        });
+                    self.order.sweep(
+                        pass,
+                        &contacts.list,
+                        &mut contacts.lambda,
+                        |contact, lambda| {
+                            contact_solve::solve(particles, contact, lambda, contact_gains);
+                        },
+                    );
+                    self.order.sweep(
+                        pass,
+                        &contacts.list,
                         &mut contacts.pseudo_lambda,
-                        |c, lambda| contact_solve::solve_pseudo(p, pseudo, c, lambda, cg),
+                        |contact, lambda| {
+                            contact_solve::solve_pseudo(
+                                particles,
+                                pseudo_velocities,
+                                contact,
+                                lambda,
+                                contact_gains,
+                            );
+                        },
                     );
                 }
                 // Positions move by the real and the pseudo-velocity; only
                 // the real one is kept.
-                drift_split(p, pseudo, h);
+                drift_split(particles, pseudo_velocities, dt);
                 contacts.remember();
             }
         }
     }
 }
 
-/// The bodies of `c` as `(index_a, index_b, w_a, w_b)`, or `None` if
-/// either isn't in `p`.
-fn masses<S: Scalar, C: Constraint<S>>(p: &Particles<S>, c: &C) -> Option<(usize, usize, S, S)> {
-    let [a, b] = c.bodies().map(crate::ParticleId::index);
-    Some((a, b, *p.inv_mass.get(a)?, *p.inv_mass.get(b)?))
+/// The bodies of `constraint` as `(first, second, first_inv_mass,
+/// second_inv_mass)`, or `None` if either isn't in `particles`.
+fn masses<S: Scalar, C: Constraint<S>>(
+    particles: &Particles<S>,
+    constraint: &C,
+) -> Option<(usize, usize, S, S)> {
+    let [first, second] = constraint.bodies().map(crate::ParticleId::index);
+    Some((
+        first,
+        second,
+        *particles.inv_mass.get(first)?,
+        *particles.inv_mass.get(second)?,
+    ))
 }
 
-/// Applies impulse `lambda` along `c`'s gradient: `v_a −= w_a n λ`,
+/// Applies impulse `lambda` along `constraint`'s gradient: `v_a −= w_a n λ`,
 /// `v_b += w_b n λ`. Nothing if the gradient is undefined.
-fn apply_impulse<S: Scalar, C: Constraint<S>>(p: &mut Particles<S>, c: &C, lambda: S) {
-    let Some((a, b, wa, wb)) = masses(p, c) else {
+fn apply_impulse<S: Scalar, C: Constraint<S>>(
+    particles: &mut Particles<S>,
+    constraint: &C,
+    lambda: S,
+) {
+    let Some((first, second, first_inv_mass, second_inv_mass)) = masses(particles, constraint)
+    else {
         return;
     };
-    let (Some(&xa), Some(&xb)) = (p.pos.get(a), p.pos.get(b)) else {
+    let (Some(&first_position), Some(&second_position)) =
+        (particles.pos.get(first), particles.pos.get(second))
+    else {
         return;
     };
-    let (_, Some(n)) = c.evaluate(xa, xb) else {
+    let (_, Some(normal)) = constraint.evaluate(first_position, second_position) else {
         return;
     };
-    let Ok([va, vb]) = p.vel.get_disjoint_mut([a, b]) else {
+    let Ok([first_velocity, second_velocity]) = particles.vel.get_disjoint_mut([first, second])
+    else {
         return;
     };
-    *va -= n * (wa * lambda);
-    *vb += n * (wb * lambda);
+    *first_velocity -= normal * (first_inv_mass * lambda);
+    *second_velocity += normal * (second_inv_mass * lambda);
 }
 
 /// Per-substep factors of the impulse update (`docs/06-constraints.md`,
@@ -181,98 +206,106 @@ struct Gains<S> {
     /// `1 / h²`, so `α̃ = α / h²`.
     alpha_scale: S,
     /// The substep, s (the damped soft form needs it directly).
-    h: S,
+    dt: S,
 }
 
-/// One velocity solve of `c`, updating its accumulated `lambda`:
+/// One velocity solve of `constraint`, updating its accumulated `lambda`:
 /// rigid `Δλ = −(Jv + (β/h) C) / w`; compliant (Catto's soft form)
 /// `Δλ = −(Jv + C/h + α̃ λ) / (w + α̃)`. Two branches rather than the soft
 /// formula with α = 0: adding `0 · λ` can flip a zero's sign, and the
-/// rigid path stays bit-identical to M3's. Skipped when the
-/// gradient is undefined or neither body can move.
+/// rigid path stays bit-identical. Skipped when the gradient is undefined
+/// or neither body can move.
 fn solve_velocity<S: Scalar, C: Constraint<S>>(
-    p: &mut Particles<S>,
-    c: &C,
+    particles: &mut Particles<S>,
+    constraint: &C,
     lambda: &mut S,
     gains: Gains<S>,
 ) {
-    let Some((a, b, wa, wb)) = masses(p, c) else {
+    let Some((first, second, first_inv_mass, second_inv_mass)) = masses(particles, constraint)
+    else {
         return;
     };
-    let w = wa + wb;
-    let (Some(&xa), Some(&xb)) = (p.pos.get(a), p.pos.get(b)) else {
+    let inv_mass_sum = first_inv_mass + second_inv_mass;
+    let (Some(&first_position), Some(&second_position)) =
+        (particles.pos.get(first), particles.pos.get(second))
+    else {
         return;
     };
-    let (value, Some(n)) = c.evaluate(xa, xb) else {
+    let (value, Some(normal)) = constraint.evaluate(first_position, second_position) else {
         return;
     };
-    if w == S::ZERO {
+    if inv_mass_sum == S::ZERO {
         return;
     }
-    let Ok([va, vb]) = p.vel.get_disjoint_mut([a, b]) else {
+    let Ok([first_velocity, second_velocity]) = particles.vel.get_disjoint_mut([first, second])
+    else {
         return;
     };
-    let jv = n.dot(*vb - *va);
-    let alpha = c.compliance() * gains.alpha_scale;
-    let damping = c.damping();
-    let d_lambda = if alpha == S::ZERO {
-        -(jv + gains.rigid_bias * value) / w
+    let relative_speed = normal.dot(*second_velocity - *first_velocity);
+    let alpha = constraint.compliance() * gains.alpha_scale;
+    let damping = constraint.damping();
+    let delta_lambda = if alpha == S::ZERO {
+        -(relative_speed + gains.rigid_bias * value) / inv_mass_sum
     } else if damping == S::ZERO {
-        -(jv + gains.soft_bias * value + alpha * *lambda) / (w + alpha)
+        -(relative_speed + gains.soft_bias * value + alpha * *lambda) / (inv_mass_sum + alpha)
     } else {
         // Catto 2011 with a damper: γ = 1 / (h (c + h k)), bias
         // C / (α c + h); with c = 0 these are α̃ and C / h (branch above).
-        let (compliance, h) = (c.compliance(), gains.h);
-        let gamma = compliance / (h * (compliance * damping + h));
-        let bias = value / (compliance * damping + h);
-        -(jv + bias + gamma * *lambda) / (w + gamma)
+        let (compliance, dt) = (constraint.compliance(), gains.dt);
+        let gamma = compliance / (dt * (compliance * damping + dt));
+        let bias = value / (compliance * damping + dt);
+        -(relative_speed + bias + gamma * *lambda) / (inv_mass_sum + gamma)
     };
-    *lambda += d_lambda;
-    *va -= n * (wa * d_lambda);
-    *vb += n * (wb * d_lambda);
+    *lambda += delta_lambda;
+    *first_velocity -= normal * (first_inv_mass * delta_lambda);
+    *second_velocity += normal * (second_inv_mass * delta_lambda);
 }
 
-/// One split-impulse solve of `c`: the real velocity gets the impulse that
-/// zeroes `Jv` (accumulated in `lambda`, warm-started next substep); a
-/// rigid rod's Baumgarte bias goes to `pseudo` instead, which moves
-/// positions this substep only. Compliant rods have no stabilization to
-/// split (their `C/h` term is the spring itself), so they take the normal
-/// soft solve.
+/// One split-impulse solve of `constraint`: the real velocity gets the
+/// impulse that zeroes `Jv` (accumulated in `lambda`, warm-started next
+/// substep); a rigid rod's Baumgarte bias goes to `pseudo_velocities`
+/// instead, which move positions this substep only. Compliant rods have no
+/// stabilization to split (their `C/h` term is the spring itself), so they
+/// take the normal soft solve.
 fn solve_split<S: Scalar, C: Constraint<S>>(
-    p: &mut Particles<S>,
-    pseudo: &mut [Vec2<S>],
-    c: &C,
+    particles: &mut Particles<S>,
+    pseudo_velocities: &mut [Vec2<S>],
+    constraint: &C,
     lambda: &mut S,
     gains: Gains<S>,
 ) {
-    if c.compliance() != S::ZERO {
-        solve_velocity(p, c, lambda, gains);
+    if constraint.compliance() != S::ZERO {
+        solve_velocity(particles, constraint, lambda, gains);
         return;
     }
-    let Some((a, b, wa, wb)) = masses(p, c) else {
+    let Some((first, second, first_inv_mass, second_inv_mass)) = masses(particles, constraint)
+    else {
         return;
     };
-    let w = wa + wb;
-    let (Some(&xa), Some(&xb)) = (p.pos.get(a), p.pos.get(b)) else {
+    let inv_mass_sum = first_inv_mass + second_inv_mass;
+    let (Some(&first_position), Some(&second_position)) =
+        (particles.pos.get(first), particles.pos.get(second))
+    else {
         return;
     };
-    let (value, Some(n)) = c.evaluate(xa, xb) else {
+    let (value, Some(normal)) = constraint.evaluate(first_position, second_position) else {
         return;
     };
-    if w == S::ZERO {
+    if inv_mass_sum == S::ZERO {
         return;
     }
-    let (Ok([va, vb]), Ok([pa, pb])) = (
-        p.vel.get_disjoint_mut([a, b]),
-        pseudo.get_disjoint_mut([a, b]),
+    let (Ok([first_velocity, second_velocity]), Ok([first_pseudo, second_pseudo])) = (
+        particles.vel.get_disjoint_mut([first, second]),
+        pseudo_velocities.get_disjoint_mut([first, second]),
     ) else {
         return;
     };
-    let d_lambda = -n.dot(*vb - *va) / w;
-    *lambda += d_lambda;
-    *va -= n * (wa * d_lambda);
-    *vb += n * (wb * d_lambda);
-    let d_pseudo = -(n.dot(*pb - *pa) + gains.rigid_bias * value) / w;
-    *pa -= n * (wa * d_pseudo);
-    *pb += n * (wb * d_pseudo);
+    let delta_lambda = -normal.dot(*second_velocity - *first_velocity) / inv_mass_sum;
+    *lambda += delta_lambda;
+    *first_velocity -= normal * (first_inv_mass * delta_lambda);
+    *second_velocity += normal * (second_inv_mass * delta_lambda);
+    let delta_pseudo =
+        -(normal.dot(*second_pseudo - *first_pseudo) + gains.rigid_bias * value) / inv_mass_sum;
+    *first_pseudo -= normal * (first_inv_mass * delta_pseudo);
+    *second_pseudo += normal * (second_inv_mass * delta_pseudo);
 }

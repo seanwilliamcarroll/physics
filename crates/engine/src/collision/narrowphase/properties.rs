@@ -1,10 +1,5 @@
-//! Narrowphase properties (`docs/numerical-testing-checklist.md` §2.5,
-//! circle–circle and circle–wall): a contact doesn't depend on which body
-//! is called `a`, or on where the pair sits, and every contact reported
-//! has a unit normal and a finite gap.
-//!
-//! A unit test (not under `tests/`) so the narrowphase can stay private to
-//! the crate (`docs/api-audit.md`).
+//! Narrowphase properties (`docs/numerical-testing-checklist.md` §2.5): symmetry,
+//! translation invariance, well-formed contacts.
 
 use proptest::prelude::*;
 use test_support::proptest_config;
@@ -14,8 +9,7 @@ use crate::collision::Statics;
 use crate::params::kg;
 use crate::{Particles, Radius, Vec2, Wall};
 
-/// One substep, s (the speculative margin's horizon).
-const H: f64 = 0.01;
+const SUBSTEP: f64 = 0.01;
 /// Translation leaves gaps and normals equal up to the rounding of moving
 /// positions by up to 1e3 m: a position there rounds by ~2e-13 m, so
 /// 1e-9 is a wide margin (ours), not a measurement.
@@ -32,35 +26,34 @@ fn circle() -> impl Strategy<Value = Circle> {
     )
 }
 
-fn particles(circles: &[Circle], offset: (f64, f64)) -> Particles<f64> {
-    let mut p = Particles::new();
-    for &((x, y), (vx, vy), r) in circles {
-        p.add_circle(
+fn particles_from(circles: &[Circle], offset: (f64, f64)) -> Particles<f64> {
+    let mut particles = Particles::new();
+    for &((x, y), (vx, vy), radius) in circles {
+        particles.add_circle(
             Vec2::new(x + offset.0, y + offset.1),
             Vec2::new(vx, vy),
             kg(1.0),
-            Radius::new(r).unwrap(),
+            Radius::new(radius).unwrap(),
         );
     }
-    p
+    particles
 }
 
-fn contacts(p: &Particles<f64>, walls: &[Wall<f64>]) -> Vec<Contact<f64>> {
+fn contacts(particles: &Particles<f64>, walls: &[Wall<f64>]) -> Vec<Contact<f64>> {
     let (mut pairs, mut out) = (Vec::new(), Vec::new());
     let statics = Statics {
         walls,
         segments: &[],
     };
-    find_contacts(p, statics, H, &mut pairs, &mut out);
+    find_contacts(particles, statics, SUBSTEP, &mut pairs, &mut out);
     out
 }
 
-/// Every contact: a unit normal, a finite gap.
-fn well_formed(c: &[Contact<f64>]) -> Result<(), TestCaseError> {
-    for k in c {
-        let n = k.normal.get();
-        prop_assert!((n.length() - 1.0).abs() < 1e-12, "normal {n:?}");
-        prop_assert!(k.gap.is_finite(), "gap {}", k.gap);
+fn well_formed(found: &[Contact<f64>]) -> Result<(), TestCaseError> {
+    for contact in found {
+        let normal = contact.normal.get();
+        prop_assert!((normal.length() - 1.0).abs() < 1e-12, "normal {normal:?}");
+        prop_assert!(contact.gap.is_finite(), "gap {}", contact.gap);
     }
     Ok(())
 }
@@ -70,8 +63,8 @@ proptest! {
 
     #[test]
     fn swapping_the_pair_flips_the_normal_and_keeps_the_gap(a in circle(), b in circle()) {
-        let ab = contacts(&particles(&[a, b], (0.0, 0.0)), &[]);
-        let ba = contacts(&particles(&[b, a], (0.0, 0.0)), &[]);
+        let ab = contacts(&particles_from(&[a, b], (0.0, 0.0)), &[]);
+        let ba = contacts(&particles_from(&[b, a], (0.0, 0.0)), &[]);
         prop_assert_eq!(ab.len(), ba.len(), "a contact either way or neither");
         well_formed(&ab)?;
         if let (Some(x), Some(y)) = (ab.first(), ba.first()) {
@@ -86,10 +79,9 @@ proptest! {
         b in circle(),
         offset in (-1e3..1e3_f64, -1e3..1e3_f64),
     ) {
-        let here = contacts(&particles(&[a, b], (0.0, 0.0)), &[]);
-        let there = contacts(&particles(&[a, b], offset), &[]);
+        let here = contacts(&particles_from(&[a, b], (0.0, 0.0)), &[]);
+        let there = contacts(&particles_from(&[a, b], offset), &[]);
         well_formed(&there)?;
-        // A pair right at the speculative threshold may round either way.
         if here.len() == there.len() {
             for (x, y) in here.iter().zip(&there) {
                 prop_assert!((x.gap - y.gap).abs() < MOVE_TOL, "gap {} vs {}", x.gap, y.gap);
@@ -99,14 +91,13 @@ proptest! {
     }
 
     #[test]
-    fn wall_contacts_are_well_formed(c in prop::collection::vec(circle(), 0..8), angle in 0.0..std::f64::consts::TAU) {
-        // A wall through the origin, any orientation.
+    fn wall_contacts_are_well_formed(circles in prop::collection::vec(circle(), 0..8), angle in 0.0..std::f64::consts::TAU) {
         let normal = Vec2::new(angle.cos(), angle.sin()).normalized().unwrap();
         let wall = Wall::through(Vec2::ZERO, normal);
-        let found = contacts(&particles(&c, (0.0, 0.0)), &[wall]);
+        let found = contacts(&particles_from(&circles, (0.0, 0.0)), &[wall]);
         well_formed(&found)?;
-        for k in found.iter().filter(|k| matches!(k.b, Body::Wall(_))) {
-            prop_assert_eq!(k.normal.get(), -normal.get(), "a wall pushes along its normal");
+        for contact in found.iter().filter(|contact| matches!(contact.b, Body::Wall(_))) {
+            prop_assert_eq!(contact.normal.get(), -normal.get(), "a wall pushes along its normal");
         }
     }
 }

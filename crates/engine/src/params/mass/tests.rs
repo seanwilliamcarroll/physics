@@ -2,9 +2,9 @@ use super::Mass;
 
 #[test]
 fn accepts_positive_finite_and_stores_the_inverse() {
-    let m = Mass::new(4.0_f64).unwrap();
-    assert_eq!((m.get(), m.inv()), (4.0, 0.25));
-    // Exactly `1 / m`, as `Particles::add` computed it before `Mass`.
+    let mass = Mass::new(4.0_f64).unwrap();
+    assert_eq!((mass.get(), mass.inv()), (4.0, 0.25));
+    // Exactly `1 / mass`.
     assert_eq!(Mass::new(3.0_f64).map(Mass::inv), Some(1.0 / 3.0));
     assert_eq!(Mass::new(3.0_f32).map(Mass::inv), Some(1.0 / 3.0));
 }
@@ -17,8 +17,8 @@ fn one_is_unit_mass() {
 
 #[test]
 fn rejects_zero_negative_and_nan() {
-    for m in [0.0, -0.0, -1.0, f64::NAN] {
-        assert_eq!(Mass::new(m), None, "{m}");
+    for mass in [0.0, -0.0, -1.0, f64::NAN] {
+        assert_eq!(Mass::new(mass), None, "{mass}");
     }
 }
 
@@ -43,7 +43,7 @@ fn rejects_masses_whose_inverse_overflows() {
 #[test]
 fn accepts_the_largest_finite_mass() {
     // 1 / f64::MAX is subnormal but positive, so not mistaken for static.
-    let m = Mass::new(f64::MAX).unwrap();
-    assert!(m.inv() > 0.0);
+    let mass = Mass::new(f64::MAX).unwrap();
+    assert!(mass.inv() > 0.0);
     assert!(Mass::new(f32::MAX).is_some());
 }

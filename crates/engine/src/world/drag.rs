@@ -10,16 +10,12 @@ use crate::{Compliance, DistanceConstraint, ParticleId, Scalar, StaticId, Vec2};
 /// grab can't be released twice or dragged after release.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Grab {
-    /// The static particle that follows the pointer.
     anchor: StaticId,
-    /// The particle being dragged.
     particle: ParticleId,
-    /// Index of the anchor's rod in the constraint list.
     rod: usize,
 }
 
 impl Grab {
-    /// The particle being dragged.
     #[must_use]
     pub const fn particle(&self) -> ParticleId {
         self.particle
@@ -27,39 +23,31 @@ impl Grab {
 }
 
 impl<S: Scalar> World<S> {
-    /// Replaces every constraint `c` with `f(c)`, except the rod of
-    /// `except` (a held grab: its stiffness is the drag's, not the
-    /// scene's). For live changes that keep the world running, e.g. a
-    /// stiffness slider (`docs/07-soft-bodies.md`, "Live stiffness"). `f`
-    /// gets each constraint by value and its result replaces it in place
-    /// (so λ stays aligned).
+    /// Replaces every constraint with `change` of it, except the rod of a
+    /// held grab (`except`), for live changes like a stiffness slider
+    /// (`docs/07-soft-bodies.md`, "Live stiffness").
     ///
     /// # Errors
-    /// [`ConfigError::ChangedBodies`], changing nothing, if `f` changes
-    /// which particles any constraint joins.
+    /// [`ConfigError::ChangedBodies`], changing nothing, if `change` changes
+    /// which particles a constraint joins.
     pub fn update_constraints(
         &mut self,
         except: Option<&Grab>,
-        f: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
+        change: impl Fn(DistanceConstraint<S>) -> DistanceConstraint<S>,
     ) -> Result<(), ConfigError> {
-        self.constraints.update(except.map(|g| g.rod), f)
+        self.constraints.update(except.map(|grab| grab.rod), change)
     }
 
-    /// Whether this world can be grabbed: only if a solver already steps it
-    /// (it has constraints, or something collides). A grab is a rod; in a
-    /// world the integrator steps, adding one would hand the whole world to
-    /// a solver for as long as it's held (M5's force-spring jelly would
-    /// stop being stepped by symplectic Euler), so such a world refuses.
+    /// Only a world a solver already steps can be grabbed: a grab's rod
+    /// would otherwise hand the whole world to a solver while held.
     #[must_use]
     pub fn grabbable(&self) -> bool {
         !self.constraints.is_empty() || self.collides()
     }
 
-    /// Grabs the dynamic particle nearest to `point` within `radius` (m):
-    /// adds a static anchor at `point` and a rod of rest length 0 and
-    /// compliance `softness` from it to the particle. `None`, changing
-    /// nothing, if no dynamic particle is that close, or the world isn't
-    /// [`grabbable`](Self::grabbable).
+    /// Grabs the dynamic particle nearest to `point` within `radius` (m)
+    /// with a rod of compliance `softness`. `None` if none is that close or
+    /// the world isn't [`grabbable`](Self::grabbable).
     pub fn grab(&mut self, point: Vec2<S>, radius: S, softness: Compliance<S>) -> Option<Grab> {
         if !self.grabbable() {
             return None;
@@ -69,7 +57,7 @@ impl<S: Scalar> World<S> {
         let rod = self.constraints().len();
         let link =
             DistanceConstraint::with_length(&self.particles, anchor, particle, S::ZERO, softness);
-        if link.is_some_and(|c| self.add_constraint(c).is_ok()) {
+        if link.is_some_and(|constraint| self.add_constraint(constraint).is_ok()) {
             Some(Grab {
                 anchor,
                 particle,
@@ -82,19 +70,14 @@ impl<S: Scalar> World<S> {
         }
     }
 
-    /// Moves the grab's anchor to `point`; the rod pulls the particle after
-    /// it from the next step.
     pub fn drag(&mut self, grab: &Grab, point: Vec2<S>) {
         // The anchor is static by construction, so this can't be refused.
         let _ = self.particles.set_static_position(grab.anchor, point);
     }
 
-    /// Ends the grab, removing its rod and anchor.
-    ///
     /// # Errors
-    /// Gives the grab back, changing nothing, if particles or constraints
-    /// were added after it (removing the anchor would shift the newer ids);
-    /// the caller can remove those and retry.
+    /// Gives the grab back if particles or constraints were added after it
+    /// (removing the anchor would shift their ids).
     pub fn release(&mut self, grab: Grab) -> Result<(), Grab> {
         let last_particle = grab.anchor.index() + 1 == self.particles.len();
         let last_rod = grab.rod + 1 == self.constraints().len();

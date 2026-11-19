@@ -5,51 +5,39 @@ use crate::{Mass, Radius, Scalar, Vec2};
 
 /// Names one particle: its slot in [`Particles`].
 ///
-/// A plain index, no generation counter: a plain index goes stale if its
-/// particle is removed (a later add would reuse the slot), and only one
-/// thing removes one: a grab's release pops its anchor, the last particle
-/// added, whose id only that `Grab` holds (`World::release` consumes it,
-/// and refuses unless the anchor is still last). Outside the engine,
-/// particles can't be removed or replaced at all (`World::particles` is
-/// read-only), so every id outlives its use (`docs/type-invariants.md`,
-/// item 5, keeps the trigger for a generational handle). Only
-/// [`Particles`] creates ids, so every id is a slot that exists in the
-/// `Particles` it came from.
-/// Not `#[must_use]`: most scenes add particles without naming them.
-/// Ordered by slot, so contacts can be sorted and looked up by their
-/// bodies (M6).
+/// A plain index, no generation counter: the only removal is a grab's
+/// release popping its anchor, the last particle added, whose id only that
+/// `Grab` holds. So every id outlives its use (`docs/type-invariants.md`,
+/// item 5). Only [`Particles`] creates ids, so each is a slot that exists.
+///
+/// Ordered by slot, so contacts can be sorted by their bodies.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ParticleId(pub(crate) usize);
 
 impl ParticleId {
-    /// The slot, for indexing the slices [`Particles`] hands out.
     #[must_use]
     pub const fn index(self) -> usize {
         self.0
     }
 }
 
-/// Names one **static** particle (immovable, `inv_mass = 0`): what
-/// [`Particles::add_static`] returns, and what
-/// [`set_static_position`](Particles::set_static_position) takes, so moving
-/// a dynamic particle by teleport is a type error, not a runtime refusal.
-/// Converts into a [`ParticleId`] wherever either kind is fine (a rod from a
-/// pin to a bob).
+/// Names one **static** particle (`inv_mass = 0`): what
+/// [`Particles::add_static`] returns and
+/// [`set_static_position`](Particles::set_static_position) takes, so
+/// teleporting a dynamic particle is a type error. Converts into a
+/// [`ParticleId`].
 ///
 /// A handle, not separate storage: a static is a particle of infinite mass,
-/// so every solver treats it with no special case (it weights corrections
-/// by `inv_mass`), and the storage stays one struct of arrays.
+/// so solvers need no special case.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StaticId(ParticleId);
 
 impl StaticId {
-    /// The slot, for indexing the slices [`Particles`] hands out.
     #[must_use]
     pub const fn index(self) -> usize {
         self.0.index()
     }
 
-    /// The same particle as a plain [`ParticleId`].
     #[must_use]
     pub const fn id(self) -> ParticleId {
         self.0
@@ -62,12 +50,8 @@ impl From<StaticId> for ParticleId {
     }
 }
 
-/// Point masses stored as a struct of arrays (one `Vec` per field).
-///
-/// Force and integration loops each touch one or two fields, so this layout keeps
-/// them streaming through contiguous memory. The Vecs are private because
-/// they must always have the same length; accessors hand out slices, which
-/// allow element-wise edits but can't add or remove particles.
+/// Point masses stored as a struct of arrays (one `Vec` per field), always
+/// the same length: accessors hand out slices, which can't add or remove.
 #[derive(Clone, Debug)]
 pub struct Particles<S> {
     pub(crate) pos: Vec<Vec2<S>>,
@@ -94,57 +78,54 @@ impl<S: Scalar> Particles<S> {
         }
     }
 
-    /// Adds a dynamic particle, storing `1 / mass` (checked finite and
-    /// positive by [`Mass::new`]). Use [`add_static`](Self::add_static) for
-    /// immovable particles.
-    pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: Mass<S>) -> ParticleId {
-        self.push(pos, vel, mass.inv(), S::ZERO)
+    pub fn add(&mut self, position: Vec2<S>, velocity: Vec2<S>, mass: Mass<S>) -> ParticleId {
+        self.push(position, velocity, mass.inv(), S::ZERO)
     }
 
-    /// Adds a dynamic circle: a particle with a radius, which collides
-    /// with other circles and with walls (M6).
     pub fn add_circle(
         &mut self,
-        pos: Vec2<S>,
-        vel: Vec2<S>,
+        position: Vec2<S>,
+        velocity: Vec2<S>,
         mass: Mass<S>,
         radius: Radius<S>,
     ) -> ParticleId {
-        self.push(pos, vel, mass.inv(), radius.get())
+        self.push(position, velocity, mass.inv(), radius.get())
     }
 
-    /// Adds an immovable particle (`inv_mass = 0`, zero velocity; it never
-    /// moves, whatever its velocity, in every stepper).
-    pub fn add_static(&mut self, pos: Vec2<S>) -> StaticId {
-        StaticId(self.push(pos, Vec2::ZERO, S::ZERO, S::ZERO))
+    pub fn add_static(&mut self, position: Vec2<S>) -> StaticId {
+        StaticId(self.push(position, Vec2::ZERO, S::ZERO, S::ZERO))
     }
 
-    /// Makes particle `i` a body of `inv_mass` and `radius` at rest at
-    /// `pos` (M7: retiring a potted ball, reinstating a cue ball). Keeps
-    /// the largest radius for a larger one; a smaller one leaves it (only
-    /// the broadphase's cell, a little larger than needed). `false` past
-    /// the end.
-    pub(crate) fn set_body(&mut self, i: usize, pos: Vec2<S>, inv_mass: S, radius: S) -> bool {
-        let (Some(x), Some(v), Some(w), Some(r)) = (
-            self.pos.get_mut(i),
-            self.vel.get_mut(i),
-            self.inv_mass.get_mut(i),
-            self.radius.get_mut(i),
+    /// Re-forms the particle in `slot` as a body at rest (retiring or
+    /// reinstating a ball). A smaller radius leaves `max_radius` as it was
+    /// (only a slightly large broadphase cell). `false` past the end.
+    pub(crate) fn set_body(
+        &mut self,
+        slot: usize,
+        position: Vec2<S>,
+        inv_mass: S,
+        radius: S,
+    ) -> bool {
+        let (Some(slot_position), Some(slot_velocity), Some(slot_inv_mass), Some(slot_radius)) = (
+            self.pos.get_mut(slot),
+            self.vel.get_mut(slot),
+            self.inv_mass.get_mut(slot),
+            self.radius.get_mut(slot),
         ) else {
             return false;
         };
-        (*x, *v, *w, *r) = (pos, Vec2::ZERO, inv_mass, radius);
+        (*slot_position, *slot_velocity, *slot_inv_mass, *slot_radius) =
+            (position, Vec2::ZERO, inv_mass, radius);
         if radius > self.max_radius {
             self.max_radius = radius;
         }
         true
     }
 
-    /// Appends to every field; the new slot is the old length.
-    fn push(&mut self, pos: Vec2<S>, vel: Vec2<S>, inv_mass: S, radius: S) -> ParticleId {
+    fn push(&mut self, position: Vec2<S>, velocity: Vec2<S>, inv_mass: S, radius: S) -> ParticleId {
         let id = ParticleId(self.pos.len());
-        self.pos.push(pos);
-        self.vel.push(vel);
+        self.pos.push(position);
+        self.vel.push(velocity);
         self.inv_mass.push(inv_mass);
         self.radius.push(radius);
         if radius > self.max_radius {
@@ -173,7 +154,6 @@ impl<S: Scalar> Particles<S> {
         &self.vel
     }
 
-    /// Velocities, mutable in place (e.g. to launch or stop particles).
     pub fn vel_mut(&mut self) -> &mut [Vec2<S>] {
         &mut self.vel
     }
@@ -183,50 +163,47 @@ impl<S: Scalar> Particles<S> {
         &self.inv_mass
     }
 
-    /// Radii, m; `0` for points.
     #[must_use]
     pub fn radius(&self) -> &[S] {
         &self.radius
     }
 
-    /// The largest radius, m; `0` when nothing is a circle.
     #[must_use]
     pub const fn max_radius(&self) -> S {
         self.max_radius
     }
 
-    /// Moves a **static** particle to `pos` (a drag anchor, a moving pin):
-    /// a dynamic one can't be named here (teleporting it would break its
-    /// momentum without a force). `false`, changing nothing, if `id` isn't
-    /// a static particle of *these* particles (one from another world).
+    /// Moves a **static** particle (a drag anchor, a moving pin). `false`,
+    /// changing nothing, if `id` isn't a static particle of *these*
+    /// particles (one from another world).
     #[must_use]
-    pub fn set_static_position(&mut self, id: StaticId, pos: Vec2<S>) -> bool {
+    pub fn set_static_position(&mut self, id: StaticId, position: Vec2<S>) -> bool {
         match (self.inv_mass.get(id.index()), self.pos.get_mut(id.index())) {
-            (Some(&w), Some(x)) if w == S::ZERO => {
-                *x = pos;
+            (Some(&inv_mass), Some(slot_position)) if inv_mass == S::ZERO => {
+                *slot_position = position;
                 true
             }
             _ => false,
         }
     }
 
-    /// The dynamic particle nearest to `point` within `radius` (m), if any:
-    /// what a pointer grab picks. Static particles can't be grabbed.
     #[must_use]
     pub fn nearest_dynamic(&self, point: Vec2<S>, radius: S) -> Option<ParticleId> {
-        let mut best: Option<(usize, S)> = None;
-        for (i, (&x, &w)) in self.pos.iter().zip(&self.inv_mass).enumerate() {
-            let d_sq = (x - point).length_sq();
-            if w != S::ZERO && d_sq <= radius * radius && best.is_none_or(|(_, b)| d_sq < b) {
-                best = Some((i, d_sq));
+        let mut nearest: Option<(usize, S)> = None;
+        for (slot, (&position, &inv_mass)) in self.pos.iter().zip(&self.inv_mass).enumerate() {
+            let distance_squared = (position - point).length_sq();
+            if inv_mass != S::ZERO
+                && distance_squared <= radius * radius
+                && nearest.is_none_or(|(_, best)| distance_squared < best)
+            {
+                nearest = Some((slot, distance_squared));
             }
         }
-        best.map(|(i, _)| ParticleId(i))
+        nearest.map(|(slot, _)| ParticleId(slot))
     }
 
-    /// Removes `id` if it is the last particle added; `false` otherwise.
-    /// Undoing the latest add (a drag anchor) is the only removal: every
-    /// other id stays valid, so `ParticleId` can stay a plain index.
+    /// Removes `id` if it is the last particle added (a drag anchor); the
+    /// only removal, so every other id stays valid.
     pub(crate) fn pop_if_last(&mut self, id: ParticleId) -> bool {
         if id.0 + 1 != self.pos.len() {
             return false;
@@ -236,11 +213,18 @@ impl<S: Scalar> Particles<S> {
         self.inv_mass.pop();
         // Popping is rare (a drag anchor), so recompute rather than track
         // a second-largest.
-        if self.radius.pop().is_some_and(|r| r == self.max_radius) {
-            self.max_radius = self
-                .radius
-                .iter()
-                .fold(S::ZERO, |m, &r| if r > m { r } else { m });
+        if self
+            .radius
+            .pop()
+            .is_some_and(|popped| popped == self.max_radius)
+        {
+            self.max_radius =
+                self.radius.iter().fold(
+                    S::ZERO,
+                    |largest, &radius| {
+                        if radius > largest { radius } else { largest }
+                    },
+                );
         }
         true
     }

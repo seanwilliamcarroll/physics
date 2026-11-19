@@ -8,47 +8,39 @@ pub use spring::{Spring, SpringForce};
 
 use crate::{Particles, Scalar, Vec2};
 
-/// A source of acceleration.
-///
-/// Called once per substep through `dyn Force<S>`. The indirect call is
-/// negligible next to the O(n) or O(n²) loop inside each impl
+/// A source of acceleration, called once per substep through `dyn Force<S>`
 /// (`docs/02-core-types.md`, "Decision: `dyn Force<S>`").
 pub trait Force<S: Scalar> {
-    /// Adds this force's acceleration into `acc` (one entry per particle,
-    /// zeroed by the world before the first force runs). Must add, never
-    /// overwrite, so multiple forces combine.
-    ///
-    /// Accelerations, not forces: static particles (`inv_mass = 0`) are
-    /// skipped, since a static has no mass to divide by or to pull with.
-    /// (Skipping them isn't what keeps them still: `kick` and `drift` never
-    /// move a static, whatever a force writes for it.)
-    fn accumulate(&self, p: &Particles<S>, acc: &mut [Vec2<S>]);
+    /// Adds this force's acceleration into `accelerations` (one entry per
+    /// particle, zeroed before the first force runs): add, never overwrite.
+    /// Static particles (`inv_mass = 0`) are skipped.
+    fn accumulate(&self, particles: &Particles<S>, accelerations: &mut [Vec2<S>]);
 }
 
 /// The same acceleration `g` for every dynamic particle, e.g.
 /// `(0, -STANDARD_GRAVITY)` m/s² (see [`crate::scenarios::STANDARD_GRAVITY`]).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct UniformGravity<S> {
-    g: Vec2<S>,
+    acceleration: Vec2<S>,
 }
 
 impl<S: Scalar> UniformGravity<S> {
     #[must_use]
-    pub const fn new(g: Vec2<S>) -> Self {
-        Self { g }
+    pub const fn new(acceleration: Vec2<S>) -> Self {
+        Self { acceleration }
     }
 
     /// The acceleration, m/s².
     pub const fn g(&self) -> Vec2<S> {
-        self.g
+        self.acceleration
     }
 }
 
 impl<S: Scalar> Force<S> for UniformGravity<S> {
-    fn accumulate(&self, p: &Particles<S>, acc: &mut [Vec2<S>]) {
-        for (a, &w) in acc.iter_mut().zip(p.inv_mass()) {
-            if w != S::ZERO {
-                *a += self.g;
+    fn accumulate(&self, particles: &Particles<S>, accelerations: &mut [Vec2<S>]) {
+        for (acceleration, &inv_mass) in accelerations.iter_mut().zip(particles.inv_mass()) {
+            if inv_mass != S::ZERO {
+                *acceleration += self.acceleration;
             }
         }
     }

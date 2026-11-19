@@ -1,48 +1,65 @@
-//! The plain pair loop: one pair at a time, body i's sum in order. What
-//! `PairwiseGravity` was before the vector loops (#273); kept for few
-//! bodies, where the vector loops' setup outweighs them (`PLAIN_BELOW`).
+//! The plain pair loop: one pair at a time, body i's sum in order. Used for
+//! few bodies, where the vector loops' setup outweighs them (`PLAIN_BELOW`).
 
 use super::PairwiseGravity;
 use crate::{Particles, Scalar, Vec2};
 
-pub(super) fn accumulate<S: Scalar>(g: &PairwiseGravity<S>, p: &Particles<S>, acc: &mut [Vec2<S>]) {
+pub(super) fn accumulate<S: Scalar>(
+    gravity: &PairwiseGravity<S>,
+    particles: &Particles<S>,
+    accelerations: &mut [Vec2<S>],
+) {
     // Masses once per call: n divisions here instead of n² in the pair
     // loop. Static particles get mass 0, so they exert no pull.
-    let bodies: Vec<(Vec2<S>, S, S)> = p
+    let bodies: Vec<(Vec2<S>, S, S)> = particles
         .pos()
         .iter()
-        .zip(p.inv_mass())
-        .map(|(&x, &w)| (x, if w == S::ZERO { S::ZERO } else { S::ONE / w }, w))
+        .zip(particles.inv_mass())
+        .map(|(&position, &inv_mass)| {
+            (
+                position,
+                if inv_mass == S::ZERO {
+                    S::ZERO
+                } else {
+                    S::ONE / inv_mass
+                },
+                inv_mass,
+            )
+        })
         .collect();
 
-    // Each pair once (i < j), without indexing: take the first body, pair
-    // it with every later one, continue with the rest. `mem::take` moves
-    // the slice out so its tail can replace it.
-    let mut acc_rest = acc;
+    // Each pair once (i < j), without indexing: split off the first body,
+    // pair it with the rest. `mem::take` moves the slice out to replace it.
+    let mut acceleration_rest = accelerations;
     let mut body_rest = bodies.as_slice();
-    while let (Some((a_i, acc_tail)), Some((&(x_i, m_i, w_i), body_tail))) = (
-        core::mem::take(&mut acc_rest).split_first_mut(),
+    while let (
+        Some((acceleration_i, acceleration_tail)),
+        Some((&(position_i, mass_i, inv_mass_i), body_tail)),
+    ) = (
+        core::mem::take(&mut acceleration_rest).split_first_mut(),
         body_rest.split_first(),
     ) {
-        // Body i's sum in a local, not through `a_i` in memory: the same
-        // additions in the same order.
-        let mut sum_i = *a_i;
-        for (a_j, &(x_j, m_j, w_j)) in acc_tail.iter_mut().zip(body_tail) {
-            let r = x_j - x_i;
-            let d_sq = r.length_sq() + g.softening_sq;
-            if d_sq == S::ZERO {
+        // Body i's sum in a local, not through `acceleration_i` in memory:
+        // the same additions in the same order.
+        let mut sum_i = *acceleration_i;
+        for (acceleration_j, &(position_j, mass_j, inv_mass_j)) in
+            acceleration_tail.iter_mut().zip(body_tail)
+        {
+            let offset = position_j - position_i;
+            let distance_sq = offset.length_sq() + gravity.softening_sq;
+            if distance_sq == S::ZERO {
                 // Coincident and unsoftened: no direction; skip, not 0/0.
                 continue;
             }
-            // One force vector per pair, applied +/-: equal and opposite by
-            // construction. Accelerations are F * w, so a static body
-            // (w = 0) isn't moved.
-            let f = r * (g.g_const * m_i * m_j / (d_sq * d_sq.sqrt()));
-            sum_i += f * w_i;
-            *a_j -= f * w_j;
+            // One force per pair, applied +/-; times inv_mass, so statics stay put.
+            let force = offset
+                * (gravity.gravitational_constant * mass_i * mass_j
+                    / (distance_sq * distance_sq.sqrt()));
+            sum_i += force * inv_mass_i;
+            *acceleration_j -= force * inv_mass_j;
         }
-        *a_i = sum_i;
-        acc_rest = acc_tail;
+        *acceleration_i = sum_i;
+        acceleration_rest = acceleration_tail;
         body_rest = body_tail;
     }
 }
