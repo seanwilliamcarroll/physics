@@ -5,9 +5,7 @@ use crate::{Arena, Boid, Params};
 use knobs::Mask;
 
 /// `me` one step on, given `others`: every boid that might be within the
-/// visual range (more is fine: each is checked). Separation from those
-/// inside the protected range; cohesion and alignment toward the rest in
-/// range; edge turning; the speed clamp; then the move.
+/// visual range (more is fine: each is checked).
 pub(crate) fn steer(
     params: &Params,
     arena: Arena,
@@ -23,7 +21,6 @@ pub(crate) fn steer(
     finish(params, arena, predator, me, &seen)
 }
 
-/// The squared ranges every candidate is checked against.
 #[derive(Copy, Clone)]
 pub(crate) struct Ranges {
     protected_sq: f32,
@@ -43,8 +40,7 @@ impl Ranges {
 /// the offsets from boids crowding it (separation).
 ///
 /// A candidate at distance 0 (the boid itself, or one exactly on top of
-/// it) adds nothing: its offset is 0, and it isn't a neighbour. That
-/// makes skipping the boid itself unnecessary, which the lane loop needs.
+/// it) adds nothing, so the lane loop needn't skip the boid itself.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub(crate) struct Seen {
     sum_x: f32,
@@ -57,10 +53,8 @@ pub(crate) struct Seen {
 }
 
 impl Seen {
-    /// One candidate, as ECE 4760's pseudocode: inside the protected
-    /// range it repels; otherwise, inside the visual range, it counts.
-    /// (The source's `|dx|, |dy| < range` pre-check is implied by
-    /// `distance² < range²`, so it's left out.)
+    /// One candidate: inside the protected range it repels; otherwise,
+    /// inside the visual range, it counts.
     pub(crate) fn add(&mut self, ranges: Ranges, me: Boid, other: Boid) {
         let (dx, dy) = (me.x - other.x, me.y - other.y);
         let distance_sq = dx * dx + dy * dy;
@@ -76,15 +70,11 @@ impl Seen {
         }
     }
 
-    /// [`Self::add`] without branches: both terms, each times a 0/1 mask
-    /// (as the lane loop does it, one candidate at a time). The same values
-    /// (adding a masked-out 0 changes no sum; tested); faster where the
-    /// branch is hard to predict, as in a big flock's candidates: the
-    /// grid's step (`steer`) at 100,000 boids is 18–37% faster natively on
-    /// the M4 and Zen 5. Slower where it's easy (a small flock's), so
-    /// sorted's leftovers keep [`Self::add`]. The masks' form is the
-    /// target's (`tuning::GRID_MASK`: natively a select, in wasm a
-    /// converted integer, which V8 on x86 doesn't turn into branches).
+    /// [`Self::add`] without branches: both terms times a 0/1 mask. Faster
+    /// where the branch is hard to predict (the grid's step at 100,000
+    /// boids: 18–37% on the M4 and Zen 5), slower where it's easy, so
+    /// sorted's leftovers keep [`Self::add`]. The mask's form is
+    /// `tuning::GRID_MASK`.
     pub(crate) fn add_masked(&mut self, ranges: Ranges, me: Boid, other: Boid) {
         let (dx, dy) = (me.x - other.x, me.y - other.y);
         let distance_sq = dx * dx + dy * dy;
@@ -92,7 +82,6 @@ impl Seen {
         let is_near = distance_sq >= ranges.protected_sq
             && distance_sq < ranges.visual_sq
             && distance_sq > 0.0;
-        // The target's form (`tuning.rs`), or the build setting's.
         let unit: fn(bool) -> f32 = match GRID_MASK {
             Mask::Convert => |condition| f32::from(u8::from(condition)),
             Mask::Select => |condition| if condition { 1.0 } else { 0.0 },
@@ -122,11 +111,9 @@ impl Seen {
         self.count += near;
     }
 
-    /// Candidates given as the same span of four arrays: whole blocks of
-    /// `L` through the lane loop (`rules/lanes.rs`: without branches,
-    /// into `L` partial sums; `L` per target and search, `tuning.rs`), the
-    /// rest one at a time. The sums round differently from
-    /// [`Self::add`]'s, as any order does.
+    /// Whole blocks of `L` candidates through the lane loop
+    /// (`rules/lanes.rs`), the rest one at a time. The sums round
+    /// differently from [`Self::add`]'s.
     pub(crate) fn add_span<const L: usize>(
         &mut self,
         ranges: Ranges,
@@ -158,11 +145,9 @@ impl Seen {
         }
     }
 
-    /// Sorted's candidates: the `spans` of the whole flock's arrays (`x`
-    /// and the rest, in cell order), each through the lane loop. How a
-    /// span's edges go is the target's (`tuning.rs`) or the build's
-    /// (`knobs.rs`: `SWARM_SPAN`, `SWARM_TAIL`); per span and scalar, as
-    /// [`Self::add_span`] for each span.
+    /// Sorted's candidates: the `spans` of the flock's arrays in cell
+    /// order, each through the lane loop; how span edges go is in
+    /// `tuning.rs`.
     pub(crate) fn add_spans<const L: usize>(
         &mut self,
         ranges: Ranges,
@@ -181,15 +166,13 @@ mod tuning;
 pub(crate) use tuning::{BRUTE_LANES, GRID_MASK, SORTED_LANES, TRUNCATE_CELL};
 use tuning::{PER_BOID, TAIL};
 
-/// How close the predator must be to be fled, pixels (our choice: a
-/// little over twice the visual range, so a flock parts ahead of it).
+/// How close the predator must be to be fled, pixels (a little over twice
+/// the visual range).
 pub const PREDATOR_RANGE: f32 = 100.0;
-/// How hard a boid flees: the fraction of the way to "away at top speed"
-/// it steers each step (Reynolds 1999's flee, as a gain; our choice).
+/// The fraction of the way to "away at top speed" a boid steers each step.
 pub(crate) const FLEE: f32 = 0.1;
 
-/// The rest of the update, from what `me` saw: cohesion and alignment,
-/// separation, fleeing the predator, edge turning, the clamp, the move.
+/// The rest of the update, from what `me` saw.
 pub(crate) fn finish(
     params: &Params,
     arena: Arena,
@@ -216,7 +199,6 @@ pub(crate) fn finish(
             vy += (dy / distance * params.max_speed - vy) * FLEE;
         }
     }
-    // Edge turning: past the margin from a side, pushed back inside.
     if me.x < params.margin {
         vx += params.turn;
     }
@@ -238,9 +220,8 @@ pub(crate) fn finish(
     }
 }
 
-/// `velocity` scaled into `[min, max]`. At speed exactly 0 (the step's
-/// terms cancelled it) there's no direction to scale: `previous`'s is kept
-/// (the source divides by the speed unguarded; `docs/15-swarm.md`).
+/// `velocity` scaled into `[min, max]`. At speed exactly 0 there's no
+/// direction to scale, so `previous`'s is kept.
 fn clamp_speed(params: &Params, (vx, vy): (f32, f32), previous: (f32, f32)) -> (f32, f32) {
     let speed = (vx * vx + vy * vy).sqrt();
     if speed == 0.0 {

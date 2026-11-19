@@ -130,10 +130,6 @@ fn a_boid_flees_a_predator_in_range_only() {
     );
 }
 
-// Limits: each limit's own value (the margin, the predator's range, a boid
-// on the same spot), the flee with a velocity across it, and the
-// zero-speed rescue off an axis.
-
 #[test]
 fn exactly_at_the_margin_a_boid_does_not_turn() {
     let margin = P.margin;
@@ -189,9 +185,6 @@ fn at_zero_speed_an_off_axis_heading_is_kept() {
     assert!((x - 1.8).abs() < 1e-6 && (y - 2.4).abs() < 1e-6, "{x} {y}");
 }
 
-/// The masked form gives the same values as the branching one, for every
-/// kind of candidate: too close, in range, out of range, and the boid
-/// itself (at distance 0).
 #[test]
 fn the_masked_add_matches_the_branching_one() {
     let ranges = Ranges::of(&P);
@@ -236,10 +229,8 @@ fn the_masked_add_matches_the_branching_one() {
     }
 }
 
-/// Sorted's span edges, every way (`SWARM_SPAN`, `SWARM_TAIL`): the same
-/// sums as each candidate through [`Seen::add`], to rounding. Spans short
-/// (under a block), at the arrays' start (the masked block can't reach
-/// back), whole blocks, and long; empty ones too.
+/// Every span-edge setting sums to [`Seen::add`]'s, to rounding, for short,
+/// whole-block, long, empty and arrays'-start spans.
 #[test]
 fn every_span_edge_setting_sums_the_same_candidates() {
     const L: usize = 8;
