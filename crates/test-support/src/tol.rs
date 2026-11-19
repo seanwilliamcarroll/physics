@@ -2,25 +2,22 @@
 
 use engine::{Particles, Scalar};
 
-/// Per-scalar tolerances. These are hypotheses: when one fails, first decide
-/// whether the tolerance or the physics is wrong, and record why here.
+/// Per-scalar tolerances: hypotheses, not facts. When one fails, decide
+/// whether the tolerance or the physics is wrong.
 pub trait Tol: Scalar {
-    /// Absolute position/velocity error allowed from rounding alone, for
-    /// scenes of order 10 m over order 100 steps. Set ~10x above measured.
+    /// Absolute position/velocity rounding error for ~10 m scenes over ~100
+    /// steps. ~10x measured.
     const POS_ABS: f64;
-    /// Machine epsilon of the scalar, for error laws that scale with it
-    /// (see `momentum_drift_bound`).
+    /// Machine epsilon, for error laws that scale with it.
     const EPSILON: f64;
     /// Center-of-mass error allowed after the same run, m. ~10x measured.
     const COM_ABS: f64;
-    /// Relative energy error from rounding alone over 100 orbits: added to
-    /// every orbit energy bound. In f32 it exceeds velocity Verlet's own
-    /// truncation error, so f32 can't resolve Verlet's accuracy.
+    /// Relative energy error from rounding alone over 100 orbits, added to every
+    /// orbit energy bound. In f32 it exceeds Verlet's own truncation error.
     const ENERGY_FLOOR: f64;
-    /// Property tests, 60 steps of random worlds (`world_spec`): position
-    /// difference allowed between "shift then step" and "step then shift"
-    /// (shifts up to ±100 m), and between a world and its reordering, m.
-    /// Set ~10x above the worst case over 2000 random worlds.
+    /// Property tests (60 steps, `world_spec`): position difference allowed
+    /// between shift-then-step and step-then-shift (shifts up to ±100 m), and
+    /// between a world and its reordering, m. ~10x the worst of 2000 worlds.
     const TRANSLATION_ABS: f64;
     const PERMUTATION_ABS: f64;
 }
@@ -56,11 +53,8 @@ impl Tol for f64 {
 /// `steps · ε · Σ m|v|`.
 ///
 /// Pairwise forces are equal and opposite, so momentum only changes through
-/// rounding. Each step, `v += a h` rounds each velocity by at most half an
-/// ulp (≤ ε/2 relative), moving that body's momentum by ≤ ε m|v|/2; summed
-/// over bodies and steps, with the momentum readout's own rounding, the
-/// drift stays under `steps · ε · Σ m|v|`. An error law in the scalar's ε,
-/// not a measured constant, which a different world could exceed.
+/// rounding: each step `v += a h` moves a body's momentum by at most
+/// ε m|v|/2. An error law in ε, not a measured constant.
 /// Measured over 15,000 random worlds × 3 integrators: worst drift is 0.26
 /// (f32) and 0.10 (f64) of this bound.
 #[must_use]
@@ -68,9 +62,7 @@ pub fn momentum_drift_bound<S: Tol>(steps: u32, scale: f64) -> f64 {
     f64::from(steps) * S::EPSILON * scale
 }
 
-/// `Σ m |v|` of the dynamic bodies: the momentum a world *could* have if
-/// every body moved the same way, the scale momentum drift is judged on
-/// (with [`momentum_drift_bound`]).
+/// `Σ m|v|` of the dynamic bodies: the scale momentum drift is judged on.
 #[must_use]
 pub fn momentum_scale<S: Scalar>(particles: &Particles<S>) -> f64 {
     particles
