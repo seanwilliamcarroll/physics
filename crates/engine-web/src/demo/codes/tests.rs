@@ -39,8 +39,6 @@ fn codes_map_to_kinds() {
 
 #[test]
 fn order_and_stabilization_codes_map_to_their_variants() {
-    // From the full cargo-mutants run: deleting the Forward, Reverse or
-    // Split arm went unnoticed.
     assert_eq!(order_from_code(abi::ORDER_FORWARD), Some(Order::Forward));
     assert_eq!(order_from_code(abi::ORDER_REVERSE), Some(Order::Reverse));
     assert_eq!(

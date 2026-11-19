@@ -83,7 +83,7 @@ enum Create {
     New {
         kind: u32,
         scalar: u32,
-        n: u32,
+        count: u32,
         seed: u32,
     },
     Chain {
@@ -101,12 +101,12 @@ enum Create {
         body: u32,
         cols: u32,
         rows: u32,
-        k: f64,
-        c: f64,
+        stiffness: f64,
+        damping: f64,
     },
     BallBox {
         scalar: u32,
-        n: u32,
+        count: u32,
         seed: u32,
     },
     Break {
@@ -139,10 +139,10 @@ fn valid_create() -> impl Strategy<Value = Create> {
             1..=SMALL_BODIES,
             any::<u32>()
         )
-            .prop_map(|(kind, scalar, n, seed)| Create::New {
+            .prop_map(|(kind, scalar, count, seed)| Create::New {
                 kind,
                 scalar,
-                n,
+                count,
                 seed
             }),
         (scalar(), 1..=SMALL_LINKS, 0.1..1000.0).prop_map(|(scalar, links, ratio)| Create::Chain {
@@ -165,18 +165,22 @@ fn valid_create() -> impl Strategy<Value = Create> {
             prop_oneof![10.0..1e5, Just(f64::INFINITY)],
             0.0..2.0,
         )
-            .prop_map(|(scalar, body, cols, rows, k, c)| Create::Jelly {
+            .prop_map(
+                |(scalar, body, cols, rows, stiffness, damping)| Create::Jelly {
+                    scalar,
+                    body,
+                    cols,
+                    rows,
+                    stiffness,
+                    damping
+                }
+            ),
+        (scalar(), 0..=SMALL_BALLS, any::<u32>()).prop_map(|(scalar, count, seed)| {
+            Create::BallBox {
                 scalar,
-                body,
-                cols,
-                rows,
-                k,
-                c
-            }),
-        (scalar(), 0..=SMALL_BALLS, any::<u32>()).prop_map(|(scalar, n, seed)| Create::BallBox {
-            scalar,
-            n,
-            seed
+                count,
+                seed,
+            }
         }),
         (scalar(), 0.0..=abi::MAX_BREAK_GAP)
             .prop_map(|(scalar, gap)| Create::Break { scalar, gap }),
@@ -203,11 +207,11 @@ fn hostile_create() -> impl Strategy<Value = Create> {
             size(SMALL_BODIES, abi::MAX_PARTICLES),
             any::<u32>()
         )
-            .prop_map(|(kind, scalar, n, seed)| {
+            .prop_map(|(kind, scalar, count, seed)| {
                 Create::New {
                     kind,
                     scalar,
-                    n,
+                    count,
                     seed,
                 }
             }),
@@ -236,16 +240,23 @@ fn hostile_create() -> impl Strategy<Value = Create> {
             hostile_f64(),
             hostile_f64()
         )
-            .prop_map(|(scalar, body, cols, rows, k, c)| Create::Jelly {
+            .prop_map(
+                |(scalar, body, cols, rows, stiffness, damping)| Create::Jelly {
+                    scalar,
+                    body,
+                    cols,
+                    rows,
+                    stiffness,
+                    damping
+                }
+            ),
+        (code(), size(SMALL_BALLS, abi::MAX_BOX_BALLS), any::<u32>()).prop_map(
+            |(scalar, count, seed)| Create::BallBox {
                 scalar,
-                body,
-                cols,
-                rows,
-                k,
-                c
-            }),
-        (code(), size(SMALL_BALLS, abi::MAX_BOX_BALLS), any::<u32>())
-            .prop_map(|(scalar, n, seed)| Create::BallBox { scalar, n, seed }),
+                count,
+                seed
+            }
+        ),
         (code(), hostile_f64()).prop_map(|(scalar, gap)| Create::Break { scalar, gap }),
         (
             code(),
@@ -294,47 +305,47 @@ enum Call {
 }
 
 fn call() -> impl Strategy<Value = Call> {
-    let f = hostile_f64;
+    let hostile = hostile_f64;
     prop_oneof![
         1 => create().prop_map(Call::Replace),
-        6 => f().prop_map(Call::Advance),
+        6 => hostile().prop_map(Call::Advance),
         1 => code().prop_map(Call::Integrator),
         1 => size(abi::MAX_RATE_HZ, abi::MAX_RATE_HZ).prop_map(Call::Rate),
-        1 => f().prop_map(Call::Softening),
-        1 => f().prop_map(Call::Theta),
+        1 => hostile().prop_map(Call::Softening),
+        1 => hostile().prop_map(Call::Theta),
         1 => code().prop_map(Call::Solver),
-        1 => f().prop_map(Call::Beta),
+        1 => hostile().prop_map(Call::Beta),
         1 => size(SMALL_SUBSTEPS, abi::MAX_SUBSTEPS).prop_map(Call::Substeps),
         1 => size(SMALL_ITERATIONS, abi::MAX_ITERATIONS).prop_map(Call::Iterations),
         1 => code().prop_map(Call::Order),
         1 => code().prop_map(Call::Stabilization),
-        1 => f().prop_map(Call::Stiffness),
-        1 => f().prop_map(Call::Damping),
+        1 => hostile().prop_map(Call::Stiffness),
+        1 => hostile().prop_map(Call::Damping),
         // Grabs mostly near the scenes (within a few m), sometimes hostile.
-        2 => (prop_oneof![-3.0..3.0, f()], prop_oneof![-3.0..3.0, f()], prop_oneof![0.0..2.0, f()])
-            .prop_map(|(x, y, r)| Call::Grab(x, y, r)),
-        2 => (prop_oneof![-3.0..3.0, f()], prop_oneof![-3.0..3.0, f()]).prop_map(|(x, y)| Call::Drag(x, y)),
+        2 => (prop_oneof![-3.0..3.0, hostile()], prop_oneof![-3.0..3.0, hostile()], prop_oneof![0.0..2.0, hostile()])
+            .prop_map(|(x, y, radius)| Call::Grab(x, y, radius)),
+        2 => (prop_oneof![-3.0..3.0, hostile()], prop_oneof![-3.0..3.0, hostile()]).prop_map(|(x, y)| Call::Drag(x, y)),
         1 => Just(Call::Release),
-        1 => f().prop_map(Call::Restitution),
+        1 => hostile().prop_map(Call::Restitution),
         1 => Just(Call::Pairs),
         // Strikes mostly in range (so the table moves), sometimes hostile.
-        2 => (prop_oneof![-1.0..1.0, f()], prop_oneof![-1.0..1.0, f()], prop_oneof![0.0..12.0, f()], prop_oneof![-0.5..0.5, f()])
-            .prop_map(|(x, y, v, t)| Call::Strike(x, y, v, t)),
+        2 => (prop_oneof![-1.0..1.0, hostile()], prop_oneof![-1.0..1.0, hostile()], prop_oneof![0.0..12.0, hostile()], prop_oneof![-0.5..0.5, hostile()])
+            .prop_map(|(x, y, speed, tip)| Call::Strike(x, y, speed, tip)),
         1 => code().prop_map(Call::Speculative),
         1 => Just(Call::Respot),
         1 => size(4, abi::MAX_RATE_HZ).prop_map(Call::StepCap),
-        1 => any::<u32>().prop_map(|i| Call::Particle(i % (2 * SMALL_BODIES + 4))),
+        1 => any::<u32>().prop_map(|index| Call::Particle(index % (2 * SMALL_BODIES + 4))),
     ]
 }
 
-fn make(c: &Create) -> *mut Demo {
-    match *c {
+fn make(create: &Create) -> *mut Demo {
+    match *create {
         Create::New {
             kind,
             scalar,
-            n,
+            count,
             seed,
-        } => demo_new(kind, scalar, n, seed),
+        } => demo_new(kind, scalar, count, seed),
         Create::Chain {
             scalar,
             links,
@@ -350,10 +361,14 @@ fn make(c: &Create) -> *mut Demo {
             body,
             cols,
             rows,
-            k,
-            c,
-        } => demo_new_jelly(scalar, body, cols, rows, k, c),
-        Create::BallBox { scalar, n, seed } => demo_new_ball_box(scalar, n, seed),
+            stiffness,
+            damping,
+        } => demo_new_jelly(scalar, body, cols, rows, stiffness, damping),
+        Create::BallBox {
+            scalar,
+            count,
+            seed,
+        } => demo_new_ball_box(scalar, count, seed),
         Create::Break { scalar, gap } => demo_new_break_shot(scalar, gap),
         Create::Cradle {
             scalar,
@@ -376,87 +391,87 @@ struct Observed {
     grabbable: u32,
 }
 
-/// Reads every buffer and readout of `d` (null allowed), checking what JS
+/// Reads every buffer and readout of `demo` (null allowed), checking what JS
 /// relies on: positions are (x, y) pairs, links are pairs of particle
 /// indices that exist, and a null demo reads as empty and NaN.
 ///
 /// # Safety
-/// `d` must be null or a live handle.
-unsafe fn observe(d: *mut Demo) -> Result<Observed, TestCaseError> {
+/// `demo` must be null or a live handle.
+unsafe fn observe(demo: *mut Demo) -> Result<Observed, TestCaseError> {
     // SAFETY: per this function's contract.
     unsafe {
-        let (pos_len, links_len) = (demo_positions_len(d), demo_links_len(d));
+        let (pos_len, links_len) = (demo_positions_len(demo), demo_links_len(demo));
         prop_assert_eq!(pos_len % 2, 0, "positions are (x, y) pairs");
         prop_assert_eq!(links_len % 2, 0, "links are index pairs");
         let positions = if pos_len == 0 {
             Vec::new()
         } else {
-            let p = demo_positions_ptr(d);
-            prop_assert!(!p.is_null());
-            core::slice::from_raw_parts(p, pos_len)
+            let pointer = demo_positions_ptr(demo);
+            prop_assert!(!pointer.is_null());
+            core::slice::from_raw_parts(pointer, pos_len)
                 .iter()
-                .map(|v| v.to_bits())
+                .map(|value| value.to_bits())
                 .collect()
         };
         let links = if links_len == 0 {
             Vec::new()
         } else {
-            let p = demo_links_ptr(d);
-            prop_assert!(!p.is_null());
-            core::slice::from_raw_parts(p, links_len).to_vec()
+            let pointer = demo_links_ptr(demo);
+            prop_assert!(!pointer.is_null());
+            core::slice::from_raw_parts(pointer, links_len).to_vec()
         };
         let particles = pos_len / 2;
-        for &i in &links {
+        for &link in &links {
             prop_assert!(
-                (i as usize) < particles,
-                "link to particle {i} of {particles}"
+                (link as usize) < particles,
+                "link to particle {link} of {particles}"
             );
         }
         // The table's buffers: segments by fours, pockets by threes, and
         // the potted list's pairs naming balls and pockets that exist.
-        prop_assert_eq!(demo_segments_len(d) % 4, 0);
-        let pockets = demo_pockets_len(d);
+        prop_assert_eq!(demo_segments_len(demo) % 4, 0);
+        let pockets = demo_pockets_len(demo);
         prop_assert_eq!(pockets % 3, 0);
-        for (len, p) in [
-            (demo_segments_len(d), demo_segments_ptr(d)),
-            (pockets, demo_pockets_ptr(d)),
+        for (len, pointer) in [
+            (demo_segments_len(demo), demo_segments_ptr(demo)),
+            (pockets, demo_pockets_ptr(demo)),
         ] {
             if len > 0 {
                 prop_assert!(
-                    core::slice::from_raw_parts(p, len)
+                    core::slice::from_raw_parts(pointer, len)
                         .iter()
-                        .all(|v| v.is_finite())
+                        .all(|value| value.is_finite())
                 );
             }
         }
-        let potted = if demo_potted_len(d) == 0 {
+        let potted = if demo_potted_len(demo) == 0 {
             Vec::new()
         } else {
-            core::slice::from_raw_parts(demo_potted_ptr(d), demo_potted_len(d)).to_vec()
+            core::slice::from_raw_parts(demo_potted_ptr(demo), demo_potted_len(demo)).to_vec()
         };
-        for p in potted.chunks(2) {
+        for pair in potted.chunks(2) {
             prop_assert!(
-                (p[0] as usize) < pos_len / 2 && (p[1] as usize) < pockets / 3,
-                "potted {p:?}"
+                (pair[0] as usize) < pos_len / 2 && (pair[1] as usize) < pockets / 3,
+                "potted {pair:?}"
             );
         }
-        let at_rest = demo_at_rest(d);
+        let at_rest = demo_at_rest(demo);
         prop_assert!(at_rest <= 1);
-        let grabbable = demo_grabbable(d);
+        let grabbable = demo_grabbable(demo);
         prop_assert!(grabbable <= 1);
-        if d.is_null() {
-            prop_assert!(demo_energy(d).is_nan() && demo_kinetic_energy(d).is_nan());
+        if demo.is_null() {
+            prop_assert!(demo_energy(demo).is_nan() && demo_kinetic_energy(demo).is_nan());
         }
         Ok(Observed {
             positions,
             links,
             readouts: [
-                demo_energy(d),
-                demo_kinetic_energy(d),
-                demo_constraint_error(d),
-                demo_momentum_x(d),
-                demo_momentum_y(d),
-                demo_tunnels(d),
+                demo_energy(demo),
+                demo_kinetic_energy(demo),
+                demo_constraint_error(demo),
+                demo_momentum_x(demo),
+                demo_momentum_y(demo),
+                demo_tunnels(demo),
             ]
             .map(f64::to_bits),
             potted,
@@ -466,85 +481,91 @@ unsafe fn observe(d: *mut Demo) -> Result<Observed, TestCaseError> {
     }
 }
 
-/// Makes `call` on `d`; returns whether it was refused (status 0, grab −1),
+/// Makes `call` on `demo`; returns whether it was refused (status 0, grab −1),
 /// checking a status is 0 or 1.
 ///
 /// # Safety
-/// `d` must be null or a live handle; `Replace` is handled by the caller.
-unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
+/// `demo` must be null or a live handle; `Replace` is handled by the caller.
+unsafe fn apply(demo: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
     // SAFETY: per this function's contract.
     let status = unsafe {
         match *call {
             Call::Replace(_) => return Err(TestCaseError::fail("handled by the caller")),
-            Call::Advance(t) => {
-                let steps = demo_advance(d, t);
+            Call::Advance(elapsed) => {
+                let steps = demo_advance(demo, elapsed);
                 // At most 0.25 s (the frame clamp) of steps at the highest rate.
-                prop_assert!(steps <= abi::MAX_RATE_HZ / 4 + 1, "{steps} steps from {t}");
+                prop_assert!(
+                    steps <= abi::MAX_RATE_HZ / 4 + 1,
+                    "{steps} steps from {elapsed}"
+                );
                 return Ok(false);
             }
-            Call::Particle(i) => {
-                let (x, y) = (demo_particle_x(d, i), demo_particle_y(d, i));
-                let count = demo_positions_len(d) / 2;
-                let r = demo_particle_radius(d, i);
-                let (wx, wy) = (demo_spin_x(d, i), demo_spin_y(d, i));
-                let number = demo_ball_number(d, i);
-                if (i as usize) >= count {
+            Call::Particle(index) => {
+                let (x, y) = (demo_particle_x(demo, index), demo_particle_y(demo, index));
+                let count = demo_positions_len(demo) / 2;
+                let radius = demo_particle_radius(demo, index);
+                let (spin_x, spin_y) = (demo_spin_x(demo, index), demo_spin_y(demo, index));
+                let number = demo_ball_number(demo, index);
+                if (index as usize) >= count {
                     prop_assert!(
-                        x.is_nan() && y.is_nan() && r.is_nan(),
+                        x.is_nan() && y.is_nan() && radius.is_nan(),
                         "past the end reads NaN"
                     );
-                    prop_assert!(wx.is_nan() && wy.is_nan() && number == -1);
+                    prop_assert!(spin_x.is_nan() && spin_y.is_nan() && number == -1);
                 } else {
-                    prop_assert!(r >= 0.0, "radius {r}");
+                    prop_assert!(radius >= 0.0, "radius {radius}");
                     prop_assert!((-1..=15).contains(&number), "number {number}");
                 }
                 return Ok(false);
             }
-            Call::Grab(x, y, r) => {
+            Call::Grab(x, y, radius) => {
                 // Not a refusal: a grab replaces the held one, hit or miss.
                 // −1 means nothing is held now, so there's nothing to drag.
-                let i = demo_grab(d, x, y, r);
-                prop_assert!(i >= -1);
-                if i == -1 {
-                    prop_assert_eq!(demo_drag(d, 0.0, 0.0), 0, "−1 left a grab held");
+                let held = demo_grab(demo, x, y, radius);
+                prop_assert!(held >= -1);
+                if held == -1 {
+                    prop_assert_eq!(demo_drag(demo, 0.0, 0.0), 0, "−1 left a grab held");
                 }
                 return Ok(false);
             }
             Call::Pairs => {
                 // Not a setting: it fills a buffer JS reads. Pairs are
                 // `a < b`, both particles that exist.
-                let cell = demo_update_pairs(d);
+                let cell = demo_update_pairs(demo);
                 prop_assert!(cell.is_nan() || cell > 0.0, "cell {cell}");
-                let len = demo_pairs_len(d);
+                let len = demo_pairs_len(demo);
                 prop_assert_eq!(len % 2, 0);
                 if len > 0 {
-                    let count = demo_positions_len(d) / 2;
-                    let pairs = core::slice::from_raw_parts(demo_pairs_ptr(d), len);
-                    for p in pairs.chunks(2) {
-                        prop_assert!(p[0] < p[1] && (p[1] as usize) < count, "pair {p:?}");
+                    let count = demo_positions_len(demo) / 2;
+                    let pairs = core::slice::from_raw_parts(demo_pairs_ptr(demo), len);
+                    for pair in pairs.chunks(2) {
+                        prop_assert!(
+                            pair[0] < pair[1] && (pair[1] as usize) < count,
+                            "pair {pair:?}"
+                        );
                     }
                 }
                 return Ok(false);
             }
-            Call::Restitution(e) => demo_set_restitution(d, e),
-            Call::Strike(x, y, v, t) => demo_strike(d, x, y, v, t),
-            Call::Speculative(c) => demo_set_speculative(d, c),
-            Call::Respot => demo_respot_cue(d),
-            Call::StepCap(n) => demo_set_step_cap(d, n),
-            Call::Integrator(c) => demo_set_integrator(d, c),
-            Call::Rate(hz) => demo_set_rate(d, hz),
-            Call::Softening(e) => demo_set_softening(d, e),
-            Call::Theta(t) => demo_set_theta(d, t),
-            Call::Solver(c) => demo_set_solver(d, c),
-            Call::Beta(b) => demo_set_beta(d, b),
-            Call::Substeps(n) => demo_set_substeps(d, n),
-            Call::Iterations(n) => demo_set_iterations(d, n),
-            Call::Order(c) => demo_set_order(d, c),
-            Call::Stabilization(c) => demo_set_stabilization(d, c),
-            Call::Stiffness(k) => demo_set_stiffness(d, k),
-            Call::Damping(c) => demo_set_damping(d, c),
-            Call::Drag(x, y) => demo_drag(d, x, y),
-            Call::Release => demo_release(d),
+            Call::Restitution(restitution) => demo_set_restitution(demo, restitution),
+            Call::Strike(x, y, speed, tip) => demo_strike(demo, x, y, speed, tip),
+            Call::Speculative(on) => demo_set_speculative(demo, on),
+            Call::Respot => demo_respot_cue(demo),
+            Call::StepCap(max_steps) => demo_set_step_cap(demo, max_steps),
+            Call::Integrator(code) => demo_set_integrator(demo, code),
+            Call::Rate(rate_hz) => demo_set_rate(demo, rate_hz),
+            Call::Softening(softening) => demo_set_softening(demo, softening),
+            Call::Theta(theta) => demo_set_theta(demo, theta),
+            Call::Solver(code) => demo_set_solver(demo, code),
+            Call::Beta(beta) => demo_set_beta(demo, beta),
+            Call::Substeps(substeps) => demo_set_substeps(demo, substeps),
+            Call::Iterations(iterations) => demo_set_iterations(demo, iterations),
+            Call::Order(code) => demo_set_order(demo, code),
+            Call::Stabilization(code) => demo_set_stabilization(demo, code),
+            Call::Stiffness(stiffness) => demo_set_stiffness(demo, stiffness),
+            Call::Damping(damping) => demo_set_damping(demo, damping),
+            Call::Drag(x, y) => demo_drag(demo, x, y),
+            Call::Release => demo_release(demo),
         }
     };
     prop_assert!(status <= 1, "status {status} from {call:?}");
@@ -552,25 +573,25 @@ unsafe fn apply(d: *mut Demo, call: &Call) -> Result<bool, TestCaseError> {
 }
 
 fn run(first: &Create, calls: &[Call]) -> Result<(), TestCaseError> {
-    let mut d = make(first);
-    // SAFETY: `d` is always null or the one live handle from `make`; it is
+    let mut demo = make(first);
+    // SAFETY: `demo` is always null or the one live handle from `make`; it is
     // freed exactly once, when replaced or at the end.
     unsafe {
         for call in calls {
-            let before = observe(d)?;
-            if let Call::Replace(c) = call {
-                demo_free(d);
-                d = make(c);
-                observe(d)?;
+            let before = observe(demo)?;
+            if let Call::Replace(create) = call {
+                demo_free(demo);
+                demo = make(create);
+                observe(demo)?;
                 continue;
             }
-            let refused = apply(d, call)?;
-            let after = observe(d)?;
+            let refused = apply(demo, call)?;
+            let after = observe(demo)?;
             if refused {
                 prop_assert_eq!(&before, &after, "refused {:?} changed the demo", call);
             }
         }
-        demo_free(d);
+        demo_free(demo);
     }
     Ok(())
 }
