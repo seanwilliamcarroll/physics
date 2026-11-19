@@ -5,11 +5,9 @@ use super::Flock;
 use crate::rules::{BRUTE_LANES, Ranges, Seen, finish};
 
 impl Flock {
-    /// Every boid's next state into `next`, every other boid a candidate:
-    /// n² checks a step. The whole arrays are one run, read by the lane
-    /// loop (`Seen::add_span`); the boid itself, at distance 0, adds
-    /// nothing. The reference for which boids are neighbours. (A scalar
-    /// loop is 20× slower in wasm with `simd128`: `docs/15-swarm.md`.)
+    /// The whole arrays are one run for the lane loop; the boid itself, at
+    /// distance 0, adds nothing. (A scalar loop is 20× slower in wasm
+    /// with `simd128`.)
     pub(super) fn step_brute(&mut self) {
         let (now, params, arena, predator) = (&self.now, &self.params, self.arena, self.predator);
         let ranges = Ranges::of(params);

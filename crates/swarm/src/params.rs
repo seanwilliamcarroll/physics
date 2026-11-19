@@ -15,19 +15,17 @@ pub struct Params {
     pub avoid: f32,
     /// Gain toward the neighbours' mean velocity (alignment).
     pub matching: f32,
-    /// The push back inside, per step, past the margin (edge turning).
+    /// The push back inside, per step, past the margin.
     pub turn: f32,
-    /// Distance from each side of the arena where turning starts.
+    /// Distance from each side where turning starts.
     pub margin: f32,
     /// The speed band every boid ends a step in.
     pub min_speed: f32,
-    /// The top of the speed band (see `min_speed`).
     pub max_speed: f32,
 }
 
 impl Params {
-    /// The ECE 4760 boids algorithm's recommended values (Hunter Adams,
-    /// Cornell): a course's tuning, not measurements.
+    /// ECE 4760's recommended values (Hunter Adams, Cornell).
     pub const ECE4760: Self = Self {
         visual_range: 40.0,
         protected_range: 8.0,
@@ -40,9 +38,8 @@ impl Params {
         max_speed: 6.0,
     };
 
-    /// `self` if every value is finite and usable: ranges `0 ≤ protected <
-    /// visual`, gains and margin `≥ 0`, speeds `0 < min ≤ max`; else
-    /// `None`.
+    /// `self` if every value is finite and `≥ 0`, `protected < visual`
+    /// and `0 < min ≤ max` speed; else `None`.
     #[must_use]
     pub fn checked(self) -> Option<Self> {
         let every_value = [
@@ -82,13 +79,11 @@ impl Arena {
         (usable(width) && usable(height)).then_some(Self { width, height })
     }
 
-    /// The arena's width, pixels.
     #[must_use]
     pub const fn width(self) -> f32 {
         self.width
     }
 
-    /// The arena's height, pixels.
     #[must_use]
     pub const fn height(self) -> f32 {
         self.height

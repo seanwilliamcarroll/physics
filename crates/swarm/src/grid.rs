@@ -4,21 +4,18 @@
 
 use math::convert::{f64_to_f32, f64_to_usize, usize_to_f64};
 
-/// The most cells along a side: a tiny visual range on a big arena would
-/// otherwise mean millions of cells. Larger cells are still correct
-/// (more candidates, each checked), only slower.
+/// Caps the cell count when the visual range is tiny; larger cells are
+/// still correct, only slower.
 const MAX_CELLS_PER_SIDE: f32 = 1024.0;
 
 /// Cells are this much wider than the range, so float rounding can't lose
-/// a neighbour. Two boids exactly a range apart (8r and 9r) round to *just
-/// inside* it (`dy < r` in f32), while binning `y × (1/r)` rounds 8 down
-/// to 7.9999 and 9 up: cells 7 and 9, not adjacent. With at most 1024
-/// cells a side, binning is off by at most ~1e-4 of a cell and `dy` by
-/// ~1e-4 px; 1/1024 wider covers both.
+/// a neighbour: boids exactly a range apart (8r and 9r) can pass `dy < r`
+/// in f32 yet bin into cells 7 and 9. With at most 1024 cells a side both
+/// errors are ~1e-4, which 1/1024 covers.
 const CELL_SLACK: f32 = 1.0 + 1.0 / 1024.0;
 
-/// Boid indices sorted by cell, rebuilt every step: `cell_start[c]..
-/// cell_start[c + 1]` are cell `c`'s slots in `order`.
+/// Boid indices sorted by cell: `cell_start[c]..cell_start[c + 1]` are
+/// cell `c`'s slots in `order`.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Grid {
     inverse_cell_side: f32,
@@ -30,11 +27,10 @@ pub(crate) struct Grid {
 }
 
 impl Grid {
-    /// Bins `x[i], y[i]` into cells of side `max(range, side / 1024)` (a
-    /// hair wider: [`CELL_SLACK`]) over a
-    /// `width × height` arena. Boids outside it go in the edge cells:
-    /// clamping is monotone and only moves inward, so two boids under a
-    /// cell apart still land in the same or adjacent cells.
+    /// Bins boids into cells of side `max(range, side / 1024)` times
+    /// [`CELL_SLACK`]. Boids outside the arena go in the edge cells:
+    /// clamping is monotone, so boids under a cell apart stay in the same
+    /// or adjacent cells.
     pub(crate) fn rebuild(&mut self, width: f32, height: f32, range: f32, x: &[f32], y: &[f32]) {
         let cell_side = range
             .max(width / MAX_CELLS_PER_SIDE)
@@ -47,9 +43,8 @@ impl Grid {
     }
 
     /// For a periodic `side × side` box: the most whole cells per side
-    /// that are each at least `range` (a hair wider, as [`Self::rebuild`]),
-    /// at most 1024; `None` (nothing built) below 3, where a 3 × 3 block
-    /// would wrap onto itself and see a particle twice.
+    /// at least `range` wide (with slack), at most 1024; `None` below 3,
+    /// where a 3 × 3 block would wrap onto itself.
     pub(crate) fn rebuild_periodic(
         &mut self,
         side: f32,
@@ -69,10 +64,9 @@ impl Grid {
         Some(())
     }
 
-    /// The counting sort itself, into the current cells.
     fn fill(&mut self, x: &[f32], y: &[f32]) {
         let cell_count = self.columns * self.rows;
-        // 1. Histogram, shifted by one so the prefix sum gives starts.
+        // Histogram, shifted by one so the prefix sum gives starts.
         self.cell_start.clear();
         self.cell_start.resize(cell_count + 1, 0);
         for (&boid_x, &boid_y) in x.iter().zip(y) {
@@ -81,14 +75,11 @@ impl Grid {
                 *count += 1;
             }
         }
-        // 2. Prefix sum: cell_start[c] = the counts of every cell before c,
-        // which is cell c's first slot (the shift did the rest).
         let mut total = 0;
         for start in &mut self.cell_start {
             total += *start;
             *start = total;
         }
-        // 3. Scatter each boid's index into its cell's next slot.
         self.next_slot.clear();
         self.next_slot.extend_from_slice(&self.cell_start);
         self.order.clear();
@@ -107,18 +98,15 @@ impl Grid {
         }
     }
 
-    /// The cell holding `(x, y)`, clamped onto the grid.
     fn cell_of(&self, x: f32, y: f32) -> usize {
         let (cell_x, cell_y) = self.coords(x, y);
         cell_y * self.columns + cell_x
     }
 
-    /// The column and row of the cell holding `(x, y)`, clamped onto the
-    /// grid.
+    /// Column and row of the cell holding `(x, y)`, clamped onto the grid.
     fn coords(&self, x: f32, y: f32) -> (usize, usize) {
         let along = |position: f32, cell_count: usize| {
-            // Non-negative after `max`, so truncating is the floor: the
-            // `floor` is kept unless the build says otherwise (`SWARM_CELL`).
+            // Non-negative after `max`, so truncating is the floor.
             let scaled = (position * self.inverse_cell_side).max(0.0);
             let whole = if crate::rules::TRUNCATE_CELL {
                 scaled
@@ -131,8 +119,8 @@ impl Grid {
         (along(x, self.columns), along(y, self.rows))
     }
 
-    /// Every boid in the 3 × 3 block of cells around `(x, y)`'s (itself
-    /// included, if it's one of them): the candidates within one cell.
+    /// Every boid in the 3 × 3 block of cells around `(x, y)`'s, itself
+    /// included.
     pub(crate) fn around(&self, x: f32, y: f32) -> impl Iterator<Item = usize> + '_ {
         self.spans_around(x, y).flat_map(move |span| {
             self.order
@@ -143,10 +131,9 @@ impl Grid {
         })
     }
 
-    /// The slots in `order` of the 3 × 3 block around `(x, y)`'s cell, as
-    /// up to three ranges: a row's three cells are adjacent in cell order,
-    /// so their slots are one run. Boids stored in cell order
-    /// ([`Self::order`] applied) are those same ranges of the arrays.
+    /// The slots in `order` of the 3 × 3 block, as up to three ranges (a
+    /// row's three cells are adjacent in cell order). Boids stored in
+    /// cell order are those same ranges of the arrays.
     pub(crate) fn spans_around(
         &self,
         x: f32,
@@ -178,13 +165,10 @@ impl Grid {
         })
     }
 
-    /// The particles in the 3 × 3 block around `(x, y)`'s cell, taken
-    /// modulo the grid (after [`Self::rebuild_periodic`]: at least 3 a
-    /// side, so the nine cells are distinct): each cell's indices as a
-    /// slice, rows first. Slices, not one chained iterator: the caller's
-    /// loop over a slice compiles to a plain loop, where nine cells
-    /// flattened into one iterator cost five times the distance tests
-    /// they fed (`docs/profiling.md`).
+    /// The 3 × 3 block around `(x, y)`'s cell, modulo the grid (after
+    /// [`Self::rebuild_periodic`]), each cell's indices as a slice. Slices,
+    /// not one chained iterator: nine cells flattened into one iterator
+    /// cost five times the distance tests (`docs/profiling.md`).
     pub(crate) fn cells_wrapped(&self, x: f32, y: f32) -> [&[u32]; 9] {
         let (cell_x, cell_y) = self.coords(x, y);
         let (columns, rows) = (self.columns, self.rows);
@@ -202,13 +186,11 @@ impl Grid {
         })
     }
 
-    /// Boid indices in cell order (after [`Self::rebuild`]).
     pub(crate) fn order(&self) -> &[u32] {
         &self.order
     }
 }
 
-/// Cells along a side: `ceil(cells)`, at least 1.
 fn cells_across(cells: f32) -> usize {
     f64_to_usize(f64::from(cells.ceil())).unwrap_or(1).max(1)
 }

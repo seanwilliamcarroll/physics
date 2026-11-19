@@ -2,8 +2,6 @@ use proptest::prelude::*;
 
 use super::Grid;
 
-/// Whether `other` is within `range` of `boid`, exactly as `rules::steer`
-/// decides.
 fn in_range(x: &[f32], y: &[f32], boid: usize, other: usize, range: f32) -> bool {
     let (dx, dy) = (x[boid] - x[other], y[boid] - y[other]);
     dx.abs() < range && dy.abs() < range && dx * dx + dy * dy < range * range

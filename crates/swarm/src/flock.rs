@@ -19,16 +19,13 @@ pub const MAX_BOIDS: usize = 1 << 18;
 /// in a different order, so trajectories agree only to rounding.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Neighbours {
-    /// Every boid: n² checks a step, through the lane loop. The
-    /// reference for which boids are neighbours.
+    /// Every boid: n² checks a step. The reference.
     Brute,
     /// A cell list by counting sort: the 3 × 3 cells around each boid.
     Grid,
-    /// The grid, with the boids themselves moved into cell order every
-    /// step, so a block's candidates are three contiguous runs of the
-    /// arrays, read by a branchless loop in independent lanes (vector
-    /// instructions). The default: 10k boids in 1.4 ms natively against
-    /// the grid's 7.3. Boids' indices change every step.
+    /// The grid, with the boids moved into cell order every step (so
+    /// their indices change). The default: 10k boids in 1.4 ms natively
+    /// against the grid's 7.3.
     Sorted,
 }
 
@@ -42,7 +39,6 @@ pub struct Boid {
     pub vy: f32,
 }
 
-/// Every boid's state, one array per component.
 #[derive(Clone, Debug, Default)]
 struct Boids {
     x: Vec<f32>,
@@ -84,7 +80,6 @@ impl Boids {
         self.x.len()
     }
 
-    /// `source`'s boids in the order `order` lists them.
     fn gather(&mut self, source: &Self, order: &[u32]) {
         let pick = |values: &[f32], gathered: &mut Vec<f32>| {
             gathered.clear();
@@ -113,7 +108,6 @@ pub struct Flock {
     steps: u64,
     neighbours: Neighbours,
     grid: Grid,
-    /// Where the predator is, if anywhere (the page's pointer).
     predator: Option<(f32, f32)>,
 }
 
@@ -142,8 +136,7 @@ impl Flock {
         let (min_speed, max_speed) = (f64::from(params.min_speed), f64::from(params.max_speed));
         let boids = (0..boid_count).map(|_| {
             let (x, y) = (rng.range(x_span.0, x_span.1), rng.range(y_span.0, y_span.1));
-            // A direction: a point in the unit disc (rejection, no trig),
-            // normalized; the speed uniform in the band.
+            // A point in the unit disc (rejection, no trig), normalized.
             let (dx, dy, length) = loop {
                 let (dx, dy) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
                 let length = (dx * dx + dy * dy).sqrt();
@@ -194,12 +187,8 @@ impl Flock {
         })
     }
 
-    /// One step: every boid's next state, from the current state into
-    /// the next buffer by the technique [`Self::neighbours`] says
-    /// ([`Neighbours::Sorted`] by default: the fastest, measured), then the
-    /// swap. Each technique is a method of its own (`flock/brute.rs`,
-    /// `grid.rs`, `sorted.rs`): the same rules, the same neighbours, found
-    /// differently.
+    /// One step, finding neighbours as [`Self::neighbours`] says, then
+    /// swapping the buffers.
     pub fn step(&mut self) {
         match self.neighbours {
             Neighbours::Brute => self.step_brute(),
@@ -221,24 +210,20 @@ impl Flock {
         true
     }
 
-    /// Where the predator is, if there is one.
     #[must_use]
     pub const fn predator(&self) -> Option<(f32, f32)> {
         self.predator
     }
 
-    /// How neighbours are found, from the next step.
     pub const fn set_neighbours(&mut self, method: Neighbours) {
         self.neighbours = method;
     }
 
-    /// How neighbours are found.
     #[must_use]
     pub const fn neighbours(&self) -> Neighbours {
         self.neighbours
     }
 
-    /// How many boids the flock holds.
     #[must_use]
     pub fn len(&self) -> usize {
         self.now.len()
@@ -256,19 +241,16 @@ impl Flock {
         self.now.get(index)
     }
 
-    /// Every boid, in storage order.
     pub fn boids(&self) -> impl Iterator<Item = Boid> + '_ {
         (0..self.len()).filter_map(|index| self.now.get(index))
     }
 
-    /// The rules' constants.
     #[must_use]
     pub const fn params(&self) -> Params {
         self.params
     }
 
-    /// Replaces the rules' constants from the next step; `false` (and
-    /// nothing changed) if they're unusable.
+    /// `false` (and nothing changed) if `params` are unusable.
     pub fn set_params(&mut self, params: Params) -> bool {
         params
             .checked()
@@ -276,13 +258,11 @@ impl Flock {
             .is_some()
     }
 
-    /// The box the boids fly in.
     #[must_use]
     pub const fn arena(&self) -> Arena {
         self.arena
     }
 
-    /// How many steps have run.
     #[must_use]
     pub const fn steps(&self) -> u64 {
         self.steps
@@ -306,8 +286,7 @@ impl Flock {
         (sum_x * sum_x + sum_y * sum_y).sqrt() / boid_count
     }
 
-    /// The state's bytes for hashing (the repeatability tests): every
-    /// component's bits, boid by boid.
+    /// Every component's bits, boid by boid, for hashing.
     pub fn state_bytes(&self) -> impl Iterator<Item = u8> + '_ {
         self.boids()
             .flat_map(|boid| [boid.x, boid.y, boid.vx, boid.vy])
