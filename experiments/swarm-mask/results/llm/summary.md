@@ -68,8 +68,7 @@ Mean time; in brackets, the change against `convert` at the same level.
 From `perf stat` over criterion's `--profile-time` run. GHz is
 cycles / task-clock; per pair (where the bench's size is a body count)
 is criterion's mean time × GHz / pairs, with pairs = n(n−1)/2. Backend stalls: cycles the core waited on
-results or memory. Where each loop spends its cycles, instruction by
-instruction: `perf/*.annotate.txt`.
+results or memory.
 
 | level | experiment | bench | GHz | IPC | cycles/pair | instr/pair | branch miss | backend stall |
 |---|---|---|---|---|---|---|---|---|
@@ -103,51 +102,3 @@ instruction: `perf/*.annotate.txt`.
 | x86-64-v3 | branch | swarm_models/vicsek/4000 | 5.51 | 4.06 | – | – | 1.0% | – |
 | native | branch | swarm_step/Grid/10000 | 5.54 | 2.66 | – | – | 3.6% | – |
 | native | branch | swarm_models/vicsek/4000 | 5.51 | 3.69 | – | – | 1.0% | – |
-
-## sqrt and div in the dumped functions
-
-x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.
-aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.
-wasm: `f64.sqrt` scalar; `f64x2.sqrt`/`f32x4.sqrt` 128-bit.
-Each file is in asm/.
-
-- `default--bits--step_grid-f32.s`: divss ×1
-- `default--bits--vicsek_step-f32.s`: none
-- `default--branch--step_grid-f32.s`: divss ×1
-- `default--branch--vicsek_step-f32.s`: none
-- `default--convert--step_grid-f32.s`: divss ×1
-- `default--convert--vicsek_step-f32.s`: none
-- `default--select--step_grid-f32.s`: divss ×1
-- `default--select--vicsek_step-f32.s`: none
-- `default--value--step_grid-f32.s`: divss ×1
-- `default--value--vicsek_step-f32.s`: none
-- `native--bits--step_grid-f32.s`: divss ×1
-- `native--bits--vicsek_step-f32.s`: none
-- `native--branch--step_grid-f32.s`: divss ×1
-- `native--branch--vicsek_step-f32.s`: none
-- `native--convert--step_grid-f32.s`: divss ×1
-- `native--convert--vicsek_step-f32.s`: none
-- `native--select--step_grid-f32.s`: divss ×1
-- `native--select--vicsek_step-f32.s`: none
-- `native--value--step_grid-f32.s`: divss ×1
-- `native--value--vicsek_step-f32.s`: none
-- `v8-simd128--bits--step_grid-f32.s`: f32.div ×1
-- `v8-simd128--bits--vicsek_step-f32.s`: none
-- `v8-simd128--branch--step_grid-f32.s`: f32.div ×1
-- `v8-simd128--branch--vicsek_step-f32.s`: none
-- `v8-simd128--convert--step_grid-f32.s`: f32.div ×1
-- `v8-simd128--convert--vicsek_step-f32.s`: none
-- `v8-simd128--select--step_grid-f32.s`: f32.div ×1
-- `v8-simd128--select--vicsek_step-f32.s`: none
-- `v8-simd128--value--step_grid-f32.s`: f32.div ×1
-- `v8-simd128--value--vicsek_step-f32.s`: none
-- `x86-64-v3--bits--step_grid-f32.s`: divss ×1
-- `x86-64-v3--bits--vicsek_step-f32.s`: none
-- `x86-64-v3--branch--step_grid-f32.s`: divss ×1
-- `x86-64-v3--branch--vicsek_step-f32.s`: none
-- `x86-64-v3--convert--step_grid-f32.s`: divss ×1
-- `x86-64-v3--convert--vicsek_step-f32.s`: none
-- `x86-64-v3--select--step_grid-f32.s`: divss ×1
-- `x86-64-v3--select--vicsek_step-f32.s`: none
-- `x86-64-v3--value--step_grid-f32.s`: divss ×1
-- `x86-64-v3--value--vicsek_step-f32.s`: none

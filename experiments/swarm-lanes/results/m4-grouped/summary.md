@@ -79,35 +79,3 @@ Mean time; in brackets, the change against `lanes-16` at the same level.
 | swarm_step/Brute/10000 | 45 ms (+0%) | 45.6 ms (+1%) | 190 ms (+323%) | 56.9 ms (+26%) | 187 ms (+315%) | 49.5 ms (+10%) |
 | swarm_step/Sorted/1000 | 172 µs (+0%) | 171 µs (-1%) | 486 µs (+182%) | 217 µs (+26%) | 430 µs (+150%) | 199 µs (+16%) |
 | swarm_step/Sorted/10000 | 1.77 ms (+0%) | 1.78 ms (+1%) | 3.92 ms (+121%) | 2.2 ms (+24%) | 3.41 ms (+92%) | 2.04 ms (+15%) |
-
-## sqrt and div in the dumped functions
-
-x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.
-aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.
-wasm: `f64.sqrt` scalar; `f64x2.sqrt`/`f32x4.sqrt` 128-bit.
-Each file is in asm/.
-
-- `default--grouped--add_span-f32.s`: none
-- `default--grouped--flock_step-f32.s`: fdiv s ×2
-- `default--grouped-4--add_span-f32.s`: none
-- `default--grouped-4--flock_step-f32.s`: fdiv s ×2
-- `default--lanes-16--add_span-f32.s`: none
-- `default--lanes-16--flock_step-f32.s`: fdiv s ×2
-- `native--grouped--add_span-f32.s`: none
-- `native--grouped--flock_step-f32.s`: fdiv s ×2
-- `native--grouped-4--add_span-f32.s`: none
-- `native--grouped-4--flock_step-f32.s`: fdiv s ×2
-- `native--lanes-16--add_span-f32.s`: none
-- `native--lanes-16--flock_step-f32.s`: fdiv s ×2
-- `wasm--grouped--add_span-f32.s`: none
-- `wasm--grouped--flock_step-f32.s`: f32.div ×2
-- `wasm--grouped-4--add_span-f32.s`: none
-- `wasm--grouped-4--flock_step-f32.s`: f32.div ×2
-- `wasm--lanes-16--add_span-f32.s`: none
-- `wasm--lanes-16--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--grouped--add_span-f32.s`: none
-- `wasm-simd128--grouped--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--grouped-4--add_span-f32.s`: none
-- `wasm-simd128--grouped-4--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--lanes-16--add_span-f32.s`: none
-- `wasm-simd128--lanes-16--flock_step-f32.s`: f32.div ×2

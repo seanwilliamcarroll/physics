@@ -55,8 +55,7 @@ Mean time; in brackets, the change against `base` at the same level.
 From `perf stat` over criterion's `--profile-time` run. GHz is
 cycles / task-clock; per pair (where the bench's size is a body count)
 is criterion's mean time × GHz / pairs, with pairs = n(n−1)/2. Backend stalls: cycles the core waited on
-results or memory. Where each loop spends its cycles, instruction by
-instruction: `perf/*.annotate.txt`.
+results or memory.
 
 | level | experiment | bench | GHz | IPC | cycles/pair | instr/pair | branch miss | backend stall |
 |---|---|---|---|---|---|---|---|---|
@@ -78,29 +77,3 @@ instruction: `perf/*.annotate.txt`.
 | x86-64-v3 | table | swarm_step/Sorted/100000 | 5.52 | 4.44 | – | – | 1.0% | – |
 | native | table | swarm_step/Sorted/10000 | 5.54 | 4.19 | – | – | 0.2% | – |
 | native | table | swarm_step/Sorted/100000 | 5.52 | 3.99 | – | – | 0.9% | – |
-
-## sqrt and div in the dumped functions
-
-x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.
-aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.
-wasm: `f64.sqrt` scalar; `f64x2.sqrt`/`f32x4.sqrt` 128-bit.
-Each file is in asm/.
-
-- `default--all--grid_fill-f32.s`: none
-- `default--all--step_sorted-f32.s`: divss ×1
-- `default--base--grid_fill-f32.s`: none
-- `default--base--step_sorted-f32.s`: divss ×1
-- `default--table--grid_fill-f32.s`: none
-- `default--table--step_sorted-f32.s`: divss ×1
-- `native--all--grid_fill-f32.s`: none
-- `native--all--step_sorted-f32.s`: divss ×1
-- `native--base--grid_fill-f32.s`: none
-- `native--base--step_sorted-f32.s`: divss ×1
-- `native--table--grid_fill-f32.s`: none
-- `native--table--step_sorted-f32.s`: divss ×1
-- `x86-64-v3--all--grid_fill-f32.s`: none
-- `x86-64-v3--all--step_sorted-f32.s`: divss ×1
-- `x86-64-v3--base--grid_fill-f32.s`: none
-- `x86-64-v3--base--step_sorted-f32.s`: divss ×1
-- `x86-64-v3--table--grid_fill-f32.s`: none
-- `x86-64-v3--table--step_sorted-f32.s`: divss ×1

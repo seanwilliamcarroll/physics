@@ -24,19 +24,3 @@ Mean time; in brackets, the change against `base` at the same level.
 | swarm_step/Sorted/1000 | 80.1 µs | 83.4 µs (+4%) | 83.1 µs (+4%) | 80.5 µs (+0%) |
 | swarm_step/Sorted/10000 | 1.02 ms | 978 µs (-4%) | 974 µs (-5%) | 948 µs (-7%) |
 | swarm_step/Sorted/100000 | 15 ms | 10.6 ms (-29%) | 10.6 ms (-29%) | 10.4 ms (-31%) |
-
-## sqrt and div in the dumped functions
-
-x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.
-aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.
-wasm: `f64.sqrt` scalar; `f64x2.sqrt`/`f32x4.sqrt` 128-bit.
-Each file is in asm/.
-
-- `native--all--grid_fill-f32.s`: none
-- `native--all--step_sorted-f32.s`: fdiv s ×1
-- `native--base--grid_fill-f32.s`: none
-- `native--base--step_sorted-f32.s`: fdiv s ×1
-- `native--span-tail--grid_fill-f32.s`: none
-- `native--span-tail--step_sorted-f32.s`: fdiv s ×1
-- `native--table--grid_fill-f32.s`: none
-- `native--table--step_sorted-f32.s`: fdiv s ×1

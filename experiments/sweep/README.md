@@ -114,9 +114,13 @@ Each run writes to its `--out` folder:
 - `asm/`, `perf/`, `<level>/<experiment>/criterion/`: listings, perf
   output, criterion's data.
 
-**Committed:** `summary.md`, `results.csv` and `machine.txt` only. The
-asm, perf output, logs and criterion's data are git-ignored and stay on
-the machine that ran it.
+**Committed:** each run's `summary.md` only, with the experiment's
+scripts and its README (the findings): enough to see what was measured
+and to rerun it at its commit. Everything else (`results.csv`,
+`machine.txt`, the asm, perf output, logs, criterion's data) is
+git-ignored (`experiments/.gitignore`) and stays on the machine that ran
+it. Pass `--out` outside the repo (`~/sweep-results/...`) anyway: a run
+writing into a checkout blocks the next `git pull` there.
 
 To bring results back from the compute node:
 

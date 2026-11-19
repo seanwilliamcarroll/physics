@@ -95,8 +95,7 @@ Mean time; in brackets, the change against `lanes-8` at the same level.
 From `perf stat` over criterion's `--profile-time` run. GHz is
 cycles / task-clock; per pair (where the bench's size is a body count)
 is criterion's mean time × GHz / pairs, with pairs = n(n−1)/2. Backend stalls: cycles the core waited on
-results or memory. Where each loop spends its cycles, instruction by
-instruction: `perf/*.annotate.txt`.
+results or memory.
 
 | level | experiment | bench | GHz | IPC | cycles/pair | instr/pair | branch miss | backend stall |
 |---|---|---|---|---|---|---|---|---|
@@ -136,71 +135,3 @@ instruction: `perf/*.annotate.txt`.
 | x86-64-v3 | algebraic | swarm_step/Sorted/10000 | 5.54 | 3.99 | – | – | 1.5% | – |
 | native | algebraic | swarm_step/Brute/10000 | 5.53 | 2.90 | – | – | 0.5% | – |
 | native | algebraic | swarm_step/Sorted/10000 | 5.54 | 3.22 | – | – | 1.3% | – |
-
-## sqrt and div in the dumped functions
-
-x86: scalar `sd`/`ss`; packed by register: xmm 128-bit, ymm 256, zmm 512.
-aarch64: `fsqrt d`/`s` scalar; `.2d`/`.4s` 128-bit.
-wasm: `f64.sqrt` scalar; `f64x2.sqrt`/`f32x4.sqrt` 128-bit.
-Each file is in asm/.
-
-- `default--algebraic--add_span-f32.s`: not found (inlined?)
-- `default--algebraic--flock_step-f32.s`: divss ×2
-- `default--lanes-1--add_span-f32.s`: not found (inlined?)
-- `default--lanes-1--flock_step-f32.s`: divss ×2
-- `default--lanes-16--add_span-f32.s`: none
-- `default--lanes-16--flock_step-f32.s`: divss ×2
-- `default--lanes-2--add_span-f32.s`: not found (inlined?)
-- `default--lanes-2--flock_step-f32.s`: divss ×2
-- `default--lanes-4--add_span-f32.s`: none
-- `default--lanes-4--flock_step-f32.s`: divss ×2
-- `default--lanes-8--add_span-f32.s`: none
-- `default--lanes-8--flock_step-f32.s`: divss ×2
-- `native--algebraic--add_span-f32.s`: not found (inlined?)
-- `native--algebraic--flock_step-f32.s`: divss ×2
-- `native--lanes-1--add_span-f32.s`: not found (inlined?)
-- `native--lanes-1--flock_step-f32.s`: divss ×2
-- `native--lanes-16--add_span-f32.s`: none
-- `native--lanes-16--flock_step-f32.s`: divss ×2
-- `native--lanes-2--add_span-f32.s`: not found (inlined?)
-- `native--lanes-2--flock_step-f32.s`: divss ×2
-- `native--lanes-4--add_span-f32.s`: none
-- `native--lanes-4--flock_step-f32.s`: divss ×2
-- `native--lanes-8--add_span-f32.s`: none
-- `native--lanes-8--flock_step-f32.s`: divss ×2
-- `wasm--algebraic--add_span-f32.s`: not found (inlined?)
-- `wasm--algebraic--flock_step-f32.s`: f32.div ×2
-- `wasm--lanes-1--add_span-f32.s`: not found (inlined?)
-- `wasm--lanes-1--flock_step-f32.s`: f32.div ×2
-- `wasm--lanes-16--add_span-f32.s`: none
-- `wasm--lanes-16--flock_step-f32.s`: f32.div ×2
-- `wasm--lanes-2--add_span-f32.s`: none
-- `wasm--lanes-2--flock_step-f32.s`: f32.div ×2
-- `wasm--lanes-4--add_span-f32.s`: none
-- `wasm--lanes-4--flock_step-f32.s`: f32.div ×2
-- `wasm--lanes-8--add_span-f32.s`: none
-- `wasm--lanes-8--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--algebraic--add_span-f32.s`: not found (inlined?)
-- `wasm-simd128--algebraic--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--lanes-1--add_span-f32.s`: not found (inlined?)
-- `wasm-simd128--lanes-1--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--lanes-16--add_span-f32.s`: none
-- `wasm-simd128--lanes-16--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--lanes-2--add_span-f32.s`: none
-- `wasm-simd128--lanes-2--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--lanes-4--add_span-f32.s`: none
-- `wasm-simd128--lanes-4--flock_step-f32.s`: f32.div ×2
-- `wasm-simd128--lanes-8--add_span-f32.s`: none
-- `wasm-simd128--lanes-8--flock_step-f32.s`: f32.div ×2
-- `x86-64-v3--algebraic--add_span-f32.s`: not found (inlined?)
-- `x86-64-v3--algebraic--flock_step-f32.s`: divss ×2
-- `x86-64-v3--lanes-1--add_span-f32.s`: not found (inlined?)
-- `x86-64-v3--lanes-1--flock_step-f32.s`: divss ×2
-- `x86-64-v3--lanes-16--add_span-f32.s`: none
-- `x86-64-v3--lanes-16--flock_step-f32.s`: divss ×2
-- `x86-64-v3--lanes-2--add_span-f32.s`: not found (inlined?)
-- `x86-64-v3--lanes-2--flock_step-f32.s`: divss ×2
-- `x86-64-v3--lanes-4--add_span-f32.s`: none
-- `x86-64-v3--lanes-4--flock_step-f32.s`: divss ×2
-- `x86-64-v3--lanes-8--add_span-f32.s`: none
-- `x86-64-v3--lanes-8--flock_step-f32.s`: divss ×2
