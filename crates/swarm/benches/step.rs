@@ -21,40 +21,39 @@ use swarm::{
 
 /// Every case times one step from the same warmed-up state: a clone of it
 /// per iteration (`iter_batched_ref`; the clone isn't timed). Stepping one
-/// model on and on, as these did until 2026-11-17, timed a moving target
-/// (the flocks keep clustering, so a step's cost drifts): ±9–16% on both
-/// machines where everything else was ±1%. Fixed, ±0.1%. The warm-ups
-/// pick a developed state, affordable to reach (the M4, a step at 10k
-/// after 300 / 1,000 / 3,000 / 10,000 steps: Grid 3.6 / 4.4 / 5.4 / 4.9
-/// ms; Vicsek's keeps climbing, 0.6 to 1.5 ms; the ants settle by 1,000;
-/// Physarum stays within 10%).
+/// model on and on times a moving target (the flocks keep clustering, so
+/// a step's cost drifts ±9–16%); from a fixed state it's ±0.1%. The
+/// warm-ups pick a developed state, affordable to reach (the M4, a step at
+/// 10k after 300 / 1,000 / 3,000 / 10,000 steps: Grid 3.6 / 4.4 / 5.4 /
+/// 4.9 ms; Vicsek's keeps climbing, 0.6 to 1.5 ms; the ants settle by
+/// 1,000; Physarum stays within 10%).
 ///
 /// The warm-up steps in the default mode (Sorted), so a change to its
 /// sums' last bits (allowed: `docs/04-testing.md`) warms a different
-/// flock: after #332, 300 boids had 83.7 neighbours each, not 59.6, and
-/// Grid and Sorted at 300 read 30–66% slower with nothing slower in their
-/// code (2026-11-19 records). Large flocks average it out (10,000: 57.5
-/// against 58.4). Read a small flock's jump against its neighbour count.
+/// flock: one such change took 300 boids from 59.6 neighbours each to
+/// 83.7, and Grid and Sorted at 300 read 30–66% slower with nothing slower
+/// in their code. Large flocks average it out (10,000: 57.5 against
+/// 58.4). Read a small flock's jump against its neighbour count.
 const FLOCK_WARM_UP: usize = 1_000;
 const VICSEK_WARM_UP: usize = 3_000;
 const ANTS_WARM_UP: usize = 1_000;
 const SLIME_WARM_UP: usize = 300;
 
-/// A warmed-up flock of `n` at the page's density.
-fn flock(n: usize) -> Flock {
-    let scale = f64_to_f32((usize_to_f64(n) / 10_000.0).sqrt());
+/// A warmed-up flock of `boid_count` at the page's density.
+fn flock(boid_count: usize) -> Flock {
+    let scale = f64_to_f32((usize_to_f64(boid_count) / 10_000.0).sqrt());
     let arena = Arena::new(2560.0 * scale, 1440.0 * scale).unwrap();
-    let mut f = Flock::new(n, arena, Params::ECE4760, 1).unwrap();
+    let mut flock = Flock::new(boid_count, arena, Params::ECE4760, 1).unwrap();
     for _ in 0..FLOCK_WARM_UP {
-        f.step();
+        flock.step();
     }
-    f
+    flock
 }
 
-fn bench(c: &mut Criterion) {
-    let mut group = c.benchmark_group("swarm_step");
+fn bench(criterion: &mut Criterion) {
+    let mut group = criterion.benchmark_group("swarm_step");
     group.sample_size(10);
-    for (how, sizes) in [
+    for (method, sizes) in [
         (Neighbours::Brute, &[300_usize, 1_000, 3_000, 10_000][..]),
         (Neighbours::Grid, &[300, 1_000, 3_000, 10_000, 100_000][..]),
         (
@@ -62,64 +61,67 @@ fn bench(c: &mut Criterion) {
             &[300, 1_000, 3_000, 10_000, 100_000][..],
         ),
     ] {
-        for &n in sizes {
+        for &boid_count in sizes {
             let mut built: Option<Flock> = None;
-            group.throughput(Throughput::Elements(n as u64));
-            group.bench_function(BenchmarkId::new(format!("{how:?}"), n), |b| {
-                let f = built.get_or_insert_with(|| {
-                    let mut f = flock(n);
-                    f.set_neighbours(how);
-                    f
-                });
-                b.iter_batched_ref(|| f.clone(), Flock::step, BatchSize::LargeInput);
-            });
+            group.throughput(Throughput::Elements(boid_count as u64));
+            group.bench_function(
+                BenchmarkId::new(format!("{method:?}"), boid_count),
+                |bencher| {
+                    let warmed = built.get_or_insert_with(|| {
+                        let mut fresh = flock(boid_count);
+                        fresh.set_neighbours(method);
+                        fresh
+                    });
+                    bencher.iter_batched_ref(|| warmed.clone(), Flock::step, BatchSize::LargeInput);
+                },
+            );
         }
     }
     group.finish();
-    models(c);
+    models(criterion);
 }
 
 /// The other models' steps, each at its page's size (what
 /// `examples/workload.rs` runs for a profiler): Vicsek on the grid, the
 /// ants with food to find, Physarum.
-fn models(c: &mut Criterion) {
-    let mut group = c.benchmark_group("swarm_models");
+fn models(criterion: &mut Criterion) {
+    let mut group = criterion.benchmark_group("swarm_models");
     group.sample_size(20);
     let mut vicsek: Option<Vicsek> = None;
-    group.bench_function("vicsek/4000", |b| {
-        let v = vicsek.get_or_insert_with(|| {
-            let mut v = Vicsek::new(4_000, 31.6, VicsekParams::paper(2.0), 1).unwrap();
+    group.bench_function("vicsek/4000", |bencher| {
+        let warmed = vicsek.get_or_insert_with(|| {
+            let mut fresh = Vicsek::new(4_000, 31.6, VicsekParams::paper(2.0), 1).unwrap();
             // Warmed up: the cost follows the clustering, which takes a while.
             for _ in 0..VICSEK_WARM_UP {
-                v.step();
+                fresh.step();
             }
-            v
+            fresh
         });
-        b.iter_batched_ref(|| v.clone(), Vicsek::step, BatchSize::LargeInput);
+        bencher.iter_batched_ref(|| warmed.clone(), Vicsek::step, BatchSize::LargeInput);
     });
     let mut colony: Option<Colony> = None;
-    group.bench_function("ants/200x120_500", |b| {
-        let ants = colony.get_or_insert_with(|| {
-            let mut ants =
+    group.bench_function("ants/200x120_500", |bencher| {
+        let warmed = colony.get_or_insert_with(|| {
+            let mut fresh =
                 Colony::new(200, 120, 500, (25.0, 60.0, 6.0), AntParams::DEFAULT, 1).unwrap();
-            ants.paint_food(160.0, 60.0, 8.0, 50);
+            fresh.paint_food(160.0, 60.0, 8.0, 50);
             for _ in 0..ANTS_WARM_UP {
-                ants.step();
+                fresh.step();
             }
-            ants
+            fresh
         });
-        b.iter_batched_ref(|| ants.clone(), Colony::step, BatchSize::LargeInput);
+        bencher.iter_batched_ref(|| warmed.clone(), Colony::step, BatchSize::LargeInput);
     });
     let mut slime: Option<Slime> = None;
-    group.bench_function("physarum/512_100k", |b| {
-        let s = slime.get_or_insert_with(|| {
-            let mut s = Slime::new(512, 100_000, SlimeParams::DEFAULT, 1).unwrap();
+    group.bench_function("physarum/512_100k", |bencher| {
+        let warmed = slime.get_or_insert_with(|| {
+            let mut fresh = Slime::new(512, 100_000, SlimeParams::DEFAULT, 1).unwrap();
             for _ in 0..SLIME_WARM_UP {
-                s.step();
+                fresh.step();
             }
-            s
+            fresh
         });
-        b.iter_batched_ref(|| s.clone(), Slime::step, BatchSize::LargeInput);
+        bencher.iter_batched_ref(|| warmed.clone(), Slime::step, BatchSize::LargeInput);
     });
     group.finish();
 }

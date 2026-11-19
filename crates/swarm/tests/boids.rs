@@ -1,4 +1,4 @@
-//! S1's flock-level tests (`docs/15-swarm.md`, "What's tested, with
+//! The boids' flock-level tests (`docs/15-swarm.md`, "What's tested, with
 //! nothing conserved"): the speed band, how far boids stray, order
 //! independence, and that alignment makes a flock.
 // Whole file is test code (docs/lint-policy.md).
@@ -15,15 +15,15 @@ fn arena() -> Arena {
 #[test]
 fn speeds_stay_in_the_band() {
     for seed in [1, 2, 3] {
-        let mut f = Flock::new(300, arena(), P, seed).unwrap();
+        let mut flock = Flock::new(300, arena(), P, seed).unwrap();
         for _ in 0..600 {
-            f.step();
-            for b in f.boids() {
-                let s = (b.vx * b.vx + b.vy * b.vy).sqrt();
+            flock.step();
+            for boid in flock.boids() {
+                let speed = (boid.vx * boid.vx + boid.vy * boid.vy).sqrt();
                 // Scaled to the band's ends in f32: within a few ulps.
                 assert!(
-                    (3.0 * (1.0 - 1e-6)..=6.0 * (1.0 + 1e-6)).contains(&s),
-                    "speed {s}"
+                    (3.0 * (1.0 - 1e-6)..=6.0 * (1.0 + 1e-6)).contains(&speed),
+                    "speed {speed}"
                 );
             }
         }
@@ -40,15 +40,18 @@ fn speeds_stay_in_the_band() {
 #[test]
 fn boids_stray_past_the_edge_but_come_back() {
     for seed in [1, 2, 3, 4] {
-        let mut f = Flock::new(300, arena(), P, seed).unwrap();
+        let mut flock = Flock::new(300, arena(), P, seed).unwrap();
         let (mut outside, mut total, mut worst) = (0_u32, 0_u32, 0.0_f32);
         for _ in 0..2000 {
-            f.step();
-            for b in f.boids() {
-                let out = (-b.x).max(b.x - 640.0).max(-b.y).max(b.y - 480.0);
-                outside += u32::from(out > 0.0);
+            flock.step();
+            for boid in flock.boids() {
+                let distance_out = (-boid.x)
+                    .max(boid.x - 640.0)
+                    .max(-boid.y)
+                    .max(boid.y - 480.0);
+                outside += u32::from(distance_out > 0.0);
                 total += 1;
-                worst = worst.max(out);
+                worst = worst.max(distance_out);
             }
         }
         let share = f64::from(outside) / f64::from(total);
@@ -67,22 +70,32 @@ fn boids_stray_past_the_edge_but_come_back() {
 /// differences grow), 0.046 px after 50. Bound: 1e-3 px at 10 steps.
 #[test]
 fn storage_order_changes_only_rounding() {
-    let f = Flock::new(300, arena(), P, 5).unwrap();
-    let reversed: Vec<Boid> = f.boids().collect::<Vec<_>>().into_iter().rev().collect();
+    let flock = Flock::new(300, arena(), P, 5).unwrap();
+    let reversed: Vec<Boid> = flock
+        .boids()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
     // Brute force: a boid keeps its index (Sorted renumbers them).
-    let mut a = f.clone();
-    a.set_neighbours(Neighbours::Brute);
-    let mut b = Flock::with_boids(arena(), P, reversed).unwrap();
-    b.set_neighbours(Neighbours::Brute);
+    let mut forward = flock.clone();
+    forward.set_neighbours(Neighbours::Brute);
+    let mut backward = Flock::with_boids(arena(), P, reversed).unwrap();
+    backward.set_neighbours(Neighbours::Brute);
     for _ in 0..10 {
-        a.step();
-        b.step();
+        forward.step();
+        backward.step();
     }
-    let n = a.len();
-    for i in 0..n {
-        let (p, q) = (a.boid(i).unwrap(), b.boid(n - 1 - i).unwrap());
-        let d = (p.x - q.x).abs().max((p.y - q.y).abs());
-        assert!(d < 1e-3, "boid {i}: {d} px apart");
+    let boid_count = forward.len();
+    for index in 0..boid_count {
+        let (forward_boid, backward_boid) = (
+            forward.boid(index).unwrap(),
+            backward.boid(boid_count - 1 - index).unwrap(),
+        );
+        let apart = (forward_boid.x - backward_boid.x)
+            .abs()
+            .max((forward_boid.y - backward_boid.y).abs());
+        assert!(apart < 1e-3, "boid {index}: {apart} px apart");
     }
 }
 
@@ -93,14 +106,14 @@ fn storage_order_changes_only_rounding() {
 /// Bounds: ≥ 0.3 with, ≤ 0.2 without; the start ≤ 0.15.
 #[test]
 fn alignment_makes_a_flock() {
-    let mean_order = |p: Params, seed: u64| {
-        let mut f = Flock::new(300, arena(), p, seed).unwrap();
-        let start = f.polarization();
+    let mean_order = |params: Params, seed: u64| {
+        let mut flock = Flock::new(300, arena(), params, seed).unwrap();
+        let start = flock.polarization();
         let mut sum = 0.0;
-        for k in 0..2000 {
-            f.step();
-            if k >= 500 {
-                sum += f.polarization();
+        for step in 0..2000 {
+            flock.step();
+            if step >= 500 {
+                sum += flock.polarization();
             }
         }
         (start, sum / 1500.0)
@@ -132,7 +145,11 @@ fn grid_and_brute_force_agree_to_rounding() {
         let worst = grid
             .boids()
             .zip(brute.boids())
-            .map(|(a, b)| (a.x - b.x).abs().max((a.y - b.y).abs()))
+            .map(|(from_grid, from_brute)| {
+                (from_grid.x - from_brute.x)
+                    .abs()
+                    .max((from_grid.y - from_brute.y).abs())
+            })
             .fold(0.0_f32, f32::max);
         assert!(worst < 1e-3, "after {steps} steps: {worst} px apart");
     }
@@ -153,18 +170,18 @@ fn sorted_and_grid_agree_as_sets() {
             grid.step();
             sorted.step();
         }
-        let theirs: Vec<Boid> = sorted.boids().collect();
+        let sorted_boids: Vec<Boid> = sorted.boids().collect();
         let worst = grid
             .boids()
-            .map(|a| {
-                theirs
+            .map(|from_grid| {
+                sorted_boids
                     .iter()
-                    .map(|b| {
-                        (a.x - b.x)
+                    .map(|from_sorted| {
+                        (from_grid.x - from_sorted.x)
                             .abs()
-                            .max((a.y - b.y).abs())
-                            .max((a.vx - b.vx).abs())
-                            .max((a.vy - b.vy).abs())
+                            .max((from_grid.y - from_sorted.y).abs())
+                            .max((from_grid.vx - from_sorted.vx).abs())
+                            .max((from_grid.vy - from_sorted.vy).abs())
                     })
                     .fold(f32::INFINITY, f32::min)
             })
