@@ -2,6 +2,9 @@
 //! from [`synth_new`]; every function takes null (and returns null, 0, or
 //! [`STATUS_REFUSED`]) rather than trapping. Buffers returned as pointers
 //! are re-read by JS after each call: memory growth detaches old views.
+//!
+//! Safety: every function taking a handle requires null or a live handle
+//! from [`synth_new`] not yet freed. Null is refused, never dereferenced.
 
 use core::ptr;
 use math::convert::u64_to_f64;
@@ -25,9 +28,6 @@ pub(crate) extern "C" fn synth_new(sample_rate: f64, seed: u32) -> *mut Synth {
 }
 
 /// Frees a synth. Null is a no-op.
-///
-/// # Safety
-/// `synth` must be null or a handle from [`synth_new`] not yet freed.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_free(synth: *mut Synth) {
     if !synth.is_null() {
@@ -39,9 +39,6 @@ pub(crate) unsafe extern "C" fn synth_free(synth: *mut Synth) {
 
 /// Renders `frames` samples; returns a pointer to them (`f32`, mono), or
 /// null for a null handle or more than `MAX_FRAMES`.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_render(synth: *mut Synth, frames: u32) -> *const f32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -55,9 +52,6 @@ pub(crate) unsafe extern "C" fn synth_render(synth: *mut Synth, frames: u32) -> 
 }
 
 /// Plays MIDI `key`; [`STATUS_REFUSED`] if it can't (below A0, not a key).
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_note_on(synth: *mut Synth, key: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -67,9 +61,6 @@ pub(crate) unsafe extern "C" fn synth_note_on(synth: *mut Synth, key: u32) -> u3
 /// Strikes piano key `key` at `velocity` m/s (the hammer's speed);
 /// [`STATUS_REFUSED`] off the keyboard or for a bad velocity (not
 /// positive, or above [`acoustic::hammer::MAX_VELOCITY`], twice ff).
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_note_on_velocity(
     synth: *mut Synth,
@@ -81,9 +72,6 @@ pub(crate) unsafe extern "C" fn synth_note_on_velocity(
 }
 
 /// 1: the piano's strings stiff; 0: ideal. From the next strike.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_set_stiffness(synth: *mut Synth, stiff: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -100,9 +88,6 @@ pub(crate) unsafe extern "C" fn synth_set_stiffness(synth: *mut Synth, stiff: u3
 }
 
 /// Releases MIDI `key`.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_note_off(synth: *mut Synth, key: u32) {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -112,9 +97,6 @@ pub(crate) unsafe extern "C" fn synth_note_off(synth: *mut Synth, key: u32) {
 }
 
 /// 1: tuned (the allpass); 0: the integer loop. From the next note.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_set_tuned(synth: *mut Synth, tuned: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -131,9 +113,6 @@ pub(crate) unsafe extern "C" fn synth_set_tuned(synth: *mut Synth, tuned: u32) -
 }
 
 /// The fundamental's decay time, s, from the next note.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_set_t60(synth: *mut Synth, decay_time_60db: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -142,9 +121,6 @@ pub(crate) unsafe extern "C" fn synth_set_t60(synth: *mut Synth, decay_time_60db
 
 /// Excitation code (`abi::EXCITATION_*`) and triangle peak, from the next
 /// note.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_set_excitation(
     synth: *mut Synth,
@@ -156,9 +132,6 @@ pub(crate) unsafe extern "C" fn synth_set_excitation(
 }
 
 /// Output gain in `[0, 1]`.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_set_gain(synth: *mut Synth, gain: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -168,9 +141,6 @@ pub(crate) unsafe extern "C" fn synth_set_gain(synth: *mut Synth, gain: f64) -> 
 /// Copies the latest string's delay line into the snapshot buffer;
 /// returns its length (0 before any note, or for null). Read it at
 /// [`synth_snapshot_ptr`].
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_snapshot(synth: *mut Synth) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -180,9 +150,6 @@ pub(crate) unsafe extern "C" fn synth_snapshot(synth: *mut Synth) -> u32 {
 }
 
 /// Pointer to the snapshot [`synth_snapshot`] last filled (null for null).
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_snapshot_ptr(synth: *const Synth) -> *const f32 {
     // SAFETY: per the contract, null (-> None) or a live Synth.
@@ -190,9 +157,6 @@ pub(crate) unsafe extern "C" fn synth_snapshot_ptr(synth: *const Synth) -> *cons
 }
 
 /// The model new notes play (`abi::MODEL_*`).
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_set_model(synth: *mut Synth, code: u32) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -200,9 +164,6 @@ pub(crate) unsafe extern "C" fn synth_set_model(synth: *mut Synth, code: u32) ->
 }
 
 /// Every waveguide's pickup, from the bridge (0 to 1), live.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_set_pickup(synth: *mut Synth, pickup: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -212,9 +173,6 @@ pub(crate) unsafe extern "C" fn synth_set_pickup(synth: *mut Synth, pickup: f64)
 /// Computes the spectrum of the last 4096 output samples; returns its
 /// length in bins (dB, `f32`; 0 for null). Read it at the pointer from
 /// [`synth_spectrum_ptr`].
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_spectrum(synth: *mut Synth) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -223,11 +181,8 @@ pub(crate) unsafe extern "C" fn synth_spectrum(synth: *mut Synth) -> u32 {
     })
 }
 
-/// Pointer to the spectrum [`synth_spectrum`] last computed (null for null).
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`]; call it right
-/// after [`synth_spectrum`] (the buffer is the analyzer's).
+/// Pointer to the spectrum [`synth_spectrum`] last computed (null for null);
+/// call it right after `synth_spectrum`.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_spectrum_ptr(synth: *const Synth) -> *const f32 {
     // SAFETY: per the contract, null (-> None) or a live Synth.
@@ -236,9 +191,6 @@ pub(crate) unsafe extern "C" fn synth_spectrum_ptr(synth: *const Synth) -> *cons
 
 /// How far the latest note's loop is from its pitch, cents: 0 tuned, the
 /// integer loop's error untuned (the page's readout). 0 for null.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_latest_cents(synth: *const Synth) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live Synth.
@@ -246,9 +198,6 @@ pub(crate) unsafe extern "C" fn synth_latest_cents(synth: *const Synth) -> f64 {
 }
 
 /// Samples clamped to ±1 so far (as `f64`: JS has no `u64`), 0 for null.
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_clipped(synth: *const Synth) -> f64 {
     // SAFETY: per the contract, null (-> None) or a live Synth.
@@ -258,9 +207,6 @@ pub(crate) unsafe extern "C" fn synth_clipped(synth: *const Synth) -> f64 {
 /// Copies the latest strike's hammer force (N, one per sample from
 /// impact, up to 12 ms) into the trace buffer; returns its length (0 for
 /// null or before any strike). Read it at [`synth_strike_trace_ptr`].
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_strike_trace(synth: *mut Synth) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Synth.
@@ -270,9 +216,6 @@ pub(crate) unsafe extern "C" fn synth_strike_trace(synth: *mut Synth) -> u32 {
 }
 
 /// Where the trace's samples are (null for null).
-///
-/// # Safety
-/// `synth` must be null or a live handle from [`synth_new`].
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn synth_strike_trace_ptr(synth: *const Synth) -> *const f32 {
     // SAFETY: per the contract, null (-> None) or a live Synth.
