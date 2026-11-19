@@ -1,8 +1,9 @@
 //! How many lanes the boids' lane loop (`lanes.rs`) uses on each target,
-//! per neighbour search, and how the grid's scalar candidate test writes
-//! its masks: chosen at compile time, here and only here (the one target
-//! `cfg` for them; `docs/perf-code-audit-guide.md`, §1–3). `SWARM_LANES`
-//! and `SWARM_MASK` (`knobs.rs`) override them, for experiments.
+//! per neighbour search, how the grid's scalar candidate test writes its
+//! masks, and how Sorted's spans end: chosen at compile time, here and
+//! only here (the one target `cfg` for them;
+//! `docs/perf-code-audit-guide.md`, §1–3). The settings in `knobs.rs`
+//! override them, for experiments.
 //!
 //! From the lane sweep (`experiments/swarm-lanes/results/{llm,m4}`,
 //! 2026-11-16; Zen 5 and the M4, natively and in wasm under wasmtime and
@@ -10,7 +11,8 @@
 //! boids), where 16 lanes leave more leftovers and cost more per span: 8
 //! is best natively everywhere. Brute force runs it on the whole flock
 //! and follows the vector width. In wasm, LLVM compiles 8 lanes badly
-//! (half scalar) and 16 cleanly: 16 for both. A lane count sets the sums'
+//! (half scalar) and 16 cleanly: 16 for brute force; Sorted 8 since its
+//! leftovers became a masked block (`TARGET`). A lane count sets the sums'
 //! order, so targets differ in the last bits (allowed:
 //! `docs/04-testing.md`).
 
@@ -19,9 +21,13 @@ use super::knobs::{Mask, Tail};
 /// Brute force's lanes, then sorted's, on this target; in brackets the
 /// sweep's time at 10,000 boids against the other count.
 const TARGET: (usize, usize) = if cfg!(target_arch = "wasm32") {
-    // V8: 16 for both (brute force 49 ms against 137 at 8 on Zen 5;
-    // sorted 2.0 against 5.7).
-    (16, 16)
+    // V8: brute force 16 (49 ms against 137 at 8 on Zen 5). Sorted 8
+    // with its leftovers as a masked block (`TARGET_EDGES`; the edge
+    // sweep's round 2: 1.49 ms against 1.63 at 16, the code as it was
+    // 1.79): its spans of about 12 fill fewer of 16, and 16 lanes' sums
+    // spill in V8 (137 stack stores against 14). With the scalar
+    // leftovers 16 was better (2.0 against 5.7).
+    (16, 8)
 } else if cfg!(target_arch = "aarch64") {
     // The M4: brute force 8 (43.6 ms, 16 the same), sorted 8 (1.42 ms
     // against 1.73).
@@ -80,22 +86,18 @@ pub(crate) const GRID_MASK: Mask = match super::knobs::MASK {
 
 /// Sorted's span edges: one set of lanes per boid, the leftovers' form,
 /// and the grid's cell lookup truncating, from the edge sweep
-/// (`experiments/sorted-edges/results/{llm,m4}`, 2026-11-18; Sorted at
-/// 10,000 and 100,000 boids, against the code as it was). Natively the
-/// first two together: Zen 5 −39%/−38% (AVX-512), −30%/−31% (AVX2),
-/// −14%/−20% at SSE2 (−21%/−26% with the third); the M4 −16% from the
-/// first alone. The masked block takes the scalar leftovers' branches
-/// (Zen 5's branch misses 3.6% → 0.3%). At 1,000 boids, about one boid a
-/// span, the block is mostly masked out: 1–13% faster on Zen 5 with the
-/// three, +1% at SSE2. In wasm neither helps in V8 (−4% to +4%): spans
-/// of about 12 against 16 lanes, the mask's constants rebuilt every
-/// block; the code as it was. Truncating gives the same cells and saves
-/// x86's baseline a `floorf` call: on everywhere.
-const TARGET_EDGES: (bool, Tail, bool) = if cfg!(target_arch = "wasm32") {
-    (false, Tail::Scalar, true)
-} else {
-    (true, Tail::Masked, true)
-};
+/// (`experiments/sorted-edges/`, 2026-11-18; Sorted at 10,000 and 100,000
+/// boids against the code as it was). All three, the mask from a table
+/// (round 2), everywhere: Zen 5 −38%/−38% (AVX-512), −36%/−37% (AVX2),
+/// −26%/−30% (SSE2); the M4 −7%/−31%; V8 (with 8 lanes, `TARGET`) −17%/
+/// −19% on Zen 5, −2%/−15% on the M4. The masked block takes the scalar
+/// leftovers' branches (Zen 5's branch misses 3.6% → 0.3%); the table
+/// mask is one load where comparing lane numbers was a dozen
+/// instructions or more. At 1,000 boids, about one boid a span, the block
+/// is mostly masked out: −5% to −12% on Zen 5 natively, the M4 0%, V8
+/// +7% (Zen 5) and +20% (the M4); large flocks first. Truncating gives
+/// the same cells and saves x86's baseline a `floorf` call.
+const TARGET_EDGES: (bool, Tail, bool) = (true, Tail::Table, true);
 
 /// Whether Sorted adds one set of lanes per boid, after its three spans.
 pub(crate) const PER_BOID: bool = match super::knobs::PER_BOID {
