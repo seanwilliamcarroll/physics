@@ -3,7 +3,7 @@
 //! failure, the page's toggle), and the decay control hits its target.
 #![cfg(test)]
 
-use acoustic::measure::{cents, partial, pitch, t60};
+use acoustic::measure::{cents, decay_time_60db, partial, pitch};
 use acoustic::piano::frequency;
 use acoustic::{Decay, KsString, Scalar, Voicing, Waveguide, inharmonicity};
 use math::convert::{f64_to_usize, usize_to_f64};
@@ -69,7 +69,7 @@ fn errors<S: Scalar>(model: Model, sample_rate: f64, tuned: bool, stiff: bool) -
     KEYS.map(|key| {
         let voicing = Voicing {
             tuned,
-            decay: Decay::T60(SWEEP_T60),
+            decay: Decay::Time60Db(SWEEP_T60),
             inharmonicity: if stiff { inharmonicity(key) } else { 0.0 },
         };
         let fundamental_hz = frequency(key);
@@ -163,7 +163,7 @@ fn stiff_partials_run_sharp() {
         let (key_hz, inharmonicity) = (frequency(key), inharmonicity(key));
         let voicing = Voicing {
             tuned: true,
-            decay: Decay::T60(4.0),
+            decay: Decay::Time60Db(4.0),
             inharmonicity,
         };
         let ideal_hz = key_hz / (1.0 + inharmonicity).sqrt();
@@ -236,12 +236,12 @@ fn decay<S: Scalar>(model: Model) {
             let fundamental_hz = frequency(key);
             let voicing = Voicing {
                 tuned: true,
-                decay: Decay::T60(target),
+                decay: Decay::Time60Db(target),
                 inharmonicity: 0.0,
             };
             let signal = render::<S>(model, sample_rate, fundamental_hz, voicing, target);
             let periods = (0.04 * fundamental_hz).max(4.0).round();
-            let measured = t60(
+            let measured = decay_time_60db(
                 &signal,
                 sample_rate,
                 fundamental_hz,

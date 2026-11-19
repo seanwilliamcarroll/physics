@@ -66,7 +66,10 @@ const COARSE_MAX_SEPARATION: f64 = 1.05;
 /// periapsis and is fixed for an exact Kepler orbit. (Uses `atan2`: fine in
 /// a test, never in the engine.)
 fn periapsis_angle<S: Scalar>(world: &World<S>) -> f64 {
-    let (positions, velocities) = (world.particles().pos(), world.particles().vel());
+    let (positions, velocities) = (
+        world.particles().positions(),
+        world.particles().velocities(),
+    );
     let (relative_position, relative_velocity) =
         (positions[1] - positions[0], velocities[1] - velocities[0]);
     let (relative_x, relative_y, relative_vx, relative_vy) = (
@@ -158,7 +161,7 @@ fn close_pass_peak_speed<S: Scalar>(softening: f64) -> f64 {
     let mut peak = 0.0_f64;
     for _ in 0..PASS_STEPS {
         world.step(time_step(FINE_DT));
-        for velocity in world.particles().vel() {
+        for velocity in world.particles().velocities() {
             peak = peak.max(velocity.length().to_f64());
         }
     }

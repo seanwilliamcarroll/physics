@@ -114,22 +114,22 @@ Storage for point masses. **Struct of arrays** of `Vec2` fields:
 pub struct Particles<S> {
     pos: Vec<Vec2<S>>,        // private: all three Vecs must stay the same length
     vel: Vec<Vec2<S>>,
-    inv_mass: Vec<S>,         // 0 = static / pinned
+    inverse_mass: Vec<S>,         // 0 = static / pinned
 }
 
 impl<S: Scalar> Particles<S> {
     pub fn add(&mut self, pos: Vec2<S>, vel: Vec2<S>, mass: Mass<S>) -> ParticleId;  // M3: Mass
-    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId;    // inv_mass = 0, vel = 0
+    pub fn add_static(&mut self, pos: Vec2<S>) -> ParticleId;    // inverse_mass = 0, vel = 0
     pub fn len(&self) -> usize;
     pub fn pos(&self) -> &[Vec2<S>];          // slices: readable and mutable
     pub fn vel(&self) -> &[Vec2<S>];          // element-wise, but the length
-    pub fn inv_mass(&self) -> &[S];           // can't change
-    pub fn vel_mut(&mut self) -> &mut [Vec2<S>];
+    pub fn inverse_mass(&self) -> &[S];           // can't change
+    pub fn velocities_mut(&mut self) -> &mut [Vec2<S>];
 }
 ```
 
 **Decision (M0): two constructors, not one.** `add_static` exists so that
-`inv_mass = 0` never comes from `1 / 0`: that would be infinity on floats
+`inverse_mass = 0` never comes from `1 / 0`: that would be infinity on floats
 and has no representation on fixed point.
 `add` trusted `mass > 0` until M3, when `Mass` became a checked type
 (`type-invariants.md`).
@@ -144,7 +144,7 @@ constraints (M3) do. `add` and `add_static` return a `ParticleId`, a plain
 index: particles can't be removed, so it can't go stale. A generational
 handle waits for removal (`type-invariants.md`, item 5).
 
-Why `inv_mass`: every solver formula uses `w = 1/m`, and `w = 0` gives an
+Why `inverse_mass`: every solver formula uses `w = 1/m`, and `w = 0` gives an
 immovable pin for free. That's needed for the pendulum in phase 2.
 
 Why SoA: the force and integration loops each touch one or two fields.
@@ -166,7 +166,7 @@ pub trait Force<S: Scalar> {
 Phase 1 implementations:
 
 - `UniformGravity { g: Vec2<S> }` — the same acceleration for every non-static particle.
-- `PairwiseGravity { g_const: S, softening_sq: S }` — O(n²), each pair once
+- `PairwiseGravity { gravitational_constant: S, softening_sq: S }` — O(n²), each pair once
   (`i < j`), equal and opposite, so momentum is conserved.
 
 **Softening** is mandatory, not optional:
@@ -181,9 +181,9 @@ lesson. On fixed point, `1/r²` dynamic range is a known hard case.
 Expect N-body to be a *demo of fixed-point failure* before it's a success.
 
 Accelerations, not forces: storing `a = F/m` means static particles
-(`inv_mass = 0`) are skipped naturally, with no division by zero.
+(`inverse_mass = 0`) are skipped naturally, with no division by zero.
 
-**As built (M2.4):** `PairwiseGravity::new(g_const, softening: Softening<S>)`.
+**As built (M2.4):** `PairwiseGravity::new(gravitational_constant, softening: Softening<S>)`.
 `Softening` is checked once (`≥ 0`, not NaN; `docs/type-invariants.md`), so
 the force stores ε² and trusts it. Changing ε on a running world is
 `World::clear_forces` + `add_force(scenarios::newtonian(ε))`, rather than a

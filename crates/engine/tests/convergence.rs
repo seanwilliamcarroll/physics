@@ -38,7 +38,10 @@ fn errors(integrator: Integrator, step_count: usize) -> (f64, f64) {
     for _ in 0..step_count {
         world.step(time_step(step_size));
     }
-    let (x, vx) = (world.particles().pos()[1].x, world.particles().vel()[1].x);
+    let (x, vx) = (
+        world.particles().positions()[1].x,
+        world.particles().velocities()[1].x,
+    );
     let exact_x = 1.0 + AMPLITUDE * (OMEGA * DURATION).cos();
     let exact_vx = -AMPLITUDE * OMEGA * (OMEGA * DURATION).sin();
     ((x - exact_x).abs(), (vx - exact_vx).abs())
@@ -110,7 +113,10 @@ fn without_forces_every_integrator_moves_at_constant_velocity() {
         for _ in 0..600 {
             world.step(time_step(1.0 / 60.0));
         }
-        let (position, final_velocity) = (world.particles().pos()[0], world.particles().vel()[0]);
+        let (position, final_velocity) = (
+            world.particles().positions()[0],
+            world.particles().velocities()[0],
+        );
         assert_eq!(
             final_velocity, velocity,
             "{integrator:?}: velocity untouched"
@@ -130,15 +136,15 @@ fn a_world_at_rest_with_no_force_stays_bit_identical() {
         for (x, y) in [(0.0, 0.0), (1.0, -2.0), (-3.5, 0.125)] {
             world.add_particle(Vec2::new(x, y), Vec2::ZERO, kg(1.0));
         }
-        let before = world.particles().pos().to_vec();
+        let before = world.particles().positions().to_vec();
         for _ in 0..100 {
             world.step(time_step(1.0 / 60.0));
         }
-        assert_eq!(world.particles().pos(), &before[..], "{integrator:?}");
+        assert_eq!(world.particles().positions(), &before[..], "{integrator:?}");
         assert!(
             world
                 .particles()
-                .vel()
+                .velocities()
                 .iter()
                 .all(|velocity| *velocity == Vec2::ZERO)
         );

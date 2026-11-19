@@ -25,8 +25,8 @@ impl<S: Scalar> Spring<S> {
     ) -> Option<Self> {
         let (first, second) = (first.into(), second.into());
         let (first_x, second_x) = (
-            particles.pos().get(first.index())?,
-            particles.pos().get(second.index())?,
+            particles.positions().get(first.index())?,
+            particles.positions().get(second.index())?,
         );
         Self::with_rest(
             particles,
@@ -127,9 +127,10 @@ impl<S: Scalar> SpringForce<S> {
         let half = S::ONE / (S::ONE + S::ONE);
         self.springs.iter().fold(S::ZERO, |total, spring| {
             let [first, second] = spring.ends.map(ParticleId::index);
-            let (Some(&first_x), Some(&second_x)) =
-                (particles.pos().get(first), particles.pos().get(second))
-            else {
+            let (Some(&first_x), Some(&second_x)) = (
+                particles.positions().get(first),
+                particles.positions().get(second),
+            ) else {
                 return total;
             };
             let stretch = (second_x - first_x).length() - spring.rest;
@@ -150,12 +151,12 @@ impl<S: Scalar> Force<S> for SpringForce<S> {
                 Some(&first_inv_mass),
                 Some(&second_inv_mass),
             ) = (
-                particles.pos().get(first),
-                particles.pos().get(second),
-                particles.vel().get(first),
-                particles.vel().get(second),
-                particles.inv_mass().get(first),
-                particles.inv_mass().get(second),
+                particles.positions().get(first),
+                particles.positions().get(second),
+                particles.velocities().get(first),
+                particles.velocities().get(second),
+                particles.inverse_mass().get(first),
+                particles.inverse_mass().get(second),
             )
             else {
                 continue;

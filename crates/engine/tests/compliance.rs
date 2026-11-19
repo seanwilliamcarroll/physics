@@ -34,7 +34,7 @@ fn measured_period(solver: Solver) -> f64 {
     let mut previous_stretch = STRETCH;
     for step in 0..STEPS {
         world.step(time_step(DT));
-        let stretch = world.particles().pos()[1].x - REST_LENGTH;
+        let stretch = world.particles().positions()[1].x - REST_LENGTH;
         if previous_stretch < 0.0 && stretch >= 0.0 {
             let time = f64::from(step + 1) * DT;
             first_crossing.get_or_insert(time);
@@ -96,7 +96,7 @@ fn energy_ratio(solver: Solver, damping_coefficient: f64) -> f64 {
     world.set_solver(solver);
     // Spring energy ½ k x² = ½ x² / α plus kinetic.
     let energy = |world: &World<f64>| {
-        let stretch = world.particles().pos()[1].x - REST_LENGTH;
+        let stretch = world.particles().positions()[1].x - REST_LENGTH;
         kinetic_energy(world.particles()) + 0.5 * stretch * stretch / COMPLIANCE
     };
     let start_energy = energy(&world);

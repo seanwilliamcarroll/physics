@@ -71,7 +71,10 @@ fn a_centre_hit_slides_then_rolls_then_stops_as_the_model_says() {
             for step in 1..=1500 {
                 world.step(time_step(DT));
                 let time = f64::from(step) * DT;
-                let (x, vx) = (world.particles().pos()[0].x, world.particles().vel()[0].x);
+                let (x, vx) = (
+                    world.particles().positions()[0].x,
+                    world.particles().velocities()[0].x,
+                );
                 let (expected_vx, expected_x) = if time < sliding_time {
                     (
                         launch_speed - SLIDING_FRICTION * GRAVITY * time,
@@ -102,7 +105,11 @@ fn a_centre_hit_slides_then_rolls_then_stops_as_the_model_says() {
                 );
                 previous_energy = current_energy;
             }
-            assert_eq!(world.particles().vel()[0], Vec2::ZERO, "at rest, exactly");
+            assert_eq!(
+                world.particles().velocities()[0],
+                Vec2::ZERO,
+                "at rest, exactly"
+            );
         }
     }
 }
@@ -124,14 +131,18 @@ fn a_ball_struck_at_two_fifths_of_its_radius_rolls_from_the_start() {
             let mut world = table_world(solver, 10);
             let cue = ball(&mut world, 0.0, 0.0);
             world.strike(cue, aim, 2.0, 0.4 * BALL_RADIUS);
-            let slip_speed =
-                slip(world.particles().vel()[0], world.spin()[0], BALL_RADIUS).length();
+            let slip_speed = slip(
+                world.particles().velocities()[0],
+                world.spin()[0],
+                BALL_RADIUS,
+            )
+            .length();
             assert!(
                 slip_speed < 1e-12,
                 "{solver:?} ({dx}, {dy}): slip {slip_speed}"
             );
             world.step(time_step(DT));
-            let velocity = world.particles().vel()[0];
+            let velocity = world.particles().velocities()[0];
             let along = aim.dot(velocity);
             let sideways = (velocity - aim.get() * along).length();
             assert!(
@@ -173,7 +184,7 @@ fn stun_follow_and_draw_after_a_full_hit() {
             for _ in 0..120 {
                 world.step(time_step(DT));
             }
-            let velocity = world.particles().vel()[0];
+            let velocity = world.particles().velocities()[0];
             let expected = 5.0 / 7.0 * (tip_offset / BALL_RADIUS) * launch_speed;
             let tolerance = 5.0 / 7.0 * SLIDING_FRICTION * GRAVITY * substep;
             assert!(

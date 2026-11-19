@@ -21,7 +21,7 @@ impl ParticleId {
     }
 }
 
-/// Names one **static** particle (`inv_mass = 0`): what
+/// Names one **static** particle (`inverse_mass = 0`): what
 /// [`Particles::add_static`] returns and
 /// [`set_static_position`](Particles::set_static_position) takes, so
 /// teleporting a dynamic particle is a type error. Converts into a
@@ -54,10 +54,10 @@ impl From<StaticId> for ParticleId {
 /// the same length: accessors hand out slices, which can't add or remove.
 #[derive(Clone, Debug)]
 pub struct Particles<S> {
-    pub(crate) pos: Vec<Vec2<S>>,
-    pub(crate) vel: Vec<Vec2<S>>,
+    pub(crate) positions: Vec<Vec2<S>>,
+    pub(crate) velocities: Vec<Vec2<S>>,
     /// `1 / mass`; `0` means static (immovable).
-    pub(crate) inv_mass: Vec<S>,
+    pub(crate) inverse_mass: Vec<S>,
     /// Circle radius, m; `0` means a point that never collides
     /// (`docs/08-collision.md`, "Shapes").
     pub(crate) radius: Vec<S>,
@@ -70,16 +70,16 @@ impl<S: Scalar> Particles<S> {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            pos: Vec::new(),
-            vel: Vec::new(),
-            inv_mass: Vec::new(),
+            positions: Vec::new(),
+            velocities: Vec::new(),
+            inverse_mass: Vec::new(),
             radius: Vec::new(),
             max_radius: S::ZERO,
         }
     }
 
     pub fn add(&mut self, position: Vec2<S>, velocity: Vec2<S>, mass: Mass<S>) -> ParticleId {
-        self.push(position, velocity, mass.inv(), S::ZERO)
+        self.push(position, velocity, mass.inverse(), S::ZERO)
     }
 
     pub fn add_circle(
@@ -89,7 +89,7 @@ impl<S: Scalar> Particles<S> {
         mass: Mass<S>,
         radius: Radius<S>,
     ) -> ParticleId {
-        self.push(position, velocity, mass.inv(), radius.get())
+        self.push(position, velocity, mass.inverse(), radius.get())
     }
 
     pub fn add_static(&mut self, position: Vec2<S>) -> StaticId {
@@ -103,30 +103,36 @@ impl<S: Scalar> Particles<S> {
         &mut self,
         slot: usize,
         position: Vec2<S>,
-        inv_mass: S,
+        inverse_mass: S,
         radius: S,
     ) -> bool {
         let (Some(slot_position), Some(slot_velocity), Some(slot_inv_mass), Some(slot_radius)) = (
-            self.pos.get_mut(slot),
-            self.vel.get_mut(slot),
-            self.inv_mass.get_mut(slot),
+            self.positions.get_mut(slot),
+            self.velocities.get_mut(slot),
+            self.inverse_mass.get_mut(slot),
             self.radius.get_mut(slot),
         ) else {
             return false;
         };
         (*slot_position, *slot_velocity, *slot_inv_mass, *slot_radius) =
-            (position, Vec2::ZERO, inv_mass, radius);
+            (position, Vec2::ZERO, inverse_mass, radius);
         if radius > self.max_radius {
             self.max_radius = radius;
         }
         true
     }
 
-    fn push(&mut self, position: Vec2<S>, velocity: Vec2<S>, inv_mass: S, radius: S) -> ParticleId {
-        let id = ParticleId(self.pos.len());
-        self.pos.push(position);
-        self.vel.push(velocity);
-        self.inv_mass.push(inv_mass);
+    fn push(
+        &mut self,
+        position: Vec2<S>,
+        velocity: Vec2<S>,
+        inverse_mass: S,
+        radius: S,
+    ) -> ParticleId {
+        let id = ParticleId(self.positions.len());
+        self.positions.push(position);
+        self.velocities.push(velocity);
+        self.inverse_mass.push(inverse_mass);
         self.radius.push(radius);
         if radius > self.max_radius {
             self.max_radius = radius;
@@ -136,31 +142,31 @@ impl<S: Scalar> Particles<S> {
 
     #[must_use]
     pub fn len(&self) -> usize {
-        self.pos.len()
+        self.positions.len()
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.pos.is_empty()
+        self.positions.is_empty()
     }
 
     #[must_use]
-    pub fn pos(&self) -> &[Vec2<S>] {
-        &self.pos
+    pub fn positions(&self) -> &[Vec2<S>] {
+        &self.positions
     }
 
     #[must_use]
-    pub fn vel(&self) -> &[Vec2<S>] {
-        &self.vel
+    pub fn velocities(&self) -> &[Vec2<S>] {
+        &self.velocities
     }
 
-    pub fn vel_mut(&mut self) -> &mut [Vec2<S>] {
-        &mut self.vel
+    pub fn velocities_mut(&mut self) -> &mut [Vec2<S>] {
+        &mut self.velocities
     }
 
     #[must_use]
-    pub fn inv_mass(&self) -> &[S] {
-        &self.inv_mass
+    pub fn inverse_mass(&self) -> &[S] {
+        &self.inverse_mass
     }
 
     #[must_use]
@@ -178,8 +184,11 @@ impl<S: Scalar> Particles<S> {
     /// particles (one from another world).
     #[must_use]
     pub fn set_static_position(&mut self, id: StaticId, position: Vec2<S>) -> bool {
-        match (self.inv_mass.get(id.index()), self.pos.get_mut(id.index())) {
-            (Some(&inv_mass), Some(slot_position)) if inv_mass == S::ZERO => {
+        match (
+            self.inverse_mass.get(id.index()),
+            self.positions.get_mut(id.index()),
+        ) {
+            (Some(&inverse_mass), Some(slot_position)) if inverse_mass == S::ZERO => {
                 *slot_position = position;
                 true
             }
@@ -190,9 +199,11 @@ impl<S: Scalar> Particles<S> {
     #[must_use]
     pub fn nearest_dynamic(&self, point: Vec2<S>, radius: S) -> Option<ParticleId> {
         let mut nearest: Option<(usize, S)> = None;
-        for (slot, (&position, &inv_mass)) in self.pos.iter().zip(&self.inv_mass).enumerate() {
+        for (slot, (&position, &inverse_mass)) in
+            self.positions.iter().zip(&self.inverse_mass).enumerate()
+        {
             let distance_squared = (position - point).length_sq();
-            if inv_mass != S::ZERO
+            if inverse_mass != S::ZERO
                 && distance_squared <= radius * radius
                 && nearest.is_none_or(|(_, best)| distance_squared < best)
             {
@@ -205,12 +216,12 @@ impl<S: Scalar> Particles<S> {
     /// Removes `id` if it is the last particle added (a drag anchor); the
     /// only removal, so every other id stays valid.
     pub(crate) fn pop_if_last(&mut self, id: ParticleId) -> bool {
-        if id.0 + 1 != self.pos.len() {
+        if id.0 + 1 != self.positions.len() {
             return false;
         }
-        self.pos.pop();
-        self.vel.pop();
-        self.inv_mass.pop();
+        self.positions.pop();
+        self.velocities.pop();
+        self.inverse_mass.pop();
         // Popping is rare (a drag anchor), so recompute rather than track
         // a second-largest.
         if self

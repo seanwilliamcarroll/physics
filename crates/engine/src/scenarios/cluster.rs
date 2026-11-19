@@ -19,7 +19,7 @@ pub const CLUSTER_TOTAL_MASS: f64 = 2.0e11;
 /// a weight, then masses are scaled so they sum to [`CLUSTER_TOTAL_MASS`].
 /// Unequal masses keep momentum tests honest (equal masses can hide a
 /// mass-weighting bug).
-pub const CLUSTER_WEIGHT: (f64, f64) = (0.5, 2.0);
+pub const CLUSTER_WEIGHT_RANGE: (f64, f64) = (0.5, 2.0);
 
 /// Largest initial speed per axis for [`cluster`], m/s. Random drift gives
 /// the cluster a nonzero net momentum, so conservation tests have a value
@@ -45,7 +45,7 @@ pub fn cluster_gravity<S: Scalar>() -> Result<PairwiseGravity<S>, ConfigError> {
 
 /// `body_count` bodies under mutual softened gravity: positions uniform in
 /// a disk of [`CLUSTER_RADIUS`], masses in proportion to weights drawn from
-/// [`CLUSTER_WEIGHT`] and summing to [`CLUSTER_TOTAL_MASS`], small random
+/// [`CLUSTER_WEIGHT_RANGE`] and summing to [`CLUSTER_TOTAL_MASS`], small random
 /// velocities. Deterministic per seed.
 ///
 /// Positions use rejection sampling (`point_in_annulus` in `shared.rs`)
@@ -72,7 +72,7 @@ pub(super) fn cluster_bodies(body_count: usize, seed: u64) -> Vec<BodyF64> {
             let position = point_in_annulus(&mut rng, 0.0, CLUSTER_RADIUS);
             let vx = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
             let vy = rng.range(-CLUSTER_SPEED, CLUSTER_SPEED);
-            let weight = rng.range(CLUSTER_WEIGHT.0, CLUSTER_WEIGHT.1);
+            let weight = rng.range(CLUSTER_WEIGHT_RANGE.0, CLUSTER_WEIGHT_RANGE.1);
             BodyF64 {
                 position,
                 velocity: (vx, vy),

@@ -118,14 +118,14 @@ fn static_particles_neither_pull_nor_are_pulled() {
     assert_eq!(with.last(), Some(&Vec2::ZERO));
     let mut without = Particles::new();
     let original = cloud::<f64>();
-    for ((&x, &vel), &inv_mass) in original
-        .pos()
+    for ((&x, &vel), &inverse_mass) in original
+        .positions()
         .iter()
-        .zip(original.vel())
-        .zip(original.inv_mass())
+        .zip(original.velocities())
+        .zip(original.inverse_mass())
     {
-        if inv_mass != 0.0 {
-            without.add(x, vel, kg(1.0 / inv_mass));
+        if inverse_mass != 0.0 {
+            without.add(x, vel, kg(1.0 / inverse_mass));
         }
     }
     let without = accel(&without, &barnes_hut(SOFTENING, 0.7));

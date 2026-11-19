@@ -22,7 +22,7 @@ local tuples) are left out.
 
 | Type | Why it exists |
 |---|---|
-| [`Particles<S>`](../crates/engine/src/particles.rs) | Struct-of-arrays storage (`pos`, `vel`, `inv_mass`) whose lengths can't diverge: callers get slices, never the `Vec`s. |
+| [`Particles<S>`](../crates/engine/src/particles.rs) | Struct-of-arrays storage (`pos`, `vel`, `inverse_mass`) whose lengths can't diverge: callers get slices, never the `Vec`s. |
 | [`ParticleId`](../crates/engine/src/particles.rs) | Names a particle for constraints; only the engine can make one, so ids come from a real `add`. Plain index: only a grab's anchor is ever removed, and only its `Grab` holds the id. |
 | [`StaticId`](../crates/engine/src/particles.rs) | Names an immovable particle (`add_static`): `set_static_position` takes one, so teleporting a dynamic particle doesn't compile. Converts into a `ParticleId` for constraints. A handle, not separate storage: a static is a particle of infinite mass, which every solver handles with no special case, and kick/drift never move it. |
 | [`World<S>`](../crates/engine/src/world.rs) | The simulation: particles, forces, constraints, and how a step is taken (integrator, or solver when constraints exist). |

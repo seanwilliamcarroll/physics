@@ -43,7 +43,7 @@ pub(super) use build_any;
 /// buffer the page reads.
 pub(super) fn fill_positions<S: Scalar>(world: &World<S>, buffer: &mut Vec<f32>) {
     buffer.clear();
-    for position in world.particles().pos() {
+    for position in world.particles().positions() {
         buffer.push(to_render(position.x));
         buffer.push(to_render(position.y));
     }

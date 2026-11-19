@@ -14,14 +14,14 @@ fn launches_n_particles_upward_from_the_origin() {
     assert!(
         world
             .particles
-            .pos()
+            .positions()
             .iter()
             .all(|&position| position == Vec2::ZERO)
     );
     assert!(
         world
             .particles
-            .vel()
+            .velocities()
             .iter()
             .all(|&velocity| in_launch_range(velocity))
     );
@@ -32,8 +32,11 @@ fn is_deterministic_per_seed() {
     let first = Fountain::new(7).world::<f32>(50);
     let repeat = Fountain::new(7).world::<f32>(50);
     let other_seed = Fountain::new(8).world::<f32>(50);
-    assert_eq!(first.particles.vel(), repeat.particles.vel());
-    assert_ne!(first.particles.vel(), other_seed.particles.vel());
+    assert_eq!(first.particles.velocities(), repeat.particles.velocities());
+    assert_ne!(
+        first.particles.velocities(),
+        other_seed.particles.velocities()
+    );
 }
 
 #[test]
@@ -44,7 +47,7 @@ fn particles_fall_below_launch_height_without_respawn() {
     assert!(
         world
             .particles
-            .pos()
+            .positions()
             .iter()
             .all(|position| position.y < 0.0)
     );
@@ -56,26 +59,26 @@ fn respawn_relaunches_only_fallen_particles() {
     let mut world = fountain.world::<f64>(20);
     run(&mut world, 30); // 0.5 s: everything still rising or airborne
     let airborne = (
-        world.particles.pos().to_vec(),
-        world.particles.vel().to_vec(),
+        world.particles.positions().to_vec(),
+        world.particles.velocities().to_vec(),
     );
     assert_eq!(fountain.respawn_fallen(&mut world), 0);
-    assert_eq!(world.particles.pos(), airborne.0);
-    assert_eq!(world.particles.vel(), airborne.1);
+    assert_eq!(world.particles.positions(), airborne.0);
+    assert_eq!(world.particles.velocities(), airborne.1);
 
     run(&mut world, 150); // 3 s total: everything has fallen
     assert_eq!(fountain.respawn_fallen(&mut world), 20);
     assert!(
         world
             .particles
-            .pos()
+            .positions()
             .iter()
             .all(|&position| position == Vec2::ZERO)
     );
     assert!(
         world
             .particles
-            .vel()
+            .velocities()
             .iter()
             .all(|&velocity| in_launch_range(velocity))
     );
@@ -88,7 +91,7 @@ fn respawn_skips_static_particles() {
     let below = Vec2::new(1.0, -5.0);
     world.particles.add_static(below);
     assert_eq!(fountain.respawn_fallen(&mut world), 0);
-    assert_eq!(world.particles.pos(), [below]);
+    assert_eq!(world.particles.positions(), [below]);
 }
 
 #[test]
@@ -101,7 +104,7 @@ fn steady_state_keeps_every_particle_in_play() {
         assert!(
             world
                 .particles
-                .pos()
+                .positions()
                 .iter()
                 .all(|position| position.y >= 0.0)
         );

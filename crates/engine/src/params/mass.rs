@@ -6,12 +6,12 @@ use crate::Scalar;
 /// A dynamic particle's mass, kg: positive and finite, with a positive,
 /// finite inverse.
 ///
-/// Every solver weights by `inv_mass = 1 / m`, so a bad mass (zero,
+/// Every solver weights by `inverse_mass = 1 / m`, so a bad mass (zero,
 /// negative, NaN, infinite, or so small that `1 / m` overflows) would
 /// corrupt every force and constraint touching the particle, far from the
 /// cause. [`Mass::new`] rejects those once; [`Particles::add`] takes a
 /// `Mass`, so storage never re-checks. Static particles have no `Mass`:
-/// [`Particles::add_static`] is the only way to get `inv_mass = 0`.
+/// [`Particles::add_static`] is the only way to get `inverse_mass = 0`.
 ///
 /// [`Particles::add`]: crate::Particles::add
 /// [`Particles::add_static`]: crate::Particles::add_static
@@ -54,7 +54,7 @@ impl<S: Scalar> Mass<S> {
 
     /// `1 / mass`, kg⁻¹: what the particle stores.
     #[must_use]
-    pub const fn inv(self) -> S {
+    pub const fn inverse(self) -> S {
         self.inv
     }
 }

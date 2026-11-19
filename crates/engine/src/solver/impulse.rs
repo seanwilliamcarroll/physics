@@ -37,7 +37,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
     #[expect(clippy::too_many_lines, reason = "one substep, read top to bottom")]
     pub(crate) fn impulse(self, dt: S) {
         let particles = self.particles;
-        evaluate(self.forces, particles, self.acc);
+        evaluate(self.forces, particles, self.accelerations);
         let contacts = self.contacts;
         let mut cloth = self.cloth;
         // Impacts resolve between two half kicks: a bounce landing at
@@ -51,17 +51,17 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
                 particles,
                 self.statics,
                 self.restitution,
-                self.acc,
+                self.accelerations,
                 dt,
                 self.speculative,
             );
-            kick(particles, self.acc, half);
+            kick(particles, self.accelerations, half);
             on_cloth(&mut cloth, particles, half);
             impacts::resolve(particles, contacts, dt);
-            kick(particles, self.acc, half);
+            kick(particles, self.accelerations, half);
             on_cloth(&mut cloth, particles, half);
         } else {
-            kick(particles, self.acc, dt);
+            kick(particles, self.accelerations, dt);
             on_cloth(&mut cloth, particles, dt);
         }
         if self.collides {
@@ -115,7 +115,7 @@ impl<S: Scalar, C: Constraint<S>> Step<'_, S, C> {
             Stabilization::Split => {
                 let pseudo_velocities = self.scratch;
                 pseudo_velocities.clear();
-                pseudo_velocities.resize(particles.pos.len(), Vec2::ZERO);
+                pseudo_velocities.resize(particles.positions.len(), Vec2::ZERO);
                 for pass in 0..self.iterations.get() {
                     self.order
                         .sweep(pass, self.constraints, self.lambda, |constraint, lambda| {
@@ -163,8 +163,8 @@ fn masses<S: Scalar, C: Constraint<S>>(
     Some((
         first,
         second,
-        *particles.inv_mass.get(first)?,
-        *particles.inv_mass.get(second)?,
+        *particles.inverse_mass.get(first)?,
+        *particles.inverse_mass.get(second)?,
     ))
 }
 
@@ -179,15 +179,17 @@ fn apply_impulse<S: Scalar, C: Constraint<S>>(
     else {
         return;
     };
-    let (Some(&first_position), Some(&second_position)) =
-        (particles.pos.get(first), particles.pos.get(second))
-    else {
+    let (Some(&first_position), Some(&second_position)) = (
+        particles.positions.get(first),
+        particles.positions.get(second),
+    ) else {
         return;
     };
     let (_, Some(normal)) = constraint.evaluate(first_position, second_position) else {
         return;
     };
-    let Ok([first_velocity, second_velocity]) = particles.vel.get_disjoint_mut([first, second])
+    let Ok([first_velocity, second_velocity]) =
+        particles.velocities.get_disjoint_mut([first, second])
     else {
         return;
     };
@@ -226,9 +228,10 @@ fn solve_velocity<S: Scalar, C: Constraint<S>>(
         return;
     };
     let inv_mass_sum = first_inv_mass + second_inv_mass;
-    let (Some(&first_position), Some(&second_position)) =
-        (particles.pos.get(first), particles.pos.get(second))
-    else {
+    let (Some(&first_position), Some(&second_position)) = (
+        particles.positions.get(first),
+        particles.positions.get(second),
+    ) else {
         return;
     };
     let (value, Some(normal)) = constraint.evaluate(first_position, second_position) else {
@@ -237,7 +240,8 @@ fn solve_velocity<S: Scalar, C: Constraint<S>>(
     if inv_mass_sum == S::ZERO {
         return;
     }
-    let Ok([first_velocity, second_velocity]) = particles.vel.get_disjoint_mut([first, second])
+    let Ok([first_velocity, second_velocity]) =
+        particles.velocities.get_disjoint_mut([first, second])
     else {
         return;
     };
@@ -283,9 +287,10 @@ fn solve_split<S: Scalar, C: Constraint<S>>(
         return;
     };
     let inv_mass_sum = first_inv_mass + second_inv_mass;
-    let (Some(&first_position), Some(&second_position)) =
-        (particles.pos.get(first), particles.pos.get(second))
-    else {
+    let (Some(&first_position), Some(&second_position)) = (
+        particles.positions.get(first),
+        particles.positions.get(second),
+    ) else {
         return;
     };
     let (value, Some(normal)) = constraint.evaluate(first_position, second_position) else {
@@ -295,7 +300,7 @@ fn solve_split<S: Scalar, C: Constraint<S>>(
         return;
     }
     let (Ok([first_velocity, second_velocity]), Ok([first_pseudo, second_pseudo])) = (
-        particles.vel.get_disjoint_mut([first, second]),
+        particles.velocities.get_disjoint_mut([first, second]),
         pseudo_velocities.get_disjoint_mut([first, second]),
     ) else {
         return;

@@ -19,7 +19,7 @@ pub(crate) fn count_tunnels<S: Scalar>(
     statics: Statics<'_, S>,
     pairs: &mut Vec<(usize, usize)>,
 ) -> u32 {
-    let after = particles.pos();
+    let after = particles.positions();
     let two = S::ONE + S::ONE;
     // Cell: both diameters plus the furthest any circle moved, so every
     // pair whose paths came within reach is a candidate.
@@ -61,9 +61,9 @@ pub(crate) fn count_tunnels<S: Scalar>(
         before.iter().zip(after).zip(particles.radius()).enumerate()
     {
         let movable = particles
-            .inv_mass()
+            .inverse_mass()
             .get(index)
-            .is_some_and(|&inv_mass| inv_mass != S::ZERO);
+            .is_some_and(|&inverse_mass| inverse_mass != S::ZERO);
         if radius == S::ZERO || !movable {
             continue;
         }

@@ -119,9 +119,9 @@ fn body_vec<S: Scalar>(criterion: &mut Criterion, scalar: &str) {
             |bencher, _| {
                 bencher.iter(|| {
                     let bodies: Vec<(Vec2<S>, S, S)> = black_box(particles)
-                        .pos()
+                        .positions()
                         .iter()
-                        .zip(particles.inv_mass())
+                        .zip(particles.inverse_mass())
                         .map(|(&position, &inverse_mass)| {
                             (
                                 position,

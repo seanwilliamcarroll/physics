@@ -60,7 +60,7 @@ d = xb − xa,   C = |d| − L,   ∇_b C = d / |d| = n,   ∇_a C = −n
   `d · (1/|d|)`: a 3-4-5 test caught the extra rounding.
 
 **No `PinConstraint`.** A pin is a distance constraint to a static particle
-(`add_static`, `inv_mass = 0`). Both solvers weight every correction by
+(`add_static`, `inverse_mass = 0`). Both solvers weight every correction by
 inverse mass, so the anchor never moves: no special case anywhere.
 
 **Storage: concrete, not `dyn`.** `World` holds

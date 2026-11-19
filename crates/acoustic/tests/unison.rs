@@ -27,7 +27,7 @@ const SEARCH_STEPS: u32 = 600;
 fn beat_rate(key: u8, expected: f64) -> f64 {
     let voicing = Voicing {
         tuned: true,
-        decay: Decay::T60(T60),
+        decay: Decay::Time60Db(T60),
         inharmonicity: inharmonicity(key),
     };
     let mut unison = Unison::<f64>::new(SAMPLE_RATE, key, voicing, 1.58).unwrap();

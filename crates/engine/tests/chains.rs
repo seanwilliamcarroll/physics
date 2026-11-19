@@ -25,7 +25,7 @@ struct ChainRun {
 }
 
 fn chain_length<S: Scalar>(world: &World<S>) -> f64 {
-    let positions = world.particles().pos();
+    let positions = world.particles().positions();
     world
         .constraints()
         .iter()
@@ -199,7 +199,10 @@ fn tip_distance<First: Scalar, Second: Scalar>(
     first: &World<First>,
     second: &World<Second>,
 ) -> f64 {
-    let (first_tip, second_tip) = (first.particles().pos()[2], second.particles().pos()[2]);
+    let (first_tip, second_tip) = (
+        first.particles().positions()[2],
+        second.particles().positions()[2],
+    );
     let (dx, dy) = (
         first_tip.x.to_f64() - second_tip.x.to_f64(),
         first_tip.y.to_f64() - second_tip.y.to_f64(),

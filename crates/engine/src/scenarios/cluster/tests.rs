@@ -1,4 +1,4 @@
-use super::{CLUSTER_RADIUS, CLUSTER_SPEED, CLUSTER_TOTAL_MASS, CLUSTER_WEIGHT, cluster};
+use super::{CLUSTER_RADIUS, CLUSTER_SPEED, CLUSTER_TOTAL_MASS, CLUSTER_WEIGHT_RANGE, cluster};
 use crate::test_util::{assert_same_up_to_rounding, time_step};
 use crate::{Force, Integrator, Vec2};
 
@@ -9,20 +9,20 @@ fn cluster_places_n_bodies_in_the_disk_with_bounded_mass_and_speed() {
     assert!(
         world
             .particles
-            .pos()
+            .positions()
             .iter()
             .all(|position| position.length() <= CLUSTER_RADIUS)
     );
     assert!(
         world
             .particles
-            .vel()
+            .velocities()
             .iter()
             .all(|velocity| velocity.x.abs() <= CLUSTER_SPEED && velocity.y.abs() <= CLUSTER_SPEED)
     );
     let masses: Vec<f64> = world
         .particles
-        .inv_mass()
+        .inverse_mass()
         .iter()
         .map(|inverse_mass| 1.0 / inverse_mass)
         .collect();
@@ -33,7 +33,7 @@ fn cluster_places_n_bodies_in_the_disk_with_bounded_mass_and_speed() {
         .fold((f64::INFINITY, 0.0_f64), |(lightest, heaviest), &mass| {
             (lightest.min(mass), heaviest.max(mass))
         });
-    assert!(heaviest / lightest <= CLUSTER_WEIGHT.1 / CLUSTER_WEIGHT.0);
+    assert!(heaviest / lightest <= CLUSTER_WEIGHT_RANGE.1 / CLUSTER_WEIGHT_RANGE.0);
 }
 
 #[test]
@@ -41,9 +41,12 @@ fn cluster_is_deterministic_per_seed() {
     let first = cluster::<f32>(16, 1).unwrap();
     let repeat = cluster::<f32>(16, 1).unwrap();
     let other_seed = cluster::<f32>(16, 2).unwrap();
-    assert_eq!(first.particles.pos(), repeat.particles.pos());
-    assert_eq!(first.particles.vel(), repeat.particles.vel());
-    assert_ne!(first.particles.pos(), other_seed.particles.pos());
+    assert_eq!(first.particles.positions(), repeat.particles.positions());
+    assert_eq!(first.particles.velocities(), repeat.particles.velocities());
+    assert_ne!(
+        first.particles.positions(),
+        other_seed.particles.positions()
+    );
 }
 
 #[test]
@@ -56,11 +59,11 @@ fn cluster_gravity_is_the_force_the_cluster_uses() {
         .accumulate(&world.particles, &mut accelerations);
     let mut stepped = cluster::<f64>(8, 3).unwrap();
     stepped.set_integrator(Integrator::ExplicitEuler);
-    let start_velocities = stepped.particles.vel().to_vec();
+    let start_velocities = stepped.particles.velocities().to_vec();
     stepped.step(time_step(1.0)); // explicit Euler: v1 = v0 + a(x0) * 1
     for ((end, start), acceleration) in stepped
         .particles
-        .vel()
+        .velocities()
         .iter()
         .zip(&start_velocities)
         .zip(&accelerations)

@@ -19,13 +19,13 @@ pub const POOL_WIDTH: f64 = 1.27;
 pub const POOL_BALL_RADIUS: f64 = 0.028_575;
 pub const POOL_BALL_MASS: f64 = 0.17;
 /// The cloth (`docs/09-billiards.md`: Alciatore, via secondary sources).
-pub const POOL_MU_SLIDE: f64 = 0.2;
-pub const POOL_MU_ROLL: f64 = 0.01;
-pub const POOL_G: f64 = 9.81;
+pub const POOL_SLIDING_FRICTION: f64 = 0.2;
+pub const POOL_ROLLING_RESISTANCE: f64 = 0.01;
+pub const POOL_GRAVITY: f64 = 9.81;
 /// Restitution, ball–ball (Alciatore) and ball–cushion (our choice in a
 /// 0.7–0.98 spread).
-pub const POOL_E_BALL: f64 = 0.94;
-pub const POOL_E_CUSHION: f64 = 0.8;
+pub const POOL_BALL_RESTITUTION: f64 = 0.94;
+pub const POOL_CUSHION_RESTITUTION: f64 = 0.8;
 /// Pocket mouths, lip to lip: the middle of WPA §9's ranges (corner
 /// 114.3–117.5 mm, side 127.0–130.2 mm).
 pub const POOL_CORNER_MOUTH: f64 = 0.1159;
@@ -33,7 +33,7 @@ pub const POOL_SIDE_MOUTH: f64 = 0.1286;
 /// The fastest cue ball, m/s (our choice: above a hard break).
 pub const POOL_MAX_SPEED: f64 = 12.0;
 /// The cue ball: [`pool_rack`]'s first particle.
-pub const POOL_CUE: ParticleId = ParticleId(0);
+pub const POOL_CUE_BALL: ParticleId = ParticleId(0);
 /// Ball numbers by rack position (apex first, row by row): the 1 at the
 /// apex, the 8 in the middle of the third row, a solid and a stripe in
 /// the back corners (8-ball). Particle `k + 1` is `POOL_RACK[k]`.
@@ -62,15 +62,15 @@ pub fn pool_table<S: Scalar>(
 ) -> Result<World<S>, ConfigError> {
     let to_scalar = S::from_f64;
     let table = Table::new(
-        to_scalar(POOL_MU_SLIDE),
-        to_scalar(POOL_MU_ROLL),
-        to_scalar(POOL_G),
+        to_scalar(POOL_SLIDING_FRICTION),
+        to_scalar(POOL_ROLLING_RESISTANCE),
+        to_scalar(POOL_GRAVITY),
     )
     .ok_or(ConfigError::InvalidTable)?;
     let ball_restitution =
-        Restitution::new(to_scalar(POOL_E_BALL)).ok_or(ConfigError::InvalidTable)?;
+        Restitution::new(to_scalar(POOL_BALL_RESTITUTION)).ok_or(ConfigError::InvalidTable)?;
     let cushion_restitution =
-        Restitution::new(to_scalar(POOL_E_CUSHION)).ok_or(ConfigError::InvalidTable)?;
+        Restitution::new(to_scalar(POOL_CUSHION_RESTITUTION)).ok_or(ConfigError::InvalidTable)?;
     let mut world = World::new(Integrator::SymplecticEuler, substeps);
     world.set_solver(solver);
     world.set_restitution(ball_restitution);
@@ -219,7 +219,7 @@ pub fn pool_break<S: Scalar>(
     }
     let mut world = pool_rack(solver, substeps)?;
     let tip = S::from_f64(tip * POOL_BALL_RADIUS);
-    world.strike(POOL_CUE, UnitVec2::X, S::from_f64(speed), tip);
+    world.strike(POOL_CUE_BALL, UnitVec2::X, S::from_f64(speed), tip);
     Ok(world)
 }
 

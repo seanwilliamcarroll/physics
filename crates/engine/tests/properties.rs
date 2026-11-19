@@ -42,8 +42,8 @@ fn momentum_is_conserved<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseErro
 fn stays_finite<S: Tol>(bodies: &[BodySpec]) -> Result<(), TestCaseError> {
     let world = run(build_world::<S>(bodies, Integrator::SymplecticEuler));
     let finite = |vector: &Vec2<S>| vector.x.to_f64().is_finite() && vector.y.to_f64().is_finite();
-    prop_assert!(world.particles().pos().iter().all(finite));
-    prop_assert!(world.particles().vel().iter().all(finite));
+    prop_assert!(world.particles().positions().iter().all(finite));
+    prop_assert!(world.particles().velocities().iter().all(finite));
     Ok(())
 }
 
@@ -60,8 +60,11 @@ fn translation_commutes_with_stepping<S: Tol>(
         })
         .collect();
     let shifted = run(build_world::<S>(&moved, Integrator::SymplecticEuler));
-    for (shifted_position, base_position) in
-        shifted.particles().pos().iter().zip(base.particles().pos())
+    for (shifted_position, base_position) in shifted
+        .particles()
+        .positions()
+        .iter()
+        .zip(base.particles().positions())
     {
         let error = (shifted_position.x.to_f64() - dx - base_position.x.to_f64())
             .abs()
@@ -94,13 +97,19 @@ fn rotation_by_90_degrees_is_exact<S: Tol>(bodies: &[BodySpec]) -> Result<(), Te
         })
         .collect();
     let rotated = run(build_world::<S>(&turned, Integrator::SymplecticEuler));
-    for (rotated_position, base_position) in
-        rotated.particles().pos().iter().zip(base.particles().pos())
+    for (rotated_position, base_position) in rotated
+        .particles()
+        .positions()
+        .iter()
+        .zip(base.particles().positions())
     {
         prop_assert_eq!(*rotated_position, base_position.perp());
     }
-    for (rotated_velocity, base_velocity) in
-        rotated.particles().vel().iter().zip(base.particles().vel())
+    for (rotated_velocity, base_velocity) in rotated
+        .particles()
+        .velocities()
+        .iter()
+        .zip(base.particles().velocities())
     {
         prop_assert_eq!(*rotated_velocity, base_velocity.perp());
     }
@@ -128,8 +137,8 @@ fn permutation_changes_only_rounding<S: Tol>(
             })
             .unwrap();
         let (permuted_position, base_position) = (
-            permuted.particles().pos()[shuffled_index],
-            base.particles().pos()[original_index],
+            permuted.particles().positions()[shuffled_index],
+            base.particles().positions()[original_index],
         );
         let error = (permuted_position.x.to_f64() - base_position.x.to_f64())
             .abs()

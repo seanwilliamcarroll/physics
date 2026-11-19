@@ -4,7 +4,7 @@
 use core::num::NonZeroU32;
 
 use engine::scenarios::{
-    POOL_BALL_MASS, POOL_BALL_RADIUS, POOL_CUE, POOL_LENGTH, POOL_RACK, pool_rack,
+    POOL_BALL_MASS, POOL_BALL_RADIUS, POOL_CUE_BALL, POOL_LENGTH, POOL_RACK, pool_rack,
 };
 use engine::{ConfigError, Mass, Radius, Scalar, Solver, Vec2, World};
 
@@ -159,7 +159,7 @@ fn strike_in<S: Scalar>(
         return false;
     };
     let tip = S::from_f64(tip * POOL_BALL_RADIUS);
-    world.strike(POOL_CUE, aim, S::from_f64(speed), tip)
+    world.strike(POOL_CUE_BALL, aim, S::from_f64(speed), tip)
 }
 
 /// Puts a retired cue ball back on the head spot, or the first place
@@ -188,7 +188,7 @@ fn respot_in<S: Scalar>(world: &mut World<S>) -> bool {
         .find(|&x| {
             world
                 .particles()
-                .pos()
+                .positions()
                 .iter()
                 .zip(world.particles().radius())
                 .all(|(position, ball_radius)| {
@@ -201,7 +201,12 @@ fn respot_in<S: Scalar>(world: &mut World<S>) -> bool {
     let Some(x) = spot else {
         return false;
     };
-    world.reinstate(POOL_CUE, Vec2::new(S::from_f64(x), S::ZERO), mass, radius)
+    world.reinstate(
+        POOL_CUE_BALL,
+        Vec2::new(S::from_f64(x), S::ZERO),
+        mass,
+        radius,
+    )
 }
 
 #[cfg(test)]

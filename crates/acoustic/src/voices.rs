@@ -23,7 +23,7 @@ pub const DEFAULT_GAIN: f64 = 0.25;
 
 /// Note off: the fundamental falls 60 dB in about this long, s, instead
 /// of stopping dead (a click).
-pub const RELEASE_T60: f64 = 0.1;
+pub const RELEASE_DECAY_TIME_60DB: f64 = 0.1;
 
 /// How long the release's damper takes to come in, s (ours): applied in one
 /// sample it clicked on the piano (a step about 8× the note's own).
@@ -40,7 +40,7 @@ const PIANO_BLOCK: usize = 256;
 /// longest contact (about 8 ms, A0 at pp), for the page to draw.
 pub const TRACE_SECONDS: f64 = 0.012;
 
-/// A released voice is free once it's had this many `RELEASE_T60`s (80 dB
+/// A released voice is free once it's had this many `RELEASE_DECAY_TIME_60DB`s (80 dB
 /// down: below audibility).
 const RELEASE_FREE_FACTOR: f64 = 80.0 / 60.0;
 
@@ -225,12 +225,13 @@ impl<S: Scalar> Voices<S> {
         for voice in &mut self.pool {
             if voice.key == Some(key) && voice.releasing.is_none() {
                 match voice.model {
-                    Model::Loop => voice.string.damp(RELEASE_T60, ramp),
-                    Model::Waveguide => voice.guide.damp(RELEASE_T60, ramp),
-                    Model::Piano => voice.piano.damp(RELEASE_T60, ramp),
+                    Model::Loop => voice.string.damp(RELEASE_DECAY_TIME_60DB, ramp),
+                    Model::Waveguide => voice.guide.damp(RELEASE_DECAY_TIME_60DB, ramp),
+                    Model::Piano => voice.piano.damp(RELEASE_DECAY_TIME_60DB, ramp),
                 }
                 let samples =
-                    f64_to_usize(sample_rate * RELEASE_T60 * RELEASE_FREE_FACTOR).unwrap_or(0);
+                    f64_to_usize(sample_rate * RELEASE_DECAY_TIME_60DB * RELEASE_FREE_FACTOR)
+                        .unwrap_or(0);
                 voice.releasing = Some(samples);
             }
         }

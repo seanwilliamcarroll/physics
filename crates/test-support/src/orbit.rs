@@ -15,7 +15,7 @@ pub fn orbit_energy<S: Scalar>(world: &World<S>) -> f64 {
 /// Distance between the two bodies, m.
 #[must_use]
 pub fn separation<S: Scalar>(world: &World<S>) -> f64 {
-    let positions = world.particles().pos();
+    let positions = world.particles().positions();
     (positions[1] - positions[0]).length().to_f64()
 }
 

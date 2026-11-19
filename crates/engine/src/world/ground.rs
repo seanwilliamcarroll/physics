@@ -25,13 +25,13 @@ impl<S: Scalar> World<S> {
 /// on the ground with a downward velocity.
 pub(super) fn clamp<S: Scalar>(particles: &mut Particles<S>, ground_y: S) {
     let dynamic = particles
-        .inv_mass
+        .inverse_mass
         .iter()
-        .map(|&inv_mass| inv_mass != S::ZERO);
+        .map(|&inverse_mass| inverse_mass != S::ZERO);
     for ((position, velocity), dynamic) in particles
-        .pos
+        .positions
         .iter_mut()
-        .zip(particles.vel.iter_mut())
+        .zip(particles.velocities.iter_mut())
         .zip(dynamic)
     {
         if dynamic && position.y <= ground_y {

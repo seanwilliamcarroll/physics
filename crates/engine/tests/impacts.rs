@@ -77,7 +77,7 @@ fn cradle_swing(solver: Solver, substeps: u32, iterations: u32) -> Vec<f64> {
     let particle_count = world.particles().len();
     let rest_x: Vec<f64> = (0..particle_count)
         .step_by(2)
-        .map(|pin_index| world.particles().pos()[pin_index].x)
+        .map(|pin_index| world.particles().positions()[pin_index].x)
         .collect();
     let mut furthest = vec![0.0_f64; rest_x.len()];
     // The impact comes at a quarter period (~0.35 s), the far apex at
@@ -86,7 +86,7 @@ fn cradle_swing(solver: Solver, substeps: u32, iterations: u32) -> Vec<f64> {
         world.step(time_step(DT));
         for (ball, ball_furthest) in furthest.iter_mut().enumerate() {
             *ball_furthest =
-                ball_furthest.max(world.particles().pos()[2 * ball + 1].x - rest_x[ball]);
+                ball_furthest.max(world.particles().positions()[2 * ball + 1].x - rest_x[ball]);
         }
     }
     let pull = 0.6 * CRADLE_LENGTH;

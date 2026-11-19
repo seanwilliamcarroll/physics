@@ -51,8 +51,8 @@ impl<S: Scalar> DistanceConstraint<S> {
     ) -> Option<Self> {
         let (first, second) = (first.into(), second.into());
         let (first_position, second_position) = (
-            particles.pos().get(first.index())?,
-            particles.pos().get(second.index())?,
+            particles.positions().get(first.index())?,
+            particles.positions().get(second.index())?,
         );
         Self::with_length(
             particles,

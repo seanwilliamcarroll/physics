@@ -203,7 +203,7 @@ fn a_glancing_pair_that_touches_mid_substep_is_a_contact() {
 fn a_circle_touches_a_pinned_circle() {
     for pinned in [0, 1] {
         let mut particles = circles(&[((0.0, 0.0), (0.0, 0.0)), ((0.15, 0.0), (0.0, 0.0))]);
-        let position = particles.pos()[pinned];
+        let position = particles.positions()[pinned];
         assert!(particles.set_body(pinned, position, 0.0, RADIUS));
         let found = contacts(&particles, &[]);
         assert_eq!(found.len(), 1, "pinned {pinned}");

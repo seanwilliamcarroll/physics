@@ -9,7 +9,7 @@
 
 use engine::Solver;
 use engine::diagnostics::kinetic_energy;
-use engine::scenarios::{JELLY_COLS, JELLY_ROWS, JellyBody, jelly};
+use engine::scenarios::{JELLY_COLUMNS, JELLY_ROWS, JellyBody, jelly};
 use test_support::{nonzero, time_step};
 
 const DT: f64 = 1.0 / 60.0;
@@ -21,7 +21,7 @@ const DAMPING: f64 = 0.5;
 /// = 22 500 N/m.
 fn critical_stiffness() -> f64 {
     let particle_mass = engine::scenarios::JELLY_MASS / 64.0;
-    assert_eq!(JELLY_COLS * JELLY_ROWS, 64);
+    assert_eq!(JELLY_COLUMNS * JELLY_ROWS, 64);
     let substep = DT / f64::from(SUBSTEPS);
     4.0 * particle_mass / (substep * substep)
 }
@@ -32,7 +32,7 @@ fn run(body: JellyBody, stiffness: f64) -> (f64, f64) {
     let mut jelly_world = jelly::<f64>(
         body,
         nonzero(SUBSTEPS),
-        JELLY_COLS,
+        JELLY_COLUMNS,
         JELLY_ROWS,
         stiffness,
         DAMPING,

@@ -117,7 +117,7 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     pub(crate) particles: &'a mut Particles<S>,
     pub(crate) constraints: &'a [C],
     pub(crate) lambda: &'a mut [S],
-    pub(crate) acc: &'a mut Vec<Vec2<S>>,
+    pub(crate) accelerations: &'a mut Vec<Vec2<S>>,
     /// Scratch per particle: XPBD's start-of-substep positions, or the
     /// impulse solver's pseudo-velocities (split stabilization).
     pub(crate) scratch: &'a mut Vec<Vec2<S>>,

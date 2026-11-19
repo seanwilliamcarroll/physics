@@ -50,7 +50,7 @@ impl<S: Scalar> PairwiseGravity<S> {
     }
 
     #[must_use]
-    pub const fn g_const(&self) -> S {
+    pub const fn gravitational_constant(&self) -> S {
         self.gravitational_constant
     }
 
@@ -94,7 +94,7 @@ struct Bodies<S> {
     x: Vec<S>,
     y: Vec<S>,
     mass: Vec<S>,
-    inv_mass: Vec<S>,
+    inverse_mass: Vec<S>,
 }
 
 impl<S: Scalar> Bodies<S> {
@@ -104,17 +104,18 @@ impl<S: Scalar> Bodies<S> {
             x: Vec::with_capacity(count),
             y: Vec::with_capacity(count),
             mass: Vec::with_capacity(count),
-            inv_mass: Vec::with_capacity(count),
+            inverse_mass: Vec::with_capacity(count),
         };
-        for (&position, &inv_mass) in particles.pos().iter().zip(particles.inv_mass()) {
+        for (&position, &inverse_mass) in particles.positions().iter().zip(particles.inverse_mass())
+        {
             bodies.x.push(position.x);
             bodies.y.push(position.y);
-            bodies.mass.push(if inv_mass == S::ZERO {
+            bodies.mass.push(if inverse_mass == S::ZERO {
                 S::ZERO
             } else {
-                S::ONE / inv_mass
+                S::ONE / inverse_mass
             });
-            bodies.inv_mass.push(inv_mass);
+            bodies.inverse_mass.push(inverse_mass);
         }
         bodies
     }

@@ -96,7 +96,7 @@ pub(crate) fn resolve<S: Scalar>(particles: &mut Particles<S>, contacts: &mut Co
         solve_inelastic(particles, list, in_round, round_impulse);
         let bounce: &[S] = if mixed {
             coupled_restitution(
-                particles.pos.len(),
+                particles.positions.len(),
                 list,
                 in_round,
                 restitution,
@@ -213,7 +213,7 @@ fn solve_inelastic<S: Scalar>(
             let delta_lambda = total - *lambda;
             *lambda = total;
             push_apart(
-                &mut particles.vel,
+                &mut particles.velocities,
                 first,
                 second,
                 contact.normal * (first_inv_mass * delta_lambda),
@@ -232,7 +232,7 @@ fn solve_inelastic<S: Scalar>(
 fn apply<S: Scalar>(particles: &mut Particles<S>, contact: &Contact<S>, lambda: S) {
     if let Some((first, second, first_inv_mass, second_inv_mass)) = bodies(particles, contact) {
         push_apart(
-            &mut particles.vel,
+            &mut particles.velocities,
             first,
             second,
             contact.normal * (first_inv_mass * lambda),

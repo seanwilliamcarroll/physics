@@ -6,7 +6,7 @@ use crate::{Solver, Vec2};
 
 /// The rack's nearest-neighbor distance (cue ball excluded).
 fn nearest_neighbor_distance(world: &crate::World<f64>) -> f64 {
-    let rack = &world.particles.pos()[1..];
+    let rack = &world.particles.positions()[1..];
     let mut nearest = f64::INFINITY;
     for (index, ball) in rack.iter().enumerate() {
         for other in &rack[index + 1..] {

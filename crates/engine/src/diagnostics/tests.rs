@@ -29,7 +29,7 @@ fn static_particles_contribute_nothing_even_if_moving() {
     // A static particle with a velocity must be skipped, not divided by zero.
     let mut particles = Particles::<f64>::new();
     particles.add_static(Vec2::ZERO);
-    particles.vel_mut()[0] = Vec2::new(1.0, 1.0);
+    particles.velocities_mut()[0] = Vec2::new(1.0, 1.0);
     assert_eq!(momentum(&particles), Vec2::ZERO);
     assert_eq!(kinetic_energy(&particles), 0.0);
 }
@@ -145,8 +145,8 @@ fn constraint_error_is_max_and_rms_of_c() {
         DistanceConstraint::between(&particles, first, third).unwrap(),
     ];
     assert_eq!(constraint_error(&particles, &rods), Some((0.0, 0.0)));
-    particles.pos[1] = Vec2::new(1.03, 0.0);
-    particles.pos[2] = Vec2::new(0.0, 1.96);
+    particles.positions[1] = Vec2::new(1.03, 0.0);
+    particles.positions[2] = Vec2::new(0.0, 1.96);
     let (max, rms) = constraint_error(&particles, &rods).unwrap();
     assert!((max - 0.04).abs() < 1e-12);
     assert!((rms - f64::midpoint(0.03 * 0.03, 0.04 * 0.04).sqrt()).abs() < 1e-12);

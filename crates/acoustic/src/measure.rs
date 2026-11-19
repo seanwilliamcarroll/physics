@@ -140,7 +140,7 @@ fn dft_at(chunk: &[f64], sample_rate: f64, frequency: f64) -> Option<(f64, f64)>
 /// decay (6.2 s against the fundamental's 7.6 s). `None` if fewer than two
 /// windows fall in the span, or the level doesn't fall.
 #[must_use]
-pub fn t60(
+pub fn decay_time_60db(
     signal: &[f64],
     sample_rate: f64,
     fundamental_hz: f64,

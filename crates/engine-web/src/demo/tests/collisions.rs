@@ -27,7 +27,7 @@ fn the_box_steps_as_the_scene_does_and_reads_its_energy() {
         w.step(TimeStep::new(PHYSICS_DT).unwrap());
     }
     let p = w.particles();
-    for (i, x) in p.pos().iter().enumerate() {
+    for (i, x) in p.positions().iter().enumerate() {
         assert_eq!(demo.particle_position(i), Some((x.x, x.y)), "ball {i}");
     }
     let energy = kinetic_energy(p) + uniform_gravity_potential(p, &pendulum_gravity());

@@ -46,7 +46,7 @@ fn spring_period_is_two_pi_root_m_over_k() {
         (None, 0.0, -1.0_f64, 0.01);
     for step in 1..=300_u32 {
         world.step(time_step(DT));
-        let stretch = world.particles().pos()[1].x - 1.0;
+        let stretch = world.particles().positions()[1].x - 1.0;
         if previous_stretch < 0.0 && stretch >= 0.0 {
             let time = f64::from(step) * DT;
             first_crossing.get_or_insert(time);
@@ -162,7 +162,7 @@ fn verlet_is_second_order_with_damping() {
         for _ in 0..f64_to_usize(DURATION / DT).unwrap() {
             world.step(time_step(DT));
         }
-        (world.particles().pos()[1].x - 1.0 - exact).abs()
+        (world.particles().positions()[1].x - 1.0 - exact).abs()
     };
     let (error_1, error_2, error_4) = (error(1), error(2), error(4));
     let (ratio_1, ratio_2) = (error_1 / error_2, error_2 / error_4);

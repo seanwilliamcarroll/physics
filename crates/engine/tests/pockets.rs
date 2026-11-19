@@ -41,17 +41,17 @@ fn a_ball_rolled_in_is_potted_and_out_of_play() {
         let particles = world.particles();
         assert_eq!(
             (
-                particles.inv_mass()[0],
+                particles.inverse_mass()[0],
                 particles.radius()[0],
-                particles.vel()[0]
+                particles.velocities()[0]
             ),
             (0.0, 0.0, Vec2::ZERO)
         );
         // It went in as its centre crossed the pocket's edge (1 − 0.06).
         assert!(
-            (particles.pos()[0].x - 0.94).abs() < 2.0 / 600.0,
+            (particles.positions()[0].x - 0.94).abs() < 2.0 / 600.0,
             "{solver:?}: at {:?}",
-            particles.pos()[0]
+            particles.positions()[0]
         );
     }
 }
@@ -65,7 +65,7 @@ fn a_ball_passing_the_pocket_isnt_potted() {
             world.step(time_step(DT));
             assert!(world.potted().is_empty(), "{solver:?}");
         }
-        assert!(world.particles().pos()[0].x > 1.5);
+        assert!(world.particles().positions()[0].x > 1.5);
     }
 }
 
@@ -80,7 +80,7 @@ fn a_retired_ball_collides_with_nothing_and_a_reinstated_one_does() {
         for _ in 0..30 {
             world.step(time_step(DT));
         }
-        let velocity = world.particles().vel()[mover.index()];
+        let velocity = world.particles().velocities()[mover.index()];
         // XPBD derives velocity from positions: 2.3e-14 off.
         assert!(
             (velocity - Vec2::new(1.0, 0.0)).length() < 1e-12,
@@ -99,11 +99,11 @@ fn a_retired_ball_collides_with_nothing_and_a_reinstated_one_does() {
         }
         let particles = world.particles();
         assert!(
-            particles.vel()[shooter.index()].x < 0.05,
+            particles.velocities()[shooter.index()].x < 0.05,
             "{solver:?}: stopped by it"
         );
         assert!(
-            particles.vel()[parked.index()].x > 0.9,
+            particles.velocities()[parked.index()].x > 0.9,
             "{solver:?}: and moved on"
         );
     }

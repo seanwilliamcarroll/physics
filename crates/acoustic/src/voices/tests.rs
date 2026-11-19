@@ -1,4 +1,4 @@
-use super::{Model, RELEASE_T60, VOICES, Voices};
+use super::{Model, RELEASE_DECAY_TIME_60DB, VOICES, Voices};
 use crate::hammer::{FORTISSIMO, PIANISSIMO, mezzo_forte};
 use crate::measure::{cents, partial, pitch};
 use crate::piano::frequency;
@@ -8,7 +8,7 @@ use math::convert::{f64_to_usize, usize_to_f64};
 const SAMPLE_RATE: f64 = 48_000.0;
 const VOICING: Voicing = Voicing {
     tuned: true,
-    decay: Decay::T60(2.0),
+    decay: Decay::Time60Db(2.0),
     inharmonicity: 0.0,
 };
 
@@ -46,7 +46,7 @@ fn note_off_fades_and_frees_the_voice() {
     let loud = block.iter().map(|sample| sample * sample).sum::<f64>();
     voices.note_off(69);
     // Render the release time and a little: silent (80 dB down), freed.
-    let blocks = f64_to_usize(SAMPLE_RATE * RELEASE_T60 * 1.5 / 128.0).unwrap();
+    let blocks = f64_to_usize(SAMPLE_RATE * RELEASE_DECAY_TIME_60DB * 1.5 / 128.0).unwrap();
     for _ in 0..blocks {
         voices.render(&mut block);
     }
@@ -78,7 +78,7 @@ fn latest_detune_is_zero_tuned_and_the_loop_error_untuned() {
     );
     let integer = Voicing {
         tuned: false,
-        decay: Decay::T60(2.0),
+        decay: Decay::Time60Db(2.0),
         inharmonicity: 0.0,
     };
     voices.note_on(108, integer, Excitation::Noise);
@@ -217,7 +217,7 @@ fn a_released_piano_note_fades_and_frees() {
         .map(|sample| sample * sample)
         .sum();
     voices.note_off(60);
-    let _ = render(&mut voices, RELEASE_T60 * 1.5);
+    let _ = render(&mut voices, RELEASE_DECAY_TIME_60DB * 1.5);
     let quiet: f64 = render(&mut voices, 0.01)
         .iter()
         .map(|sample| sample * sample)

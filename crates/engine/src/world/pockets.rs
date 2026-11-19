@@ -26,7 +26,7 @@ impl<S: Scalar> World<S> {
     /// every other index is kept. `false` past the end.
     pub fn retire(&mut self, id: ParticleId) -> bool {
         let index = id.index();
-        let Some(&position) = self.particles.pos.get(index) else {
+        let Some(&position) = self.particles.positions.get(index) else {
             return false;
         };
         if let Some(spin) = self.spin.get_mut(index) {
@@ -47,17 +47,24 @@ impl<S: Scalar> World<S> {
             *spin = Vec2::ZERO;
         }
         self.particles
-            .set_body(index, position, mass.inv(), radius.get())
+            .set_body(index, position, mass.inverse(), radius.get())
     }
 
     pub(super) fn pot(&mut self) {
         let hits: Vec<(ParticleId, usize)> = self
             .particles
-            .pos
+            .positions
             .iter()
-            .zip(self.particles.inv_mass.iter().zip(&self.particles.radius))
+            .zip(
+                self.particles
+                    .inverse_mass
+                    .iter()
+                    .zip(&self.particles.radius),
+            )
             .enumerate()
-            .filter(|(_, (_, (inv_mass, radius)))| **inv_mass != S::ZERO && **radius != S::ZERO)
+            .filter(|(_, (_, (inverse_mass, radius)))| {
+                **inverse_mass != S::ZERO && **radius != S::ZERO
+            })
             .filter_map(|(index, (&position, _))| {
                 let pocket_index = self
                     .pockets

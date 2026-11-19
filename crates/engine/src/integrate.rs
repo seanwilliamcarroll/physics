@@ -41,32 +41,32 @@ impl Integrator {
         time_step: S,
     ) {
         let VerletScratch {
-            acc,
-            acc_next,
-            vel_start,
+            accelerations,
+            next_accelerations,
+            start_velocities,
         } = scratch;
-        evaluate(forces, particles, acc);
+        evaluate(forces, particles, accelerations);
         match self {
             Self::SymplecticEuler => {
-                kick(particles, acc, time_step);
+                kick(particles, accelerations, time_step);
                 drift(particles, time_step);
             }
             Self::ExplicitEuler => {
                 drift(particles, time_step);
-                kick(particles, acc, time_step);
+                kick(particles, accelerations, time_step);
             }
             Self::VelocityVerlet => {
                 // Divide by ONE + ONE: exact, and no from_f64.
                 let half_step = time_step / (S::ONE + S::ONE);
                 let dynamic = particles
-                    .inv_mass
+                    .inverse_mass
                     .iter()
-                    .map(|&inv_mass| inv_mass != S::ZERO);
+                    .map(|&inverse_mass| inverse_mass != S::ZERO);
                 for (((x, &vel), &accel), is_dynamic) in particles
-                    .pos
+                    .positions
                     .iter_mut()
-                    .zip(&particles.vel)
-                    .zip(acc.iter())
+                    .zip(&particles.velocities)
+                    .zip(accelerations.iter())
                     .zip(dynamic)
                 {
                     if is_dynamic {
@@ -74,19 +74,19 @@ impl Integrator {
                     }
                 }
                 // Second evaluation at the predicted velocity; keep the start's.
-                vel_start.clear();
-                vel_start.extend_from_slice(&particles.vel);
-                kick(particles, acc, time_step);
-                evaluate(forces, particles, acc_next);
+                start_velocities.clear();
+                start_velocities.extend_from_slice(&particles.velocities);
+                kick(particles, accelerations, time_step);
+                evaluate(forces, particles, next_accelerations);
                 let dynamic = particles
-                    .inv_mass
+                    .inverse_mass
                     .iter()
-                    .map(|&inv_mass| inv_mass != S::ZERO);
-                let accelerations = acc.iter().zip(acc_next.iter());
+                    .map(|&inverse_mass| inverse_mass != S::ZERO);
+                let accelerations = accelerations.iter().zip(next_accelerations.iter());
                 for (((vel, &start_vel), (&accel_start, &accel_end)), is_dynamic) in particles
-                    .vel
+                    .velocities
                     .iter_mut()
-                    .zip(vel_start.iter())
+                    .zip(start_velocities.iter())
                     .zip(accelerations)
                     .zip(dynamic)
                 {
@@ -114,15 +114,20 @@ pub(crate) fn evaluate<S: Scalar>(
 
 /// Velocity Verlet's scratch: both evaluations' accelerations and the start's velocities.
 pub(crate) struct VerletScratch<'a, S> {
-    pub(crate) acc: &'a mut Vec<Vec2<S>>,
-    pub(crate) acc_next: &'a mut Vec<Vec2<S>>,
-    pub(crate) vel_start: &'a mut Vec<Vec2<S>>,
+    pub(crate) accelerations: &'a mut Vec<Vec2<S>>,
+    pub(crate) next_accelerations: &'a mut Vec<Vec2<S>>,
+    pub(crate) start_velocities: &'a mut Vec<Vec2<S>>,
 }
 
 /// `v += a h`, for dynamic particles only.
 pub(crate) fn kick<S: Scalar>(particles: &mut Particles<S>, acc: &[Vec2<S>], time_step: S) {
-    for ((vel, &accel), &inv_mass) in particles.vel.iter_mut().zip(acc).zip(&particles.inv_mass) {
-        if inv_mass != S::ZERO {
+    for ((vel, &accel), &inverse_mass) in particles
+        .velocities
+        .iter_mut()
+        .zip(acc)
+        .zip(&particles.inverse_mass)
+    {
+        if inverse_mass != S::ZERO {
             *vel += accel * time_step;
         }
     }
@@ -135,24 +140,28 @@ pub(crate) fn drift_split<S: Scalar>(
     pseudo: &[Vec2<S>],
     time_step: S,
 ) {
-    let moving = particles.vel.iter().zip(pseudo).zip(&particles.inv_mass);
-    for (x, ((&vel, &pseudo_vel), &inv_mass)) in particles.pos.iter_mut().zip(moving) {
-        if inv_mass != S::ZERO {
+    let moving = particles
+        .velocities
+        .iter()
+        .zip(pseudo)
+        .zip(&particles.inverse_mass);
+    for (x, ((&vel, &pseudo_vel), &inverse_mass)) in particles.positions.iter_mut().zip(moving) {
+        if inverse_mass != S::ZERO {
             *x += (vel + pseudo_vel) * time_step;
         }
     }
 }
 
 /// `x += v h`, for dynamic particles only: a static one never moves, even
-/// with a velocity (`vel_mut` can set one).
+/// with a velocity (`velocities_mut` can set one).
 pub(crate) fn drift<S: Scalar>(particles: &mut Particles<S>, time_step: S) {
-    for ((x, &vel), &inv_mass) in particles
-        .pos
+    for ((x, &vel), &inverse_mass) in particles
+        .positions
         .iter_mut()
-        .zip(&particles.vel)
-        .zip(&particles.inv_mass)
+        .zip(&particles.velocities)
+        .zip(&particles.inverse_mass)
     {
-        if inv_mass != S::ZERO {
+        if inverse_mass != S::ZERO {
             *x += vel * time_step;
         }
     }

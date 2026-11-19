@@ -194,8 +194,8 @@ fn at_impact<S: Scalar>(
     let near = contact.gap <= S::from_f64(CONTACT_MARGIN);
     let first = contact.a.index();
     let (Some(&first_position), Some(&first_velocity), Some(&first_radius)) = (
-        particles.pos().get(first),
-        particles.vel().get(first),
+        particles.positions().get(first),
+        particles.velocities().get(first),
         particles.radius().get(first),
     ) else {
         return true;
@@ -204,8 +204,8 @@ fn at_impact<S: Scalar>(
         Body::Particle(second) => {
             let second = second.index();
             let (Some(&second_position), Some(&second_velocity), Some(&second_radius)) = (
-                particles.pos().get(second),
-                particles.vel().get(second),
+                particles.positions().get(second),
+                particles.velocities().get(second),
                 particles.radius().get(second),
             ) else {
                 return true;
@@ -241,13 +241,13 @@ pub(crate) fn bodies<S: Scalar>(
     contact: &Contact<S>,
 ) -> Option<(usize, Option<usize>, S, S)> {
     let first = contact.a.index();
-    let first_inv_mass = *particles.inv_mass().get(first)?;
+    let first_inv_mass = *particles.inverse_mass().get(first)?;
     match contact.b {
         Body::Particle(second) => Some((
             first,
             Some(second.index()),
             first_inv_mass,
-            *particles.inv_mass().get(second.index())?,
+            *particles.inverse_mass().get(second.index())?,
         )),
         Body::Wall(_) | Body::Segment(_) => Some((first, None, first_inv_mass, S::ZERO)),
     }
@@ -262,14 +262,14 @@ pub(crate) fn geometry<S: Scalar>(
 ) -> Option<(S, UnitVec2<S>)> {
     let first = contact.a.index();
     let (first_position, first_radius) = (
-        *particles.pos().get(first)?,
+        *particles.positions().get(first)?,
         *particles.radius().get(first)?,
     );
     match contact.b {
         Body::Particle(second) => {
             let second = second.index();
             let (second_position, second_radius) = (
-                *particles.pos().get(second)?,
+                *particles.positions().get(second)?,
                 *particles.radius().get(second)?,
             );
             // Coincident: +x, as when the contact was found.
@@ -296,7 +296,7 @@ pub(crate) fn normal_velocity<S: Scalar>(
     contact: &Contact<S>,
     normal: UnitVec2<S>,
 ) -> S {
-    normal_velocity_in(particles.vel(), contact, normal)
+    normal_velocity_in(particles.velocities(), contact, normal)
 }
 
 /// `n · (v_b − v_a)` with velocities from `velocities` (current, or saved).

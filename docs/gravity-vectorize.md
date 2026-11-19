@@ -151,7 +151,7 @@ better use of time than guessing.
 
 `pos: Vec<Vec2<S>>` is an array of structs at the level of one field
 (`x0 y0 x1 y1 …`), though `Particles` as a whole is a struct of arrays
-(`pos`, `vel`, `inv_mass`, `radius` each a `Vec`). The question was
+(`pos`, `vel`, `inverse_mass`, `radius` each a `Vec`). The question was
 whether `Vec2` should become a `Vec2s { x: Vec<S>, y: Vec<S> }`.
 
 The case against, so far: a `Vec2` has two fields and loops use both, so

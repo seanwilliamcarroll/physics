@@ -53,7 +53,7 @@ fn order_changes_a_chain_but_not_a_single_rod() {
             for _ in 0..30 {
                 world.step(time_step(1.0 / 60.0));
             }
-            world.particles.pos().to_vec()
+            world.particles.positions().to_vec()
         };
         let forward = run(two_link_chain(solver, Order::Forward));
         let reverse = run(two_link_chain(solver, Order::Reverse));
@@ -68,7 +68,11 @@ fn order_changes_a_chain_but_not_a_single_rod() {
             one.step(time_step(1.0 / 60.0));
             other.step(time_step(1.0 / 60.0));
         }
-        assert_eq!(one.particles.pos(), other.particles.pos(), "{solver:?}");
+        assert_eq!(
+            one.particles.positions(),
+            other.particles.positions(),
+            "{solver:?}"
+        );
     }
 }
 
@@ -94,7 +98,10 @@ fn soft_rod(solver: Solver, damping: f64, iterations: u32) -> (Vec2<f64>, Vec2<f
     world.set_iterations(NonZeroU32::new(iterations).unwrap());
     world.step(time_step(1.0 / 60.0));
     let index = bob.index();
-    (world.particles.pos()[index], world.particles.vel()[index])
+    (
+        world.particles.positions()[index],
+        world.particles.velocities()[index],
+    )
 }
 
 #[test]

@@ -9,18 +9,18 @@ fn cold_cloud_in_the_disk() {
     assert_eq!(particles.len(), 64);
     assert!(
         particles
-            .vel()
+            .velocities()
             .iter()
             .all(|&velocity| velocity == Vec2::ZERO)
     );
     assert!(
         particles
-            .pos()
+            .positions()
             .iter()
             .all(|position| position.length() <= CLUSTER_RADIUS)
     );
     let total: f64 = particles
-        .inv_mass()
+        .inverse_mass()
         .iter()
         .map(|inverse_mass| 1.0 / inverse_mass)
         .sum();
@@ -34,8 +34,11 @@ fn is_deterministic_per_seed() {
         collapse::<f32>(30, 7).unwrap(),
         collapse::<f32>(30, 8).unwrap(),
     );
-    assert_eq!(first.particles.pos(), repeat.particles.pos());
-    assert_ne!(first.particles.pos(), other_seed.particles.pos());
+    assert_eq!(first.particles.positions(), repeat.particles.positions());
+    assert_ne!(
+        first.particles.positions(),
+        other_seed.particles.positions()
+    );
 }
 
 #[test]
@@ -45,7 +48,7 @@ fn falls_in_on_itself() {
     // free-fall scale; measured 0.83-0.85 of the start over seeds 2-4.
     let mean_radius = |world: &crate::World<f64>| {
         let center = center_of_mass(&world.particles).unwrap();
-        let positions = world.particles.pos();
+        let positions = world.particles.positions();
         positions
             .iter()
             .map(|position| (*position - center).length())

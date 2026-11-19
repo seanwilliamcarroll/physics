@@ -14,8 +14,8 @@ use crate::{Particles, Scalar, Vec2};
 /// gravity enters only here).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Table<S> {
-    mu_slide: S,
-    mu_roll: S,
+    sliding_friction: S,
+    rolling_resistance: S,
     gravity: S,
 }
 
@@ -24,33 +24,33 @@ impl<S: Scalar> Table<S> {
     /// (> 0), m/s². `None` for a negative or non-finite coefficient or a
     /// non-positive `g`.
     #[must_use]
-    pub fn new(mu_slide: S, mu_roll: S, gravity: S) -> Option<Self> {
+    pub fn new(sliding_friction: S, rolling_resistance: S, gravity: S) -> Option<Self> {
         let finite = |value: S| value.to_f64().is_finite();
-        let ok = mu_slide >= S::ZERO
-            && mu_roll >= S::ZERO
+        let ok = sliding_friction >= S::ZERO
+            && rolling_resistance >= S::ZERO
             && gravity > S::ZERO
-            && finite(mu_slide)
-            && finite(mu_roll)
+            && finite(sliding_friction)
+            && finite(rolling_resistance)
             && finite(gravity);
         ok.then_some(Self {
-            mu_slide,
-            mu_roll,
+            sliding_friction,
+            rolling_resistance,
             gravity,
         })
     }
 
     #[must_use]
-    pub const fn mu_slide(self) -> S {
-        self.mu_slide
+    pub const fn sliding_friction(self) -> S {
+        self.sliding_friction
     }
 
     #[must_use]
-    pub const fn mu_roll(self) -> S {
-        self.mu_roll
+    pub const fn rolling_resistance(self) -> S {
+        self.rolling_resistance
     }
 
     #[must_use]
-    pub const fn g(self) -> S {
+    pub const fn gravity(self) -> S {
         self.gravity
     }
 }
@@ -84,17 +84,17 @@ pub(crate) fn cloth<S: Scalar>(
     let two = S::ONE + S::ONE;
     let five = two + two + S::ONE;
     let seven = five + two;
-    let slide = table.mu_slide * table.gravity;
-    let roll = table.mu_roll * table.gravity;
+    let slide = table.sliding_friction * table.gravity;
+    let roll = table.rolling_resistance * table.gravity;
     let rolling_tol = S::from_f64(ROLLING_TOL);
-    for (((velocity, spin), &radius), &inv_mass) in particles
-        .vel
+    for (((velocity, spin), &radius), &inverse_mass) in particles
+        .velocities
         .iter_mut()
         .zip(spins.iter_mut())
         .zip(&particles.radius)
-        .zip(&particles.inv_mass)
+        .zip(&particles.inverse_mass)
     {
-        if radius == S::ZERO || inv_mass == S::ZERO {
+        if radius == S::ZERO || inverse_mass == S::ZERO {
             continue;
         }
         let mut time_left = dt;
