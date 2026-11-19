@@ -15,7 +15,7 @@ fn between_takes_its_length_from_the_current_positions() {
     let c = DistanceConstraint::between(&p, a, b).unwrap();
     assert_eq!(c.length(), 5.0); // 3-4-5
     assert_eq!(c.bodies(), [a, b]);
-    assert_eq!(c.compliance(), 0.0, "rigid only in M3");
+    assert_eq!(c.compliance(), 0.0, "rigid by default");
 }
 
 #[test]
@@ -77,8 +77,7 @@ fn with_length_takes_an_explicit_length_and_compliance() {
 
 #[test]
 fn a_rod_refuses_an_end_outside_the_particles() {
-    // From the full cargo-mutants run: `<` → `<=` and `&&` → `||` in the
-    // ends check went unnoticed.
+    // Kills the `<` → `<=` and `&&` → `||` mutants of the bounds check.
     let (p, a, b) = two_bodies();
     let outside = crate::ParticleId(2);
     let rod = |a, b| DistanceConstraint::with_length(&p, a, b, 1.0, crate::Compliance::RIGID);

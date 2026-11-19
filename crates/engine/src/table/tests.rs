@@ -12,8 +12,11 @@ fn coefficients_are_checked() {
 
 #[test]
 fn a_rolling_ball_doesnt_slip() {
-    let (v, r) = (Vec2::new(1.5, -0.5), 0.03);
-    assert_eq!(slip(v, rolling_spin(v, r), r), Vec2::ZERO);
+    let (velocity, radius) = (Vec2::new(1.5, -0.5), 0.03);
+    assert_eq!(
+        slip(velocity, rolling_spin(velocity, radius), radius),
+        Vec2::ZERO
+    );
     // No spin: the bottom slips at the ball's own velocity.
-    assert_eq!(slip(v, Vec2::ZERO, r), v);
+    assert_eq!(slip(velocity, Vec2::ZERO, radius), velocity);
 }

@@ -5,9 +5,8 @@ use crate::{Compliance, Damping, ParticleId, Particles, Scalar, UnitVec2, Vec2};
 
 /// A two-body constraint `C(x_a, x_b) = 0`, described by its geometry.
 ///
-/// Solvers are generic over this trait (monomorphized, no `dyn`): it is
-/// the interface they are written against, so they can't depend on what
-/// kind of constraint they're solving.
+/// Solvers are generic over this trait (monomorphized, no `dyn`), so they
+/// can't depend on what kind of constraint they're solving.
 pub trait Constraint<S: Scalar> {
     /// The two particles it joins.
     fn bodies(&self) -> [ParticleId; 2];
@@ -41,35 +40,45 @@ pub struct DistanceConstraint<S> {
 }
 
 impl<S: Scalar> DistanceConstraint<S> {
-    /// A rigid rod between `a` and `b` at their current distance, so no
-    /// length can be wrong (negative, NaN). `None` if `a == b` or either
-    /// isn't in `p`.
+    /// A rigid rod between `first` and `second` at their current distance,
+    /// so no length can be wrong (negative, NaN). `None` if they are the
+    /// same particle or either isn't in `particles`.
     #[must_use]
     pub fn between(
-        p: &Particles<S>,
-        a: impl Into<ParticleId>,
-        b: impl Into<ParticleId>,
+        particles: &Particles<S>,
+        first: impl Into<ParticleId>,
+        second: impl Into<ParticleId>,
     ) -> Option<Self> {
-        let (a, b) = (a.into(), b.into());
-        let (xa, xb) = (p.pos().get(a.index())?, p.pos().get(b.index())?);
-        Self::with_length(p, a, b, (*xb - *xa).length(), Compliance::RIGID)
+        let (first, second) = (first.into(), second.into());
+        let (first_position, second_position) = (
+            particles.pos().get(first.index())?,
+            particles.pos().get(second.index())?,
+        );
+        Self::with_length(
+            particles,
+            first,
+            second,
+            (*second_position - *first_position).length(),
+            Compliance::RIGID,
+        )
     }
 
     /// A rod of rest length `length` (m, `≥ 0`; 0 pulls the two bodies
     /// together, as the drag does) and the given compliance. `None` if the
-    /// length is negative or NaN, `a == b`, or either isn't in `p`.
+    /// length is negative or NaN, the bodies are the same, or either isn't
+    /// in `particles`.
     #[must_use]
     pub fn with_length(
-        p: &Particles<S>,
-        a: impl Into<ParticleId>,
-        b: impl Into<ParticleId>,
+        particles: &Particles<S>,
+        first: impl Into<ParticleId>,
+        second: impl Into<ParticleId>,
         length: S,
         compliance: Compliance<S>,
     ) -> Option<Self> {
-        let (a, b) = (a.into(), b.into());
-        let known = a.index() < p.len() && b.index() < p.len();
-        (known && a != b && length >= S::ZERO).then_some(Self {
-            bodies: [a, b],
+        let (first, second) = (first.into(), second.into());
+        let known = first.index() < particles.len() && second.index() < particles.len();
+        (known && first != second && length >= S::ZERO).then_some(Self {
+            bodies: [first, second],
             length,
             compliance,
             damping: Damping::NONE,
@@ -82,20 +91,17 @@ impl<S: Scalar> DistanceConstraint<S> {
         self.length
     }
 
-    /// The same constraint with damper `c` (`docs/07-soft-bodies.md`,
-    /// "Damping in all three steppers").
+    /// The same constraint with the given damping
+    /// (`docs/07-soft-bodies.md`, "Damping in all three steppers").
     #[must_use]
-    pub const fn with_damping(self, c: Damping<S>) -> Self {
-        Self { damping: c, ..self }
+    pub const fn with_damping(self, damping: Damping<S>) -> Self {
+        Self { damping, ..self }
     }
 
-    /// The same constraint with compliance `alpha` (live stiffness).
+    /// The same constraint with the given compliance (live stiffness).
     #[must_use]
-    pub const fn with_compliance(self, alpha: Compliance<S>) -> Self {
-        Self {
-            compliance: alpha,
-            ..self
-        }
+    pub const fn with_compliance(self, compliance: Compliance<S>) -> Self {
+        Self { compliance, ..self }
     }
 }
 
@@ -105,12 +111,12 @@ impl<S: Scalar> Constraint<S> for DistanceConstraint<S> {
     }
 
     fn evaluate(&self, xa: Vec2<S>, xb: Vec2<S>) -> (S, Option<UnitVec2<S>>) {
-        let d = xb - xa;
+        let offset = xb - xa;
         // n = d / |d| (`type-invariants.md` item 3). No direction at
         // |d| = 0; the error is still defined there (−length).
-        match d.length_and_direction() {
-            Some((len, n)) => (len - self.length, Some(n)),
-            None => (d.length() - self.length, None),
+        match offset.length_and_direction() {
+            Some((distance, direction)) => (distance - self.length, Some(direction)),
+            None => (offset.length() - self.length, None),
         }
     }
 
