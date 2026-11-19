@@ -28,7 +28,7 @@ pub(super) struct Body<S> {
 /// `size` entries ending at it.
 #[derive(Copy, Clone, Debug)]
 pub(super) struct Node<S> {
-    pub(super) com: Vec2<S>,
+    pub(super) center_of_mass: Vec2<S>,
     pub(super) mass: S,
     pub(super) size: usize,
     pub(super) kind: NodeKind<S>,
@@ -36,7 +36,7 @@ pub(super) struct Node<S> {
 
 #[derive(Copy, Clone, Debug)]
 pub(super) enum NodeKind<S> {
-    /// A leaf: one particle, at `com` exactly.
+    /// A leaf: one particle, at `center_of_mass` exactly.
     Body { index: usize },
     /// A cell of side `width` whose bodies have Morton keys in
     /// `keys.0..=keys.1` (a contiguous range: the containment test), and
@@ -63,18 +63,19 @@ pub(super) struct Root<S> {
 impl<S: Scalar> Root<S> {
     /// The smallest square containing every point, or `None` if empty.
     pub(super) fn around(points: impl Iterator<Item = Vec2<S>>, half: S) -> Option<Self> {
-        let (lo, hi) = points.fold(None, |bounds: Option<(Vec2<S>, Vec2<S>)>, x| {
-            Some(match bounds {
-                None => (x, x),
-                Some((lo, hi)) => (
-                    Vec2::new(min(lo.x, x.x), min(lo.y, x.y)),
-                    Vec2::new(max(hi.x, x.x), max(hi.y, x.y)),
-                ),
-            })
-        })?;
-        let half_side = max(hi.x - lo.x, hi.y - lo.y) * half;
+        let (min_corner, max_corner) =
+            points.fold(None, |bounds: Option<(Vec2<S>, Vec2<S>)>, point| {
+                Some(match bounds {
+                    None => (point, point),
+                    Some((min_corner, max_corner)) => (
+                        Vec2::new(min(min_corner.x, point.x), min(min_corner.y, point.y)),
+                        Vec2::new(max(max_corner.x, point.x), max(max_corner.y, point.y)),
+                    ),
+                })
+            })?;
+        let half_side = max(max_corner.x - min_corner.x, max_corner.y - min_corner.y) * half;
         Some(Self {
-            center: lo + Vec2::new(half_side, half_side),
+            center: min_corner + Vec2::new(half_side, half_side),
             half_side,
             half,
         })
@@ -85,25 +86,36 @@ impl<S: Scalar> Root<S> {
     /// north, bit 0 = east). Built from comparisons against cell centers,
     /// computed by the same operations for every body, so it is exact and
     /// identical on every platform; no float-to-integer casts.
-    pub(super) fn key(&self, x: Vec2<S>) -> u64 {
-        let (mut c, mut h) = (self.center, self.half_side);
+    pub(super) fn key(&self, point: Vec2<S>) -> u64 {
+        let (mut cell_center, mut cell_half_side) = (self.center, self.half_side);
         let mut key = 0;
         for _ in 0..MAX_DEPTH {
-            h = h * self.half;
-            let (east, north) = (x.x >= c.x, x.y >= c.y);
+            cell_half_side = cell_half_side * self.half;
+            let (east, north) = (point.x >= cell_center.x, point.y >= cell_center.y);
             key = (key << 2) | (u64::from(north) << 1) | u64::from(east);
-            c += Vec2::new(if east { h } else { -h }, if north { h } else { -h });
+            cell_center += Vec2::new(
+                if east {
+                    cell_half_side
+                } else {
+                    -cell_half_side
+                },
+                if north {
+                    cell_half_side
+                } else {
+                    -cell_half_side
+                },
+            );
         }
         key
     }
 }
 
-fn min<S: Scalar>(a: S, b: S) -> S {
-    if b < a { b } else { a }
+fn min<S: Scalar>(left: S, right: S) -> S {
+    if right < left { right } else { left }
 }
 
-fn max<S: Scalar>(a: S, b: S) -> S {
-    if b > a { b } else { a }
+fn max<S: Scalar>(left: S, right: S) -> S {
+    if right > left { right } else { left }
 }
 
 /// The two key bits choosing the child below level `level`.
@@ -111,12 +123,12 @@ const fn quadrant(key: u64, level: u32) -> u64 {
     (key >> (2 * (MAX_DEPTH - 1 - level))) & 0b11
 }
 
-/// The center of `center`'s child in quadrant `q` (its two key bits) for a
-/// cell of side `width`: a quarter of the side toward it, as
-/// [`Root::key`] steps.
-fn child_center<S: Scalar>(center: Vec2<S>, width: S, half: S, q: u64) -> Vec2<S> {
+/// The center of `center`'s child in the quadrant given by `quadrant_bits`
+/// (its two key bits) for a cell of side `width`: a quarter of the side
+/// toward it, as [`Root::key`] steps.
+fn child_center<S: Scalar>(center: Vec2<S>, width: S, half: S, quadrant_bits: u64) -> Vec2<S> {
     let quarter = width * half * half;
-    let (east, north) = (q & 0b01 != 0, q & 0b10 != 0);
+    let (east, north) = (quadrant_bits & 0b01 != 0, quadrant_bits & 0b10 != 0);
     center
         + Vec2::new(
             if east { quarter } else { -quarter },
@@ -141,7 +153,7 @@ pub(super) fn build<S: Scalar>(
     };
     if bodies.len() == 1 {
         nodes.push(Node {
-            com: first.pos,
+            center_of_mass: first.pos,
             mass: first.mass,
             size: 1,
             kind: NodeKind::Body { index: first.index },
@@ -160,31 +172,41 @@ pub(super) fn build<S: Scalar>(
     let (mut mass, mut moment) = (S::ZERO, Vec2::ZERO);
     if level == MAX_DEPTH {
         // Identical keys: a bucket, every body its own leaf.
-        for b in bodies {
-            let (m, mx) = build(core::slice::from_ref(b), level, width, center, half, nodes);
-            mass += m;
-            moment += mx;
+        for body in bodies {
+            let (body_mass, body_moment) = build(
+                core::slice::from_ref(body),
+                level,
+                width,
+                center,
+                half,
+                nodes,
+            );
+            mass += body_mass;
+            moment += body_moment;
         }
     } else {
         // Sorted by key, each quadrant is one consecutive run.
-        for group in bodies.chunk_by(|a, b| quadrant(a.key, level) == quadrant(b.key, level)) {
-            let q = group.first().map_or(0, |b| quadrant(b.key, level));
-            let child = child_center(center, width, half, q);
-            let (m, mx) = build(group, level + 1, width * half, child, half, nodes);
-            mass += m;
-            moment += mx;
+        for group in
+            bodies.chunk_by(|left, right| quadrant(left.key, level) == quadrant(right.key, level))
+        {
+            let group_quadrant = group.first().map_or(0, |body| quadrant(body.key, level));
+            let child = child_center(center, width, half, group_quadrant);
+            let (group_mass, group_moment) =
+                build(group, level + 1, width * half, child, half, nodes);
+            mass += group_mass;
+            moment += group_moment;
         }
     }
     // Dynamic masses are positive, so `mass > 0` here.
-    let com = moment / mass;
+    let center_of_mass = moment / mass;
     nodes.push(Node {
-        com,
+        center_of_mass,
         mass,
         size: nodes.len() - start + 1,
         kind: NodeKind::Cell {
             width,
             keys: (first.key, last.key),
-            offset: (com - center).length(),
+            offset: (center_of_mass - center).length(),
         },
     });
     (mass, moment)

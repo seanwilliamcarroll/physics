@@ -6,16 +6,16 @@ use crate::test_util::accel;
 use crate::{Force, PairwiseGravity, Particles, Scalar, Softening, Vec2};
 
 const G: f64 = 6.674_30e-11;
-const EPS: f64 = 0.1;
+const SOFTENING: f64 = 0.1;
 
-fn eps<S: Scalar>(eps: f64) -> Softening<S> {
-    Softening::new(S::from_f64(eps)).unwrap()
+fn softening<S: Scalar>(meters: f64) -> Softening<S> {
+    Softening::new(S::from_f64(meters)).unwrap()
 }
 
-fn bh<S: Scalar>(eps_m: f64, theta: f64) -> BarnesHut<S> {
+fn barnes_hut<S: Scalar>(softening_meters: f64, theta: f64) -> BarnesHut<S> {
     BarnesHut::new(
         S::from_f64(G),
-        eps(eps_m),
+        softening(softening_meters),
         OpeningAngle::new(S::from_f64(theta)).unwrap(),
     )
 }
@@ -45,12 +45,15 @@ fn max_rel_diff<S: Scalar>(a: &[Vec2<S>], b: &[Vec2<S>]) -> f64 {
 }
 
 /// θ = 0 never accepts a cell: the same sum as `PairwiseGravity`, up to
-/// summation order. Measured (2026-11-02): 2.7e-16 (f64), 2.1e-7 (f32)
+/// summation order. Measured: 2.7e-16 (f64), 2.1e-7 (f32)
 /// relative to the largest acceleration; bounds ~10x above.
 fn theta_zero_is_direct_summation<S: Scalar>(tol: f64) {
     let p = cloud::<S>();
-    let direct = accel(&p, &PairwiseGravity::new(S::from_f64(G), eps(EPS)));
-    let tree = accel(&p, &bh::<S>(EPS, 0.0));
+    let direct = accel(
+        &p,
+        &PairwiseGravity::new(S::from_f64(G), softening(SOFTENING)),
+    );
+    let tree = accel(&p, &barnes_hut::<S>(SOFTENING, 0.0));
     let err = max_rel_diff(&tree, &direct);
     assert!(err <= tol, "θ = 0 differs from direct by {err:e}");
 }
@@ -85,16 +88,16 @@ fn distant_cluster_acts_as_its_center_of_mass() {
     }
     let com = Vec2::new(mx / m_total, my / m_total);
     let r = com - Vec2::ZERO;
-    let d_sq = r.length_sq() + EPS * EPS;
+    let d_sq = r.length_sq() + SOFTENING * SOFTENING;
     let expect = r * (G * m_total / (d_sq * d_sq.sqrt()));
 
-    let a = accel(&p, &bh::<f64>(EPS, 0.5))[0];
+    let a = accel(&p, &barnes_hut::<f64>(SOFTENING, 0.5))[0];
     assert!(
         (a - expect).length() <= 1e-12 * expect.length(),
         "{a:?} vs {expect:?}"
     );
     // And it is an approximation: direct summation differs (by ~(s/d)²).
-    let direct = accel(&p, &PairwiseGravity::new(G, eps(EPS)))[0];
+    let direct = accel(&p, &PairwiseGravity::new(G, softening(SOFTENING)))[0];
     assert!((a - direct).length() > 1e-12 * direct.length());
 }
 
@@ -103,11 +106,14 @@ fn static_particles_neither_pull_nor_are_pulled() {
     let mut p = Particles::new();
     p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0e10));
     p.add_static(Vec2::new(1.0, 0.0));
-    assert_eq!(accel(&p, &bh(EPS, 0.5)), [Vec2::ZERO, Vec2::ZERO]);
+    assert_eq!(
+        accel(&p, &barnes_hut(SOFTENING, 0.5)),
+        [Vec2::ZERO, Vec2::ZERO]
+    );
 
     // In a crowd too: the static one's acceleration stays zero, and
     // removing it changes nobody else's (θ > 0, so the tree is used).
-    let with = accel(&cloud::<f64>(), &bh(EPS, 0.7));
+    let with = accel(&cloud::<f64>(), &barnes_hut(SOFTENING, 0.7));
     assert_eq!(with.last(), Some(&Vec2::ZERO));
     let mut without = Particles::new();
     let c = cloud::<f64>();
@@ -116,7 +122,7 @@ fn static_particles_neither_pull_nor_are_pulled() {
             without.add(x, vel, kg(1.0 / w));
         }
     }
-    let without = accel(&without, &bh(EPS, 0.7));
+    let without = accel(&without, &barnes_hut(SOFTENING, 0.7));
     assert_eq!(&with[..with.len() - 1], &without[..]);
 }
 
@@ -127,7 +133,7 @@ fn coincident_bodies_without_softening_stay_finite() {
     let mut p = Particles::new();
     p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, kg(1.0e10));
     p.add(Vec2::new(1.0, 1.0), Vec2::ZERO, kg(1.0e10));
-    assert_eq!(accel(&p, &bh(0.0, 0.5)), [Vec2::ZERO, Vec2::ZERO]);
+    assert_eq!(accel(&p, &barnes_hut(0.0, 0.5)), [Vec2::ZERO, Vec2::ZERO]);
 
     // A coincident pair inside a crowd, for every θ: still finite, and the
     // pair is pulled identically.
@@ -135,7 +141,7 @@ fn coincident_bodies_without_softening_stay_finite() {
     p.add(Vec2::new(0.3, 0.3), Vec2::ZERO, kg(1.0e10));
     p.add(Vec2::new(0.3, 0.3), Vec2::ZERO, kg(1.0e10));
     for theta in [0.0, 0.5, 1.0, 2.0] {
-        let a = accel(&p, &bh(0.0, theta));
+        let a = accel(&p, &barnes_hut(0.0, theta));
         assert!(a.iter().all(|a| a.x.is_finite() && a.y.is_finite()));
         let n = a.len();
         assert_eq!(a[n - 1], a[n - 2], "θ = {theta}");
@@ -147,7 +153,7 @@ fn adds_into_acc_rather_than_overwrite() {
     let mut p = Particles::<f64>::new();
     p.add(Vec2::ZERO, Vec2::ZERO, kg(1.0e10));
     let mut acc = vec![Vec2::new(1.0, 2.0)];
-    bh(EPS, 0.5).accumulate(&p, &mut acc);
+    barnes_hut(SOFTENING, 0.5).accumulate(&p, &mut acc);
     // A lone body feels nothing (no self-force), and acc is kept.
     assert_eq!(acc, [Vec2::new(1.0, 2.0)]);
 }
@@ -155,11 +161,14 @@ fn adds_into_acc_rather_than_overwrite() {
 #[test]
 fn empty_and_all_static_worlds_are_fine() {
     let p = Particles::<f64>::new();
-    assert_eq!(accel(&p, &bh(EPS, 0.5)), []);
+    assert_eq!(accel(&p, &barnes_hut(SOFTENING, 0.5)), []);
     let mut p = Particles::<f64>::new();
     p.add_static(Vec2::ZERO);
     p.add_static(Vec2::new(1.0, 0.0));
-    assert_eq!(accel(&p, &bh(EPS, 0.5)), [Vec2::ZERO, Vec2::ZERO]);
+    assert_eq!(
+        accel(&p, &barnes_hut(SOFTENING, 0.5)),
+        [Vec2::ZERO, Vec2::ZERO]
+    );
 }
 
 #[test]
@@ -171,7 +180,7 @@ fn huge_theta_still_excludes_self() {
     for x in [-1.0, 0.0, 1.0] {
         p.add(Vec2::new(x, 0.0), Vec2::ZERO, kg(1.0e10));
     }
-    let a = accel(&p, &bh(0.0, 100.0));
+    let a = accel(&p, &barnes_hut(0.0, 100.0));
     assert!(a[1].length() <= 1e-15, "{:?}", a[1]);
     assert!(a[0].x > 0.0 && a[2].x < 0.0);
 }
@@ -179,7 +188,7 @@ fn huge_theta_still_excludes_self() {
 #[test]
 fn same_input_gives_bit_identical_output() {
     let p = cloud::<f32>();
-    let f = bh::<f32>(EPS, 0.6);
+    let f = barnes_hut::<f32>(SOFTENING, 0.6);
     let bits = |a: Vec<Vec2<f32>>| {
         a.iter()
             .map(|a| (a.x.to_bits(), a.y.to_bits()))
@@ -190,11 +199,11 @@ fn same_input_gives_bit_identical_output() {
 
 #[test]
 fn approximating_takes_g_and_softening_from_the_pairwise_force() {
-    let exact = PairwiseGravity::new(G, eps(EPS));
+    let exact = PairwiseGravity::new(G, softening(SOFTENING));
     let theta = OpeningAngle::new(0.7).unwrap();
     assert_eq!(
         BarnesHut::approximating(&exact, theta),
-        BarnesHut::new(G, eps(EPS), theta)
+        BarnesHut::new(G, softening(SOFTENING), theta)
     );
 }
 
@@ -203,7 +212,7 @@ fn approximating_takes_g_and_softening_from_the_pairwise_force() {
 /// edge, and the target is 0.6 outside that west edge. The cell's center of
 /// mass is far (`s/d ≈ 0.68 < θ = 0.7`), so the classic test used the cell
 /// as one point, though the target is beside its western body
-/// (Salmon & Warren 1994): measured 25% off (audit after A3). Counting the
+/// (Salmon & Warren 1994): measured 25% off. Counting the
 /// center of mass's offset δ from the cell's center (`s/(d − δ) < θ`)
 /// opens it.
 #[test]
@@ -221,8 +230,8 @@ fn a_target_just_outside_a_lopsided_cell_is_accurate() {
         );
     }
     p.add(Vec2::new(1.03, 1.5), Vec2::ZERO, kg(1.0e10));
-    let exact = accel(&p, &PairwiseGravity::new(G, eps(1e-3)));
-    let approx = accel(&p, &bh::<f64>(1e-3, 0.7));
+    let exact = accel(&p, &PairwiseGravity::new(G, softening(1e-3)));
+    let approx = accel(&p, &barnes_hut::<f64>(1e-3, 0.7));
     let (a, b) = (approx[target.index()], exact[target.index()]);
     let err = (a - b).length() / b.length();
     println!("target's acceleration off by {:.2}%", 100.0 * err);
@@ -231,23 +240,23 @@ fn a_target_just_outside_a_lopsided_cell_is_accurate() {
 
 /// What θ = 0.7 allows a well-behaved cell at the edge of acceptance (an
 /// evenly filled one measured 5.3% off): the lopsided cell must do no
-/// worse. Measured (audit after A3): 25.5% with the classic test, 0.03%
+/// worse. Measured: 25.5% with the classic test, 0.03%
 /// with δ (the cell is opened).
 const LOPSIDED_TOL: f64 = 0.053;
 
-/// From the full mutation run of 2026-11-12: bodies at the same point
+/// Bodies at the same point
 /// share a bucket, whose mass is their sum; seen from far enough to
 /// accept the bucket whole (θ = 1), it pulls like the two together.
 #[test]
 fn coincident_bodies_pull_as_their_total_mass() {
     let mut p = Particles::<f64>::new();
     // Off the origin: there a bucket's moment (mass × position) is zero
-    // however it's summed (the fifth mutation run: `+=` for `-=` hid).
+    // however it's summed.
     p.add(Vec2::from_f64(10.0, 5.0), Vec2::ZERO, kg(1e10));
     p.add(Vec2::from_f64(10.0, 5.0), Vec2::ZERO, kg(2e10));
     p.add(Vec2::from_f64(110.0, -20.0), Vec2::ZERO, kg(1.0));
-    let direct = accel(&p, &PairwiseGravity::new(G, eps(EPS)));
-    let tree = accel(&p, &bh::<f64>(EPS, 1.0));
+    let direct = accel(&p, &PairwiseGravity::new(G, softening(SOFTENING)));
+    let tree = accel(&p, &barnes_hut::<f64>(SOFTENING, 1.0));
     let (d, t) = (direct[2], tree[2]);
     assert!((t - d).length() / d.length() < 1e-12, "{t:?} vs {d:?}");
 }
