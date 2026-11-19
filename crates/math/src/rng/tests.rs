@@ -19,58 +19,60 @@ fn matches_reference_sequence() {
     // Reference values from an independent Python implementation of
     // the published algorithm; seed 0's first output is the commonly
     // cited 0xe220a8397b1dcdaf.
-    let mut r = SplitMix64::new(0);
-    assert_eq!(r.next_u64(), 0xe220_a839_7b1d_cdaf);
-    assert_eq!(r.next_u64(), 0x6e78_9e6a_a1b9_65f4);
-    assert_eq!(r.next_u64(), 0x06c4_5d18_8009_454f);
-    let mut r = SplitMix64::new(42);
-    assert_eq!(r.next_u64(), 0xbdd7_3226_2feb_6e95);
+    let mut rng = SplitMix64::new(0);
+    assert_eq!(rng.next_u64(), 0xe220_a839_7b1d_cdaf);
+    assert_eq!(rng.next_u64(), 0x6e78_9e6a_a1b9_65f4);
+    assert_eq!(rng.next_u64(), 0x06c4_5d18_8009_454f);
+    let mut rng = SplitMix64::new(42);
+    assert_eq!(rng.next_u64(), 0xbdd7_3226_2feb_6e95);
 }
 
 #[test]
 fn unit_f64_is_in_half_open_unit_interval() {
-    let mut r = SplitMix64::new(7);
+    let mut rng = SplitMix64::new(7);
     for _ in 0..10_000 {
-        let u = r.next_unit_f64();
-        assert!((0.0..1.0).contains(&u), "{u}");
+        let unit = rng.next_unit_f64();
+        assert!((0.0..1.0).contains(&unit), "{unit}");
     }
 }
 
 #[test]
 fn range_maps_unit_interval_onto_bounds() {
-    let mut r = SplitMix64::new(7);
+    let mut rng = SplitMix64::new(7);
     for _ in 0..10_000 {
-        let x = r.range(-2.0, 3.0);
+        let x = rng.range(-2.0, 3.0);
         assert!((-2.0..3.0).contains(&x), "{x}");
     }
 }
 
-// From the full cargo-mutants run: `next_unit_f64` and `range` returning a
-// constant (or `range` adding instead of subtracting) went unnoticed by
-// math's own tests; only other crates' scenes used them.
-
+// Pins `next_unit_f64` and `range` exactly, so constant mutants don't survive.
 #[test]
 fn unit_floats_and_ranges_match_the_reference() {
     // From the first two outputs of seed 0 (above), by the same bit trick
     // in an independent Python implementation.
-    let mut r = SplitMix64::new(0);
+    let mut rng = SplitMix64::new(0);
     assert_eq!(
-        r.next_unit_f64().to_bits(),
+        rng.next_unit_f64().to_bits(),
         0.883_310_808_213_642_5_f64.to_bits()
     );
     assert_eq!(
-        r.range(-2.0, 6.0).to_bits(),
+        rng.range(-2.0, 6.0).to_bits(),
         1.452_223_976_388_079_8_f64.to_bits()
     );
 }
 
 #[test]
 fn ranges_cover_their_interval() {
-    let mut r = SplitMix64::new(7);
-    let xs: Vec<f64> = (0..10_000).map(|_| r.range(-3.0, 5.0)).collect();
-    assert!(xs.iter().all(|x| (-3.0..5.0).contains(x)));
-    let (lo, hi) = xs
+    let mut rng = SplitMix64::new(7);
+    let samples: Vec<f64> = (0..10_000).map(|_| rng.range(-3.0, 5.0)).collect();
+    assert!(samples.iter().all(|x| (-3.0..5.0).contains(x)));
+    let (smallest, largest) = samples
         .iter()
-        .fold((f64::MAX, f64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
-    assert!(lo < -2.99 && hi > 4.99, "spans [{lo}, {hi}]");
+        .fold((f64::MAX, f64::MIN), |(smallest, largest), &x| {
+            (smallest.min(x), largest.max(x))
+        });
+    assert!(
+        smallest < -2.99 && largest > 4.99,
+        "spans [{smallest}, {largest}]"
+    );
 }

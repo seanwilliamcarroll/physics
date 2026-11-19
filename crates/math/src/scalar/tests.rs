@@ -10,10 +10,9 @@ fn constants_are_identities<S: Scalar>() {
 for_each_scalar!(constants_are_identities);
 
 fn round_trip_is_exact_for_representable_values<S: Scalar>() {
-    // Dyadic rationals with few bits are exact in both f32 and f64
-    // (and in Q16.16 later), so the round trip must be lossless.
-    for v in [0.0, 1.0, -1.0, 0.5, -3.25, 1024.0, 1.0 / 64.0] {
-        assert_eq!(s::<S>(v).to_f64(), v, "value {v}");
+    // Dyadic rationals with few bits are exact, so the round trip is lossless.
+    for value in [0.0, 1.0, -1.0, 0.5, -3.25, 1024.0, 1.0 / 64.0] {
+        assert_eq!(s::<S>(value).to_f64(), value, "value {value}");
     }
 }
 for_each_scalar!(round_trip_is_exact_for_representable_values);
@@ -40,16 +39,16 @@ fn abs_flips_negatives_only<S: Scalar>() {
 for_each_scalar!(abs_flips_negatives_only);
 
 fn operators_match_f64_reference<S: Scalar>() {
-    let (a, b) = (s::<S>(6.0), s::<S>(1.5));
-    assert_eq!((a + b).to_f64(), 7.5);
-    assert_eq!((a - b).to_f64(), 4.5);
-    assert_eq!((a * b).to_f64(), 9.0);
-    assert_eq!((a / b).to_f64(), 4.0);
-    assert_eq!((-a).to_f64(), -6.0);
-    let mut c = a;
-    c += b;
-    c -= s(0.5);
-    assert_eq!(c.to_f64(), 7.0);
-    assert!(b < a);
+    let (six, one_and_half) = (s::<S>(6.0), s::<S>(1.5));
+    assert_eq!((six + one_and_half).to_f64(), 7.5);
+    assert_eq!((six - one_and_half).to_f64(), 4.5);
+    assert_eq!((six * one_and_half).to_f64(), 9.0);
+    assert_eq!((six / one_and_half).to_f64(), 4.0);
+    assert_eq!((-six).to_f64(), -6.0);
+    let mut total = six;
+    total += one_and_half;
+    total -= s(0.5);
+    assert_eq!(total.to_f64(), 7.0);
+    assert!(one_and_half < six);
 }
 for_each_scalar!(operators_match_f64_reference);
