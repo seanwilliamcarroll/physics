@@ -4,8 +4,7 @@
 //! compiler won't split one running sum into lanes by itself). Lane `i`
 //! adds candidates `i`, `i + L`, `i + 2·L`, … in that order, and
 //! the lanes are added in order at the end: that order is the results'
-//! bits. (A loop one pass per register's worth of lanes, the same bits
-//! without spills, was tried and dropped: `experiments/swarm-lanes/`.)
+//! bits.
 
 use super::knobs::{SUM, Sum, Tail};
 use super::{Ranges, Seen};
@@ -15,31 +14,32 @@ use crate::Boid;
 /// (fewer than `L`) are the caller's.
 pub(super) fn add_blocks<const L: usize>(
     seen: &mut Seen,
-    r: Ranges,
+    ranges: Ranges,
     me: Boid,
-    x: &[[f32; L]],
-    y: &[[f32; L]],
-    vx: &[[f32; L]],
-    vy: &[[f32; L]],
+    blocks_x: &[[f32; L]],
+    blocks_y: &[[f32; L]],
+    blocks_vx: &[[f32; L]],
+    blocks_vy: &[[f32; L]],
 ) {
     let mut lanes = Lanes::new();
-    for (((a, b), c), d) in x.iter().zip(y).zip(vx).zip(vy) {
-        lanes.add(r, me, a, b, c, d);
+    for (((block_x, block_y), block_vx), block_vy) in
+        blocks_x.iter().zip(blocks_y).zip(blocks_vx).zip(blocks_vy)
+    {
+        lanes.add(ranges, me, block_x, block_y, block_vx, block_vy);
     }
-    lanes.into(seen);
+    lanes.add_into(seen);
 }
 
 /// Sorted's spans of the flock's arrays (`[x, y, vx, vy]`, cell order)
 /// into `seen`: each span's whole blocks through the lane loop, its
 /// leftovers one at a time (`Seen::add`) or as one more block with the
 /// lanes outside them masked out, the mask from compares or a table
-/// (`SWARM_TAIL`); each span's lanes added
-/// into `seen` at its end, or one set for all the spans, added once
-/// (`SWARM_SPAN`). The settings are arguments for the tests; the build
-/// passes constants (`Seen::add_spans`).
+/// (`SWARM_TAIL`); each span's lanes added into `seen` at its end, or one
+/// set for all the spans, added once (`SWARM_SPAN`). The settings are
+/// arguments for the tests; the build passes constants (`Seen::add_spans`).
 pub(super) fn add_spans<const L: usize>(
     seen: &mut Seen,
-    r: Ranges,
+    ranges: Ranges,
     me: Boid,
     [x, y, vx, vy]: [&[f32]; 4],
     spans: impl Iterator<Item = core::ops::Range<usize>>,
@@ -47,20 +47,27 @@ pub(super) fn add_spans<const L: usize>(
 ) {
     let mut lanes = Lanes::<L>::new();
     for span in spans {
-        let ((cx, rx), (cy, ry), (cvx, rvx), (cvy, rvy)) = (
+        let (
+            (blocks_x, leftover_x),
+            (blocks_y, leftover_y),
+            (blocks_vx, leftover_vx),
+            (blocks_vy, leftover_vy),
+        ) = (
             part(x, &span).as_chunks::<L>(),
             part(y, &span).as_chunks::<L>(),
             part(vx, &span).as_chunks::<L>(),
             part(vy, &span).as_chunks::<L>(),
         );
-        for (((a, b), c), d) in cx.iter().zip(cy).zip(cvx).zip(cvy) {
-            lanes.add_apart(r, me, a, b, c, d);
+        for (((block_x, block_y), block_vx), block_vy) in
+            blocks_x.iter().zip(blocks_y).zip(blocks_vx).zip(blocks_vy)
+        {
+            lanes.add_apart(ranges, me, block_x, block_y, block_vx, block_vy);
         }
-        let rem = rx.len();
+        let leftover_count = leftover_x.len();
         // The block of `L` ending at the span's end (or the arrays' first
-        // `L`): its last `rem` within the span are the leftovers.
+        // `L`): its last `leftover_count` within the span are the leftovers.
         let tail = span.end.saturating_sub(L)..span.end.saturating_sub(L) + L;
-        let masked = (leftovers != Tail::Scalar && rem > 0)
+        let masked_block = (leftovers != Tail::Scalar && leftover_count > 0)
             .then(|| {
                 Some((
                     block(x, &tail)?,
@@ -70,33 +77,40 @@ pub(super) fn add_spans<const L: usize>(
                 ))
             })
             .flatten();
-        if let Some((a, b, c, d)) = masked {
-            // The leftovers are the block's lanes `first..end`: its last
-            // `rem`, unless the block is the arrays' first `L` (`end < L`).
-            let end = span.end - tail.start;
-            let first = end - rem;
+        if let Some((block_x, block_y, block_vx, block_vy)) = masked_block {
+            // The leftovers are the block's lanes `first_lane..end_lane`: its
+            // last `leftover_count`, unless the block is the arrays' first
+            // `L` (`end_lane < L`).
+            let end_lane = span.end - tail.start;
+            let first_lane = end_lane - leftover_count;
             let compared;
-            let mask = match window::<L>(rem) {
-                Some(w) if leftovers == Tail::Table && end == L => w,
+            let mask = match window::<L>(leftover_count) {
+                Some(table_mask) if leftovers == Tail::Table && end_lane == L => table_mask,
                 _ => {
-                    compared = core::array::from_fn(|k| unit((first..end).contains(&k)));
+                    compared =
+                        core::array::from_fn(|lane| unit((first_lane..end_lane).contains(&lane)));
                     &compared
                 }
             };
-            lanes.add_masked(r, me, a, b, c, d, mask);
+            lanes.add_masked(ranges, me, block_x, block_y, block_vx, block_vy, mask);
         }
         // Per span, the lanes go in before the leftovers: as `add_span`.
         if !per_boid {
-            core::mem::replace(&mut lanes, Lanes::new()).into(seen);
+            core::mem::replace(&mut lanes, Lanes::new()).add_into(seen);
         }
-        if masked.is_none() {
-            for (((&x, &y), &vx), &vy) in rx.iter().zip(ry).zip(rvx).zip(rvy) {
-                seen.add(r, me, Boid { x, y, vx, vy });
+        if masked_block.is_none() {
+            for (((&x, &y), &vx), &vy) in leftover_x
+                .iter()
+                .zip(leftover_y)
+                .zip(leftover_vx)
+                .zip(leftover_vy)
+            {
+                seen.add(ranges, me, Boid { x, y, vx, vy });
             }
         }
     }
     if per_boid {
-        lanes.into(seen);
+        lanes.add_into(seen);
     }
 }
 
@@ -108,66 +122,72 @@ const MAX_LANES: usize = 64;
 static STEPS: [f32; 2 * MAX_LANES] = steps();
 
 const fn steps() -> [f32; 2 * MAX_LANES] {
-    let mut a = [0.0; 2 * MAX_LANES];
-    let mut i = MAX_LANES;
-    while i < 2 * MAX_LANES {
+    let mut table = [0.0; 2 * MAX_LANES];
+    let mut slot = MAX_LANES;
+    while slot < 2 * MAX_LANES {
         #[expect(
             clippy::indexing_slicing,
             reason = "const evaluation, in bounds by the loop; a slip fails the build"
         )]
         {
-            a[i] = 1.0;
+            table[slot] = 1.0;
         }
-        i += 1;
+        slot += 1;
     }
-    a
+    table
 }
 
-/// A block's mask counting only its last `rem` lanes: 1.0 in each, 0.0
+/// A block's mask counting only its last `counted` lanes: 1.0 in each, 0.0
 /// in the others, from [`STEPS`] (one load, no compares).
-fn window<const L: usize>(rem: usize) -> Option<&'static [f32; L]> {
-    let start = (MAX_LANES + rem).checked_sub(L)?;
+fn window<const L: usize>(counted: usize) -> Option<&'static [f32; L]> {
+    let start = (MAX_LANES + counted).checked_sub(L)?;
     STEPS
         .get(start..start + L)
-        .and_then(|w| <&[f32; L]>::try_from(w).ok())
+        .and_then(|slice| <&[f32; L]>::try_from(slice).ok())
 }
 
-/// `a`'s elements `r`, empty if out of range.
-fn part<'a>(a: &'a [f32], r: &core::ops::Range<usize>) -> &'a [f32] {
-    a.get(r.clone()).unwrap_or_default()
+/// `array`'s elements `range`, empty if out of range.
+fn part<'a>(array: &'a [f32], range: &core::ops::Range<usize>) -> &'a [f32] {
+    array.get(range.clone()).unwrap_or_default()
 }
 
-/// `a`'s elements `r` as one block of `L`, if they're in range and `L`.
-fn block<'a, const L: usize>(a: &'a [f32], r: &core::ops::Range<usize>) -> Option<&'a [f32; L]> {
-    a.get(r.clone()).and_then(|s| <&[f32; L]>::try_from(s).ok())
+/// `array`'s elements `range` as one block of `L`, if they're in range and
+/// `L`.
+fn block<'a, const L: usize>(
+    array: &'a [f32],
+    range: &core::ops::Range<usize>,
+) -> Option<&'a [f32; L]> {
+    array
+        .get(range.clone())
+        .and_then(|slice| <&[f32; L]>::try_from(slice).ok())
 }
 
-/// `a += x`, in the lane loop: as written, or reassociable when the build
-/// says so (`SWARM_SUM`, `knobs.rs`).
-fn accumulate(a: &mut f32, x: f32) {
-    *a = match SUM {
-        Sum::Ordered => *a + x,
-        Sum::Algebraic => a.algebraic_add(x),
+/// `sum += term`, in the lane loop: as written, or reassociable when the
+/// build says so (`SWARM_SUM`, `knobs.rs`).
+fn accumulate(sum: &mut f32, term: f32) {
+    *sum = match SUM {
+        Sum::Ordered => *sum + term,
+        Sum::Algebraic => sum.algebraic_add(term),
     };
 }
 
-/// 1.0 if `cond`, else 0.0: the lane loop's masks. The same values, so the
-/// same bits, everywhere; written per architecture for the code each gets
-/// (`docs/15-swarm.md`, "The lane loop's masks"). On `aarch64` as a select:
-/// through an integer it compiled to five instructions a mask (compare,
-/// narrow, mask, widen, convert), the select to a compare and an AND with
-/// 1.0's bits (Brute 14–16% faster on an M4). Elsewhere through an integer:
-/// x86 compiles that well already, and the select made its loop longer
-/// (Brute 2.6% slower on Zen 5); wasm gets the same code either way.
+/// 1.0 if `condition`, else 0.0: the lane loop's masks. The same values, so
+/// the same bits, everywhere; written per architecture for the code each
+/// gets (`docs/15-swarm.md`, "The lane loop's masks"). On `aarch64` as a
+/// select: through an integer it compiled to five instructions a mask
+/// (compare, narrow, mask, widen, convert), the select to a compare and an
+/// AND with 1.0's bits (Brute 14–16% faster on an M4). Elsewhere through an
+/// integer: x86 compiles that well already, and the select made its loop
+/// longer (Brute 2.6% slower on Zen 5); wasm gets the same code either way.
 #[cfg(target_arch = "aarch64")]
-pub(super) fn unit(cond: bool) -> f32 {
-    if cond { 1.0 } else { 0.0 }
+pub(super) fn unit(condition: bool) -> f32 {
+    if condition { 1.0 } else { 0.0 }
 }
 
-/// 1.0 if `cond`, else 0.0 (see the `aarch64` version).
+/// 1.0 if `condition`, else 0.0 (see the `aarch64` version).
 #[cfg(not(target_arch = "aarch64"))]
-pub(super) fn unit(cond: bool) -> f32 {
-    f32::from(u8::from(cond))
+pub(super) fn unit(condition: bool) -> f32 {
+    f32::from(u8::from(condition))
 }
 
 /// `L` lanes' partial sums of each quantity.
@@ -195,28 +215,27 @@ impl<const L: usize> Lanes<L> {
     }
 
     /// [`Self::add`] for Sorted, kept out of line in wasm. Inlined, it made
-    /// `step_sorted` too big for V8 (more values than registers: spills),
-    /// 2.26 ms a step at 10,000 against 1.63 apart, on the M4 (the edge
-    /// sweep's 8-lane build had it apart by chance: brute force shared
-    /// it). Brute force keeps it inlined: apart, its loop was 22% slower.
-    /// Natively LLVM's choice is kept (both fast; the native sweep).
+    /// `step_sorted` too big for V8 (more values than registers: spills):
+    /// 2.26 ms a step at 10,000 against 1.63 apart, on the M4. Brute force
+    /// keeps it inlined: apart, its loop was 22% slower. Natively LLVM's
+    /// choice is kept (both fast).
     #[cfg_attr(target_arch = "wasm32", inline(never))]
     fn add_apart(
         &mut self,
-        r: Ranges,
+        ranges: Ranges,
         me: Boid,
         x: &[f32; L],
         y: &[f32; L],
         vx: &[f32; L],
         vy: &[f32; L],
     ) {
-        self.add(r, me, x, y, vx, vy);
+        self.add(ranges, me, x, y, vx, vy);
     }
 
     /// One block of `L` candidates, candidate `i` into lane `i`.
     fn add(
         &mut self,
-        r: Ranges,
+        ranges: Ranges,
         me: Boid,
         x: &[f32; L],
         y: &[f32; L],
@@ -233,20 +252,26 @@ impl<const L: usize> Lanes<L> {
             .zip(&mut self.close_dx)
             .zip(&mut self.close_dy);
         let others = x.iter().zip(y).zip(vx).zip(vy);
-        for (((((((sx, sy), svx), svy), n), cdx), cdy), (((&ox, &oy), &ovx), &ovy)) in
-            sums.zip(others)
+        for (
+            ((((((sum_x, sum_y), sum_vx), sum_vy), count), close_dx), close_dy),
+            (((&other_x, &other_y), &other_vx), &other_vy),
+        ) in sums.zip(others)
         {
-            let (dx, dy) = (me.x - ox, me.y - oy);
-            let d_sq = dx * dx + dy * dy;
-            let close = unit(d_sq < r.protected_sq);
-            let near = unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
-            accumulate(cdx, close * dx);
-            accumulate(cdy, close * dy);
-            accumulate(sx, near * ox);
-            accumulate(sy, near * oy);
-            accumulate(svx, near * ovx);
-            accumulate(svy, near * ovy);
-            accumulate(n, near);
+            let (dx, dy) = (me.x - other_x, me.y - other_y);
+            let distance_sq = dx * dx + dy * dy;
+            let close = unit(distance_sq < ranges.protected_sq);
+            let near = unit(
+                distance_sq >= ranges.protected_sq
+                    && distance_sq < ranges.visual_sq
+                    && distance_sq > 0.0,
+            );
+            accumulate(close_dx, close * dx);
+            accumulate(close_dy, close * dy);
+            accumulate(sum_x, near * other_x);
+            accumulate(sum_y, near * other_y);
+            accumulate(sum_vx, near * other_vx);
+            accumulate(sum_vy, near * other_vy);
+            accumulate(count, near);
         }
     }
 
@@ -258,7 +283,7 @@ impl<const L: usize> Lanes<L> {
     )]
     fn add_masked(
         &mut self,
-        r: Ranges,
+        ranges: Ranges,
         me: Boid,
         x: &[f32; L],
         y: &[f32; L],
@@ -276,26 +301,36 @@ impl<const L: usize> Lanes<L> {
             .zip(&mut self.close_dx)
             .zip(&mut self.close_dy);
         let others = x.iter().zip(y).zip(vx).zip(vy);
-        for ((((((((sx, sy), svx), svy), n), cdx), cdy), (((&ox, &oy), &ovx), &ovy)), &m) in
-            sums.zip(others).zip(mask)
+        for (
+            (
+                ((((((sum_x, sum_y), sum_vx), sum_vy), count), close_dx), close_dy),
+                (((&other_x, &other_y), &other_vx), &other_vy),
+            ),
+            &lane_mask,
+        ) in sums.zip(others).zip(mask)
         {
-            let (dx, dy) = (me.x - ox, me.y - oy);
-            let d_sq = dx * dx + dy * dy;
-            let close = m * unit(d_sq < r.protected_sq);
-            let near = m * unit(d_sq >= r.protected_sq && d_sq < r.visual_sq && d_sq > 0.0);
-            accumulate(cdx, close * dx);
-            accumulate(cdy, close * dy);
-            accumulate(sx, near * ox);
-            accumulate(sy, near * oy);
-            accumulate(svx, near * ovx);
-            accumulate(svy, near * ovy);
-            accumulate(n, near);
+            let (dx, dy) = (me.x - other_x, me.y - other_y);
+            let distance_sq = dx * dx + dy * dy;
+            let close = lane_mask * unit(distance_sq < ranges.protected_sq);
+            let near = lane_mask
+                * unit(
+                    distance_sq >= ranges.protected_sq
+                        && distance_sq < ranges.visual_sq
+                        && distance_sq > 0.0,
+                );
+            accumulate(close_dx, close * dx);
+            accumulate(close_dy, close * dy);
+            accumulate(sum_x, near * other_x);
+            accumulate(sum_y, near * other_y);
+            accumulate(sum_vx, near * other_vx);
+            accumulate(sum_vy, near * other_vy);
+            accumulate(count, near);
         }
     }
 
     /// Adds the lanes, in order, into `seen`.
-    fn into(self, seen: &mut Seen) {
-        let total = |a: [f32; L]| a.iter().sum::<f32>();
+    fn add_into(self, seen: &mut Seen) {
+        let total = |lanes: [f32; L]| lanes.iter().sum::<f32>();
         seen.sum_x += total(self.sum_x);
         seen.sum_y += total(self.sum_y);
         seen.sum_vx += total(self.sum_vx);

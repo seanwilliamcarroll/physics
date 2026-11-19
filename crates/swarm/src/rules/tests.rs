@@ -38,16 +38,16 @@ fn alone_a_boid_flies_straight() {
 fn a_neighbour_in_range_pulls_and_aligns() {
     // At (520, 500), moving (0, 4): 20 away, outside protected (8).
     let other = boid(520.0, 500.0, 0.0, 4.0);
-    let b = steer(&P, arena(), None, ME, core::iter::once(other));
+    let steered = steer(&P, arena(), None, ME, core::iter::once(other));
     // v += (520 − 500)·0.0005 + (0 − 4)·0.05 in x; (4 − 0)·0.05 in y.
     let (vx, vy) = (4.0 + 20.0 * 0.0005 - 4.0 * 0.05, 4.0 * 0.05);
     assert!(
-        (b.vx - vx).abs() < 1e-6 && (b.vy - vy).abs() < 1e-6,
-        "{b:?}"
+        (steered.vx - vx).abs() < 1e-6 && (steered.vy - vy).abs() < 1e-6,
+        "{steered:?}"
     );
     assert_eq!(
-        (b.x, b.y),
-        (ME.x + b.vx, ME.y + b.vy),
+        (steered.x, steered.y),
+        (ME.x + steered.vx, ME.y + steered.vy),
         "moves by its new velocity"
     );
 }
@@ -57,15 +57,18 @@ fn a_crowding_neighbour_only_repels() {
     // 5 away (inside protected 8), moving fast across: no alignment, no
     // cohesion, just the push away: (500 − 505)·0.05 = −0.25 in x.
     let other = boid(505.0, 500.0, 0.0, 6.0);
-    let b = steer(&P, arena(), None, ME, core::iter::once(other));
-    assert!((b.vx - 3.75).abs() < 1e-6 && b.vy == 0.0, "{b:?}");
+    let steered = steer(&P, arena(), None, ME, core::iter::once(other));
+    assert!(
+        (steered.vx - 3.75).abs() < 1e-6 && steered.vy == 0.0,
+        "{steered:?}"
+    );
 }
 
 #[test]
 fn past_the_margin_a_boid_turns_back() {
     // Near the left edge heading out: +turn in x; near the bottom: −turn
     // in y (y down).
-    let b = steer(
+    let steered = steer(
         &P,
         arena(),
         None,
@@ -73,10 +76,10 @@ fn past_the_margin_a_boid_turns_back() {
         core::iter::empty(),
     );
     assert!(
-        (b.vx - (-4.0 + 0.2)).abs() < 1e-6 && (b.vy + 0.2).abs() < 1e-6,
-        "{b:?}"
+        (steered.vx - (-4.0 + 0.2)).abs() < 1e-6 && (steered.vy + 0.2).abs() < 1e-6,
+        "{steered:?}"
     );
-    let b = steer(
+    let steered = steer(
         &P,
         arena(),
         None,
@@ -84,19 +87,19 @@ fn past_the_margin_a_boid_turns_back() {
         core::iter::empty(),
     );
     assert!(
-        (b.vx - 3.8).abs() < 1e-6 && (b.vy - 0.2).abs() < 1e-6,
-        "{b:?}"
+        (steered.vx - 3.8).abs() < 1e-6 && (steered.vy - 0.2).abs() < 1e-6,
+        "{steered:?}"
     );
 }
 
 #[test]
 fn speeds_are_clamped_into_the_band() {
-    let len = |(x, y): (f32, f32)| (x * x + y * y).sqrt();
+    let length = |(x, y): (f32, f32)| (x * x + y * y).sqrt();
     assert_eq!(clamp_speed(&P, (4.0, 0.0), (4.0, 0.0)), (4.0, 0.0));
     let slow = clamp_speed(&P, (0.3, 0.4), (4.0, 0.0));
-    assert!((len(slow) - 3.0).abs() < 1e-6 && (slow.0 / slow.1 - 0.75).abs() < 1e-6);
+    assert!((length(slow) - 3.0).abs() < 1e-6 && (slow.0 / slow.1 - 0.75).abs() < 1e-6);
     let fast = clamp_speed(&P, (30.0, 40.0), (4.0, 0.0));
-    assert!((len(fast) - 6.0).abs() < 1e-6 && (fast.0 / fast.1 - 0.75).abs() < 1e-6);
+    assert!((length(fast) - 6.0).abs() < 1e-6 && (fast.0 / fast.1 - 0.75).abs() < 1e-6);
 }
 
 #[test]
@@ -110,12 +113,15 @@ fn at_zero_speed_the_old_heading_is_kept() {
 #[test]
 fn a_boid_flees_a_predator_in_range_only() {
     // Predator 50 behind (−x): steer toward +x at top speed, by FLEE.
-    let b = steer(&P, arena(), Some((450.0, 500.0)), ME, core::iter::empty());
+    let steered = steer(&P, arena(), Some((450.0, 500.0)), ME, core::iter::empty());
     let vx = 4.0 + (6.0 - 4.0) * FLEE;
-    assert!((b.vx - vx).abs() < 1e-6 && b.vy == 0.0, "{b:?}");
+    assert!(
+        (steered.vx - vx).abs() < 1e-6 && steered.vy == 0.0,
+        "{steered:?}"
+    );
     // Beside it (+y): pushed −y.
-    let b = steer(&P, arena(), Some((500.0, 550.0)), ME, core::iter::empty());
-    assert!(b.vy < 0.0, "{b:?}");
+    let steered = steer(&P, arena(), Some((500.0, 550.0)), ME, core::iter::empty());
+    assert!(steered.vy < 0.0, "{steered:?}");
     // Out of range: unaffected.
     let far = Some((500.0 - PREDATOR_RANGE - 1.0, 500.0));
     assert_eq!(
@@ -124,16 +130,19 @@ fn a_boid_flees_a_predator_in_range_only() {
     );
 }
 
-// Found by the full mutation run of 2026-11-12: each limit's own value
-// (the margin, the predator's range, a boid on the same spot), the flee
-// with a velocity across it, and the zero-speed rescue off an axis.
+// Limits: each limit's own value (the margin, the predator's range, a boid
+// on the same spot), the flee with a velocity across it, and the
+// zero-speed rescue off an axis.
 
 #[test]
 fn exactly_at_the_margin_a_boid_does_not_turn() {
-    let m = P.margin;
-    for at in [boid(m, m, 4.0, 0.0), boid(1000.0 - m, 1000.0 - m, 4.0, 0.0)] {
-        let b = steer(&P, arena(), None, at, core::iter::empty());
-        assert_eq!((b.vx, b.vy), (4.0, 0.0), "{at:?}");
+    let margin = P.margin;
+    for at in [
+        boid(margin, margin, 4.0, 0.0),
+        boid(1000.0 - margin, 1000.0 - margin, 4.0, 0.0),
+    ] {
+        let steered = steer(&P, arena(), None, at, core::iter::empty());
+        assert_eq!((steered.vx, steered.vy), (4.0, 0.0), "{at:?}");
     }
 }
 
@@ -156,11 +165,11 @@ fn fleeing_steers_both_components_toward_away_at_top_speed() {
     // Heading (3, 4) with the predator 50 to +y: "away at top speed" is
     // (0, −6), approached by FLEE of the difference.
     let me = boid(500.0, 500.0, 3.0, 4.0);
-    let b = steer(&P, arena(), Some((500.0, 550.0)), me, core::iter::empty());
+    let steered = steer(&P, arena(), Some((500.0, 550.0)), me, core::iter::empty());
     let (vx, vy) = (3.0 + (0.0 - 3.0) * FLEE, 4.0 + (-6.0 - 4.0) * FLEE);
     assert!(
-        (b.vx - vx).abs() < 1e-6 && (b.vy - vy).abs() < 1e-6,
-        "{b:?}"
+        (steered.vx - vx).abs() < 1e-6 && (steered.vy - vy).abs() < 1e-6,
+        "{steered:?}"
     );
 }
 
@@ -169,8 +178,8 @@ fn a_boid_on_the_same_spot_is_not_a_neighbour() {
     // Inside the protected range it pushes (by nothing: dx = dy = 0); it
     // is not counted for centering or matching.
     let twin = boid(500.0, 500.0, 0.0, 5.0);
-    let b = steer(&P, arena(), None, ME, [twin].into_iter());
-    assert_eq!(b, boid(504.0, 500.0, 4.0, 0.0));
+    let steered = steer(&P, arena(), None, ME, [twin].into_iter());
+    assert_eq!(steered, boid(504.0, 500.0, 4.0, 0.0));
 }
 
 #[test]
@@ -185,7 +194,7 @@ fn at_zero_speed_an_off_axis_heading_is_kept() {
 /// itself (at distance 0).
 #[test]
 fn the_masked_add_matches_the_branching_one() {
-    let r = Ranges::of(&P);
+    let ranges = Ranges::of(&P);
     let others = [
         Boid {
             x: ME.x + 1.0,
@@ -220,10 +229,10 @@ fn the_masked_add_matches_the_branching_one() {
         },
     ];
     let (mut branching, mut masked) = (Seen::default(), Seen::default());
-    for o in others {
-        branching.add(r, ME, o);
-        masked.add_masked(r, ME, o);
-        assert_eq!(branching, masked, "after {o:?}");
+    for other in others {
+        branching.add(ranges, ME, other);
+        masked.add_masked(ranges, ME, other);
+        assert_eq!(branching, masked, "after {other:?}");
     }
 }
 
@@ -235,28 +244,28 @@ fn the_masked_add_matches_the_branching_one() {
 fn every_span_edge_setting_sums_the_same_candidates() {
     const L: usize = 8;
     // Up to 61 boids: u16 arithmetic, exact in f32.
-    let ks = || 0..61_u16;
-    let x: Vec<f32> = ks()
-        .map(|k| ME.x + (f32::from(k * 37 % 101) - 50.0) * 1.3)
+    let indices = || 0..61_u16;
+    let x: Vec<f32> = indices()
+        .map(|index| ME.x + (f32::from(index * 37 % 101) - 50.0) * 1.3)
         .collect();
-    let y: Vec<f32> = ks()
-        .map(|k| ME.y + (f32::from(k * 53 % 97) - 48.0) * 1.1)
+    let y: Vec<f32> = indices()
+        .map(|index| ME.y + (f32::from(index * 53 % 97) - 48.0) * 1.1)
         .collect();
-    let vx: Vec<f32> = ks().map(|k| f32::from(k % 7) - 3.0).collect();
-    let vy: Vec<f32> = ks().map(|k| f32::from(k % 5) - 2.0).collect();
-    let r = Ranges::of(&P);
+    let vx: Vec<f32> = indices().map(|index| f32::from(index % 7) - 3.0).collect();
+    let vy: Vec<f32> = indices().map(|index| f32::from(index % 5) - 2.0).collect();
+    let ranges = Ranges::of(&P);
     let spans = [0..3, 3..3, 3..11, 11..30, 30..32, 40..48, 48..61, 0..61];
     let mut reference = Seen::default();
     for span in spans.clone() {
-        for k in span {
+        for index in span {
             reference.add(
-                r,
+                ranges,
                 ME,
                 Boid {
-                    x: x[k],
-                    y: y[k],
-                    vx: vx[k],
-                    vy: vy[k],
+                    x: x[index],
+                    y: y[index],
+                    vx: vx[index],
+                    vy: vy[index],
                 },
             );
         }
@@ -264,18 +273,18 @@ fn every_span_edge_setting_sums_the_same_candidates() {
     assert!(reference.count > 10.0, "the data must have neighbours");
     for settings in [false, true]
         .into_iter()
-        .flat_map(|b| [Tail::Scalar, Tail::Masked, Tail::Table].map(|t| (b, t)))
+        .flat_map(|per_boid| [Tail::Scalar, Tail::Masked, Tail::Table].map(|tail| (per_boid, tail)))
     {
         let mut seen = Seen::default();
         super::lanes::add_spans::<L>(
             &mut seen,
-            r,
+            ranges,
             ME,
             [&x, &y, &vx, &vy],
             spans.clone().into_iter(),
             settings,
         );
-        let close = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
+        let close = |got: f32, want: f32| (got - want).abs() <= 1e-4 * want.abs().max(1.0);
         for (got, want) in [
             (seen.sum_x, reference.sum_x),
             (seen.sum_y, reference.sum_y),
