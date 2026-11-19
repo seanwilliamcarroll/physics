@@ -1,7 +1,7 @@
-//! [`Slime`]: the Physarum model (`docs/15-swarm.md`, S4; Jones 2010).
-//! One periodic field; agents that sense it at three points ahead, turn
-//! toward the strongest, move, and deposit into it; the field diffuses
-//! (the 3 × 3 mean filter) and decays.
+//! [`Slime`]: the Physarum model (`docs/15-swarm.md`, "Physarum"; Jones
+//! 2010). One periodic field; agents that sense it at three points ahead,
+//! turn toward the strongest, move, and deposit into it; the field
+//! diffuses (the 3 × 3 mean filter) and decays.
 
 use math::SplitMix64;
 use math::convert::{f64_to_f32, f64_to_usize, usize_to_f64};
@@ -11,8 +11,8 @@ use crate::Field;
 /// The most agents.
 pub const MAX_AGENTS: usize = 1 << 21;
 
-/// The model's constants: **our values** (`docs/15-swarm.md`, S4: Jones's
-/// paper wasn't read; these are the values commonly reported for it).
+/// The model's constants: our values (Jones's paper wasn't read; these are
+/// the values commonly reported for it: `docs/15-swarm.md`, "Physarum").
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SlimeParams {
     /// SA, radians.
@@ -22,7 +22,7 @@ pub struct SlimeParams {
     /// RA, radians.
     pub turn: f32,
     /// SS: cells a step.
-    pub step: f32,
+    pub step_distance: f32,
     /// What an agent deposits a step.
     pub deposit: f32,
     /// The fraction diffused to neighbours a step (8/9: the mean filter).
@@ -37,15 +37,15 @@ impl SlimeParams {
         sensor_angle: core::f32::consts::FRAC_PI_8,
         sensor_offset: 9.0,
         turn: core::f32::consts::FRAC_PI_4,
-        step: 1.0,
+        step_distance: 1.0,
         deposit: 5.0,
         diffusion: 8.0 / 9.0,
         decay: 0.1,
     };
 
     /// `self` if usable: angles in `[0, π]`, offset `≥ 0`, deposit in
-    /// `[0, MAX_DEPOSIT]`,
-    /// step `> 0` and under half the world, the rates in `[0, 1]`.
+    /// `[0, MAX_DEPOSIT]`, step distance `> 0` and under half the world,
+    /// the rates in `[0, 1]`.
     #[must_use]
     pub fn checked(self) -> Option<Self> {
         let pi = core::f32::consts::PI;
@@ -53,8 +53,8 @@ impl SlimeParams {
             && (0.0..=pi).contains(&self.turn)
             && self.sensor_offset.is_finite()
             && self.sensor_offset >= 0.0
-            && self.step.is_finite()
-            && self.step > 0.0
+            && self.step_distance.is_finite()
+            && self.step_distance > 0.0
             && (0.0..=crate::MAX_DEPOSIT).contains(&self.deposit)
             && (0.0..=1.0).contains(&self.diffusion)
             && (0.0..=1.0).contains(&self.decay);
@@ -62,43 +62,46 @@ impl SlimeParams {
     }
 }
 
-/// The cell index (along one axis of `side` cells) holding coordinate `v`,
-/// wrapped: `floor(v) mod side`. A sensor or a step reaches at most one
-/// world-width outside in practice, where the wrap is one add; anything
-/// further takes the general `rem_euclid` (an `fmod` call: with it on
-/// every lookup, 40% of a step; `docs/profiling.md`). The same integer
-/// either way: these are whole numbers in `f64`, so the add is exact.
-fn wrap_cell(v: f32, side: usize) -> usize {
-    let (f, l) = (f64::from(v.floor()), usize_to_f64(side));
-    let c = if (0.0..l).contains(&f) {
-        f
-    } else if (-l..0.0).contains(&f) {
-        f + l
-    } else if (l..2.0 * l).contains(&f) {
-        f - l
+/// The cell index (along one axis of `side` cells) holding coordinate
+/// `coordinate`, wrapped: `floor(coordinate) mod side`. A sensor or a step
+/// reaches at most one world-width outside in practice, where the wrap is
+/// one add; anything further takes the general `rem_euclid` (an `fmod`
+/// call: on every lookup it was 40% of a step; `docs/profiling.md`). The
+/// same integer either way: these are whole numbers in `f64`, so the add
+/// is exact.
+fn wrap_cell(coordinate: f32, side: usize) -> usize {
+    let (floor, side_length) = (f64::from(coordinate.floor()), usize_to_f64(side));
+    let wrapped = if (0.0..side_length).contains(&floor) {
+        floor
+    } else if (-side_length..0.0).contains(&floor) {
+        floor + side_length
+    } else if (side_length..2.0 * side_length).contains(&floor) {
+        floor - side_length
     } else {
-        f.rem_euclid(l)
+        floor.rem_euclid(side_length)
     };
-    f64_to_usize(c).unwrap_or(0).min(side - 1)
+    f64_to_usize(wrapped).unwrap_or(0).min(side - 1)
 }
 
-/// Position `v` wrapped into `[0, l)`: `v.rem_euclid(l)` (today exactly
-/// what it returns: `fmod` is exact; `v − l` is exact for `v` in
-/// `[l, 2l)`; below zero `rem_euclid` itself adds `l`), without the call
-/// when `v` is within one `l` outside. A sum that rounds up to `l`
-/// becomes 0.
-fn wrap_position(v: f32, l: f32) -> f32 {
-    let w = if (0.0..l).contains(&v) {
-        v
-    } else if v > -l && v < 0.0 {
-        // Not −l itself: `rem_euclid` gives −0 there, and this would +0.
-        v + l
-    } else if (l..2.0 * l).contains(&v) {
-        v - l
+/// Position `position` wrapped into `[0, side_length)`: exactly
+/// `position.rem_euclid(side_length)` (`fmod` is exact; `position −
+/// side_length` is exact for a position in `[side_length, 2 side_length)`;
+/// below zero `rem_euclid` itself adds `side_length`), without the call
+/// when the position is within one side outside. A sum that rounds up to
+/// `side_length` becomes 0.
+fn wrap_position(position: f32, side_length: f32) -> f32 {
+    let wrapped = if (0.0..side_length).contains(&position) {
+        position
+    } else if position > -side_length && position < 0.0 {
+        // Not −side_length itself: `rem_euclid` gives −0 there, and this
+        // would give +0.
+        position + side_length
+    } else if (side_length..2.0 * side_length).contains(&position) {
+        position - side_length
     } else {
-        v.rem_euclid(l)
+        position.rem_euclid(side_length)
     };
-    if w >= l { 0.0 } else { w }
+    if wrapped >= side_length { 0.0 } else { wrapped }
 }
 
 /// A Physarum system on a periodic `side × side` field.
@@ -106,6 +109,7 @@ fn wrap_position(v: f32, l: f32) -> f32 {
 pub struct Slime {
     side: usize,
     field: Field,
+    // The agents, one entry each in x, y and the heading's cos and sin.
     x: Vec<f32>,
     y: Vec<f32>,
     cos: Vec<f32>,
@@ -116,39 +120,50 @@ pub struct Slime {
     steps: u64,
     /// Fixed sources: (cell x, cell y, deposit a step).
     nodes: Vec<(usize, usize, f32)>,
+    /// The last step's agent deposits: (cell index, amount).
     deposits: Vec<(usize, f32)>,
 }
 
 impl Slime {
-    /// `n` agents at random positions and headings on a `side × side`
-    /// periodic field. `None` for a bad size, count or params.
+    /// `agent_count` agents at random positions and headings on a
+    /// `side × side` periodic field. `None` for a bad size, count or
+    /// params.
     #[must_use]
-    pub fn new(side: usize, n: usize, params: SlimeParams, seed: u64) -> Option<Self> {
+    pub fn new(side: usize, agent_count: usize, params: SlimeParams, seed: u64) -> Option<Self> {
         let params = params.checked()?;
         let field = Field::new(side, side)?;
-        if !(1..=MAX_AGENTS).contains(&n) || f64::from(params.step) >= usize_to_f64(side) / 2.0 {
+        if !(1..=MAX_AGENTS).contains(&agent_count)
+            || f64::from(params.step_distance) >= usize_to_f64(side) / 2.0
+        {
             return None;
         }
         let mut rng = SplitMix64::new(seed);
-        let l = usize_to_f64(side);
+        let side_length = usize_to_f64(side);
         let (mut x, mut y, mut cos, mut sin) = (
-            Vec::with_capacity(n),
-            Vec::with_capacity(n),
-            Vec::with_capacity(n),
-            Vec::with_capacity(n),
+            Vec::with_capacity(agent_count),
+            Vec::with_capacity(agent_count),
+            Vec::with_capacity(agent_count),
+            Vec::with_capacity(agent_count),
         );
-        for _ in 0..n {
-            x.push(f64_to_f32(rng.range(0.0, l)).min(f64_to_f32(l) * (1.0 - f32::EPSILON)));
-            y.push(f64_to_f32(rng.range(0.0, l)).min(f64_to_f32(l) * (1.0 - f32::EPSILON)));
-            let (c, s) = loop {
-                let (c, s) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
-                let len = (c * c + s * s).sqrt();
-                if len > 1e-3 && len <= 1.0 {
-                    break (c / len, s / len);
+        for _ in 0..agent_count {
+            x.push(
+                f64_to_f32(rng.range(0.0, side_length))
+                    .min(f64_to_f32(side_length) * (1.0 - f32::EPSILON)),
+            );
+            y.push(
+                f64_to_f32(rng.range(0.0, side_length))
+                    .min(f64_to_f32(side_length) * (1.0 - f32::EPSILON)),
+            );
+            // A direction, without trig: a point in the unit disc.
+            let (heading_cos, heading_sin) = loop {
+                let (disc_x, disc_y) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
+                let length = (disc_x * disc_x + disc_y * disc_y).sqrt();
+                if length > 1e-3 && length <= 1.0 {
+                    break (disc_x / length, disc_y / length);
                 }
             };
-            cos.push(f64_to_f32(c));
-            sin.push(f64_to_f32(s));
+            cos.push(f64_to_f32(heading_cos));
+            sin.push(f64_to_f32(heading_sin));
         }
         Some(Self {
             side,
@@ -166,82 +181,103 @@ impl Slime {
         })
     }
 
-    /// The cell holding `(x, y)`, wrapped into the field.
+    /// The index of the cell holding `(x, y)`, wrapped into the field.
     fn cell(&self, x: f32, y: f32) -> usize {
-        let l = self.side;
-        wrap_cell(y, l) * l + wrap_cell(x, l)
+        let side = self.side;
+        wrap_cell(y, side) * side + wrap_cell(x, side)
     }
 
     /// One step: every agent senses (the field as it was), turns, moves,
     /// and deposits; then the nodes deposit; then diffusion and decay.
     pub fn step(&mut self) {
-        let p = self.params;
-        let l = f64_to_f32(usize_to_f64(self.side));
-        let (sa_c, sa_s) = (libm::cosf(p.sensor_angle), libm::sinf(p.sensor_angle));
-        let (ra_c, ra_s) = (libm::cosf(p.turn), libm::sinf(p.turn));
+        let params = self.params;
+        let side_length = f64_to_f32(usize_to_f64(self.side));
+        let (sensor_cos, sensor_sin) = (
+            libm::cosf(params.sensor_angle),
+            libm::sinf(params.sensor_angle),
+        );
+        let (turn_cos, turn_sin) = (libm::cosf(params.turn), libm::sinf(params.turn));
         self.deposits.clear();
-        for i in 0..self.x.len() {
-            let (Some(&x), Some(&y), Some(&c), Some(&s)) = (
-                self.x.get(i),
-                self.y.get(i),
-                self.cos.get(i),
-                self.sin.get(i),
+        for agent_index in 0..self.x.len() {
+            let (Some(&x), Some(&y), Some(&cos), Some(&sin)) = (
+                self.x.get(agent_index),
+                self.y.get(agent_index),
+                self.cos.get(agent_index),
+                self.sin.get(agent_index),
             ) else {
                 continue;
             };
             // One draw per agent per step: the stream stays aligned.
-            let r = self.rng.next_unit_f64();
-            let sense = |dc: f32, ds: f32| {
-                let (hc, hs) = (c * dc - s * ds, c * ds + s * dc);
-                let at = self.cell(x + p.sensor_offset * hc, y + p.sensor_offset * hs);
-                self.field.values().get(at).copied().unwrap_or(0.0)
+            let roll = self.rng.next_unit_f64();
+            // The field at the sensor ahead, at the angle off the heading
+            // whose cos and sin are given.
+            let sense = |offset_cos: f32, offset_sin: f32| {
+                let (sense_cos, sense_sin) = (
+                    cos * offset_cos - sin * offset_sin,
+                    cos * offset_sin + sin * offset_cos,
+                );
+                let sensed_cell = self.cell(
+                    x + params.sensor_offset * sense_cos,
+                    y + params.sensor_offset * sense_sin,
+                );
+                self.field.values().get(sensed_cell).copied().unwrap_or(0.0)
             };
             // −1: turn by −RA; 0: straight; 1: by +RA.
-            let dir: i8 = if self.sensing {
-                let (left, front, right) = (sense(sa_c, -sa_s), sense(1.0, 0.0), sense(sa_c, sa_s));
+            let turn_direction: i8 = if self.sensing {
+                let (left, front, right) = (
+                    sense(sensor_cos, -sensor_sin),
+                    sense(1.0, 0.0),
+                    sense(sensor_cos, sensor_sin),
+                );
                 if front > left && front > right {
                     0
                 } else if front < left && front < right {
-                    if r < 0.5 { -1 } else { 1 }
+                    if roll < 0.5 { -1 } else { 1 }
                 } else if left > right {
                     -1
                 } else {
                     i8::from(right > left)
                 }
-            } else if r < 1.0 / 3.0 {
+            } else if roll < 1.0 / 3.0 {
                 -1
             } else {
-                i8::from(r >= 2.0 / 3.0)
+                i8::from(roll >= 2.0 / 3.0)
             };
-            let (nc, ns) = match dir {
-                -1 => (c * ra_c + s * ra_s, s * ra_c - c * ra_s),
-                1 => (c * ra_c - s * ra_s, s * ra_c + c * ra_s),
-                _ => (c, s),
+            let (new_cos, new_sin) = match turn_direction {
+                -1 => (
+                    cos * turn_cos + sin * turn_sin,
+                    sin * turn_cos - cos * turn_sin,
+                ),
+                1 => (
+                    cos * turn_cos - sin * turn_sin,
+                    sin * turn_cos + cos * turn_sin,
+                ),
+                _ => (cos, sin),
             };
-            let (nx, ny) = (
-                wrap_position(x + p.step * nc, l),
-                wrap_position(y + p.step * ns, l),
+            let (new_x, new_y) = (
+                wrap_position(x + params.step_distance * new_cos, side_length),
+                wrap_position(y + params.step_distance * new_sin, side_length),
             );
-            let at = self.cell(nx, ny);
-            self.deposits.push((at, p.deposit));
-            if let (Some(xs), Some(ys), Some(cs), Some(ss)) = (
-                self.x.get_mut(i),
-                self.y.get_mut(i),
-                self.cos.get_mut(i),
-                self.sin.get_mut(i),
+            let landing_cell = self.cell(new_x, new_y);
+            self.deposits.push((landing_cell, params.deposit));
+            if let (Some(x_slot), Some(y_slot), Some(cos_slot), Some(sin_slot)) = (
+                self.x.get_mut(agent_index),
+                self.y.get_mut(agent_index),
+                self.cos.get_mut(agent_index),
+                self.sin.get_mut(agent_index),
             ) {
-                (*xs, *ys, *cs, *ss) = (nx, ny, nc, ns);
+                (*x_slot, *y_slot, *cos_slot, *sin_slot) = (new_x, new_y, new_cos, new_sin);
             }
         }
-        let l = self.side;
-        for &(i, amount) in &self.deposits {
-            self.field.deposit(i % l, i / l, amount);
+        let side = self.side;
+        for &(cell, amount) in &self.deposits {
+            self.field.deposit(cell % side, cell / side, amount);
         }
         for &(x, y, amount) in &self.nodes {
             self.field.deposit(x, y, amount);
         }
-        self.field.diffuse_periodic(p.diffusion);
-        self.field.decay(p.decay);
+        self.field.diffuse_periodic(params.diffusion);
+        self.field.decay(params.decay);
         self.steps += 1;
     }
 
@@ -261,6 +297,7 @@ impl Slime {
         self.nodes.clear();
     }
 
+    /// The nodes: `(cell x, cell y, deposit a step)`.
     #[must_use]
     pub fn nodes(&self) -> &[(usize, usize, f32)] {
         &self.nodes
@@ -274,42 +311,47 @@ impl Slime {
 
     /// Replaces the constants; `false` (unchanged) if unusable.
     pub fn set_params(&mut self, params: SlimeParams) -> bool {
-        let fits = f64::from(params.step) < usize_to_f64(self.side) / 2.0;
+        let fits = f64::from(params.step_distance) < usize_to_f64(self.side) / 2.0;
         match params.checked() {
-            Some(p) if fits => {
-                self.params = p;
+            Some(checked) if fits => {
+                self.params = checked;
                 true
             }
             _ => false,
         }
     }
 
+    /// The model's constants.
     #[must_use]
     pub const fn params(&self) -> SlimeParams {
         self.params
     }
 
+    /// The trail field.
     #[must_use]
     pub const fn field(&self) -> &Field {
         &self.field
     }
 
+    /// Cells across the (square) field.
     #[must_use]
     pub const fn side(&self) -> usize {
         self.side
     }
 
+    /// The number of agents.
     #[must_use]
     pub fn len(&self) -> usize {
         self.x.len()
     }
 
-    /// Never true.
+    /// Never true: a system has at least one agent.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.x.is_empty()
     }
 
+    /// Steps taken so far.
     #[must_use]
     pub const fn steps(&self) -> u64 {
         self.steps
@@ -323,23 +365,31 @@ impl Slime {
     /// What the last step deposited (agents and nodes), for accounting.
     #[must_use]
     pub fn last_deposits(&self) -> f64 {
-        self.deposits.iter().map(|d| f64::from(d.1)).sum::<f64>()
-            + self.nodes.iter().map(|n| f64::from(n.2)).sum::<f64>()
+        self.deposits
+            .iter()
+            .map(|&(_, amount)| f64::from(amount))
+            .sum::<f64>()
+            + self
+                .nodes
+                .iter()
+                .map(|&(_, _, amount)| f64::from(amount))
+                .sum::<f64>()
     }
 
-    /// The state's bytes for hashing (the repeatability tests): agents, then the field.
+    /// The state's bytes for hashing (the repeatability tests): agents,
+    /// then the field.
     #[must_use]
     pub fn state_bytes(&self) -> Vec<u8> {
-        let mut out = Vec::new();
-        for v in [&self.x, &self.y, &self.cos, &self.sin] {
-            for f in v {
-                out.extend_from_slice(&f.to_le_bytes());
+        let mut bytes = Vec::new();
+        for column in [&self.x, &self.y, &self.cos, &self.sin] {
+            for value in column {
+                bytes.extend_from_slice(&value.to_le_bytes());
             }
         }
-        for f in self.field.values() {
-            out.extend_from_slice(&f.to_le_bytes());
+        for value in self.field.values() {
+            bytes.extend_from_slice(&value.to_le_bytes());
         }
-        out
+        bytes
     }
 }
 

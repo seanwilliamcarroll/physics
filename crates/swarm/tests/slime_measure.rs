@@ -1,6 +1,7 @@
-//! S4's measurements (`docs/15-swarm.md`, S4.3): concentration (the top
-//! 10% of cells' share of the field) against a random walk, the network's
-//! contraction, a small parameter map, and nutrient nodes.
+//! Physarum's measurements (`docs/15-swarm.md`, "Physarum"):
+//! concentration (the top 10% of cells' share of the field) against a
+//! random walk, the network's contraction, a small parameter map, and
+//! nutrient nodes.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 #![expect(
@@ -14,17 +15,17 @@ use std::collections::HashSet;
 
 use swarm::{Slime, SlimeParams};
 
-const DEG: f32 = core::f32::consts::PI / 180.0;
+const DEGREES: f32 = core::f32::consts::PI / 180.0;
 
 /// 6,000 agents on a 128² field (37% occupancy), concentration after
 /// `steps`.
-fn concentration(p: SlimeParams, sensing: bool, seed: u64, steps: u32) -> f64 {
-    let mut s = Slime::new(128, 6000, p, seed).unwrap();
-    s.set_sensing(sensing);
+fn concentration(params: SlimeParams, sensing: bool, seed: u64, steps: u32) -> f64 {
+    let mut slime = Slime::new(128, 6000, params, seed).unwrap();
+    slime.set_sensing(sensing);
     for _ in 0..steps {
-        s.step();
+        slime.step();
     }
-    s.field().top_share(0.1)
+    slime.field().top_share(0.1)
 }
 
 /// Sensing concentrates the field; a random walk (same deposits) leaves
@@ -33,11 +34,14 @@ fn concentration(p: SlimeParams, sensing: bool, seed: u64, steps: u32) -> f64 {
 #[test]
 fn sensing_concentrates_the_field() {
     for seed in [1, 2] {
-        let (with, walk) = (
+        let (sensing, random_walk) = (
             concentration(SlimeParams::DEFAULT, true, seed, 1000),
             concentration(SlimeParams::DEFAULT, false, seed, 1000),
         );
-        assert!(with > 0.9 && walk < 0.2, "seed {seed}: {with} vs {walk}");
+        assert!(
+            sensing > 0.9 && random_walk < 0.2,
+            "seed {seed}: {sensing} vs {random_walk}"
+        );
     }
 }
 
@@ -70,55 +74,56 @@ fn the_network_contracts() {
 /// (22.5°, 45°) collapses to a band (over 0.9).
 #[test]
 fn the_parameters_change_the_pattern() {
-    let at = |sa: f32, ra: f32| {
-        let p = SlimeParams {
-            sensor_angle: sa * DEG,
-            turn: ra * DEG,
+    let concentration_at = |sensor_degrees: f32, turn_degrees: f32| {
+        let params = SlimeParams {
+            sensor_angle: sensor_degrees * DEGREES,
+            turn: turn_degrees * DEGREES,
             ..SlimeParams::DEFAULT
         };
-        concentration(p, true, 1, 1500)
+        concentration(params, true, 1, 1500)
     };
-    let (spread, band) = (at(45.0, 45.0), at(22.5, 45.0));
+    let (spread, band) = (concentration_at(45.0, 45.0), concentration_at(22.5, 45.0));
     assert!(spread < 0.8 && band > 0.9, "{spread} vs {band}");
 }
 
 /// The field on the straight lines between three nodes (away from the
 /// nodes themselves) over its mean elsewhere.
 fn node_ratio(sensing: bool, seed: u64) -> f64 {
-    let mut s = Slime::new(128, 1000, SlimeParams::DEFAULT, seed).unwrap();
-    s.set_sensing(sensing);
-    let pts = [(30_usize, 30_usize), (98, 40), (60, 100)];
-    for &(x, y) in &pts {
-        assert!(s.add_node(x, y, 1000.0));
+    let mut slime = Slime::new(128, 1000, SlimeParams::DEFAULT, seed).unwrap();
+    slime.set_sensing(sensing);
+    let nodes = [(30_usize, 30_usize), (98, 40), (60, 100)];
+    for &(x, y) in &nodes {
+        assert!(slime.add_node(x, y, 1000.0));
     }
     for _ in 0..2000 {
-        s.step();
+        slime.step();
     }
-    let mut on = HashSet::new();
-    for i in 0..3 {
-        let (a, b) = (pts[i], pts[(i + 1) % 3]);
-        for k in 0..=200 {
-            let t = f64::from(k) / 200.0;
-            let x = a.0 as f64 + (b.0 as f64 - a.0 as f64) * t;
-            let y = a.1 as f64 + (b.1 as f64 - a.1 as f64) * t;
-            let near = |p: (usize, usize)| (x - p.0 as f64).hypot(y - p.1 as f64) < 12.0;
-            if !near(a) && !near(b) {
-                on.insert((x as usize, y as usize));
+    let mut on_lines = HashSet::new();
+    for node in 0..3 {
+        let (from, to) = (nodes[node], nodes[(node + 1) % 3]);
+        for segment in 0..=200 {
+            let fraction = f64::from(segment) / 200.0;
+            let x = from.0 as f64 + (to.0 as f64 - from.0 as f64) * fraction;
+            let y = from.1 as f64 + (to.1 as f64 - from.1 as f64) * fraction;
+            let near = |node: (usize, usize)| (x - node.0 as f64).hypot(y - node.1 as f64) < 12.0;
+            if !near(from) && !near(to) {
+                on_lines.insert((x as usize, y as usize));
             }
         }
     }
-    let f = s.field();
-    let (mut sum_on, mut sum_all) = (0.0, 0.0);
+    let field = slime.field();
+    let (mut sum_on_lines, mut sum_all) = (0.0, 0.0);
     for y in 0..128 {
         for x in 0..128 {
-            let v = f64::from(f.get(x, y).unwrap());
-            sum_all += v;
-            if on.contains(&(x, y)) {
-                sum_on += v;
+            let value = f64::from(field.get(x, y).unwrap());
+            sum_all += value;
+            if on_lines.contains(&(x, y)) {
+                sum_on_lines += value;
             }
         }
     }
-    (sum_on / on.len() as f64) / ((sum_all - sum_on) / (128.0 * 128.0 - on.len() as f64))
+    (sum_on_lines / on_lines.len() as f64)
+        / ((sum_all - sum_on_lines) / (128.0 * 128.0 - on_lines.len() as f64))
 }
 
 /// Nutrient nodes (Jones 2011's sources; not read): three strong nodes,
@@ -130,8 +135,11 @@ fn node_ratio(sensing: bool, seed: u64) -> f64 {
 /// measured: seeds 1 and 3 over 2.5, seed 2 under 0.5, the walk under 1.
 #[test]
 fn strong_nodes_are_linked_in_some_seeds() {
-    let r: Vec<f64> = (1..=3).map(|seed| node_ratio(true, seed)).collect();
-    assert!(r[0] > 2.5 && r[2] > 2.5 && r[1] < 0.5, "{r:?}");
-    let walk = node_ratio(false, 1);
-    assert!(walk < 1.0, "walk {walk}");
+    let ratios: Vec<f64> = (1..=3).map(|seed| node_ratio(true, seed)).collect();
+    assert!(
+        ratios[0] > 2.5 && ratios[2] > 2.5 && ratios[1] < 0.5,
+        "{ratios:?}"
+    );
+    let random_walk = node_ratio(false, 1);
+    assert!(random_walk < 1.0, "walk {random_walk}");
 }

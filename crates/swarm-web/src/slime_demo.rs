@@ -171,7 +171,7 @@ fn slot(p: &mut SlimeParams, code: u32) -> Option<&mut f32> {
         abi::SLIME_SENSOR_ANGLE => &mut p.sensor_angle,
         abi::SLIME_SENSOR_OFFSET => &mut p.sensor_offset,
         abi::SLIME_TURN => &mut p.turn,
-        abi::SLIME_STEP => &mut p.step,
+        abi::SLIME_STEP => &mut p.step_distance,
         abi::SLIME_DEPOSIT => &mut p.deposit,
         abi::SLIME_DIFFUSION => &mut p.diffusion,
         abi::SLIME_DECAY => &mut p.decay,
