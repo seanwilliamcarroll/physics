@@ -77,7 +77,7 @@ fn storage_order_changes_only_rounding() {
         .into_iter()
         .rev()
         .collect();
-    // Brute force: a boid keeps its index (Sorted renumbers them).
+    // Brute force keeps each boid's index; Sorted renumbers them.
     let mut forward = flock.clone();
     forward.set_neighbours(Neighbours::Brute);
     let mut backward = Flock::with_boids(arena(), P, reversed).unwrap();

@@ -3,10 +3,8 @@
 //!
 //!   cargo run --profile profiling -p swarm --example workload -- ants [SECONDS]
 //!
-//! Workloads: `boids` (10k, sorted lanes), `vicsek` (4,000, the grid),
-//! `ants` (the page's 200 × 120 world, 500 ants, food), `slime` (512²,
-//! 100k agents). Each at its page's size.
-// An example, not library code: printing is its output.
+//! Workloads, each at its page's size: `boids` (10k, sorted lanes),
+//! `vicsek` (4,000), `ants` (500), `slime` (512², 100k agents).
 #![expect(
     clippy::print_stdout,
     clippy::print_stderr,

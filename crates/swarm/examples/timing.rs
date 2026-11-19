@@ -1,9 +1,6 @@
 //! ns per boid-step for each way of finding neighbours, at the page's
-//! density, warmed up: a plain binary, so it runs natively and as
-//! `wasm32-wasip1` (under wasmtime, or Node's WASI), with and without
-//! `simd128` (`docs/15-swarm.md`, "What's measured"). Not criterion:
-//! criterion doesn't build for WASI.
-// An example, not library code: printing is its output.
+//! density, warmed up (`docs/15-swarm.md`, "What's measured"). A plain
+//! binary, not criterion, so it also runs as `wasm32-wasip1`.
 #![expect(clippy::print_stdout, clippy::unwrap_used, reason = "a timing tool")]
 
 use std::time::Instant;
