@@ -58,6 +58,13 @@ silence the lint.
 
 ## Comments
 
+**A cleanup pass cuts comments; it never adds them.** Expect the crate's
+comment lines to drop clearly (a third or more is typical), and measure it
+(the command is under "The report"). Cut, don't rewrite: shortening a
+paragraph to a sentence is right, rephrasing it at the same length isn't.
+A missing doc comment stays missing unless the item is genuinely
+unclear without one; then the fix is usually a better name.
+
 **Remove:**
 
 - History: dates, PR numbers (`#324`), milestone tags (`M9.4`, `S3`),
@@ -67,9 +74,16 @@ silence the lint.
   about how code moved between files.
 - Sweep and experiment narratives: which builds were tried and how each
   one did. The experiment's README has them.
-- Restatements of the code: `// increment the counter`, a doc comment
-  that only repeats the function's name.
-- Long explanations of straightforward code.
+- Restatements of the code or the name: `// increment the counter`,
+  `/// The width.` on `fn width()`, `/// Steps taken so far.` on
+  `fn steps()`, `/// Creates a new X.` on `fn new()`, a doc that repeats
+  the parameter names in a sentence. Getters, setters, `len`/`is_empty`,
+  `new` with obvious arguments, and plain struct fields with clear names
+  need no doc.
+- Long explanations of straightforward code; background a design doc
+  already covers (point to it in the module doc, once).
+- Notes about the future ("planned", "later") unless they constrain the
+  code now.
 
 **Keep, shortened:**
 
@@ -81,8 +95,9 @@ silence the lint.
 - **A test's bound and where it came from:** "measured 0.5013, bound
   ±1%". The measured value justifies the tolerance
   (`docs/04-testing.md`).
-- **Doc comments on public items:** what it is or does, units, what
-  `None`/`false` means. One to three lines.
+- **Doc comments on public items, when the name doesn't say it all:**
+  units, what `None`/`false` means, a precondition. One line is usually
+  enough; three at most.
 - **Module docs:** one to three lines, with a pointer to the design doc
   where there is one (`docs/11-falling-sand.md`, "Chunks"). Pointers into
   `docs/` are fine; pointers to commits and PRs aren't.
@@ -136,4 +151,11 @@ silence the lint.
 - Anything left alone on purpose, and why (an ABI name, a hot loop you
   didn't restructure, a name you weren't sure about).
 - Comments you were unsure whether to keep.
+- The comment-line change for the crate, before → after, from:
+  `git ls-files 'crates/CRATE/*.rs' | xargs cat | grep -cE '^\s*//'`
+  run at the start and at the end.
 - The final `cargo test` and `cargo clippy` result lines.
+
+A fresh git worktree has no `node_modules`, which the pre-commit hook's
+`tsc` needs: link the main checkout's (`ln -s /Users/sean/physics/node_modules
+node_modules`) before the first commit.
