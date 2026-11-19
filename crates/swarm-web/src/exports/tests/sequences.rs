@@ -23,8 +23,6 @@ enum Call {
     Render,
 }
 
-/// What a page could pass (`test_support::hostile_f64`), around this
-/// module's usual values.
 fn hostile_f64() -> impl Strategy<Value = f64> {
     test_support::hostile_f64(-10.0..200.0)
 }
@@ -35,49 +33,51 @@ fn call() -> impl Strategy<Value = Call> {
         1 => prop_oneof![0_u32..300, any::<u32>()].prop_map(Call::Rate),
         1 => prop_oneof![0_u32..300, any::<u32>()].prop_map(Call::Cap),
         2 => prop_oneof![0_u32..4, any::<u32>()].prop_map(Call::Neighbours),
-        3 => (prop_oneof![0_u32..10, any::<u32>()], hostile_f64()).prop_map(|(c, v)| Call::Param(c, v)),
+        3 => (prop_oneof![0_u32..10, any::<u32>()], hostile_f64()).prop_map(|(code, value)| Call::Param(code, value)),
         2 => (hostile_f64(), hostile_f64(), 0_u32..3).prop_map(|(x, y, on)| Call::Predator(x, y, on)),
         1 => Just(Call::Render),
     ]
 }
 
-fn run(n: u32, calls: &[Call]) -> Result<(), TestCaseError> {
-    let d = swarm_new(n, 400, 300, 2, 7);
-    prop_assert!(!d.is_null());
-    // SAFETY: `d` is live until freed at the end, once.
+fn run(boid_count: u32, calls: &[Call]) -> Result<(), TestCaseError> {
+    let demo = swarm_new(boid_count, 400, 300, 2, 7);
+    prop_assert!(!demo.is_null());
+    // SAFETY: `demo` is live until freed at the end, once.
     unsafe {
-        for c in calls {
-            match *c {
-                Call::Advance(t) => prop_assert!(swarm_advance(d, t) <= abi::MAX_RATE_HZ / 4 + 1),
-                Call::Rate(hz) => prop_assert!(swarm_set_rate(d, hz) <= 1),
-                Call::Cap(k) => prop_assert!(swarm_set_step_cap(d, k) <= 1),
-                Call::Neighbours(code) => prop_assert!(swarm_set_neighbours(d, code) <= 1),
-                Call::Param(code, v) => prop_assert!(swarm_set_param(d, code, v) <= 1),
-                Call::Predator(x, y, on) => prop_assert!(swarm_set_predator(d, x, y, on) <= 1),
-                Call::Render => prop_assert!(!swarm_render(d).is_null()),
+        for action in calls {
+            match *action {
+                Call::Advance(seconds) => {
+                    prop_assert!(swarm_advance(demo, seconds) <= abi::MAX_RATE_HZ / 4 + 1);
+                }
+                Call::Rate(rate_hz) => prop_assert!(swarm_set_rate(demo, rate_hz) <= 1),
+                Call::Cap(max_steps) => prop_assert!(swarm_set_step_cap(demo, max_steps) <= 1),
+                Call::Neighbours(code) => prop_assert!(swarm_set_neighbours(demo, code) <= 1),
+                Call::Param(code, value) => prop_assert!(swarm_set_param(demo, code, value) <= 1),
+                Call::Predator(x, y, on) => prop_assert!(swarm_set_predator(demo, x, y, on) <= 1),
+                Call::Render => prop_assert!(!swarm_render(demo).is_null()),
             }
-            prop_assert_eq!(swarm_len(d), n);
+            prop_assert_eq!(swarm_len(demo), boid_count);
             // The rules stay usable: every constant finite, the speeds a band.
             for code in 0..abi::PARAM_COUNT {
                 prop_assert!(
-                    swarm_param(d, code).is_finite(),
+                    swarm_param(demo, code).is_finite(),
                     "param {} after {:?}",
                     code,
-                    c
+                    action
                 );
             }
             prop_assert!(
-                swarm_param(d, abi::PARAM_MIN_SPEED) <= swarm_param(d, abi::PARAM_MAX_SPEED)
+                swarm_param(demo, abi::PARAM_MIN_SPEED) <= swarm_param(demo, abi::PARAM_MAX_SPEED)
             );
-            let p = swarm_polarization(d);
+            let polarization = swarm_polarization(demo);
             prop_assert!(
-                (0.0..=1.0 + 1e-9).contains(&p),
+                (0.0..=1.0 + 1e-9).contains(&polarization),
                 "polarization {} after {:?}",
-                p,
-                c
+                polarization,
+                action
             );
         }
-        swarm_free(d);
+        swarm_free(demo);
     }
     Ok(())
 }
@@ -86,7 +86,7 @@ proptest! {
     #![proptest_config(test_support::proptest_config())]
 
     #[test]
-    fn any_call_sequence_is_safe(n in 1_u32..120, calls in prop::collection::vec(call(), 0..30)) {
-        run(n, &calls)?;
+    fn any_call_sequence_is_safe(boid_count in 1_u32..120, calls in prop::collection::vec(call(), 0..30)) {
+        run(boid_count, &calls)?;
     }
 }

@@ -9,27 +9,23 @@ use crate::abi::{EXCITATION_NOISE, EXCITATION_TRIANGLE, MODEL_LOOP, MODEL_PIANO,
 
 /// The most frames one [`Synth::render`] call produces: the output buffer
 /// is allocated once at this size (no allocation on the audio thread).
-/// 128 is the Web Audio default render quantum; `renderSizeHint` can ask
-/// for more, and 4096 leaves room (a larger request is refused, not
-/// allocated).
+/// 128 is the Web Audio default render quantum; 4096 leaves room for
+/// `renderSizeHint`.
 pub const MAX_FRAMES: usize = 4096;
 
-/// The highest sample rate a [`Synth`] accepts, Hz (ours): the highest
-/// that common audio hardware runs at, four times the page's usual 48 kHz.
-/// Every buffer is sized from the rate (each voice's delay lines,
-/// `fs / 27.5 Hz` samples, and the strike trace), so an uncapped rate
-/// let `synth_new(1e9, …)` try to allocate gigabytes.
+/// The highest sample rate a [`Synth`] accepts, Hz. Every buffer is sized
+/// from the rate (each voice's delay lines, the strike trace), so an
+/// uncapped rate would let a huge one allocate gigabytes.
 pub const MAX_SAMPLE_RATE: f64 = 192_000.0;
 
 /// The spectrum's size, samples: 4096 at 48 kHz is 85 ms of output and
 /// 11.7 Hz per bin (`docs/13-waveguide.md`, "The spectrum").
 pub const SPECTRUM_SIZE: usize = 4096;
 
-/// A new synth's settings: tuned, a 3 s decay, noise.
+/// A new synth's decay time, s.
 pub const DEFAULT_T60: f64 = 3.0;
 
-/// Where the triangle peaks by default: near one end, as the Piano Gloves
-/// hammer did.
+/// Where the triangle peaks by default: near one end.
 pub const DEFAULT_PEAK: f64 = 0.1;
 
 /// Everything one audio worklet runs: [`Voices`] at the context's rate,
@@ -41,33 +37,33 @@ pub struct Synth {
     excitation: Excitation,
     /// The last render's samples (`MAX_FRAMES` long; the first `frames`
     /// are valid).
-    out: Vec<f32>,
+    output: Vec<f32>,
     /// The latest string's delay line, oldest first: what the page draws.
     snapshot: Vec<f32>,
-    /// The latest strike's hammer force, N, as `f32` (allocated once).
+    /// The latest strike's hammer force, N, as `f32`.
     trace: Vec<f32>,
-    /// The last `SPECTRUM_SIZE` output samples (a ring; `history_at` is
-    /// the oldest), a linear copy of them, and the analyzer: all
-    /// allocated once.
+    /// The last `SPECTRUM_SIZE` output samples as a ring (`history_start`
+    /// is the oldest), a linear copy of them, and the analyzer.
     history: Vec<f32>,
-    history_at: usize,
-    linear: Vec<f32>,
+    history_start: usize,
+    linear_history: Vec<f32>,
     spectrum: Spectrum<f32>,
 }
 
 impl Synth {
-    /// A silent synth at `fs` Hz, noise seeded by `seed`. `None` for a rate
-    /// that isn't positive and finite, or above [`MAX_SAMPLE_RATE`].
+    /// A silent synth at `sample_rate` Hz, noise seeded by `seed`. `None`
+    /// for a rate that isn't positive and finite, or above
+    /// [`MAX_SAMPLE_RATE`].
     #[must_use]
-    pub fn new(fs: f64, seed: u64) -> Option<Self> {
+    pub fn new(sample_rate: f64, seed: u64) -> Option<Self> {
         // NaN and non-positive rates are Voices::new's to refuse.
-        if fs > MAX_SAMPLE_RATE {
+        if sample_rate > MAX_SAMPLE_RATE {
             return None;
         }
-        let voices = Voices::new(fs, seed)?;
+        let voices = Voices::new(sample_rate, seed)?;
         // The longest line: A0. Sized once, like the output.
-        let longest = acoustic::KsString::<f32>::new(
-            fs,
+        let longest_line = acoustic::KsString::<f32>::new(
+            sample_rate,
             acoustic::LOWEST_HZ,
             Voicing {
                 tuned: false,
@@ -85,14 +81,14 @@ impl Synth {
                 inharmonicity: 0.0,
             },
             excitation: Excitation::Noise,
-            out: vec![0.0; MAX_FRAMES],
-            snapshot: Vec::with_capacity(longest),
+            output: vec![0.0; MAX_FRAMES],
+            snapshot: Vec::with_capacity(longest_line),
             trace: Vec::with_capacity(
-                f64_to_usize((acoustic::TRACE_SECONDS * fs).ceil()).unwrap_or(0),
+                f64_to_usize((acoustic::TRACE_SECONDS * sample_rate).ceil()).unwrap_or(0),
             ),
             history: vec![0.0; SPECTRUM_SIZE],
-            history_at: 0,
-            linear: vec![0.0; SPECTRUM_SIZE],
+            history_start: 0,
+            linear_history: vec![0.0; SPECTRUM_SIZE],
             spectrum: Spectrum::new(SPECTRUM_SIZE)?,
         })
     }
@@ -100,26 +96,32 @@ impl Synth {
     /// Renders `frames` samples into the output buffer and returns them;
     /// `None` (rendering nothing) above [`MAX_FRAMES`].
     pub fn render(&mut self, frames: usize) -> Option<&[f32]> {
-        let out = self.out.get_mut(..frames)?;
-        self.voices.render(out);
-        for &x in out.iter() {
-            if let Some(slot) = self.history.get_mut(self.history_at) {
-                *slot = x;
+        let block = self.output.get_mut(..frames)?;
+        self.voices.render(block);
+        for &sample in block.iter() {
+            if let Some(slot) = self.history.get_mut(self.history_start) {
+                *slot = sample;
             }
-            self.history_at = (self.history_at + 1) % SPECTRUM_SIZE;
+            self.history_start = (self.history_start + 1) % SPECTRUM_SIZE;
         }
-        Some(out)
+        Some(block)
     }
 
     /// The last `SPECTRUM_SIZE` output samples' spectrum, dB (0 dB = a
-    /// full-scale sine), `SPECTRUM_SIZE / 2` bins of `fs / SPECTRUM_SIZE`
-    /// Hz. Computed now, on request (the A1 page never asks).
+    /// full-scale sine), `SPECTRUM_SIZE / 2` bins of `sample_rate /
+    /// SPECTRUM_SIZE` Hz. Computed on request.
     pub fn spectrum(&mut self) -> &[f32] {
-        let (newer, older) = self.history.split_at(self.history_at);
-        for (dst, &x) in self.linear.iter_mut().zip(older.iter().chain(newer)) {
-            *dst = x;
+        let (newer, older) = self.history.split_at(self.history_start);
+        for (destination, &sample) in self
+            .linear_history
+            .iter_mut()
+            .zip(older.iter().chain(newer))
+        {
+            *destination = sample;
         }
-        self.spectrum.analyze(&self.linear).unwrap_or_default()
+        self.spectrum
+            .analyze(&self.linear_history)
+            .unwrap_or_default()
     }
 
     /// The model new notes play: a code from [`crate::abi`]; `false` for an
@@ -137,26 +139,27 @@ impl Synth {
 
     /// Every waveguide's pickup, from the bridge, live; `false` outside
     /// `[0, 1]` (or NaN).
-    pub fn set_pickup(&mut self, s: f64) -> bool {
-        let ok = (0.0..=1.0).contains(&s);
-        if ok {
-            self.voices.set_pickup(s);
+    pub fn set_pickup(&mut self, pickup: f64) -> bool {
+        let valid = (0.0..=1.0).contains(&pickup);
+        if valid {
+            self.voices.set_pickup(pickup);
         }
-        ok
+        valid
     }
 
     /// Plays MIDI `key` with the current settings; `false` if it can't be
     /// played (below A0, or not a MIDI key).
     pub fn note_on(&mut self, key: u32) -> bool {
-        u8::try_from(key)
-            .is_ok_and(|k| k <= 127 && self.voices.note_on(k, self.voicing, self.excitation))
+        u8::try_from(key).is_ok_and(|midi_key| {
+            midi_key <= 127 && self.voices.note_on(midi_key, self.voicing, self.excitation)
+        })
     }
 
     /// Strikes piano key `key` with the hammer at `velocity` m/s (pp 0.5
     /// to ff 5), whatever the model; `false` off the keyboard or for a
     /// velocity that isn't positive and finite.
     pub fn note_on_velocity(&mut self, key: u32, velocity: f64) -> bool {
-        u8::try_from(key).is_ok_and(|k| self.voices.strike(k, velocity))
+        u8::try_from(key).is_ok_and(|midi_key| self.voices.strike(midi_key, velocity))
     }
 
     /// Whether the piano's strings are stiff, from the next strike.
@@ -166,8 +169,8 @@ impl Synth {
 
     /// Releases MIDI `key`.
     pub fn note_off(&mut self, key: u32) {
-        if let Ok(k) = u8::try_from(key) {
-            self.voices.note_off(k);
+        if let Ok(midi_key) = u8::try_from(key) {
+            self.voices.note_off(midi_key);
         }
     }
 
@@ -178,35 +181,35 @@ impl Synth {
 
     /// The fundamental's decay time, s, from the next note. `false` unless
     /// positive and finite.
-    pub fn set_t60(&mut self, t60: f64) -> bool {
-        let ok = t60 > 0.0 && t60.is_finite();
-        if ok {
-            self.voicing.decay = Decay::T60(t60);
+    pub fn set_t60(&mut self, decay_time_60db: f64) -> bool {
+        let valid = decay_time_60db > 0.0 && decay_time_60db.is_finite();
+        if valid {
+            self.voicing.decay = Decay::T60(decay_time_60db);
         }
-        ok
+        valid
     }
 
     /// The excitation from the next note: a code from [`crate::abi`], and
     /// the triangle's peak (a fraction of the line; ignored for noise).
     /// `false` for an unknown code or a peak outside `(0, 1)`.
     pub fn set_excitation(&mut self, code: u32, peak: f64) -> bool {
-        let e = match code {
+        let excitation = match code {
             EXCITATION_NOISE => Excitation::Noise,
             EXCITATION_TRIANGLE if peak > 0.0 && peak < 1.0 => Excitation::Triangle { peak },
             _ => return false,
         };
-        self.excitation = e;
+        self.excitation = excitation;
         true
     }
 
     /// Output gain, applied before the ±1 clamp. `false` unless `0 ≤ gain
     /// ≤ 1` (more would only clip).
     pub fn set_gain(&mut self, gain: f64) -> bool {
-        let ok = (0.0..=1.0).contains(&gain);
-        if ok {
+        let valid = (0.0..=1.0).contains(&gain);
+        if valid {
             self.voices.set_gain(f64_to_f32(gain));
         }
-        ok
+        valid
     }
 
     /// Copies the latest string's delay line into the snapshot buffer and
@@ -228,8 +231,12 @@ impl Synth {
     /// strike).
     pub fn strike_trace(&mut self) -> &[f32] {
         self.trace.clear();
-        self.trace
-            .extend(self.voices.strike_trace().iter().map(|&f| f64_to_f32(f)));
+        self.trace.extend(
+            self.voices
+                .strike_trace()
+                .iter()
+                .map(|&force| f64_to_f32(force)),
+        );
         &self.trace
     }
 
@@ -266,7 +273,7 @@ impl Synth {
 }
 
 /// The default gain, for the page's slider.
-pub const GAIN: f64 = DEFAULT_GAIN;
+pub const DEFAULT_OUTPUT_GAIN: f64 = DEFAULT_GAIN;
 
 #[cfg(test)]
 mod tests;

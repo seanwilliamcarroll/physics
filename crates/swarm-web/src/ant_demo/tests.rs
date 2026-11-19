@@ -6,23 +6,23 @@ use crate::demo::BACKGROUND;
 fn sizes_tools_and_params_are_checked() {
     assert!(AntDemo::new(0, 50, 10, 3, 1).is_none());
     assert!(AntDemo::new(100, 50, 10, 0, 1).is_none());
-    let mut d = AntDemo::new(100, 50, 10, 3, 1).unwrap();
-    assert_eq!(d.view(), (300, 150));
-    let added = d.paint(abi::TOOL_FOOD, 80.0, 25.0, 3.0, 5).unwrap();
+    let mut demo = AntDemo::new(100, 50, 10, 3, 1).unwrap();
+    assert_eq!(demo.view(), (300, 150));
+    let added = demo.paint(abi::TOOL_FOOD, 80.0, 25.0, 3.0, 5).unwrap();
     assert!(added > 0 && added.is_multiple_of(5), "{added}");
-    assert_eq!(d.colony().food_in_world(), added);
+    assert_eq!(demo.colony().food_in_world(), added);
     assert_eq!(
-        d.paint(abi::TOOL_FOOD, 80.0, 25.0, 3.0, abi::MAX_FOOD + 1),
+        demo.paint(abi::TOOL_FOOD, 80.0, 25.0, 3.0, abi::MAX_FOOD + 1),
         None
     );
-    assert!(d.paint(abi::TOOL_WALL, 50.0, 25.0, 2.0, 0).unwrap() > 0);
-    assert!(d.paint(abi::TOOL_ERASE, 50.0, 25.0, 2.0, 0).unwrap() > 0);
-    assert_eq!(d.paint(abi::TOOL_NEST, 20.0, 20.0, 4.0, 0), Some(1));
-    assert_eq!(d.colony().nest(), (20.0, 20.0, 4.0));
-    assert_eq!(d.paint(99, 1.0, 1.0, 1.0, 0), None);
-    assert_eq!(d.paint(abi::TOOL_WALL, f64::NAN, 1.0, 1.0, 0), None);
+    assert!(demo.paint(abi::TOOL_WALL, 50.0, 25.0, 2.0, 0).unwrap() > 0);
+    assert!(demo.paint(abi::TOOL_ERASE, 50.0, 25.0, 2.0, 0).unwrap() > 0);
+    assert_eq!(demo.paint(abi::TOOL_NEST, 20.0, 20.0, 4.0, 0), Some(1));
+    assert_eq!(demo.colony().nest(), (20.0, 20.0, 4.0));
+    assert_eq!(demo.paint(99, 1.0, 1.0, 1.0, 0), None);
+    assert_eq!(demo.paint(abi::TOOL_WALL, f64::NAN, 1.0, 1.0, 0), None);
     assert_eq!(
-        d.paint(
+        demo.paint(
             abi::TOOL_WALL,
             1.0,
             1.0,
@@ -32,80 +32,82 @@ fn sizes_tools_and_params_are_checked() {
         None
     );
     assert_eq!(
-        d.param(abi::ANT_DECAY),
+        demo.param(abi::ANT_DECAY),
         Some(f64::from(swarm::AntParams::DEFAULT.decay))
     );
     assert!(
-        d.set_param(abi::ANT_DECAY, 0.02)
-            && !d.set_param(abi::ANT_DECAY, 2.0)
-            && !d.set_param(99, 1.0)
+        demo.set_param(abi::ANT_DECAY, 0.02)
+            && !demo.set_param(abi::ANT_DECAY, 2.0)
+            && !demo.set_param(99, 1.0)
     );
-    assert_eq!(d.param(abi::ANT_PARAM_COUNT), None);
-    assert_eq!(d.advance(0.2), 12);
+    assert_eq!(demo.param(abi::ANT_PARAM_COUNT), None);
+    assert_eq!(demo.advance(0.2), 12);
 }
 
 #[test]
 fn render_shows_walls_food_and_ants() {
-    let mut d = AntDemo::new(60, 40, 1, 2, 1).unwrap();
-    d.paint(abi::TOOL_WALL, 30.5, 10.5, 0.0, 0);
-    d.paint(abi::TOOL_FOOD, 40.5, 10.5, 0.0, 3);
-    let px = d.render().to_vec();
-    let at = |cx: usize, cy: usize| px[cy * 2 * 120 + cx * 2];
+    let mut demo = AntDemo::new(60, 40, 1, 2, 1).unwrap();
+    demo.paint(abi::TOOL_WALL, 30.5, 10.5, 0.0, 0);
+    demo.paint(abi::TOOL_FOOD, 40.5, 10.5, 0.0, 3);
+    let pixels = demo.render().to_vec();
+    let at = |cell_x: usize, cell_y: usize| pixels[cell_y * 2 * 120 + cell_x * 2];
     assert_eq!((at(30, 10), at(40, 10)), (WALL, FOOD));
     assert_eq!(at(55, 35), BACKGROUND, "nothing there");
-    assert!(px.contains(&0xffe8_e8e8), "the ant");
-    assert!(!px.contains(&CARRYING));
+    assert!(pixels.contains(&0xffe8_e8e8), "the ant");
+    assert!(!pixels.contains(&CARRYING));
 }
 
-// Found by the full mutation run of 2026-11-12: the trail colours, the
-// nest's rim, and squares past the right edge were never checked.
-
-/// The blue (home) or green (food) level a trail value adds, as drawn.
-fn level(v: f32) -> u32 {
-    let t = (v.max(0.0) * 50.0).ln_1p() / (5.0_f32 * 50.0).ln_1p();
+fn level(value: f32) -> u32 {
+    let intensity = (value.max(0.0) * 50.0).ln_1p() / (5.0_f32 * 50.0).ln_1p();
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "0..=255"
     )]
-    let k = (t.min(1.0) * 255.0).round() as u32;
-    k
+    let level = (intensity.min(1.0) * 255.0).round() as u32;
+    level
 }
 
 #[test]
 fn trails_are_drawn_on_a_log_scale_over_the_background() {
-    let mut d = AntDemo::new(40, 30, 20, 2, 3).unwrap();
+    let mut demo = AntDemo::new(40, 30, 20, 2, 3).unwrap();
     for _ in 0..120 {
-        d.advance(1.0 / 60.0 + 1e-9);
+        demo.advance(1.0 / 60.0 + 1e-9);
     }
-    let home = d.colony.field(swarm::Pheromone::Home).values().to_vec();
-    let food = d.colony.field(swarm::Pheromone::Food).values().to_vec();
+    let home = demo.colony.field(swarm::Pheromone::Home).values().to_vec();
+    let food = demo.colony.field(swarm::Pheromone::Food).values().to_vec();
     assert!(
-        home.iter().filter(|&&v| v > 0.0).count() > 20,
+        home.iter().filter(|&&value| value > 0.0).count() > 20,
         "trails to look at"
     );
-    let px = d.render().to_vec();
-    let (bb, bg, br) = (
+    let pixels = demo.render().to_vec();
+    let (base_blue, base_green, base_red) = (
         (BACKGROUND >> 16) & 0xff,
         (BACKGROUND >> 8) & 0xff,
         BACKGROUND & 0xff,
     );
     let mut checked = 0;
-    for cy in 0..30 {
-        for cx in 0..40 {
-            let (b, g) = (level(home[cy * 40 + cx]), level(food[cy * 40 + cx]));
-            let want = 0xff00_0000 | ((bb + b).min(255) << 16) | ((bg + g).min(255) << 8) | br;
+    for cell_y in 0..30 {
+        for cell_x in 0..40 {
+            let (blue_add, green_add) = (
+                level(home[cell_y * 40 + cell_x]),
+                level(food[cell_y * 40 + cell_x]),
+            );
+            let want = 0xff00_0000
+                | ((base_blue + blue_add).min(255) << 16)
+                | ((base_green + green_add).min(255) << 8)
+                | base_red;
             let block: Vec<u32> = (0..4)
-                .map(|k| px[(cy * 2 + k / 2) * 80 + cx * 2 + k % 2])
+                .map(|offset| pixels[(cell_y * 2 + offset / 2) * 80 + cell_x * 2 + offset % 2])
                 .collect();
             // Ants and the nest's rim are drawn over some cells.
             if block
                 .iter()
-                .any(|&p| [SEARCHING, CARRYING, NEST].contains(&p))
+                .any(|&pixel| [SEARCHING, CARRYING, NEST].contains(&pixel))
             {
                 continue;
             }
-            assert_eq!(block, vec![want; 4], "cell ({cx}, {cy})");
+            assert_eq!(block, vec![want; 4], "cell ({cell_x}, {cell_y})");
             checked += 1;
         }
     }
@@ -116,14 +118,17 @@ fn trails_are_drawn_on_a_log_scale_over_the_background() {
 fn the_nest_rim_is_a_circle_and_is_cut_at_the_right_edge() {
     // A nest near the right edge: part of the rim falls outside, and must
     // not wrap onto the next rows' left.
-    // Drawn at 2 px a cell, so a square's size is tested too.
-    let mut d = AntDemo::new(60, 40, 1, 2, 1).unwrap();
-    assert_eq!(d.paint(abi::TOOL_NEST, 58.5, 20.5, 5.0, 0), Some(1));
-    let px = d.render().to_vec();
+    // Drawn at 2 pixels a cell, so a square's size is tested too.
+    let mut demo = AntDemo::new(60, 40, 1, 2, 1).unwrap();
+    assert_eq!(demo.paint(abi::TOOL_NEST, 58.5, 20.5, 5.0, 0), Some(1));
+    let pixels = demo.render().to_vec();
     let mut rim = std::collections::BTreeSet::new();
-    for k in 0..72_u8 {
-        let a = f32::from(k) * core::f32::consts::TAU / 72.0;
-        let (x, y) = (58.5 + 5.0 * libm::cosf(a), 20.5 + 5.0 * libm::sinf(a));
+    for step in 0..72_u8 {
+        let angle = f32::from(step) * core::f32::consts::TAU / 72.0;
+        let (x, y) = (
+            58.5 + 5.0 * libm::cosf(angle),
+            20.5 + 5.0 * libm::sinf(angle),
+        );
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -136,11 +141,14 @@ fn the_nest_rim_is_a_circle_and_is_cut_at_the_right_edge() {
     }
     for y in 0..80 {
         for x in 0..120 {
-            let p = px[y * 120 + x];
+            let pixel = pixels[y * 120 + x];
             if rim.contains(&(x / 2, y / 2)) {
-                assert!(p == NEST || p == SEARCHING, "({x}, {y}) is on the rim");
+                assert!(
+                    pixel == NEST || pixel == SEARCHING,
+                    "({x}, {y}) is on the rim"
+                );
             } else {
-                assert_ne!(p, NEST, "({x}, {y}) is off the rim");
+                assert_ne!(pixel, NEST, "({x}, {y}) is off the rim");
             }
         }
     }
@@ -155,6 +163,11 @@ fn sensing_reaches_the_colony() {
         on.advance(1.0 / 60.0 + 1e-9);
         off.advance(1.0 / 60.0 + 1e-9);
     }
-    let at = |d: &AntDemo| d.colony.ants().map(|a| (a.x, a.y)).collect::<Vec<_>>();
+    let at = |demo: &AntDemo| {
+        demo.colony
+            .ants()
+            .map(|ant| (ant.x, ant.y))
+            .collect::<Vec<_>>()
+    };
     assert_ne!(at(&on), at(&off), "the same seed, with and without sensing");
 }

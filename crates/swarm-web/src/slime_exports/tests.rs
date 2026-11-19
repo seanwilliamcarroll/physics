@@ -16,49 +16,55 @@ use crate::abi;
 
 #[test]
 fn round_trip_and_the_boundary() {
-    for (side, n, scale) in [
+    for (side, agent_count, scale) in [
         (0, 10, 2),
         (abi::MAX_SLIME_SIDE + 1, 10, 2),
         (64, 0, 2),
         (64, abi::MAX_AGENTS + 1, 2),
         (64, 10, 5),
     ] {
-        assert!(slime_new(side, n, scale, 1).is_null(), "{side} {n} {scale}");
+        assert!(
+            slime_new(side, agent_count, scale, 1).is_null(),
+            "{side} {agent_count} {scale}"
+        );
     }
-    let d = slime_new(64, 500, 2, 1);
-    assert!(!d.is_null());
-    // SAFETY: `d` from `slime_new`, freed once, last; null allowed.
+    let demo = slime_new(64, 500, 2, 1);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` from `slime_new`, freed once, last; null allowed.
     unsafe {
-        assert_eq!((slime_view(d), slime_len(d)), (128, 500));
+        assert_eq!((slime_view(demo), slime_len(demo)), (128, 500));
         assert_eq!(
             (
-                slime_add_node(d, 10.0, 10.0, 20.0),
-                slime_add_node(d, -1.0, 0.0, 1.0)
+                slime_add_node(demo, 10.0, 10.0, 20.0),
+                slime_add_node(demo, -1.0, 0.0, 1.0)
             ),
             (1, 0)
         );
-        slime_clear_nodes(d);
-        assert_eq!((slime_set_sensing(d, 0), slime_set_sensing(d, 2)), (1, 0));
+        slime_clear_nodes(demo);
+        assert_eq!(
+            (slime_set_sensing(demo, 0), slime_set_sensing(demo, 2)),
+            (1, 0)
+        );
         assert_eq!(
             (
-                slime_set_param(d, abi::SLIME_DECAY, 0.2),
-                slime_set_param(d, abi::SLIME_DECAY, 3.0)
+                slime_set_param(demo, abi::SLIME_DECAY, 0.2),
+                slime_set_param(demo, abi::SLIME_DECAY, 3.0)
             ),
             (1, 0)
         );
-        assert!(slime_param(d, abi::SLIME_PARAM_COUNT).is_nan());
+        assert!(slime_param(demo, abi::SLIME_PARAM_COUNT).is_nan());
         assert_eq!(
             (
-                slime_set_rate(d, 30),
-                slime_set_step_cap(d, 2),
-                slime_advance(d, 0.25)
+                slime_set_rate(demo, 30),
+                slime_set_step_cap(demo, 2),
+                slime_advance(demo, 0.25)
             ),
             (1, 1, 2)
         );
-        let c = slime_concentration(d);
-        assert!((0.0..=1.0).contains(&c), "{c}");
-        assert!(!slime_render(d).is_null());
-        slime_free(d);
+        let concentration = slime_concentration(demo);
+        assert!((0.0..=1.0).contains(&concentration), "{concentration}");
+        assert!(!slime_render(demo).is_null());
+        slime_free(demo);
         let null = ptr::null_mut();
         assert_eq!(
             (
@@ -84,8 +90,6 @@ enum Call {
     Render,
 }
 
-/// What a page could pass (`test_support::hostile_f64`), around this
-/// module's usual values.
 fn hostile() -> impl Strategy<Value = f64> {
     test_support::hostile_f64(-5.0..70.0)
 }
@@ -93,49 +97,54 @@ fn hostile() -> impl Strategy<Value = f64> {
 fn call() -> impl Strategy<Value = Call> {
     prop_oneof![
         3 => prop_oneof![hostile(), 0.0..0.1].prop_map(Call::Advance),
-        2 => (0_u32..9, hostile()).prop_map(|(c, v)| Call::Param(c, v)),
-        2 => (hostile(), hostile(), hostile()).prop_map(|(x, y, a)| Call::Node(x, y, a)),
+        2 => (0_u32..9, hostile()).prop_map(|(code, value)| Call::Param(code, value)),
+        2 => (hostile(), hostile(), hostile()).prop_map(|(x, y, amount)| Call::Node(x, y, amount)),
         1 => Just(Call::Clear),
         1 => (0_u32..3).prop_map(Call::Sensing),
         1 => Just(Call::Render),
     ]
 }
 
-fn run(n: u32, calls: &[Call]) -> Result<(), TestCaseError> {
-    let d = slime_new(48, n, 1, 3);
-    prop_assert!(!d.is_null());
-    // SAFETY: `d` is live until freed at the end, once.
+fn run(agent_count: u32, calls: &[Call]) -> Result<(), TestCaseError> {
+    let demo = slime_new(48, agent_count, 1, 3);
+    prop_assert!(!demo.is_null());
+    // SAFETY: `demo` is live until freed at the end, once.
     unsafe {
-        for c in calls {
-            match *c {
-                Call::Advance(t) => prop_assert!(slime_advance(d, t) <= abi::MAX_RATE_HZ / 4 + 1),
-                Call::Param(code, v) => prop_assert!(slime_set_param(d, code, v) <= 1),
-                Call::Node(x, y, a) => prop_assert!(slime_add_node(d, x, y, a) <= 1),
-                Call::Clear => slime_clear_nodes(d),
-                Call::Sensing(on) => prop_assert!(slime_set_sensing(d, on) <= 1),
-                Call::Render => prop_assert!(!slime_render(d).is_null()),
+        for action in calls {
+            match *action {
+                Call::Advance(seconds) => {
+                    prop_assert!(slime_advance(demo, seconds) <= abi::MAX_RATE_HZ / 4 + 1);
+                }
+                Call::Param(code, value) => prop_assert!(slime_set_param(demo, code, value) <= 1),
+                Call::Node(x, y, amount) => prop_assert!(slime_add_node(demo, x, y, amount) <= 1),
+                Call::Clear => slime_clear_nodes(demo),
+                Call::Sensing(on) => prop_assert!(slime_set_sensing(demo, on) <= 1),
+                Call::Render => prop_assert!(!slime_render(demo).is_null()),
             }
-            prop_assert_eq!(slime_len(d), n);
+            prop_assert_eq!(slime_len(demo), agent_count);
             for code in 0..abi::SLIME_PARAM_COUNT {
                 prop_assert!(
-                    slime_param(d, code).is_finite(),
+                    slime_param(demo, code).is_finite(),
                     "param {} after {:?}",
                     code,
-                    c
+                    action
                 );
             }
-            let conc = slime_concentration(d);
-            prop_assert!((0.0..=1.0 + 1e-9).contains(&conc), "{} after {:?}", conc, c);
+            let concentration = slime_concentration(demo);
+            prop_assert!(
+                (0.0..=1.0 + 1e-9).contains(&concentration),
+                "{} after {:?}",
+                concentration,
+                action
+            );
         }
-        slime_free(d);
+        slime_free(demo);
     }
     Ok(())
 }
 
-/// Found by the slow tier (10 000 cases): a node depositing 2.6e38 a step,
-/// finite as an `f32`, overflowed the field to infinity in a few steps,
-/// and the concentration read NaN. Amounts are capped now
-/// (`swarm::MAX_DEPOSIT`).
+/// A node depositing 2.6e38 a step (finite as `f32`) used to overflow the
+/// field to infinity and read NaN; amounts are capped (`swarm::MAX_DEPOSIT`).
 #[test]
 fn a_huge_node_cannot_overflow_the_field() {
     run(
@@ -146,7 +155,6 @@ fn a_huge_node_cannot_overflow_the_field() {
         ],
     )
     .unwrap();
-    // The same through the agents' own deposit.
     run(
         50,
         &[Call::Param(abi::SLIME_DEPOSIT, 3.0e38), Call::Advance(0.8)],
@@ -158,7 +166,7 @@ proptest! {
     #![proptest_config(test_support::proptest_config())]
 
     #[test]
-    fn any_call_sequence_is_safe(n in 1_u32..200, calls in prop::collection::vec(call(), 0..25)) {
-        run(n, &calls)?;
+    fn any_call_sequence_is_safe(agent_count in 1_u32..200, calls in prop::collection::vec(call(), 0..25)) {
+        run(agent_count, &calls)?;
     }
 }
