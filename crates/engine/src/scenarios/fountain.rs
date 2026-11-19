@@ -1,5 +1,4 @@
-//! [`Fountain`]: the M0 demo, particles launched and relaunched under
-//! standard gravity.
+//! [`Fountain`]: particles launched and relaunched under standard gravity.
 
 use core::num::NonZeroU32;
 
@@ -16,9 +15,9 @@ pub const FOUNTAIN_SUBSTEPS: NonZeroU32 = NonZeroU32::MIN;
 pub const FOUNTAIN_VX: (f64, f64) = (-2.0, 2.0);
 pub const FOUNTAIN_VY: (f64, f64) = (8.0, 12.0);
 
-/// The M0 demo: unit-mass particles launched from the origin with random
-/// upward velocities under standard gravity, relaunched once they fall
-/// below the launch height.
+/// Unit-mass particles launched from the origin with random upward
+/// velocities under standard gravity, relaunched once they fall below the
+/// launch height.
 ///
 /// Owns the PRNG, so the whole run (initial launch and every respawn) is
 /// deterministic for a given seed. Randomness is drawn in `f64` and
@@ -36,17 +35,16 @@ impl Fountain {
         }
     }
 
-    /// Builds a world with `n` freshly launched particles.
-    ///
+    /// Builds a world with `particle_count` freshly launched particles.
     #[must_use]
-    pub fn world<S: Scalar>(&mut self, n: usize) -> World<S> {
-        let mut w = World::new(Integrator::SymplecticEuler, FOUNTAIN_SUBSTEPS);
-        w.add_force(UniformGravity::new(Vec2::from_f64(0.0, -STANDARD_GRAVITY)));
-        for _ in 0..n {
-            let vel = self.launch_velocity();
-            w.particles.add(Vec2::ZERO, vel, Mass::ONE);
+    pub fn world<S: Scalar>(&mut self, particle_count: usize) -> World<S> {
+        let mut world = World::new(Integrator::SymplecticEuler, FOUNTAIN_SUBSTEPS);
+        world.add_force(UniformGravity::new(Vec2::from_f64(0.0, -STANDARD_GRAVITY)));
+        for _ in 0..particle_count {
+            let velocity = self.launch_velocity();
+            world.particles.add(Vec2::ZERO, velocity, Mass::ONE);
         }
-        w
+        world
     }
 
     /// Relaunches every dynamic particle below the launch height (y < 0)
@@ -54,17 +52,22 @@ impl Fountain {
     ///
     /// A teleport, not physics: it breaks momentum and energy conservation
     /// on purpose. Call it between steps, never inside invariant tests.
-    pub fn respawn_fallen<S: Scalar>(&mut self, w: &mut World<S>) -> usize {
-        let p = &mut w.particles;
-        let mut count = 0;
-        for ((x, v), &inv_mass) in p.pos.iter_mut().zip(&mut p.vel).zip(&p.inv_mass) {
-            if inv_mass != S::ZERO && x.y < S::ZERO {
-                *x = Vec2::ZERO;
-                *v = self.launch_velocity();
-                count += 1;
+    pub fn respawn_fallen<S: Scalar>(&mut self, world: &mut World<S>) -> usize {
+        let particles = &mut world.particles;
+        let mut respawned = 0;
+        for ((position, velocity), &inverse_mass) in particles
+            .pos
+            .iter_mut()
+            .zip(&mut particles.vel)
+            .zip(&particles.inv_mass)
+        {
+            if inverse_mass != S::ZERO && position.y < S::ZERO {
+                *position = Vec2::ZERO;
+                *velocity = self.launch_velocity();
+                respawned += 1;
             }
         }
-        count
+        respawned
     }
 
     fn launch_velocity<S: Scalar>(&mut self) -> Vec2<S> {

@@ -1,4 +1,4 @@
-//! [`double_pendulum`]: two rods end to end, the chaos demo (M4).
+//! [`double_pendulum`]: two rods end to end, the chaos demo.
 
 use core::num::NonZeroU32;
 
@@ -10,7 +10,7 @@ use crate::{
 
 /// Length of each rod of [`double_pendulum`], m: the
 /// [`PENDULUM_LENGTH`](super::PENDULUM_LENGTH) of the single pendulum,
-/// so the two scenes share a scale.
+/// so the two scenarios share a scale.
 pub const DOUBLE_PENDULUM_LENGTH: f64 = 1.0;
 
 /// Mass of each bob of [`double_pendulum`], kg: the single pendulum's
@@ -21,12 +21,12 @@ pub const DOUBLE_PENDULUM_MASS: f64 = 1.0;
 /// Where [`double_pendulum`] is released from (both rods in a line, at
 /// rest). Fixed starts rather than an angle: an arbitrary angle needs
 /// `sin`/`cos`, whose last bits differ by platform; both starts here need
-/// only `sqrt`, so the scene starts the same everywhere.
+/// only `sqrt`, so the scenario starts the same everywhere.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DoublePendulumStart {
     /// Both rods level with the pin (+x): the textbook start. Two copies
-    /// 1e-9 m apart take 23.8 s to separate by 1 cm (M4.4, impulse with
-    /// 20 substeps): chaotic, but slow to show.
+    /// 1e-9 m apart take 23.8 s to separate by 1 cm (impulse, 20
+    /// substeps): chaotic, but slow to show.
     Horizontal,
     /// Both rods at 135° from straight down (up and to the right, 45°
     /// above level): more energy, so faster divergence, 11.1 s for the same
@@ -58,37 +58,42 @@ pub fn double_pendulum<S: Scalar>(
     start: DoublePendulumStart,
     offset: f64,
 ) -> Result<World<S>, ConfigError> {
-    let l = DOUBLE_PENDULUM_LENGTH;
-    let m = mass(DOUBLE_PENDULUM_MASS)?;
+    let length = DOUBLE_PENDULUM_LENGTH;
+    let bob_mass = mass(DOUBLE_PENDULUM_MASS)?;
     let vec = |x: f64, y: f64| Vec2::from_f64(x, y);
-    let mut w = World::new(Integrator::SymplecticEuler, substeps);
-    w.add_force(pendulum_gravity());
-    let pin = w.particles.add_static(Vec2::ZERO);
+    let mut world = World::new(Integrator::SymplecticEuler, substeps);
+    world.add_force(pendulum_gravity());
+    let pin = world.particles.add_static(Vec2::ZERO);
     // Unit direction of the rods, and its counterclockwise perpendicular.
     let (dx, dy) = match start {
         DoublePendulumStart::Horizontal => (1.0, 0.0),
         DoublePendulumStart::Raised => {
-            let h = 0.5_f64.sqrt();
-            (h, h)
+            let component = 0.5_f64.sqrt();
+            (component, component)
         }
     };
-    let elbow = w.particles.add(vec(l * dx, l * dy), Vec2::ZERO, m);
-    let tip = w.particles.add(
-        vec(2.0 * l * dx - offset * dy, 2.0 * l * dy + offset * dx),
+    let elbow = world
+        .particles
+        .add(vec(length * dx, length * dy), Vec2::ZERO, bob_mass);
+    let tip = world.particles.add(
+        vec(
+            2.0 * length * dx - offset * dy,
+            2.0 * length * dy + offset * dx,
+        ),
         Vec2::ZERO,
-        m,
+        bob_mass,
     );
-    for (a, b) in [(pin.id(), elbow), (elbow, tip)] {
-        let rod =
-            DistanceConstraint::between(&w.particles, a, b).ok_or(ConfigError::UnknownParticle)?;
-        w.add_constraint(rod)?;
+    for (from, to) in [(pin.id(), elbow), (elbow, tip)] {
+        let rod = DistanceConstraint::between(&world.particles, from, to)
+            .ok_or(ConfigError::UnknownParticle)?;
+        world.add_constraint(rod)?;
     }
-    w.set_solver(solver);
+    world.set_solver(solver);
     // Classic Baumgarte: energy-faithful at equal masses (within 0.04 J
     // over 30 s), where split impulses drain 8 J and fade the chaos
     // (`docs/06-constraints.md`, "Stabilization").
-    w.set_stabilization(Stabilization::Baumgarte);
-    Ok(w)
+    world.set_stabilization(Stabilization::Baumgarte);
+    Ok(world)
 }
 
 #[cfg(test)]

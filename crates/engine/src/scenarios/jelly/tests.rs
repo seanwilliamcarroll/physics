@@ -4,19 +4,25 @@ use core::num::NonZeroU32;
 
 #[test]
 fn grid_has_the_expected_pairs() {
-    let (c, r) = (5, 4);
-    let net = SpringNetwork::grid(c, r, 0.0);
-    let count = |k| net.pairs.iter().filter(|p| p.2 == k).count();
-    assert_eq!(net.positions.len(), c * r);
-    assert_eq!(count(SpringKind::Structural), (c - 1) * r + c * (r - 1));
-    assert_eq!(count(SpringKind::Shear), 2 * (c - 1) * (r - 1));
-    assert_eq!(count(SpringKind::Bend), (c - 2) * r + c * (r - 2));
+    let (cols, rows) = (5, 4);
+    let network = SpringNetwork::grid(cols, rows, 0.0);
+    let count = |kind| network.pairs.iter().filter(|pair| pair.2 == kind).count();
+    assert_eq!(network.positions.len(), cols * rows);
+    assert_eq!(
+        count(SpringKind::Structural),
+        (cols - 1) * rows + cols * (rows - 1)
+    );
+    assert_eq!(count(SpringKind::Shear), 2 * (cols - 1) * (rows - 1));
+    assert_eq!(
+        count(SpringKind::Bend),
+        (cols - 2) * rows + cols * (rows - 2)
+    );
 }
 
 #[test]
 fn both_realizations_share_particles_and_topology() {
-    let s = jelly::<f64>(JellyBody::Springs, NonZeroU32::MIN, 4, 3, 100.0, 0.1).unwrap();
-    let k = jelly::<f64>(
+    let spring_jelly = jelly::<f64>(JellyBody::Springs, NonZeroU32::MIN, 4, 3, 100.0, 0.1).unwrap();
+    let constraint_jelly = jelly::<f64>(
         JellyBody::Constraints(Solver::Xpbd),
         NonZeroU32::MIN,
         4,
@@ -25,35 +31,42 @@ fn both_realizations_share_particles_and_topology() {
         0.1,
     )
     .unwrap();
-    assert_eq!(s.world.particles.pos(), k.world.particles.pos());
-    assert_eq!(s.world.particles.inv_mass(), k.world.particles.inv_mass());
-    let springs = s.springs.unwrap();
-    let pairs: Vec<_> = springs
+    assert_eq!(
+        spring_jelly.world.particles.pos(),
+        constraint_jelly.world.particles.pos()
+    );
+    assert_eq!(
+        spring_jelly.world.particles.inv_mass(),
+        constraint_jelly.world.particles.inv_mass()
+    );
+    let springs = spring_jelly.springs.unwrap();
+    let spring_ends: Vec<_> = springs
         .springs()
         .iter()
         .map(super::super::super::Spring::ends)
         .collect();
-    let rods: Vec<_> = k
+    let rod_ends: Vec<_> = constraint_jelly
         .world
         .constraints()
         .iter()
         .map(crate::Constraint::bodies)
         .collect();
-    assert_eq!(pairs, rods);
-    assert!(k.springs.is_none());
+    assert_eq!(spring_ends, rod_ends);
+    assert!(constraint_jelly.springs.is_none());
 }
 
 #[test]
 fn stiffness_is_parsed_per_realization() {
     use crate::ConfigError;
-    let springs = |k| jelly::<f64>(JellyBody::Springs, NonZeroU32::MIN, 3, 3, k, 0.0).err();
-    let rods = |k| {
+    let springs =
+        |stiffness| jelly::<f64>(JellyBody::Springs, NonZeroU32::MIN, 3, 3, stiffness, 0.0).err();
+    let rods = |stiffness| {
         jelly::<f64>(
             JellyBody::Constraints(Solver::Impulse),
             NonZeroU32::MIN,
             3,
             3,
-            k,
+            stiffness,
             0.0,
         )
         .err()
@@ -79,7 +92,7 @@ fn stiffness_is_parsed_per_realization() {
 
 /// `α = 1/k`: a `k` so small its inverse overflows (in `f32` below about
 /// 3e-39, in `f64` at subnormals) is refused, not turned into an infinite
-/// compliance (which XPBD made NaN, audit after A3); `k = ∞` is rigid.
+/// compliance (which XPBD would make NaN); `k = ∞` is rigid.
 #[test]
 fn a_stiffness_whose_compliance_overflows_is_refused() {
     use super::compliance_for;

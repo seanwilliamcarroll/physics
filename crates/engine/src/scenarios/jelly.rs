@@ -1,6 +1,6 @@
 //! [`jelly`]: a grid of particles joined by structural, shear and bend
 //! springs, realized as force-based springs or as compliant constraints
-//! (M5; `docs/07-soft-bodies.md`).
+//! (`docs/07-soft-bodies.md`).
 
 use core::num::NonZeroU32;
 use math::convert::usize_to_f64;
@@ -46,7 +46,7 @@ pub enum SpringKind {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpringNetwork {
     pub positions: Vec<(f64, f64)>,
-    /// `(a, b, kind)`, indices into `positions`.
+    /// `(first, second, kind)`, indices into `positions`.
     pub pairs: Vec<(usize, usize, SpringKind)>,
 }
 
@@ -55,20 +55,24 @@ impl SpringNetwork {
     /// with its bottom row at `bottom`.
     #[must_use]
     pub fn grid(cols: usize, rows: usize, bottom: f64) -> Self {
-        let idx = |i: usize, j: usize| j * cols + i;
+        let index_of = |column: usize, row: usize| row * cols + column;
         let half_width = usize_to_f64(cols.saturating_sub(1)) * JELLY_SPACING / 2.0;
         let mut positions = Vec::with_capacity(cols * rows);
         let mut pairs = Vec::new();
-        for j in 0..rows {
-            for i in 0..cols {
+        for row in 0..rows {
+            for column in 0..cols {
                 let (x, y) = (
-                    usize_to_f64(i) * JELLY_SPACING - half_width,
-                    bottom + usize_to_f64(j) * JELLY_SPACING,
+                    usize_to_f64(column) * JELLY_SPACING - half_width,
+                    bottom + usize_to_f64(row) * JELLY_SPACING,
                 );
                 positions.push((x, y));
-                let mut join = |di: usize, dj: usize, kind| {
-                    if i + di < cols && j + dj < rows {
-                        pairs.push((idx(i, j), idx(i + di, j + dj), kind));
+                let mut join = |columns_over: usize, rows_over: usize, kind| {
+                    if column + columns_over < cols && row + rows_over < rows {
+                        pairs.push((
+                            index_of(column, row),
+                            index_of(column + columns_over, row + rows_over),
+                            kind,
+                        ));
                     }
                 };
                 join(1, 0, SpringKind::Structural);
@@ -76,8 +80,12 @@ impl SpringNetwork {
                 join(1, 1, SpringKind::Shear);
                 join(2, 0, SpringKind::Bend);
                 join(0, 2, SpringKind::Bend);
-                if i >= 1 && j + 1 < rows {
-                    pairs.push((idx(i, j), idx(i - 1, j + 1), SpringKind::Shear));
+                if column >= 1 && row + 1 < rows {
+                    pairs.push((
+                        index_of(column, row),
+                        index_of(column - 1, row + 1),
+                        SpringKind::Shear,
+                    ));
                 }
             }
         }
@@ -85,7 +93,7 @@ impl SpringNetwork {
     }
 }
 
-/// How a jelly's springs are enforced: the three panels of the M5 page.
+/// How a jelly's springs are enforced.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum JellyBody {
     /// Force-based springs (`SpringForce`), stepped by symplectic Euler:
@@ -105,11 +113,12 @@ pub struct Jelly<S: Scalar> {
 
 /// A `cols` × `rows` jelly of [`JELLY_MASS`] dropped from [`JELLY_DROP`]
 /// onto a ground at [`JELLY_GROUND`], under standard gravity, with springs
-/// of stiffness `k` (N/m) and damping `c` (N·s/m) on every pair, enforced
-/// as `body` says, `substeps` per step.
+/// of `spring_stiffness` (N/m) and `spring_damping` (N·s/m) on every pair,
+/// enforced as `body` says, `substeps` per step.
 ///
-/// `k` is parsed per realization: force springs need `0 < k < ∞`;
-/// constraints take `k > 0` including `∞`, which is rigid (`α = 1/k = 0`).
+/// `spring_stiffness` is parsed per realization: force springs need
+/// `0 < k < ∞`; constraints take `k > 0` including `∞`, which is rigid
+/// (`α = 1/k = 0`).
 ///
 /// # Errors
 /// [`ConfigError::InvalidStiffness`] or [`ConfigError::InvalidDamping`]
@@ -120,30 +129,35 @@ pub fn jelly<S: Scalar>(
     substeps: NonZeroU32,
     cols: usize,
     rows: usize,
-    k: f64,
-    c: f64,
+    spring_stiffness: f64,
+    spring_damping: f64,
 ) -> Result<Jelly<S>, ConfigError> {
-    let net = SpringNetwork::grid(cols, rows, JELLY_DROP);
-    let m = mass::<S>(JELLY_MASS / usize_to_f64(net.positions.len()))?;
-    let damping = Damping::new(S::from_f64(c)).ok_or(ConfigError::InvalidDamping)?;
+    let network = SpringNetwork::grid(cols, rows, JELLY_DROP);
+    let particle_mass = mass::<S>(JELLY_MASS / usize_to_f64(network.positions.len()))?;
+    let damping = Damping::new(S::from_f64(spring_damping)).ok_or(ConfigError::InvalidDamping)?;
     let mut world = World::new(Integrator::SymplecticEuler, substeps);
     world.add_force(pendulum_gravity());
     world.set_ground(Some(S::from_f64(JELLY_GROUND)));
-    let ids: Vec<ParticleId> = net
+    let ids: Vec<ParticleId> = network
         .positions
         .iter()
-        .map(|&(x, y)| world.particles.add(Vec2::from_f64(x, y), Vec2::ZERO, m))
+        .map(|&(x, y)| {
+            world
+                .particles
+                .add(Vec2::from_f64(x, y), Vec2::ZERO, particle_mass)
+        })
         .collect();
-    let ends = |a: usize, b: usize| Some((*ids.get(a)?, *ids.get(b)?));
+    let ends = |first: usize, second: usize| Some((*ids.get(first)?, *ids.get(second)?));
     let springs = match body {
         JellyBody::Springs => {
-            let stiffness = Stiffness::new(S::from_f64(k)).ok_or(ConfigError::InvalidStiffness)?;
-            let springs = net
+            let stiffness = Stiffness::new(S::from_f64(spring_stiffness))
+                .ok_or(ConfigError::InvalidStiffness)?;
+            let springs = network
                 .pairs
                 .iter()
-                .filter_map(|&(a, b, _)| {
-                    let (a, b) = ends(a, b)?;
-                    Spring::between(&world.particles, a, b, stiffness, damping)
+                .filter_map(|&(first, second, _)| {
+                    let (first, second) = ends(first, second)?;
+                    Spring::between(&world.particles, first, second, stiffness, damping)
                 })
                 .collect();
             let force = SpringForce::new(springs);
@@ -151,12 +165,14 @@ pub fn jelly<S: Scalar>(
             Some(force)
         }
         JellyBody::Constraints(solver) => {
-            let alpha = compliance_for::<S>(k)?;
-            for &(a, b, _) in &net.pairs {
-                let Some((a, b)) = ends(a, b) else { continue };
-                let rod = DistanceConstraint::between(&world.particles, a, b)
+            let compliance = compliance_for::<S>(spring_stiffness)?;
+            for &(first, second, _) in &network.pairs {
+                let Some((first, second)) = ends(first, second) else {
+                    continue;
+                };
+                let rod = DistanceConstraint::between(&world.particles, first, second)
                     .ok_or(ConfigError::UnknownParticle)?
-                    .with_compliance(alpha)
+                    .with_compliance(compliance)
                     .with_damping(damping);
                 world.add_constraint(rod)?;
             }
@@ -174,13 +190,13 @@ pub fn jelly<S: Scalar>(
 /// # Errors
 /// [`ConfigError::InvalidStiffness`] unless `k > 0` and `1/k` is finite in
 /// `S`.
-pub fn compliance_for<S: Scalar>(k: f64) -> Result<Compliance<S>, ConfigError> {
-    // `k > 0` is false for NaN too, so NaN is rejected here.
-    let positive = k > 0.0;
+pub fn compliance_for<S: Scalar>(stiffness: f64) -> Result<Compliance<S>, ConfigError> {
+    // `stiffness > 0` is false for NaN too, so NaN is rejected here.
+    let positive = stiffness > 0.0;
     if !positive {
         return Err(ConfigError::InvalidStiffness);
     }
-    Compliance::new(S::from_f64(1.0 / k)).ok_or(ConfigError::InvalidStiffness)
+    Compliance::new(S::from_f64(1.0 / stiffness)).ok_or(ConfigError::InvalidStiffness)
 }
 
 #[cfg(test)]
