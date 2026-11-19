@@ -80,6 +80,8 @@ the machine alone meanwhile:
 cd ~/physics && git pull && . ~/.nvm/nvm.sh && nvm install && caffeinate -is experiments/EXPERIMENT/run.py --experiments sweep --out ~/sweep-results/EXPERIMENT/m4 2>&1 | tee ~/sweep.log
 ```
 
+To line several runs up for a night or a day, see `experiments/queue/`.
+
 Results go **outside the repository** (`~/sweep-results/`), then are
 copied into `experiments/EXPERIMENT/results/<machine>/` and committed
 (`rsync -a llm:sweep-results/EXPERIMENT/llm/ experiments/EXPERIMENT/results/llm/`).
