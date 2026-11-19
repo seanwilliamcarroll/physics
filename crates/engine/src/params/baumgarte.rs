@@ -1,4 +1,4 @@
-//! [`Baumgarte`]: the impulse solver's β ∈ [0, 1] (M3).
+//! [`Baumgarte`]: the impulse solver's β ∈ [0, 1].
 
 /// `Box2D` v2's `b2_baumgarte` (`b2Settings.h`): a common default, and the β
 /// in `01-solvers.md`'s measured table.
@@ -10,7 +10,7 @@ checked_param! {
     /// position error back in one substep; above 1 overshoots, so it's
     /// rejected, as is NaN. A world setting rather than part of `Solver`,
     /// so `Solver` stays a plain enum.
-    Baumgarte, |beta| beta >= S::ZERO && beta <= S::ONE
+    Baumgarte, |baumgarte| baumgarte >= S::ZERO && baumgarte <= S::ONE
 }
 
 impl<S: crate::Scalar> Default for Baumgarte<S> {

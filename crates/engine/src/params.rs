@@ -11,18 +11,18 @@
 /// and `cast` to another scalar type, which checks again.
 ///
 /// **Finite always.** NaN fails every comparison, so every check rejects
-/// it, but `±∞` passes an open-ended one (`α ≥ 0`): an infinite compliance
-/// made XPBD compute `∞ · 0 = NaN` (audit, after A3). The finiteness test
-/// reads through [`Scalar::to_f64`](crate::Scalar::to_f64), lossless for
-/// `f32` and `f64`; a fixed-point scalar has no infinities, so it passes
-/// there trivially.
+/// it, but `±∞` passes an open-ended one (`α ≥ 0`), and an infinite
+/// compliance makes XPBD compute `∞ · 0 = NaN`. The finiteness test reads
+/// through [`Scalar::to_f64`](crate::Scalar::to_f64), lossless for `f32`
+/// and `f64`; a fixed-point scalar has no infinities, so it passes there
+/// trivially.
 ///
 /// **`cast` re-checks.** Narrowing can leave the type: a valid `1e300`
 /// (`f64`) is `+∞` in `f32`. Only a range bounded by exactly representable
 /// ends (`[0, 1]`) survives rounding, and re-checking costs one comparison
 /// at a boundary, never in a hot loop.
 macro_rules! checked_param {
-    ($(#[$meta:meta])* $name:ident, |$v:ident| $valid:expr) => {
+    ($(#[$meta:meta])* $name:ident, |$value:ident| $valid:expr) => {
         $(#[$meta])*
         #[derive(Copy, Clone, Debug, PartialEq)]
         pub struct $name<S>(S);
@@ -31,8 +31,8 @@ macro_rules! checked_param {
             /// `Some` if the value is finite and passes this type's check
             /// (see the type).
             #[must_use]
-            pub fn new($v: S) -> Option<Self> {
-                ($v.to_f64().is_finite() && $valid).then_some(Self($v))
+            pub fn new($value: S) -> Option<Self> {
+                ($value.to_f64().is_finite() && $valid).then_some(Self($value))
             }
 
             /// The value.

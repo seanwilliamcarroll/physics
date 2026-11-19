@@ -1,4 +1,4 @@
-//! [`Compliance`]: a constraint's α = 1 / stiffness ≥ 0 (M4).
+//! [`Compliance`]: a constraint's α = 1 / stiffness ≥ 0.
 
 checked_param! {
     /// Compliance α = 1 / stiffness, m/N: a value known to be `≥ 0`. 0 is a
@@ -6,7 +6,7 @@ checked_param! {
     /// stiffness, an anti-spring) and NaN are rejected. Both solvers read it
     /// the same way (`docs/06-constraints.md`, "Compliance in both
     /// solvers"), so `k = 1/α` means the same spring in either.
-    Compliance, |alpha| alpha >= S::ZERO
+    Compliance, |compliance| compliance >= S::ZERO
 }
 
 impl<S: crate::Scalar> Compliance<S> {

@@ -1,4 +1,4 @@
-//! [`Restitution`]: a collision's e ∈ [0, 1] (M6).
+//! [`Restitution`]: a collision's e ∈ [0, 1].
 
 checked_param! {
     /// Coefficient of restitution e: a value known to be in `[0, 1]`. The
@@ -6,7 +6,7 @@ checked_param! {
     /// is perfectly inelastic (the bodies stop along the normal), 1 is
     /// elastic (no kinetic energy lost). Above 1 a collision would add
     /// energy, so it's rejected, as is NaN (`docs/08-collision.md`).
-    Restitution, |e| e >= S::ZERO && e <= S::ONE
+    Restitution, |restitution| restitution >= S::ZERO && restitution <= S::ONE
 }
 
 impl<S: crate::Scalar> Restitution<S> {
