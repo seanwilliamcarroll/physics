@@ -5,14 +5,12 @@
 //! coexist on one page. Wasm is single-threaded and JS never holds a Rust
 //! reference, so a live handle is never aliased during a call.
 //!
-//! The exports are `pub(crate)`, not `pub`: what puts a function in the
-//! `.wasm`'s export table is `#[no_mangle]` in a `cdylib`, not Rust
-//! visibility, and `unreachable_pub` asks visibility to say only what
-//! Rust code can reach.
+//! The contract every export taking a handle relies on (`// SAFETY: per the
+//! contract`): `demo` is null, which is refused, or a live handle from a
+//! `demo_new*` export that hasn't been freed.
 //!
-//! One file per group (`exports/{lifecycle, settings, readouts, drag,
-//! collisions, pool}.rs`);
-//! the `unsafe_code` expectation on `mod exports` in `lib.rs` covers them.
+//! The exports are `pub(crate)`: `#[no_mangle]` in a `cdylib`, not Rust
+//! visibility, puts a function in the `.wasm`'s export table.
 
 mod collisions;
 mod drag;

@@ -31,8 +31,8 @@ fn round_trip_through_the_c_abi() {
     unsafe {
         assert_eq!(demo_advance(demo, 1.0 / 60.0), 1);
         assert_eq!(demo_positions_len(demo), 20);
-        let pos = core::slice::from_raw_parts(demo_positions_ptr(demo), 20);
-        assert!(pos.chunks(2).all(|p| p[1] > 0.0));
+        let positions = core::slice::from_raw_parts(demo_positions_ptr(demo), 20);
+        assert!(positions.chunks(2).all(|position| position[1] > 0.0));
         demo_free(demo);
     }
 }
@@ -61,10 +61,10 @@ fn orbit_controls_through_the_c_abi() {
         );
         assert_eq!(demo_set_rate(demo, 30), 1);
         assert_eq!(demo_advance(demo, 1.0 / 30.0), 1);
-        let e = demo_energy(demo);
+        let energy = demo_energy(demo);
         assert!(
-            e.is_finite() && e < 0.0,
-            "bound orbit has negative energy: {e}"
+            energy.is_finite() && energy < 0.0,
+            "bound orbit has negative energy: {energy}"
         );
         demo_free(demo);
     }
@@ -106,21 +106,32 @@ fn softening_is_parsed_at_the_boundary() {
     assert!(!demo.is_null());
     // SAFETY: `demo` from `demo_new`, freed once, last; null is allowed.
     unsafe {
-        let e0 = demo_energy(demo);
+        let energy_before = demo_energy(demo);
         assert_eq!(demo_set_softening(demo, -0.1), 0, "negative rejected");
         assert_eq!(demo_set_softening(demo, f64::NAN), 0, "NaN rejected");
-        assert_eq!(demo_energy(demo).to_bits(), e0.to_bits(), "unchanged");
+        assert_eq!(
+            demo_energy(demo).to_bits(),
+            energy_before.to_bits(),
+            "unchanged"
+        );
         assert_eq!(demo_set_softening(demo, 0.0), 1, "zero allowed");
         assert_eq!(demo_set_softening(demo, 0.5), 1);
-        assert!(demo_energy(demo) > e0, "softer: shallower potential");
+        assert!(
+            demo_energy(demo) > energy_before,
+            "softer: shallower potential"
+        );
         demo_free(demo);
         assert_eq!(demo_set_softening(ptr::null_mut(), 0.1), 0);
     }
-    let f = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 4, 1);
+    let fountain = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 4, 1);
     // SAFETY: as above.
     unsafe {
-        assert_eq!(demo_set_softening(f, 0.1), 0, "fountain has no gravity");
-        demo_free(f);
+        assert_eq!(
+            demo_set_softening(fountain, 0.1),
+            0,
+            "fountain has no gravity"
+        );
+        demo_free(fountain);
     }
 }
 
@@ -155,31 +166,34 @@ fn pendulum_controls_are_parsed_at_the_boundary() {
         assert_eq!(demo_set_iterations(demo, 0), 0, "zero iterations");
         assert_eq!(demo_set_iterations(demo, 2), 1);
         assert_eq!(demo_advance(demo, 0.25), 15, "one clamped frame");
-        let err = demo_constraint_error(demo);
-        assert!(err.is_finite() && err > 0.0, "beta 0 stretches: {err}");
+        let error = demo_constraint_error(demo);
+        assert!(
+            error.is_finite() && error > 0.0,
+            "beta 0 stretches: {error}"
+        );
         demo_free(demo);
         assert!(demo_constraint_error(ptr::null()).is_nan());
         assert_eq!(demo_set_solver(ptr::null_mut(), 0), 0);
     }
-    let f = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 4, 1);
+    let fountain = demo_new(abi::DEMO_FOUNTAIN, abi::SCALAR_F64, 4, 1);
     // SAFETY: as above.
     unsafe {
-        assert!(demo_constraint_error(f).is_nan(), "no constraints");
-        demo_free(f);
+        assert!(demo_constraint_error(fountain).is_nan(), "no constraints");
+        demo_free(fountain);
     }
 }
 
 #[test]
 fn chain_and_double_pendulum_constructors_check_their_input() {
-    let c = demo_new_chain(abi::SCALAR_F64, 10, 100.0);
-    assert!(!c.is_null());
+    let chain = demo_new_chain(abi::SCALAR_F64, 10, 100.0);
+    assert!(!chain.is_null());
     assert!(
         demo_new_chain(abi::SCALAR_F64, 10, -1.0).is_null(),
         "no negative mass"
     );
     assert!(demo_new_chain(9, 10, 100.0).is_null(), "unknown scalar");
-    let p = demo_new_double_pendulum(abi::SCALAR_F32, abi::START_RAISED, 1e-9);
-    assert!(!p.is_null());
+    let pendulum = demo_new_double_pendulum(abi::SCALAR_F32, abi::START_RAISED, 1e-9);
+    assert!(!pendulum.is_null());
     assert!(
         demo_new_double_pendulum(abi::SCALAR_F32, 7, 0.0).is_null(),
         "unknown start"
@@ -188,15 +202,18 @@ fn chain_and_double_pendulum_constructors_check_their_input() {
     // SAFETY: both from constructors above, freed once, last.
     unsafe {
         // 10 rods: 20 link indices, the first rod from the pin (0) to 1.
-        assert_eq!(demo_links_len(c), 20);
-        let links = core::slice::from_raw_parts(demo_links_ptr(c), 20);
+        assert_eq!(demo_links_len(chain), 20);
+        let links = core::slice::from_raw_parts(demo_links_ptr(chain), 20);
         assert_eq!(&links[..2], &[0, 1]);
-        assert_eq!(demo_set_order(c, abi::ORDER_ALTERNATING), 1);
-        assert_eq!(demo_set_order(c, 9), 0);
-        assert_eq!(demo_set_stabilization(c, abi::STABILIZATION_BAUMGARTE), 1);
-        assert_eq!(demo_set_stabilization(c, 9), 0);
-        demo_free(c);
-        demo_free(p);
+        assert_eq!(demo_set_order(chain, abi::ORDER_ALTERNATING), 1);
+        assert_eq!(demo_set_order(chain, 9), 0);
+        assert_eq!(
+            demo_set_stabilization(chain, abi::STABILIZATION_BAUMGARTE),
+            1
+        );
+        assert_eq!(demo_set_stabilization(chain, 9), 0);
+        demo_free(chain);
+        demo_free(pendulum);
     }
 }
 
@@ -233,20 +250,23 @@ fn grab_drag_release_through_the_c_abi() {
 
 #[test]
 fn exact_positions_resolve_what_the_f32_buffer_cannot() {
-    let a = demo_new_double_pendulum(abi::SCALAR_F64, abi::START_HORIZONTAL, 0.0);
-    let b = demo_new_double_pendulum(abi::SCALAR_F64, abi::START_HORIZONTAL, 1e-9);
+    let level_pendulum = demo_new_double_pendulum(abi::SCALAR_F64, abi::START_HORIZONTAL, 0.0);
+    let nudged_pendulum = demo_new_double_pendulum(abi::SCALAR_F64, abi::START_HORIZONTAL, 1e-9);
     // SAFETY: both from the constructor, freed once, last; null allowed.
     unsafe {
         // Tip (particle 2) at (2, 0) and (2, 1e-9): exact in f64...
-        assert_eq!(demo_particle_x(a, 2), 2.0);
-        assert_eq!(demo_particle_y(b, 2), 1e-9);
+        assert_eq!(demo_particle_x(level_pendulum, 2), 2.0);
+        assert_eq!(demo_particle_y(nudged_pendulum, 2), 1e-9);
         // ...while the f32 render buffer can't tell them apart from 0.
-        let pos = core::slice::from_raw_parts(demo_positions_ptr(b), 6);
-        assert!(pos[5].abs() < 1e-8);
-        assert!(demo_particle_x(a, 3).is_nan(), "past the last particle");
+        let positions = core::slice::from_raw_parts(demo_positions_ptr(nudged_pendulum), 6);
+        assert!(positions[5].abs() < 1e-8);
+        assert!(
+            demo_particle_x(level_pendulum, 3).is_nan(),
+            "past the last particle"
+        );
         assert!(demo_particle_y(ptr::null(), 0).is_nan());
-        demo_free(a);
-        demo_free(b);
+        demo_free(level_pendulum);
+        demo_free(nudged_pendulum);
     }
 }
 
@@ -325,28 +345,26 @@ mod sequences;
 
 #[test]
 fn every_cap_accepts_its_limit_and_refuses_one_more() {
-    // Found by the pre-push mutation report: no test asked for exactly a
-    // cap, or for a gravity scene between its cap and the fountain's.
     use abi::{
         MAX_CHAIN_LINKS, MAX_GRAVITY_BODIES, MAX_ITERATIONS, MAX_JELLY_SIDE, MAX_RATE_HZ,
         MAX_SUBSTEPS,
     };
-    let (f64_, xpbd) = (abi::SCALAR_F64, abi::JELLY_XPBD);
+    let (scalar_f64, xpbd) = (abi::SCALAR_F64, abi::JELLY_XPBD);
     // SAFETY: every handle is from a `demo_new*` export (or null), and
     // freed once; null is allowed everywhere.
     unsafe {
-        let disk = demo_new(abi::DEMO_DISK, f64_, MAX_GRAVITY_BODIES, 1);
+        let disk = demo_new(abi::DEMO_DISK, scalar_f64, MAX_GRAVITY_BODIES, 1);
         assert!(!disk.is_null());
         demo_free(disk);
-        assert!(demo_new(abi::DEMO_DISK, f64_, MAX_GRAVITY_BODIES + 1, 1).is_null());
+        assert!(demo_new(abi::DEMO_DISK, scalar_f64, MAX_GRAVITY_BODIES + 1, 1).is_null());
         // The fountain's cap is higher: the gravity scenes have their own.
-        let fountain = demo_new(abi::DEMO_FOUNTAIN, f64_, MAX_GRAVITY_BODIES + 1, 1);
+        let fountain = demo_new(abi::DEMO_FOUNTAIN, scalar_f64, MAX_GRAVITY_BODIES + 1, 1);
         assert!(!fountain.is_null());
         demo_free(fountain);
 
-        let chain = demo_new_chain(f64_, MAX_CHAIN_LINKS, 100.0);
+        let chain = demo_new_chain(scalar_f64, MAX_CHAIN_LINKS, 100.0);
         assert!(!chain.is_null());
-        assert!(demo_new_chain(f64_, MAX_CHAIN_LINKS + 1, 100.0).is_null());
+        assert!(demo_new_chain(scalar_f64, MAX_CHAIN_LINKS + 1, 100.0).is_null());
         for (set, cap) in [
             (
                 demo_set_substeps as unsafe extern "C" fn(_, _) -> _,
@@ -361,46 +379,50 @@ fn every_cap_accepts_its_limit_and_refuses_one_more() {
         demo_free(chain);
 
         let side = MAX_JELLY_SIDE;
-        let jelly = demo_new_jelly(f64_, xpbd, side, side, 1000.0, 0.5);
+        let jelly = demo_new_jelly(scalar_f64, xpbd, side, side, 1000.0, 0.5);
         assert!(!jelly.is_null());
         demo_free(jelly);
-        assert!(demo_new_jelly(f64_, xpbd, side + 1, side, 1000.0, 0.5).is_null());
-        assert!(demo_new_jelly(f64_, xpbd, side, side + 1, 1000.0, 0.5).is_null());
+        assert!(demo_new_jelly(scalar_f64, xpbd, side + 1, side, 1000.0, 0.5).is_null());
+        assert!(demo_new_jelly(scalar_f64, xpbd, side, side + 1, 1000.0, 0.5).is_null());
 
-        let ball_box = demo_new_ball_box(f64_, abi::MAX_BOX_BALLS, 1);
+        let ball_box = demo_new_ball_box(scalar_f64, abi::MAX_BOX_BALLS, 1);
         assert_eq!(
             demo_positions_len(ball_box),
             2 * abi::MAX_BOX_BALLS as usize
         );
         demo_free(ball_box);
-        assert!(demo_new_ball_box(f64_, abi::MAX_BOX_BALLS + 1, 1).is_null());
-        let cradle = demo_new_cradle(f64_, abi::MAX_CRADLE_BALLS, 1);
+        assert!(demo_new_ball_box(scalar_f64, abi::MAX_BOX_BALLS + 1, 1).is_null());
+        let cradle = demo_new_cradle(scalar_f64, abi::MAX_CRADLE_BALLS, 1);
         assert!(!cradle.is_null());
         demo_free(cradle);
-        assert!(demo_new_cradle(f64_, abi::MAX_CRADLE_BALLS + 1, 1).is_null());
-        let wide = demo_new_break_shot(f64_, abi::MAX_BREAK_GAP);
+        assert!(demo_new_cradle(scalar_f64, abi::MAX_CRADLE_BALLS + 1, 1).is_null());
+        let wide = demo_new_break_shot(scalar_f64, abi::MAX_BREAK_GAP);
         assert!(!wide.is_null());
         demo_free(wide);
-        assert!(demo_new_break_shot(f64_, abi::MAX_BREAK_GAP * 1.01).is_null());
+        assert!(demo_new_break_shot(scalar_f64, abi::MAX_BREAK_GAP * 1.01).is_null());
     }
 }
 
 #[test]
 fn collision_scenes_check_their_input_and_read_out() {
-    let f64_ = abi::SCALAR_F64;
+    let scalar_f64 = abi::SCALAR_F64;
     assert!(demo_new_ball_box(99, 10, 1).is_null(), "unknown scalar");
     assert!(demo_new_cradle(99, 5, 1).is_null());
     for gap in [f64::NAN, -1e-3, f64::INFINITY] {
-        assert!(demo_new_break_shot(f64_, gap).is_null(), "gap {gap}");
+        assert!(demo_new_break_shot(scalar_f64, gap).is_null(), "gap {gap}");
     }
     // SAFETY: every handle is from a `demo_new*` export (or null), and
     // freed once; null is allowed everywhere.
     unsafe {
-        let demo = demo_new_break_shot(f64_, 0.0);
+        let demo = demo_new_break_shot(scalar_f64, 0.0);
         assert!(!demo.is_null());
         assert!(demo_momentum_x(demo) > 0.0 && demo_momentum_y(demo) == 0.0);
-        for e in [f64::NAN, -0.1, 1.1] {
-            assert_eq!(demo_set_restitution(demo, e), 0, "e = {e}");
+        for restitution in [f64::NAN, -0.1, 1.1] {
+            assert_eq!(
+                demo_set_restitution(demo, restitution),
+                0,
+                "restitution = {restitution}"
+            );
         }
         assert_eq!(demo_set_restitution(demo, 0.5), 1);
         assert_eq!(demo_particle_radius(demo, 0), 0.05);
@@ -413,10 +435,10 @@ fn collision_scenes_check_their_input_and_read_out() {
         demo_free(demo);
 
         // More pulled than balls swings them all; a fountain doesn't collide.
-        let cradle = demo_new_cradle(f64_, 3, u32::MAX);
+        let cradle = demo_new_cradle(scalar_f64, 3, u32::MAX);
         assert!(!cradle.is_null());
         demo_free(cradle);
-        let fountain = demo_new(abi::DEMO_FOUNTAIN, f64_, 10, 1);
+        let fountain = demo_new(abi::DEMO_FOUNTAIN, scalar_f64, 10, 1);
         assert_eq!(demo_set_restitution(fountain, 0.5), 0, "nothing collides");
         assert!(demo_update_pairs(fountain).is_nan());
         assert_eq!(demo_pairs_len(fountain), 0);

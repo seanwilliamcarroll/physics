@@ -4,11 +4,7 @@ use crate::demo::Demo;
 
 /// 1 if the demo's world can be grabbed, 0 if not (or `demo` is null): a
 /// world its integrator steps (no constraints, nothing colliding) refuses,
-/// since a grab's rod would hand it to a solver while held
-/// (`docs/06-constraints.md`, "Dragging"). For the page to say so.
-///
-/// # Safety
-/// `demo` must be null or a live handle from a `demo_new*` export.
+/// since a grab's rod would hand it to a solver while held.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_grabbable(demo: *const Demo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live Demo.
@@ -22,9 +18,6 @@ pub(crate) unsafe extern "C" fn demo_grabbable(demo: *const Demo) -> u32 {
 /// ([`demo_grabbable`]), the point isn't finite, the radius is negative
 /// or NaN, or `demo` is null. A grab adds an anchor particle and a rod (a
 /// release removes them), so re-read positions and links afterwards.
-///
-/// # Safety
-/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_grab(demo: *mut Demo, x: f64, y: f64, radius: f64) -> i32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
@@ -38,15 +31,12 @@ pub(crate) unsafe extern "C" fn demo_grab(demo: *mut Demo, x: f64, y: f64, radiu
         return -1;
     }
     demo.grab(x, y, radius)
-        .and_then(|i| i32::try_from(i).ok())
+        .and_then(|index| i32::try_from(index).ok())
         .unwrap_or(-1)
 }
 
 /// Moves the held grab to world point `(x, y)`. Returns 1, or 0 if
 /// nothing is held, the point isn't finite, or `demo` is null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_drag(demo: *mut Demo, x: f64, y: f64) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
@@ -58,9 +48,6 @@ pub(crate) unsafe extern "C" fn demo_drag(demo: *mut Demo, x: f64, y: f64) -> u3
 
 /// Releases the held grab (removing its anchor and rod). Returns 1, or 0
 /// if nothing was held or `demo` is null.
-///
-/// # Safety
-/// `demo` must be null or a live handle from a `demo_new*` export.
 #[unsafe(no_mangle)]
 pub(crate) unsafe extern "C" fn demo_release(demo: *mut Demo) -> u32 {
     // SAFETY: per the contract, null (-> None) or a live, unaliased Demo.
