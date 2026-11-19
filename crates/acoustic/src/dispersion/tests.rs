@@ -1,30 +1,96 @@
 use core::f64::consts::TAU;
 
-use super::{MAX_BIQUADS, biquad_delay, biquad_delay_gradient, design};
+use super::{Dispersion, MAX_BIQUADS, biquad_delay, biquad_delay_gradient, design};
+use crate::piano::{FIRST_KEY, LAST_KEY, frequency, voicing};
 use crate::voicing::phase_delay_lowpass;
 
 const FS: f64 = 48_000.0;
 
-/// The worst partial error (cents) of a design, predicted from the
-/// filters' phase delays: partial k needs `k fs / f_k` samples a round
-/// trip, `f_k = k F₀ √(1 + B k²)`, relative to the fundamental's.
+/// The worst partial error (cents) of a design for `f1`, `b` (stretch ½,
+/// room unlimited).
 fn worst_cents(f1: f64, b: f64) -> (usize, u32, f64) {
     let d = design(FS, f1, b, 0.5, 1e9).expect("a design");
+    let worst = errors(&d, FS, f1, b, 0.5).into_iter().fold(0.0, f64::max);
+    (d.count, d.partials, worst)
+}
+
+/// Each designed partial's error (cents, 2 and up, as magnitudes) for
+/// design `d`, predicted from the filters' phase delays: partial k needs
+/// `k fs / f_k` samples a round trip, `f_k = k F₀ √(1 + B k²)`, relative
+/// to the fundamental's, with the loss lowpass's (stretch `s`) taken off.
+fn errors(d: &Dispersion, fs: f64, f1: f64, b: f64, s: f64) -> Vec<f64> {
     let f0 = f1 / (1.0 + b).sqrt();
-    let w1 = TAU * f1 / FS;
-    let worst = (2..=d.partials)
+    let w1 = TAU * f1 / fs;
+    (2..=d.partials)
         .map(|k| {
             let k = f64::from(k);
             let fk = k * f0 * (1.0 + b * k * k).sqrt();
-            let wk = TAU * fk / FS;
-            let want = k * FS / fk
-                - FS / f1
-                - (phase_delay_lowpass(0.5, wk) - phase_delay_lowpass(0.5, w1));
+            let wk = TAU * fk / fs;
+            let want =
+                k * fs / fk - fs / f1 - (phase_delay_lowpass(s, wk) - phase_delay_lowpass(s, w1));
             let got = d.delay(wk) - d.delay(w1);
-            (1200.0 / core::f64::consts::LN_2 * (got - want) / (k * FS / fk)).abs()
+            (1200.0 / core::f64::consts::LN_2 * (got - want) / (k * fs / fk)).abs()
         })
-        .fold(0.0, f64::max);
-    (d.count, d.partials, worst)
+        .collect()
+}
+
+/// Key `key` as the piano designs it at `fs`: its design and each
+/// partial's error, and the biquads it would have had with unlimited
+/// room (more than it has: the loop's room limited it).
+fn as_the_piano_designs(fs: f64, key: u8) -> (Dispersion, Vec<f64>, usize) {
+    let v = voicing(key, true);
+    let (f1, b) = (frequency(key), v.inharmonicity);
+    let mut seen = None;
+    let voiced = v.coefficients_designed(fs, f1, |s, room| {
+        let d = design(fs, f1, b, s, room);
+        seen = Some((s, d));
+        d
+    });
+    assert!(voiced.is_some(), "{fs} Hz, MIDI {key}: no voice");
+    let (s, d) = seen.expect("designed");
+    let d = d.unwrap_or_else(|| panic!("{fs} Hz, MIDI {key}: no cascade"));
+    let unlimited = design(fs, f1, b, s, 1e9).expect("a design").count;
+    let errs = errors(&d, fs, f1, b, s);
+    (d, errs, unlimited)
+}
+
+/// Every key's partials, at both rates, as the piano designs them
+/// (2026-11-19, `docs/14-piano.md`): with the room it wants, the worst
+/// partial 1.65 cents (the band's top partial on a few bass keys, where
+/// a least-squares fit gives a little; key 92 at 48 kHz on partial 8).
+/// ~1.2x.
+const ALL_KEYS_TOL_CENTS: f64 = 2.0;
+
+/// Where the loop's room (half the loop: more detunes the top keys'
+/// fundamentals) left fewer biquads than wanted: 2.73 cents (keys
+/// 98–100, partials 4–6, 7–16 kHz). Held to where mistuning starts to be
+/// heard (`tests/tuning.rs`, `AUDIBLE_CENTS`).
+const ROOM_LIMITED_TOL_CENTS: f64 = 3.0;
+
+/// One biquad for three partials (MIDI 106 at 44.1 kHz, 107 at 48 kHz):
+/// 10.9 cents, on partials at 8–16 kHz. A known gap (TASKS); ~1.1x.
+const ONE_BIQUAD_TOL_CENTS: f64 = 12.0;
+
+#[test]
+fn every_key_puts_its_partials_within_its_bound() {
+    for fs in [44_100.0, 48_000.0] {
+        for key in FIRST_KEY..=LAST_KEY {
+            let (d, errs, unlimited) = as_the_piano_designs(fs, key);
+            let worst = errs.iter().copied().fold(0.0, f64::max);
+            let tol = if d.count == unlimited {
+                ALL_KEYS_TOL_CENTS
+            } else if d.count == 1 && errs.len() > 2 {
+                ONE_BIQUAD_TOL_CENTS
+            } else {
+                ROOM_LIMITED_TOL_CENTS
+            };
+            assert!(
+                worst < tol,
+                "{fs} Hz, MIDI {key}: {} biquads ({unlimited} with room), worst {worst} cents",
+                d.count
+            );
+        }
+    }
 }
 
 /// Measured (A3.2, prototype then Rust): the placed-and-refined cascade

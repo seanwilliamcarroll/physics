@@ -105,6 +105,24 @@ sharp of `k f₁` (A4's 12th). Placement can give very few biquads where
 `B` is smallest (C2 got 2, refined only to 1.6 cents), so it starts from
 at least 4.
 
+**All 88 keys (2026-11-19),** as the piano designs them (each key's
+loss lowpass and room), at 44.1 and 48 kHz; the six above were the
+test's sample, and 11 keys missed its 1-cent bound:
+
+- **With the room it wants:** within 1.65 cents. The misses are the
+  band's top partial (30) on a few bass keys, where the least-squares
+  fit gives a little at its edge, and key 92's partial 8. A fit run to
+  convergence fixed three of them at 3× the design's time: not worth it.
+- **Room-limited** (the cascade gets half the loop; short treble loops
+  fit fewer biquads): within 2.73 cents, on partials 4–6 at 7–16 kHz.
+  Three quarters of the loop fixed these and key 107, but put MIDI 106's
+  fundamental 111 cents flat at 44.1 kHz: half stays.
+- **One biquad for three partials** (MIDI 106 at 44.1 kHz, 107 at 48):
+  up to 10.9 cents, on partials at 8–16 kHz. A known gap (TASKS).
+
+The test (`dispersion/tests.rs`) holds each class to its measured bound,
+the room-limited to 3 cents, where mistuning starts to be heard.
+
 The cascade's delay at `f₀` goes into the **tuning budget**
 (`N + τ_lowpass + τ_dispersion + Δ = fs / f₀`), so the fundamental stays
 in tune: with stiffness on, all 88 keys measure within 0.026 cents
