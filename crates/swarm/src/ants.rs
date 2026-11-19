@@ -51,7 +51,7 @@ impl AntParams {
         decay: 0.008,
     };
 
-    /// The best of the evolution (`docs/15-swarm.md`, "Evolving the ants";
+    /// The best of the evolution (`docs/15-swarm.md`, "The ants evolved";
     /// `examples/evolve_ants.rs`, 25 generations of 20, seed 2026): SA
     /// 79.8°, SD 1.7 cells, RA 32.8°, wiggle 2.9°, a steep fall-off, the
     /// most diffusion its range allowed, slow decay. Held out: 5,394

@@ -173,7 +173,7 @@ fn accumulate(sum: &mut f32, term: f32) {
 
 /// 1.0 if `condition`, else 0.0: the lane loop's masks. The same values, so
 /// the same bits, everywhere; written per architecture for the code each
-/// gets (`docs/15-swarm.md`, "The lane loop's masks"). On `aarch64` as a
+/// gets (`docs/15-swarm.md`, "Sorted, lanes and SIMD as built"). On `aarch64` as a
 /// select: through an integer it compiled to five instructions a mask
 /// (compare, narrow, mask, widen, convert), the select to a compare and an
 /// AND with 1.0's bits (Brute 14–16% faster on an M4). Elsewhere through an

@@ -1,5 +1,5 @@
 //! [`evolve`]: a small evolutionary algorithm over a bounded real vector
-//! (`docs/15-swarm.md`, "Evolving the ants"). Elites re-scored every
+//! (`docs/15-swarm.md`, "The algorithm as built"). Elites re-scored every
 //! generation, tournament selection, uniform crossover, Gaussian mutation
 //! shrinking over the run. Scoring runs on any number of threads; the
 //! result is the same for all of them.

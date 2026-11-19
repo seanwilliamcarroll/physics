@@ -1,4 +1,4 @@
-//! Evolves the ant constants (`docs/15-swarm.md`, "Evolving the ants"):
+//! Evolves the ant constants (`docs/15-swarm.md`, "The ants evolved"):
 //! the fitness is food delivered in the foraging scene (3,000 steps), the
 //! mean over the generation's common seeds; the run starts from the
 //! hand-scanned defaults. Then the best against the defaults on held-out
