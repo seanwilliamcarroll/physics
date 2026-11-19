@@ -5,10 +5,10 @@ use crate::force::Force;
 use crate::params::kg;
 use crate::{Particles, Scalar, Softening, Vec2};
 
-/// A world of `n` bodies from a fixed seed: positions in a 10 m box,
+/// A world of `body_count` bodies from a fixed seed: positions in a 10 m box,
 /// masses 1e9 to 1e10 kg, every seventh body static, and (from 3 up)
 /// body 2 on top of body 1, so unsoftened gravity meets 0/0.
-fn world<S: Scalar>(n: usize, seed: u64) -> Particles<S> {
+fn world<S: Scalar>(body_count: usize, seed: u64) -> Particles<S> {
     let mut state = seed;
     let mut next = move || {
         // A 64-bit LCG (Knuth's MMIX constants): enough for test data.
@@ -19,42 +19,42 @@ fn world<S: Scalar>(n: usize, seed: u64) -> Particles<S> {
     };
     let mut p = Particles::new();
     let mut first = Vec2::ZERO;
-    for k in 0..n {
-        let mut x = Vec2::new(next() * S::from_f64(10.0), next() * S::from_f64(10.0));
-        if k == 1 {
-            first = x;
+    for index in 0..body_count {
+        let mut position = Vec2::new(next() * S::from_f64(10.0), next() * S::from_f64(10.0));
+        if index == 1 {
+            first = position;
         }
-        if k == 2 {
-            x = first;
+        if index == 2 {
+            position = first;
         }
-        if k % 7 == 6 {
-            p.add_static(x);
+        if index % 7 == 6 {
+            p.add_static(position);
         } else {
-            let m = 1.0e9 + next().to_f64() * 9.0e9;
-            p.add(x, Vec2::ZERO, kg(m));
+            let mass = 1.0e9 + next().to_f64() * 9.0e9;
+            p.add(position, Vec2::ZERO, kg(mass));
         }
     }
     p
 }
 
 /// Starting accelerations that aren't zero, so adding into them is tested.
-fn start<S: Scalar>(n: usize) -> Vec<Vec2<S>> {
-    (0..n)
-        .map(|k| {
+fn start<S: Scalar>(body_count: usize) -> Vec<Vec2<S>> {
+    (0..body_count)
+        .map(|index| {
             Vec2::new(S::from_f64(0.25), S::from_f64(-0.5))
-                * S::from_f64(f64::from(u32::try_from(k).unwrap()))
+                * S::from_f64(f64::from(u32::try_from(index).unwrap()))
         })
         .collect()
 }
 
 fn with<S: Scalar, const L: usize>(
-    g: &PairwiseGravity<S>,
+    gravity: &PairwiseGravity<S>,
     pair_loop: PairLoop,
-    p: &Particles<S>,
+    particles: &Particles<S>,
 ) -> Vec<Vec2<S>> {
-    let mut acc = start(p.len());
-    g.accumulate_with::<L>(pair_loop, p, &mut acc);
-    acc
+    let mut accelerations = start(particles.len());
+    gravity.accumulate_with::<L>(pair_loop, particles, &mut accelerations);
+    accelerations
 }
 
 /// Sizes around every block boundary of `L` lanes up to a few blocks, then
@@ -73,8 +73,7 @@ fn bits<S: Scalar>(v: S) -> u64 {
 /// target uses, softened and not (unsoftened, bodies 1 and 2 coincide:
 /// 0/0, which every loop must skip). Within `rel` of the largest
 /// acceleration: rounding, not a wrong term. The two loops aren't
-/// compared bit for bit (at equal lanes they happen to agree today), so
-/// either can be retuned on its own.
+/// compared bit for bit, so either can be retuned on its own.
 fn match_plain<S: Scalar, const L: usize>(rel: f64) {
     for softening in [0.0, 0.05] {
         let g = PairwiseGravity::new(

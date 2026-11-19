@@ -8,77 +8,87 @@ use super::{Bodies, PairwiseGravity, lane_total};
 use crate::{Scalar, Vec2};
 
 pub(super) fn accumulate<S: Scalar, const L: usize>(
-    g: &PairwiseGravity<S>,
-    b: &Bodies<S>,
-    acc: &mut [Vec2<S>],
+    gravity: &PairwiseGravity<S>,
+    bodies: &Bodies<S>,
+    accelerations: &mut [Vec2<S>],
 ) {
-    let n = b.x.len();
+    let body_count = bodies.x.len();
     // Each pair's force on body i, x and y, for pass 2.
-    let (mut fx, mut fy) = (vec![S::ZERO; n], vec![S::ZERO; n]);
+    let (mut force_x, mut force_y) = (vec![S::ZERO; body_count], vec![S::ZERO; body_count]);
 
-    let mut acc_rest = acc;
-    let (mut x_rest, mut y_rest, mut m_rest, mut w_rest) = (
-        b.x.as_slice(),
-        b.y.as_slice(),
-        b.m.as_slice(),
-        b.w.as_slice(),
+    let mut acceleration_rest = accelerations;
+    let (mut x_rest, mut y_rest, mut mass_rest, mut inv_mass_rest) = (
+        bodies.x.as_slice(),
+        bodies.y.as_slice(),
+        bodies.mass.as_slice(),
+        bodies.inv_mass.as_slice(),
     );
     while let (
-        Some((a_i, acc_tail)),
-        Some((&px_i, x_tail)),
-        Some((&py_i, y_tail)),
-        Some((&m_i, m_tail)),
-        Some((&w_i, w_tail)),
+        Some((acceleration_i, acceleration_tail)),
+        Some((&x_i, x_tail)),
+        Some((&y_i, y_tail)),
+        Some((&mass_i, mass_tail)),
+        Some((&inv_mass_i, inv_mass_tail)),
     ) = (
-        core::mem::take(&mut acc_rest).split_first_mut(),
+        core::mem::take(&mut acceleration_rest).split_first_mut(),
         x_rest.split_first(),
         y_rest.split_first(),
-        m_rest.split_first(),
-        w_rest.split_first(),
+        mass_rest.split_first(),
+        inv_mass_rest.split_first(),
     ) {
         pass_one(
-            (px_i, py_i, g.g_const * m_i, g.softening_sq),
-            (x_tail, y_tail, m_tail, w_tail),
-            acc_tail,
-            (&mut fx, &mut fy),
+            (
+                x_i,
+                y_i,
+                gravity.gravitational_constant * mass_i,
+                gravity.softening_sq,
+            ),
+            (x_tail, y_tail, mass_tail, inv_mass_tail),
+            acceleration_tail,
+            (&mut force_x, &mut force_y),
         );
-        let len = acc_tail.len();
+        let later_count = acceleration_tail.len();
         let (sum_x, sum_y) = (
-            lane_sum::<S, L>(fx.get(..len).unwrap_or_default()),
-            lane_sum::<S, L>(fy.get(..len).unwrap_or_default()),
+            lane_sum::<S, L>(force_x.get(..later_count).unwrap_or_default()),
+            lane_sum::<S, L>(force_y.get(..later_count).unwrap_or_default()),
         );
-        *a_i += Vec2::new(sum_x, sum_y) * w_i;
-        acc_rest = acc_tail;
-        (x_rest, y_rest, m_rest, w_rest) = (x_tail, y_tail, m_tail, w_tail);
+        *acceleration_i += Vec2::new(sum_x, sum_y) * inv_mass_i;
+        acceleration_rest = acceleration_tail;
+        (x_rest, y_rest, mass_rest, inv_mass_rest) = (x_tail, y_tail, mass_tail, inv_mass_tail);
     }
 }
 
-/// Body i against every later body j: the force, body j's share (`acc`),
-/// and the force kept for body i's sum (`fx`, `fy`). A function of its own
-/// so its slices are parameters: Rust tells the compiler that `&mut`
-/// parameters don't overlap, so the vectorized loop needs no runtime
-/// overlap checks (with local slices, it took a scalar path, 2× slower).
+/// Body i against every later body j: the force, body j's share
+/// (`accelerations`), and the force kept for body i's sum (`force_x`,
+/// `force_y`). A function of its own so its slices are parameters: Rust
+/// tells the compiler that `&mut` parameters don't overlap, so the
+/// vectorized loop needs no runtime overlap checks (with local slices, it
+/// took a scalar path, 2× slower).
 #[inline(never)]
 fn pass_one<S: Scalar>(
-    (px_i, py_i, g_mi, eps_sq): (S, S, S, S),
-    (xs, ys, ms, ws): (&[S], &[S], &[S], &[S]),
-    acc: &mut [Vec2<S>],
-    (fx, fy): (&mut [S], &mut [S]),
+    (x_i, y_i, gravity_times_mass_i, softening_sq): (S, S, S, S),
+    (xs, ys, masses, inv_masses): (&[S], &[S], &[S], &[S]),
+    accelerations: &mut [Vec2<S>],
+    (force_x, force_y): (&mut [S], &mut [S]),
 ) {
-    let others = xs.iter().zip(ys).zip(ms).zip(ws);
-    let kept = fx.iter_mut().zip(fy.iter_mut());
-    for ((a_j, (((&px_j, &py_j), &m_j), &w_j)), (fx_j, fy_j)) in
-        acc.iter_mut().zip(others).zip(kept)
+    let others = xs.iter().zip(ys).zip(masses).zip(inv_masses);
+    let kept = force_x.iter_mut().zip(force_y.iter_mut());
+    for ((acceleration_j, (((&x_j, &y_j), &mass_j), &inv_mass_j)), (kept_x, kept_y)) in
+        accelerations.iter_mut().zip(others).zip(kept)
     {
-        let (rx, ry) = (px_j - px_i, py_j - py_i);
-        let d_sq = rx * rx + ry * ry + eps_sq;
-        let s = g_mi * m_j / (d_sq * d_sq.sqrt());
+        let (offset_x, offset_y) = (x_j - x_i, y_j - y_i);
+        let distance_sq = offset_x * offset_x + offset_y * offset_y + softening_sq;
+        let scale = gravity_times_mass_i * mass_j / (distance_sq * distance_sq.sqrt());
         // Coincident and unsoftened: 0/0, selected away (no branch).
-        let s = if d_sq == S::ZERO { S::ZERO } else { s };
-        let (f_x, f_y) = (rx * s, ry * s);
-        a_j.x -= f_x * w_j;
-        a_j.y -= f_y * w_j;
-        (*fx_j, *fy_j) = (f_x, f_y);
+        let scale = if distance_sq == S::ZERO {
+            S::ZERO
+        } else {
+            scale
+        };
+        let (pair_x, pair_y) = (offset_x * scale, offset_y * scale);
+        acceleration_j.x -= pair_x * inv_mass_j;
+        acceleration_j.y -= pair_y * inv_mass_j;
+        (*kept_x, *kept_y) = (pair_x, pair_y);
     }
 }
 
@@ -88,12 +98,12 @@ fn lane_sum<S: Scalar, const L: usize>(values: &[S]) -> S {
     let mut lanes = [S::ZERO; L];
     let (chunks, rest) = values.as_chunks::<L>();
     for chunk in chunks {
-        for (lane, &v) in lanes.iter_mut().zip(chunk) {
-            *lane += v;
+        for (lane, &value) in lanes.iter_mut().zip(chunk) {
+            *lane += value;
         }
     }
-    for (lane, &v) in lanes.iter_mut().zip(rest) {
-        *lane += v;
+    for (lane, &value) in lanes.iter_mut().zip(rest) {
+        *lane += value;
     }
     lane_total(&lanes)
 }

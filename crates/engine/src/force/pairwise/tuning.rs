@@ -2,16 +2,11 @@
 //! and how many lanes, and below how many bodies the plain loop runs
 //! instead. Chosen at compile time, here and only here: this is the one
 //! place a target `cfg` appears (`docs/perf-code-audit-guide.md`, §1–3).
-//! The build settings (`knobs.rs`, `GRAVITY_*`) override it, for
-//! experiments.
+//! The build settings (`knobs.rs`, `GRAVITY_*`) override it.
 //!
-//! The values are the sweeps' on `main` (2026-11-15:
-//! `experiments/gravity-vectorize/results/{llm-main,m4-main}`; Zen 5 and
-//! the M4, natively and in wasm under wasmtime and V8), at 4,096 bodies:
-//! `f32` is fastest with the two-pass loop at 16 lanes everywhere; `f64`
-//! is bound by square roots and divisions, and the blocked loop wins on
-//! the narrower targets. A lane count sets the order of body i's sum, so
-//! targets differ in the last bits (allowed: `docs/04-testing.md`).
+//! The values come from `experiments/gravity-vectorize/results/` at 4,096
+//! bodies. A lane count sets the order of body i's sum, so targets differ
+//! in the last bits (allowed: `docs/04-testing.md`).
 
 /// The two vector loops (`two_pass.rs`, `blocked.rs`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -58,28 +53,27 @@ const fn blocked(lanes: usize) -> Kernel {
 
 const PLAIN_BELOW: usize = 64;
 
-/// This target's choices. `f64` times at 4,096 bodies against two-pass at
-/// 16 lanes in brackets.
+/// This target's choices. `f32` is fastest two-pass at 16 lanes everywhere;
+/// `f64` is bound by `sqrt` and `div`; the figures below are `f64` times at
+/// 4,096 bodies, with the change against two-pass at 16 lanes.
 const TARGET: Tuning = if cfg!(target_arch = "wasm32") {
-    // In V8: blocked, 4 lanes: 7.08 ms on the M4 (−15%), 9.96 on Zen 5
-    // (−8%); wasmtime the same way. One 128-bit width (`simd128`).
+    // V8: blocked, 4 lanes: 7.08 ms on the M4 (−15%), 9.96 on Zen 5 (−8%).
     Tuning {
         f64: blocked(4),
         f32: TWO_PASS_16,
         plain_below: PLAIN_BELOW,
     }
 } else if cfg!(target_arch = "aarch64") {
-    // The M4: blocked, 1 lane, 7.95 ms (−8%; every loop is within 8%
-    // there, bound by `sqrt` and `div`). Not blocked at 4: LLVM's ordered
-    // reductions made it 1.7× slower (`experiments/llvm-ordered-reductions`).
+    // The M4: blocked, 1 lane, 7.95 ms (−8%). Not blocked at 4: LLVM's
+    // ordered reductions made it 1.7× slower (`experiments/llvm-ordered-reductions`).
     Tuning {
         f64: blocked(1),
         f32: TWO_PASS_16,
         plain_below: PLAIN_BELOW,
     }
 } else if cfg!(all(target_arch = "x86_64", target_feature = "avx2")) {
-    // AVX2 and AVX-512: two-pass, 16 lanes, the full width (Zen 5: 6.67
-    // ms at x86-64-v3, 3.20 native).
+    // AVX2 and AVX-512: two-pass, 16 lanes (Zen 5: 6.67 ms at x86-64-v3,
+    // 3.20 native).
     Tuning {
         f64: TWO_PASS_16,
         f32: TWO_PASS_16,
@@ -107,21 +101,21 @@ pub(super) const TUNING: Tuning = Tuning {
     f64: overridden(TARGET.f64),
     f32: overridden(TARGET.f32),
     plain_below: match super::knobs::PLAIN_BELOW {
-        Some(n) => n,
+        Some(threshold) => threshold,
         None => TARGET.plain_below,
     },
 };
 
-/// `k` with the loop and lane settings applied, where set.
-const fn overridden(k: Kernel) -> Kernel {
+/// `kernel` with the loop and lane settings applied, where set.
+const fn overridden(kernel: Kernel) -> Kernel {
     Kernel {
         pair_loop: match super::knobs::LOOP {
-            Some(l) => l,
-            None => k.pair_loop,
+            Some(pair_loop) => pair_loop,
+            None => kernel.pair_loop,
         },
         lanes: match super::knobs::LANES {
-            Some(n) => n,
-            None => k.lanes,
+            Some(lane_count) => lane_count,
+            None => kernel.lanes,
         },
     }
 }
