@@ -54,7 +54,7 @@ pub(super) fn add_spans<const L: usize>(
             part(vy, &span).as_chunks::<L>(),
         );
         for (((a, b), c), d) in cx.iter().zip(cy).zip(cvx).zip(cvy) {
-            lanes.add(r, me, a, b, c, d);
+            lanes.add_apart(r, me, a, b, c, d);
         }
         let rem = rx.len();
         // The block of `L` ending at the span's end (or the arrays' first
@@ -192,6 +192,25 @@ impl<const L: usize> Lanes<L> {
             close_dx: [0.0; L],
             close_dy: [0.0; L],
         }
+    }
+
+    /// [`Self::add`] for Sorted, kept out of line in wasm. Inlined, it made
+    /// `step_sorted` too big for V8 (more values than registers: spills),
+    /// 2.26 ms a step at 10,000 against 1.63 apart, on the M4 (the edge
+    /// sweep's 8-lane build had it apart by chance: brute force shared
+    /// it). Brute force keeps it inlined: apart, its loop was 22% slower.
+    /// Natively LLVM's choice is kept (both fast; the native sweep).
+    #[cfg_attr(target_arch = "wasm32", inline(never))]
+    fn add_apart(
+        &mut self,
+        r: Ranges,
+        me: Boid,
+        x: &[f32; L],
+        y: &[f32; L],
+        vx: &[f32; L],
+        vy: &[f32; L],
+    ) {
+        self.add(r, me, x, y, vx, vy);
     }
 
     /// One block of `L` candidates, candidate `i` into lane `i`.
