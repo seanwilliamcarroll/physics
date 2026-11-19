@@ -16,7 +16,7 @@ fn world<S: Scalar>(body_count: usize, seed: u64) -> Particles<S> {
             .wrapping_add(1_442_695_040_888_963_407);
         S::from_f64(f64::from(u32::try_from(state >> 40).unwrap()) / f64::from(1_u32 << 24))
     };
-    let mut p = Particles::new();
+    let mut particles = Particles::new();
     let mut first = Vec2::ZERO;
     for index in 0..body_count {
         let mut position = Vec2::new(next() * S::from_f64(10.0), next() * S::from_f64(10.0));
@@ -27,13 +27,13 @@ fn world<S: Scalar>(body_count: usize, seed: u64) -> Particles<S> {
             position = first;
         }
         if index % 7 == 6 {
-            p.add_static(position);
+            particles.add_static(position);
         } else {
             let mass = 1.0e9 + next().to_f64() * 9.0e9;
-            p.add(position, Vec2::ZERO, kg(mass));
+            particles.add(position, Vec2::ZERO, kg(mass));
         }
     }
-    p
+    particles
 }
 
 fn start<S: Scalar>(body_count: usize) -> Vec<Vec2<S>> {
@@ -71,25 +71,27 @@ fn bits<S: Scalar>(v: S) -> u64 {
 /// compared bit for bit, so either can be retuned on its own.
 fn match_plain<S: Scalar, const L: usize>(rel: f64) {
     for softening in [0.0, 0.05] {
-        let g = PairwiseGravity::new(
+        let gravity = PairwiseGravity::new(
             S::from_f64(6.674e-11),
             Softening::new(S::from_f64(softening)).unwrap(),
         );
-        for n in sizes::<L>() {
-            let p = world::<S>(n, 11 + n as u64);
-            let mut reference = start(n);
-            plain::accumulate(&g, &p, &mut reference);
+        for body_count in sizes::<L>() {
+            let particles = world::<S>(body_count, 11 + body_count as u64);
+            let mut reference = start(body_count);
+            plain::accumulate(&gravity, &particles, &mut reference);
             let scale = reference
                 .iter()
-                .map(|a| a.length().to_f64())
+                .map(|acceleration| acceleration.length().to_f64())
                 .fold(0.0, f64::max)
                 .max(1.0);
             for pair_loop in [PairLoop::TwoPass, PairLoop::Blocked] {
-                let got = with::<S, L>(&g, pair_loop, &p);
-                for (k, (a, r)) in got.iter().zip(&reference).enumerate() {
+                let got = with::<S, L>(&gravity, pair_loop, &particles);
+                for (index, (acceleration, reference_acceleration)) in
+                    got.iter().zip(&reference).enumerate()
+                {
                     assert!(
-                        (*a - *r).length().to_f64() <= rel * scale,
-                        "{L} lanes, n {n}, ε {softening}, {pair_loop:?}, body {k}: {a:?} vs plain {r:?}"
+                        (*acceleration - *reference_acceleration).length().to_f64() <= rel * scale,
+                        "{L} lanes, body_count {body_count}, ε {softening}, {pair_loop:?}, body {index}: {acceleration:?} vs plain {reference_acceleration:?}"
                     );
                 }
             }
@@ -171,19 +173,26 @@ fn the_plain_loop_runs_below_the_threshold_only() {
     if !(2..=4096).contains(&below) {
         return;
     }
-    let g = PairwiseGravity::new(6.674e-11, Softening::new(0.05).unwrap());
-    for n in [below - 1, below] {
-        let p = world::<f64>(n, 5);
-        let mut plain_acc = start(n);
-        plain::accumulate(&g, &p, &mut plain_acc);
-        let vector = with::<f64, F64_LANES>(&g, TUNING.f64.pair_loop, &p);
-        let mut acc = start(n);
-        g.accumulate(&p, &mut acc);
-        let expected = if n < below { &plain_acc } else { &vector };
-        for (k, (a, e)) in acc.iter().zip(expected).enumerate() {
+    let gravity = PairwiseGravity::new(6.674e-11, Softening::new(0.05).unwrap());
+    for body_count in [below - 1, below] {
+        let particles = world::<f64>(body_count, 5);
+        let mut plain_acc = start(body_count);
+        plain::accumulate(&gravity, &particles, &mut plain_acc);
+        let vector = with::<f64, F64_LANES>(&gravity, TUNING.f64.pair_loop, &particles);
+        let mut accelerations = start(body_count);
+        gravity.accumulate(&particles, &mut accelerations);
+        let expected = if body_count < below {
+            &plain_acc
+        } else {
+            &vector
+        };
+        for (index, (acceleration, expected_acceleration)) in
+            accelerations.iter().zip(expected).enumerate()
+        {
             assert!(
-                bits(a.x) == bits(e.x) && bits(a.y) == bits(e.y),
-                "n {n}, body {k}: {a:?}, expected {e:?}"
+                bits(acceleration.x) == bits(expected_acceleration.x)
+                    && bits(acceleration.y) == bits(expected_acceleration.y),
+                "body_count {body_count}, body {index}: {acceleration:?}, expected {expected_acceleration:?}"
             );
         }
     }
