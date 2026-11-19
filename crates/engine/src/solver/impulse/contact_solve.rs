@@ -10,7 +10,7 @@ use crate::{Particles, Scalar, Vec2};
 /// What a contact solve needs besides the contact.
 #[derive(Copy, Clone)]
 pub(super) struct ContactGains<S> {
-    pub(super) h: S,
+    pub(super) dt: S,
     /// `β / h`: the rate penetration is corrected at (pseudo-velocity in
     /// split mode, real velocity in classic Baumgarte).
     pub(super) bias: S,
@@ -22,90 +22,110 @@ pub(super) struct ContactGains<S> {
 }
 
 /// Applies a contact's (warm-start) impulse `lambda` along its normal.
-pub(super) fn apply<S: Scalar>(p: &mut Particles<S>, c: &Contact<S>, lambda: S) {
-    let Some((a, b, wa, wb)) = bodies(p, c) else {
+pub(super) fn apply<S: Scalar>(particles: &mut Particles<S>, contact: &Contact<S>, lambda: S) {
+    let Some((first, second, first_inv_mass, second_inv_mass)) = bodies(particles, contact) else {
         return;
     };
     push_apart(
-        &mut p.vel,
-        a,
-        b,
-        c.normal * (wa * lambda),
-        c.normal * (wb * lambda),
+        &mut particles.vel,
+        first,
+        second,
+        contact.normal * (first_inv_mass * lambda),
+        contact.normal * (second_inv_mass * lambda),
     );
 }
 
 /// The bias velocity for a gap: what pushes an overlap back out,
 /// `(β / h) · max(−(gap + slop), 0)`.
-fn bias<S: Scalar>(gap: S, g: ContactGains<S>) -> S {
-    let depth = -(gap + g.slop);
+fn bias<S: Scalar>(gap: S, gains: ContactGains<S>) -> S {
+    let depth = -(gap + gains.slop);
     if depth > S::ZERO {
-        g.bias * depth
+        gains.bias * depth
     } else {
         S::ZERO
     }
 }
 
-/// One velocity solve of a contact toward `target`, clamping the
+/// One velocity solve of a contact toward `target_velocity`, clamping the
 /// **accumulated** impulse at ≥ 0 (Catto 2006): a pass may take back an
 /// earlier overshoot, but the contact never pulls.
 fn solve_toward<S: Scalar>(
-    vel: &mut [Vec2<S>],
-    p_inv: (usize, Option<usize>, S, S),
-    c: &Contact<S>,
-    vn: S,
-    target: S,
+    velocities: &mut [Vec2<S>],
+    contact_bodies: (usize, Option<usize>, S, S),
+    contact: &Contact<S>,
+    current_normal_velocity: S,
+    target_velocity: S,
     lambda: &mut S,
 ) {
-    let (a, b, wa, wb) = p_inv;
-    let w = wa + wb;
-    if w == S::ZERO {
+    let (first, second, first_inv_mass, second_inv_mass) = contact_bodies;
+    let inv_mass_sum = first_inv_mass + second_inv_mass;
+    if inv_mass_sum == S::ZERO {
         return;
     }
-    let total = *lambda - (vn - target) / w;
+    let total = *lambda - (current_normal_velocity - target_velocity) / inv_mass_sum;
     let total = if total > S::ZERO { total } else { S::ZERO };
-    let d = total - *lambda;
+    let delta_lambda = total - *lambda;
     *lambda = total;
-    push_apart(vel, a, b, c.normal * (wa * d), c.normal * (wb * d));
+    push_apart(
+        velocities,
+        first,
+        second,
+        contact.normal * (first_inv_mass * delta_lambda),
+        contact.normal * (second_inv_mass * delta_lambda),
+    );
 }
 
 /// The real-velocity solve: a separated contact may close by at most its
 /// gap this substep (`v_target = −gap / h`, speculative); a touching or
 /// overlapping one targets 0, plus the bias in classic Baumgarte.
 pub(super) fn solve<S: Scalar>(
-    p: &mut Particles<S>,
-    c: &Contact<S>,
+    particles: &mut Particles<S>,
+    contact: &Contact<S>,
     lambda: &mut S,
-    g: ContactGains<S>,
+    gains: ContactGains<S>,
 ) {
-    let Some(inv) = bodies(p, c) else {
+    let Some(contact_bodies) = bodies(particles, contact) else {
         return;
     };
-    let target = if c.gap > S::ZERO {
-        -c.gap / g.h
-    } else if g.classic {
-        bias(c.gap, g)
+    let target_velocity = if contact.gap > S::ZERO {
+        -contact.gap / gains.dt
+    } else if gains.classic {
+        bias(contact.gap, gains)
     } else {
         S::ZERO
     };
-    let vn = normal_velocity(p, c, c.normal);
-    solve_toward(&mut p.vel, inv, c, vn, target, lambda);
+    let current_normal_velocity = normal_velocity(particles, contact, contact.normal);
+    solve_toward(
+        &mut particles.vel,
+        contact_bodies,
+        contact,
+        current_normal_velocity,
+        target_velocity,
+        lambda,
+    );
 }
 
 /// The split pseudo-velocity solve: pushes an overlap out through
-/// `pseudo`, which moves positions this substep only, so penetration
-/// correction never becomes bounce. One-sided, accumulated in
+/// `pseudo_velocities`, which move positions this substep only, so
+/// penetration correction never becomes bounce. One-sided, accumulated in
 /// `pseudo_lambda`.
 pub(super) fn solve_pseudo<S: Scalar>(
-    p: &Particles<S>,
-    pseudo: &mut [Vec2<S>],
-    c: &Contact<S>,
+    particles: &Particles<S>,
+    pseudo_velocities: &mut [Vec2<S>],
+    contact: &Contact<S>,
     pseudo_lambda: &mut S,
-    g: ContactGains<S>,
+    gains: ContactGains<S>,
 ) {
-    let Some(inv) = bodies(p, c) else {
+    let Some(contact_bodies) = bodies(particles, contact) else {
         return;
     };
-    let vn = normal_velocity_in(pseudo, c, c.normal);
-    solve_toward(pseudo, inv, c, vn, bias(c.gap, g), pseudo_lambda);
+    let current_normal_velocity = normal_velocity_in(pseudo_velocities, contact, contact.normal);
+    solve_toward(
+        pseudo_velocities,
+        contact_bodies,
+        contact,
+        current_normal_velocity,
+        bias(contact.gap, gains),
+        pseudo_lambda,
+    );
 }

@@ -17,9 +17,6 @@ use crate::table::Table;
 use crate::{Baumgarte, Force, Particles, Restitution, Scalar, Vec2};
 
 /// How a world with constraints is stepped.
-///
-/// An enum, like [`Integrator`](crate::Integrator): a small closed set,
-/// exhaustive matches, and a wire code for the demo.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Solver {
     /// Extended position-based dynamics (Macklin et al. 2016): predict
@@ -29,8 +26,8 @@ pub enum Solver {
     Xpbd,
     /// Sequential impulses (Catto 2005, 2006): solve the constraints'
     /// *velocities*, with a Baumgarte bias feeding position error back,
-    /// then integrate positions. Drifts without the bias; with substeps,
-    /// keeps energy far better than XPBD.
+    /// then integrate positions. Keeps energy far better than XPBD with
+    /// substeps.
     Impulse,
 }
 
@@ -44,10 +41,9 @@ impl Solver {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum Stabilization {
     /// Classic Baumgarte: the bias `(β/h) C` is added to the real velocity
-    /// solve. What `01-solvers.md` measured, and M3 reproduces. With warm
-    /// starting and one pass on a 1:100 chain it **gains energy without
-    /// bound** (M4): the unconverged solve can't remove the bias velocity,
-    /// and warm starting carries it into the next substep.
+    /// solve. With warm starting and one pass on a 1:100 chain it **gains
+    /// energy without bound**: the unconverged solve can't remove the bias
+    /// velocity, and warm starting carries it into the next substep.
     Baumgarte,
     /// Split impulses: the bias drives a separate pseudo-velocity that only
     /// moves positions this substep and is then discarded, so real
@@ -63,7 +59,7 @@ pub enum Stabilization {
 /// one pass, `Reverse` up it (`docs/06-constraints.md`, "Iteration order").
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum Order {
-    /// Insertion order, every pass (the M3 behavior).
+    /// Insertion order, every pass.
     #[default]
     Forward,
     /// Reverse insertion order, every pass.
@@ -88,20 +84,22 @@ impl Order {
         }
     }
 
-    /// Calls `f` on each constraint with its λ, in this order for pass
+    /// Calls `visit` on each constraint with its λ, in this order for pass
     /// `pass`.
     pub(crate) fn sweep<C, S>(
         self,
         pass: u32,
         constraints: &[C],
-        lambda: &mut [S],
-        mut f: impl FnMut(&C, &mut S),
+        lambdas: &mut [S],
+        mut visit: impl FnMut(&C, &mut S),
     ) {
-        let pairs = constraints.iter().zip(lambda.iter_mut());
+        let pairs = constraints.iter().zip(lambdas.iter_mut());
         if self.reversed(pass) {
-            pairs.rev().for_each(|(c, l)| f(c, l));
+            pairs
+                .rev()
+                .for_each(|(constraint, lambda)| visit(constraint, lambda));
         } else {
-            pairs.for_each(|(c, l)| f(c, l));
+            pairs.for_each(|(constraint, lambda)| visit(constraint, lambda));
         }
     }
 }
@@ -109,11 +107,11 @@ impl Order {
 /// `dt` of cloth after a kick, if the world has a table.
 fn on_cloth<S: Scalar>(
     cloth: &mut Option<(Table<S>, &mut [Vec2<S>])>,
-    p: &mut Particles<S>,
+    particles: &mut Particles<S>,
     dt: S,
 ) {
-    if let Some((table, spin)) = cloth {
-        crate::table::cloth(*table, p, spin, dt);
+    if let Some((table, spins)) = cloth {
+        crate::table::cloth(*table, particles, spins, dt);
     }
 }
 
@@ -134,19 +132,17 @@ pub(crate) struct Step<'a, S: Scalar, C> {
     pub(crate) baumgarte: Baumgarte<S>,
     pub(crate) stabilization: Stabilization,
     /// Whether to look for contacts at all (`World::collides`): a world
-    /// that can't collide skips the search, and its results are
-    /// bit-identical to M5's.
+    /// that can't collide skips the search.
     pub(crate) collides: bool,
     pub(crate) contacts: &'a mut Contacts<S>,
     pub(crate) statics: Statics<'a, S>,
     /// Restitution for circle–circle and wall contacts; segments carry
     /// their own.
     pub(crate) restitution: Restitution<S>,
-    /// The cloth and every particle's spin, if the world has a table (M7):
+    /// The cloth and every particle's spin, if the world has a table:
     /// applied after each kick.
     pub(crate) cloth: Option<(Table<S>, &'a mut [Vec2<S>])>,
-    /// Speculative contacts (on by default; M7 switches them off to show
-    /// tunneling).
+    /// Speculative contacts (on by default; off shows tunneling).
     pub(crate) speculative: bool,
 }
 

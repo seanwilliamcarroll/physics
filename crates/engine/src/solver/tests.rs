@@ -7,7 +7,9 @@ use core::num::NonZeroU32;
 
 #[test]
 fn alternating_flips_every_pass() {
-    let flips: Vec<bool> = (0..4).map(|p| Order::Alternating.reversed(p)).collect();
+    let flips: Vec<bool> = (0..4)
+        .map(|pass| Order::Alternating.reversed(pass))
+        .collect();
     assert_eq!(flips, [false, true, false, true]);
     assert!(!Order::Forward.reversed(1) && Order::Reverse.reversed(0));
     assert_eq!(Order::default(), Order::Forward);
@@ -16,43 +18,50 @@ fn alternating_flips_every_pass() {
 #[test]
 fn sweep_visits_each_constraint_once_in_order() {
     let constraints = ['a', 'b', 'c'];
-    let mut lambda = [0, 0, 0];
+    let mut lambdas = [0, 0, 0];
     let mut seen = String::new();
-    Order::Reverse.sweep(0, &constraints, &mut lambda, |c, l| {
-        seen.push(*c);
-        *l += 1;
+    Order::Reverse.sweep(0, &constraints, &mut lambdas, |constraint, lambda| {
+        seen.push(*constraint);
+        *lambda += 1;
     });
-    assert_eq!((seen.as_str(), lambda), ("cba", [1, 1, 1]));
+    assert_eq!((seen.as_str(), lambdas), ("cba", [1, 1, 1]));
 }
 
 /// A pin and two bobs on rods, released horizontal: the smallest chain.
 fn two_link_chain(solver: Solver, order: Order) -> World<f64> {
-    let mut w = World::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
-    w.add_force(pendulum_gravity());
-    let pin = w.particles.add_static(Vec2::ZERO);
-    let a = w.particles.add(Vec2::new(0.5, 0.0), Vec2::ZERO, kg(1.0));
-    let b = w.particles.add(Vec2::new(1.0, 0.0), Vec2::ZERO, kg(1.0));
-    for (x, y) in [(pin.id(), a), (a, b)] {
-        let rod = DistanceConstraint::between(&w.particles, x, y).unwrap();
-        w.add_constraint(rod).unwrap();
+    let mut world = World::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    world.add_force(pendulum_gravity());
+    let pin = world.particles.add_static(Vec2::ZERO);
+    let near = world
+        .particles
+        .add(Vec2::new(0.5, 0.0), Vec2::ZERO, kg(1.0));
+    let far = world
+        .particles
+        .add(Vec2::new(1.0, 0.0), Vec2::ZERO, kg(1.0));
+    for (from, to) in [(pin.id(), near), (near, far)] {
+        let rod = DistanceConstraint::between(&world.particles, from, to).unwrap();
+        world.add_constraint(rod).unwrap();
     }
-    w.set_solver(solver);
-    w.set_order(order);
-    w
+    world.set_solver(solver);
+    world.set_order(order);
+    world
 }
 
 #[test]
 fn order_changes_a_chain_but_not_a_single_rod() {
     for solver in Solver::ALL {
-        let run = |mut w: World<f64>| {
+        let run = |mut world: World<f64>| {
             for _ in 0..30 {
-                w.step(time_step(1.0 / 60.0));
+                world.step(time_step(1.0 / 60.0));
             }
-            w.particles.pos().to_vec()
+            world.particles.pos().to_vec()
         };
-        let fwd = run(two_link_chain(solver, Order::Forward));
-        let rev = run(two_link_chain(solver, Order::Reverse));
-        assert_ne!(fwd, rev, "{solver:?}: order is part of Gauss-Seidel");
+        let forward = run(two_link_chain(solver, Order::Forward));
+        let reverse = run(two_link_chain(solver, Order::Reverse));
+        assert_ne!(
+            forward, reverse,
+            "{solver:?}: order is part of Gauss-Seidel"
+        );
         // One constraint: nothing to reorder.
         let mut one = pendulum::<f64>(solver, NonZeroU32::MIN).unwrap();
         let mut other = pendulum::<f64>(solver, NonZeroU32::MIN).unwrap();
@@ -66,49 +75,50 @@ fn order_changes_a_chain_but_not_a_single_rod() {
 }
 
 /// One step of a bob on a soft rod (stretched 0.2 m, α = 1e-3, damping
-/// `c`) under `solver` with `iterations` passes; the bob's position and
+/// `damping`) under `solver` with `iterations` passes; the bob's position and
 /// velocity.
-fn soft_rod(solver: Solver, c: f64, iterations: u32) -> (Vec2<f64>, Vec2<f64>) {
+fn soft_rod(solver: Solver, damping: f64, iterations: u32) -> (Vec2<f64>, Vec2<f64>) {
     use crate::{Compliance, Damping};
-    let mut w = World::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
-    w.add_force(pendulum_gravity());
-    let pin = w.particles.add_static(Vec2::ZERO);
-    let bob = w.particles.add(Vec2::new(1.2, 0.0), Vec2::ZERO, kg(1.0));
+    let mut world = World::new(Integrator::SymplecticEuler, NonZeroU32::MIN);
+    world.add_force(pendulum_gravity());
+    let pin = world.particles.add_static(Vec2::ZERO);
+    let bob = world
+        .particles
+        .add(Vec2::new(1.2, 0.0), Vec2::ZERO, kg(1.0));
     let rod = DistanceConstraint::with_length(
-        &w.particles,
+        &world.particles,
         pin.id(),
         bob,
         1.0,
         Compliance::new(1e-3).unwrap(),
     )
     .unwrap()
-    .with_damping(Damping::new(c).unwrap());
-    w.add_constraint(rod).unwrap();
-    w.set_solver(solver);
-    w.set_iterations(NonZeroU32::new(iterations).unwrap());
-    w.step(time_step(1.0 / 60.0));
-    let i = bob.index();
-    (w.particles.pos()[i], w.particles.vel()[i])
+    .with_damping(Damping::new(damping).unwrap());
+    world.add_constraint(rod).unwrap();
+    world.set_solver(solver);
+    world.set_iterations(NonZeroU32::new(iterations).unwrap());
+    world.step(time_step(1.0 / 60.0));
+    let index = bob.index();
+    (world.particles.pos()[index], world.particles.vel()[index])
 }
 
 #[test]
 fn one_soft_rod_converges_in_one_pass() {
     // A single constraint is solved exactly by one Gauss-Seidel pass: the
     // α̃λ term (or its impulse counterpart) cancels what's left, so more
-    // passes change nothing. From the full cargo-mutants run: that term's
-    // sign and λ's accumulation could flip unnoticed, since every soft
-    // constraint test ran one pass, where λ starts at 0.
+    // passes change nothing. Needs more than one pass: with one, λ starts at 0
+    // and the term's sign and λ's accumulation go untested.
     for solver in Solver::ALL {
-        for c in [0.0, 0.5] {
-            let (x1, v1) = soft_rod(solver, c, 1);
-            let (x5, v5) = soft_rod(solver, c, 5);
-            let off = (x5 - x1).length() + (v5 - v1).length();
+        for damping in [0.0, 0.5] {
+            let (position_1, velocity_1) = soft_rod(solver, damping, 1);
+            let (position_5, velocity_5) = soft_rod(solver, damping, 5);
+            let off = (position_5 - position_1).length() + (velocity_5 - velocity_1).length();
             assert!(
                 off < 1e-12,
-                "{solver:?}, c = {c}: 5 passes moved it {off:e}"
+                "{solver:?}, damping = {damping}: 5 passes moved it {off:e}"
             );
             assert!(
-                (x1 - Vec2::new(1.2, 0.0)).length() > 1e-3,
+                (position_1 - Vec2::new(1.2, 0.0)).length() > 1e-3,
                 "{solver:?}: the rod pulled"
             );
         }
