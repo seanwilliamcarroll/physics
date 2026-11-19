@@ -6,49 +6,56 @@ use math::convert::{f64_to_usize, usize_to_f64};
 use super::Colony;
 
 impl Colony {
-    /// Cells of the disc of `radius` at `(x, y)`, clipped to the world.
+    /// The row-major indices of the cells of the disc of `radius` at
+    /// `(x, y)`, clipped to the world.
     pub(super) fn disc(&self, x: f32, y: f32, radius: f32) -> Vec<usize> {
-        // The bounding box clipped to the world first, then whole cells:
-        // stepping an f64 by 1.0 from a huge coordinate never advanced
-        // (found by the exports' call-sequence property test: a hang).
-        let (r, w, h) = (f64::from(radius.max(0.0)), self.width, self.height);
+        // The bounding box is clipped to the world first, then whole cells
+        // are stepped: stepping an f64 by 1.0 from a huge coordinate never
+        // advances (a hang).
+        let (reach, width, height) = (f64::from(radius.max(0.0)), self.width, self.height);
         let (x, y) = (f64::from(x), f64::from(y));
-        let span = |lo: f64, hi: f64, n: usize| -> Option<(usize, usize)> {
-            let top = usize_to_f64(n) - 1.0;
-            if !(lo.is_finite() && hi.is_finite()) || hi < 0.0 || lo > top {
+        let clipped_span = |first: f64, last: f64, cell_count: usize| -> Option<(usize, usize)> {
+            let last_cell = usize_to_f64(cell_count) - 1.0;
+            if !(first.is_finite() && last.is_finite()) || last < 0.0 || first > last_cell {
                 return None;
             }
-            Some((f64_to_usize(lo.max(0.0))?, f64_to_usize(hi.min(top))?))
+            Some((
+                f64_to_usize(first.max(0.0))?,
+                f64_to_usize(last.min(last_cell))?,
+            ))
         };
-        let (Some((x0, x1)), Some((y0, y1))) = (
-            span((x - r).floor(), (x + r).ceil(), w),
-            span((y - r).floor(), (y + r).ceil(), h),
+        let (Some((first_x, last_x)), Some((first_y, last_y))) = (
+            clipped_span((x - reach).floor(), (x + reach).ceil(), width),
+            clipped_span((y - reach).floor(), (y + reach).ceil(), height),
         ) else {
             return Vec::new();
         };
-        let mut out = Vec::new();
-        for cy in y0..=y1 {
-            for cx in x0..=x1 {
-                let (dx, dy) = (usize_to_f64(cx) + 0.5 - x, usize_to_f64(cy) + 0.5 - y);
-                if dx * dx + dy * dy <= r * r + 0.5 {
-                    out.push(cy * w + cx);
+        let mut cells = Vec::new();
+        for cell_y in first_y..=last_y {
+            for cell_x in first_x..=last_x {
+                let (dx, dy) = (
+                    usize_to_f64(cell_x) + 0.5 - x,
+                    usize_to_f64(cell_y) + 0.5 - y,
+                );
+                if dx * dx + dy * dy <= reach * reach + 0.5 {
+                    cells.push(cell_y * width + cell_x);
                 }
             }
         }
-        out
+        cells
     }
 
     /// Adds `amount` food to every open cell of a disc (saturating at
     /// `u16::MAX`); returns the units added.
     pub fn paint_food(&mut self, x: f32, y: f32, radius: f32, amount: u16) -> u64 {
         let mut added = 0_u64;
-        for i in self.disc(x, y, radius) {
-            if self.open.get(i).copied().unwrap_or(false)
-                && let Some(f) = self.food.get_mut(i)
+        for cell in self.disc(x, y, radius) {
+            if self.open.get(cell).copied().unwrap_or(false)
+                && let Some(food) = self.food.get_mut(cell)
             {
-                let new = f.saturating_add(amount);
-                added += u64::from(new - *f);
-                *f = new;
+                let new_food = food.saturating_add(amount);
+                added += u64::from(new_food - *food);
+                *food = new_food;
             }
         }
         self.painted += i64::try_from(added).unwrap_or(i64::MAX);
@@ -59,14 +66,14 @@ impl Colony {
     /// returns the cells changed.
     pub fn paint_wall(&mut self, x: f32, y: f32, radius: f32) -> usize {
         let mut changed = 0;
-        for i in self.disc(x, y, radius) {
-            if let Some(o) = self.open.get_mut(i)
-                && *o
+        for cell in self.disc(x, y, radius) {
+            if let Some(open) = self.open.get_mut(cell)
+                && *open
             {
-                *o = false;
+                *open = false;
                 changed += 1;
             }
-            self.remove_food(i);
+            self.remove_food(cell);
         }
         self.clear_walls_from_fields();
         self.recount();
@@ -77,39 +84,41 @@ impl Colony {
     /// that were walls or held food.
     pub fn erase(&mut self, x: f32, y: f32, radius: f32) -> usize {
         let mut changed = 0;
-        for i in self.disc(x, y, radius) {
-            let was_wall = self.open.get(i).is_some_and(|o| !o);
-            if let Some(o) = self.open.get_mut(i) {
-                *o = true;
+        for cell in self.disc(x, y, radius) {
+            let was_wall = self.open.get(cell).is_some_and(|open| !open);
+            if let Some(open) = self.open.get_mut(cell) {
+                *open = true;
             }
-            changed += usize::from(was_wall || self.remove_food(i) > 0);
+            changed += usize::from(was_wall || self.remove_food(cell) > 0);
         }
         self.recount();
         changed
     }
 
-    fn remove_food(&mut self, i: usize) -> u16 {
-        let Some(f) = self.food.get_mut(i) else {
+    /// Removes the food at `cell`, updating the accounting; returns the
+    /// units removed.
+    fn remove_food(&mut self, cell: usize) -> u16 {
+        let Some(food) = self.food.get_mut(cell) else {
             return 0;
         };
-        let had = *f;
-        *f = 0;
+        let had = *food;
+        *food = 0;
         self.painted -= i64::from(had);
         had
     }
 
+    /// Pheromone under a wall is removed (walls hold nothing).
     fn clear_walls_from_fields(&mut self) {
-        // Pheromone under a new wall is removed (walls hold nothing).
         let walls: Vec<usize> = self
             .open
             .iter()
             .enumerate()
-            .filter(|&(_, &o)| !o)
-            .map(|(i, _)| i)
+            .filter(|&(_, &open)| !open)
+            .map(|(cell, _)| cell)
             .collect();
         for field in [&mut self.home_field, &mut self.food_field] {
-            for &i in &walls {
-                field.zero(i);
+            for &cell in &walls {
+                field.zero(cell);
             }
         }
     }

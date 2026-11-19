@@ -1,6 +1,6 @@
-//! S3's ants (`docs/15-swarm.md`, S3): exact food accounting, the field
-//! accounting, walls, and foraging against a random walk and against
-//! constant deposits, measured.
+//! The ants (`docs/15-swarm.md`, "Ant foraging"): exact food accounting,
+//! the field accounting, walls, and foraging against a random walk and
+//! against constant deposits, measured.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -8,42 +8,46 @@ use swarm::{AntParams, Colony, Pheromone};
 
 /// The foraging scene: 200 × 120 cells, the nest at the left, a food
 /// patch 130 cells away, 500 ants.
-fn scene(p: AntParams, seed: u64) -> Colony {
-    let mut c = Colony::new(200, 120, 500, (30.0, 60.0, 6.0), p, seed).unwrap();
-    c.paint_food(160.0, 60.0, 8.0, 50);
-    c
+fn scene(params: AntParams, seed: u64) -> Colony {
+    let mut colony = Colony::new(200, 120, 500, (30.0, 60.0, 6.0), params, seed).unwrap();
+    colony.paint_food(160.0, 60.0, 8.0, 50);
+    colony
 }
 
-fn delivered(p: AntParams, sensing: bool, seed: u64) -> u64 {
-    let mut c = scene(p, seed);
-    c.set_sensing(sensing);
+fn delivered(params: AntParams, sensing: bool, seed: u64) -> u64 {
+    let mut colony = scene(params, seed);
+    colony.set_sensing(sensing);
     for _ in 0..3000 {
-        c.step();
+        colony.step();
     }
-    c.delivered()
+    colony.delivered()
 }
 
 /// In the world + carried + delivered = painted, at every step, through
 /// painting, walls over food, and erasing: integers, exactly.
 #[test]
 fn food_is_accounted_for_exactly() {
-    let mut c = scene(AntParams::DEFAULT, 1);
-    let check = |c: &Colony| {
-        let held = i64::try_from(c.food_in_world() + c.carrying() + c.delivered()).unwrap();
-        assert_eq!(held, c.painted(), "at step {}", c.steps());
+    let mut colony = scene(AntParams::DEFAULT, 1);
+    let check = |colony: &Colony| {
+        let held =
+            i64::try_from(colony.food_in_world() + colony.carrying() + colony.delivered()).unwrap();
+        assert_eq!(held, colony.painted(), "at step {}", colony.steps());
     };
-    for k in 0..2000 {
-        c.step();
-        check(&c);
-        match k {
-            500 => assert!(c.paint_food(100.0, 20.0, 5.0, 10) > 0),
-            900 => assert!(c.paint_wall(160.0, 60.0, 3.0) > 0, "a wall over the food"),
-            1300 => assert!(c.erase(160.0, 60.0, 9.0) > 0),
+    for step in 0..2000 {
+        colony.step();
+        check(&colony);
+        match step {
+            500 => assert!(colony.paint_food(100.0, 20.0, 5.0, 10) > 0),
+            900 => assert!(
+                colony.paint_wall(160.0, 60.0, 3.0) > 0,
+                "a wall over the food"
+            ),
+            1300 => assert!(colony.erase(160.0, 60.0, 9.0) > 0),
             _ => {}
         }
-        check(&c);
+        check(&colony);
     }
-    assert!(c.delivered() > 0);
+    assert!(colony.delivered() > 0);
 }
 
 /// Each step's deposits go in, then conserving diffusion, then decay:
@@ -52,31 +56,32 @@ fn food_is_accounted_for_exactly() {
 /// stand in a wall or leave the world.
 #[test]
 fn the_fields_keep_their_accounts_and_ants_keep_out_of_walls() {
-    let mut c = scene(AntParams::DEFAULT, 2);
-    c.paint_wall(100.0, 40.0, 6.0);
-    c.paint_wall(100.0, 80.0, 6.0);
+    let mut colony = scene(AntParams::DEFAULT, 2);
+    colony.paint_wall(100.0, 40.0, 6.0);
+    colony.paint_wall(100.0, 80.0, 6.0);
     let keep = 1.0 - f64::from(AntParams::DEFAULT.decay);
     let mut worst = 0.0_f64;
     for _ in 0..2000 {
         let before = [
-            c.field(Pheromone::Home).total(),
-            c.field(Pheromone::Food).total(),
+            colony.field(Pheromone::Home).total(),
+            colony.field(Pheromone::Food).total(),
         ];
-        c.step();
-        for (which, b) in [Pheromone::Home, Pheromone::Food].into_iter().zip(before) {
-            let expected = (b + c.last_deposits(which)) * keep;
+        colony.step();
+        for (pheromone, total_before) in [Pheromone::Home, Pheromone::Food].into_iter().zip(before)
+        {
+            let expected = (total_before + colony.last_deposits(pheromone)) * keep;
             if expected > 0.0 {
-                worst = worst.max((c.field(which).total() / expected - 1.0).abs());
+                worst = worst.max((colony.field(pheromone).total() / expected - 1.0).abs());
             }
         }
-        let (w, h) = c.size();
-        for a in c.ants() {
-            let cell = |v: f32| math::convert::f64_to_usize(f64::from(v.floor()));
-            let (Some(x), Some(y)) = (cell(a.x), cell(a.y)) else {
-                panic!("an ant outside the world: {a:?}");
+        let (width, height) = colony.size();
+        for ant in colony.ants() {
+            let cell = |coordinate: f32| math::convert::f64_to_usize(f64::from(coordinate.floor()));
+            let (Some(x), Some(y)) = (cell(ant.x), cell(ant.y)) else {
+                panic!("an ant outside the world: {ant:?}");
             };
-            assert!(x < w && y < h, "{a:?}");
-            assert!(c.open()[y * w + x], "an ant in a wall: {a:?}");
+            assert!(x < width && y < height, "{ant:?}");
+            assert!(colony.open()[y * width + x], "an ant in a wall: {ant:?}");
         }
     }
     assert!(worst < 3.5e-7, "field accounting off by {worst:e}");
@@ -86,20 +91,32 @@ fn the_fields_keep_their_accounts_and_ants_keep_out_of_walls() {
 /// least 20× the best random walk (sensing off, same speed and turns) and
 /// 2× the best constant-deposit run (no fall-off).
 fn trails_beat_a_random_walk(seeds: core::ops::RangeInclusive<u64>) {
-    let d = AntParams::DEFAULT;
-    let constant = AntParams { falloff: 0.0, ..d };
-    let with: Vec<u64> = seeds.clone().map(|s| delivered(d, true, s)).collect();
-    let walk: Vec<u64> = seeds.clone().map(|s| delivered(d, false, s)).collect();
-    let flat: Vec<u64> = seeds.map(|s| delivered(constant, true, s)).collect();
-    let (best_walk, best_flat) = (*walk.iter().max().unwrap(), *flat.iter().max().unwrap());
-    for &w in &with {
+    let defaults = AntParams::DEFAULT;
+    let constant = AntParams {
+        falloff: 0.0,
+        ..defaults
+    };
+    let with_trails: Vec<u64> = seeds
+        .clone()
+        .map(|seed| delivered(defaults, true, seed))
+        .collect();
+    let random_walk: Vec<u64> = seeds
+        .clone()
+        .map(|seed| delivered(defaults, false, seed))
+        .collect();
+    let constant_deposits: Vec<u64> = seeds.map(|seed| delivered(constant, true, seed)).collect();
+    let (best_walk, best_constant) = (
+        *random_walk.iter().max().unwrap(),
+        *constant_deposits.iter().max().unwrap(),
+    );
+    for &foraging in &with_trails {
         assert!(
-            w >= 20 * best_walk,
-            "foraging {with:?} vs random walk {walk:?}"
+            foraging >= 20 * best_walk,
+            "foraging {with_trails:?} vs random walk {random_walk:?}"
         );
         assert!(
-            w >= 2 * best_flat,
-            "foraging {with:?} vs constant deposits {flat:?}"
+            foraging >= 2 * best_constant,
+            "foraging {with_trails:?} vs constant deposits {constant_deposits:?}"
         );
     }
 }
@@ -108,8 +125,7 @@ fn trails_beat_a_random_walk(seeds: core::ops::RangeInclusive<u64>) {
 /// walk 12–21; constant deposits 7–255, no better than a random walk:
 /// without the fall-off a trail has no direction. Every push runs seed 1
 /// (its constant run is the strongest, 255: the hardest seed for the 2×
-/// bound); all four in `cargo xtask slow` (one run is ~1 s optimized;
-/// twelve timed out at 120 s on a busy machine).
+/// bound); all four in `cargo xtask slow` (one run is ~1 s optimized).
 #[test]
 fn trails_beat_a_random_walk_and_need_the_falloff() {
     trails_beat_a_random_walk(1..=1);
