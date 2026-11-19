@@ -9,7 +9,6 @@ use proptest::prelude::*;
 use sand::{Grid, Material};
 use test_support::proptest_config;
 
-/// A random `width × height` grid, `fill` of its cells non-empty.
 fn random(width: usize, height: usize, seed: u64, fill: f64) -> Grid {
     let mut grid = Grid::new(width, height, seed).unwrap();
     let mut rng = SplitMix64::new(seed);

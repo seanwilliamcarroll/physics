@@ -11,20 +11,20 @@ mod sequences;
 
 #[test]
 fn round_trip_through_the_c_abi() {
-    let d = sand_new(64, 48, 1);
-    assert!(!d.is_null());
-    // SAFETY: `d` from `sand_new`, freed once, last.
+    let demo = sand_new(64, 48, 1);
+    assert!(!demo.is_null());
+    // SAFETY: `demo` from `sand_new`, freed once, last.
     unsafe {
-        assert_eq!((sand_width(d), sand_height(d)), (64, 48));
-        assert_eq!(sand_paint(d, 32, 4, 3, abi::MATERIAL_SAND), 29);
-        assert_eq!(sand_count(d, abi::MATERIAL_SAND), 29);
-        assert_eq!(sand_advance(d, 1.0 / 60.0), 1);
-        assert!(sand_last_moves(d) > 0);
-        assert_eq!(sand_chunks(d), 2 * 2);
-        assert!(sand_awake_chunks(d) > 0);
-        let px = core::slice::from_raw_parts(sand_render(d), 64 * 48);
-        assert!(px.iter().all(|&p| p >> 24 == 0xff), "opaque");
-        sand_free(d);
+        assert_eq!((sand_width(demo), sand_height(demo)), (64, 48));
+        assert_eq!(sand_paint(demo, 32, 4, 3, abi::MATERIAL_SAND), 29);
+        assert_eq!(sand_count(demo, abi::MATERIAL_SAND), 29);
+        assert_eq!(sand_advance(demo, 1.0 / 60.0), 1);
+        assert!(sand_last_moves(demo) > 0);
+        assert_eq!(sand_chunks(demo), 2 * 2);
+        assert!(sand_awake_chunks(demo) > 0);
+        let pixels = core::slice::from_raw_parts(sand_render(demo), 64 * 48);
+        assert!(pixels.iter().all(|&pixel| pixel >> 24 == 0xff), "opaque");
+        sand_free(demo);
     }
 }
 
@@ -36,24 +36,33 @@ fn every_argument_is_parsed_at_the_boundary() {
     assert!(!biggest.is_null(), "the cap itself is allowed");
     // SAFETY: from `sand_new`, freed once.
     unsafe { sand_free(biggest) };
-    let d = sand_new(16, 16, 1);
-    // SAFETY: `d` from `sand_new`, freed once; null is allowed everywhere.
+    let demo = sand_new(16, 16, 1);
+    // SAFETY: `demo` from `sand_new`, freed once; null is allowed everywhere.
     unsafe {
-        assert_eq!(sand_paint(d, 8, 8, 2, 99), 0, "unknown material");
+        assert_eq!(sand_paint(demo, 8, 8, 2, 99), 0, "unknown material");
         assert_eq!(
-            sand_paint(d, 8, 8, abi::MAX_BRUSH + 1, abi::MATERIAL_SAND),
+            sand_paint(demo, 8, 8, abi::MAX_BRUSH + 1, abi::MATERIAL_SAND),
             0
         );
-        assert_eq!(sand_count(d, 99), 0);
+        assert_eq!(sand_count(demo, 99), 0);
         assert_eq!(
-            (sand_set_rate(d, 0), sand_set_rate(d, abi::MAX_RATE_HZ + 1)),
+            (
+                sand_set_rate(demo, 0),
+                sand_set_rate(demo, abi::MAX_RATE_HZ + 1)
+            ),
             (0, 0)
         );
-        assert_eq!(sand_set_rate(d, 30), 1);
-        assert_eq!(sand_set_step_cap(d, abi::MAX_RATE_HZ + 1), 0);
-        assert_eq!((sand_set_step_cap(d, 2), sand_advance(d, 0.25)), (1, 2));
-        assert_eq!((sand_set_chunked(d, 2), sand_set_chunked(d, 0)), (0, 1));
-        sand_free(d);
+        assert_eq!(sand_set_rate(demo, 30), 1);
+        assert_eq!(sand_set_step_cap(demo, abi::MAX_RATE_HZ + 1), 0);
+        assert_eq!(
+            (sand_set_step_cap(demo, 2), sand_advance(demo, 0.25)),
+            (1, 2)
+        );
+        assert_eq!(
+            (sand_set_chunked(demo, 2), sand_set_chunked(demo, 0)),
+            (0, 1)
+        );
+        sand_free(demo);
         let null = ptr::null_mut();
         assert_eq!(
             (sand_advance(null, 1.0), sand_paint(null, 0, 0, 1, 1)),

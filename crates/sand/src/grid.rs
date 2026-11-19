@@ -17,34 +17,27 @@ pub struct Grid {
     /// doesn't move it again (`docs/11-falling-sand.md`, "Order").
     pub(crate) moved: Vec<u64>,
     pub(crate) seed: u64,
-    /// Part of every random draw's key.
     pub(crate) steps_taken: u64,
     pub(crate) chunks: Chunks,
-    /// Cells the scan reached, all steps so far: the tests' only view of
-    /// which chunks were skipped.
+    /// Cells the scan reached: the tests' view of which chunks were skipped.
     #[cfg(test)]
     pub(crate) visited: usize,
 }
 
-/// A chunk's side, in cells.
 pub const CHUNK_SIDE: usize = 32;
 
 /// Which chunks a step updates (`docs/11-falling-sand.md`, "Chunks"):
-/// `now` (this step; a move wakes its neighbours here too, since the
-/// bottom-up scan still has rows of them to do) and `next` (the next step:
-/// whatever moved, and its neighbours).
+/// `now` (a move wakes its neighbours here too: the scan still has rows of
+/// them to do) and `next`.
 #[derive(Clone, Debug)]
 pub(crate) struct Chunks {
     pub(crate) columns: usize,
     pub(crate) rows: usize,
     pub(crate) now: Vec<bool>,
     pub(crate) next: Vec<bool>,
-    /// Chunks that already woke their neighbourhood this step. Flags only
-    /// go up until [`advance`](Self::advance), so a second wake from the
-    /// same chunk would change nothing.
+    /// Chunks that already woke their neighbourhood this step.
     woke: Vec<bool>,
-    /// Off: every cell every step, the reference the chunked update is
-    /// tested against.
+    /// Off: every cell every step, the reference for tests.
     pub(crate) enabled: bool,
 }
 
@@ -56,7 +49,6 @@ impl Chunks {
         Self {
             columns,
             rows,
-            // Everything starts awake: nothing is known to be still.
             now: vec![true; chunk_count],
             next: vec![false; chunk_count],
             woke: vec![false; chunk_count],
@@ -68,7 +60,6 @@ impl Chunks {
         (y / CHUNK_SIDE) * self.columns + x / CHUNK_SIDE
     }
 
-    /// Whether the chunk holding `(x, y)` is updated this step.
     pub(crate) fn awake(&self, x: usize, y: usize) -> bool {
         !self.enabled
             || self
@@ -78,10 +69,8 @@ impl Chunks {
                 .unwrap_or(false)
     }
 
-    /// Wakes the chunk holding `(x, y)` and its eight neighbours, this step
-    /// and the next. Once per chunk per step: a busy chunk makes hundreds of
-    /// moves a step, and rewriting eighteen flags for each was a third of
-    /// a busy step.
+    /// Once per chunk per step: rewriting eighteen flags per move was a third
+    /// of a busy step.
     pub(crate) fn wake(&mut self, x: usize, y: usize) {
         let index = self.chunk_index(x, y);
         match self.woke.get_mut(index) {
@@ -91,9 +80,7 @@ impl Chunks {
         self.wake_around(x / CHUNK_SIDE, y / CHUNK_SIDE);
     }
 
-    /// The 3 × 3 chunks around chunk `(chunk_x, chunk_y)`, this step and the
-    /// next. Rare (once per chunk per step), so out of line: the scan's
-    /// loop stays small.
+    /// Out of line: rare, and it keeps the scan's loop small.
     #[cold]
     #[inline(never)]
     fn wake_around(&mut self, chunk_x: usize, chunk_y: usize) {
@@ -110,9 +97,8 @@ impl Chunks {
         }
     }
 
-    /// Keeps the chunk holding `(x, y)` awake next step, without waking its
-    /// neighbours: for a cell that could still change by chance (slow lava,
-    /// blocked steam) though nothing moved.
+    /// Keeps the chunk awake next step for a cell that could still change by
+    /// chance (slow lava, blocked steam), without waking its neighbours.
     pub(crate) fn keep(&mut self, x: usize, y: usize) {
         let index = self.chunk_index(x, y);
         if let Some(next) = self.next.get_mut(index) {
@@ -120,7 +106,6 @@ impl Chunks {
         }
     }
 
-    /// Ends a step: what woke for the next becomes now.
     pub(crate) fn advance(&mut self) {
         core::mem::swap(&mut self.now, &mut self.next);
         self.next.fill(false);
@@ -158,7 +143,6 @@ impl Grid {
         self.height
     }
 
-    /// Steps taken so far.
     #[must_use]
     pub const fn steps(&self) -> u64 {
         self.steps_taken
@@ -170,7 +154,6 @@ impl Grid {
         &self.cells
     }
 
-    /// The index of `(x, y)`, or `None` outside the grid.
     pub(crate) fn index(&self, x: usize, y: usize) -> Option<usize> {
         (x < self.width && y < self.height).then(|| y * self.width + x)
     }
@@ -184,8 +167,7 @@ impl Grid {
             .map(|&cell_byte| material::material(cell_byte))
     }
 
-    /// Paints `(x, y)` with `material` and a fresh shade; `false` outside the
-    /// grid.
+    /// Paints `(x, y)` with a fresh shade; `false` outside the grid.
     pub fn set(&mut self, x: usize, y: usize, material: Material) -> bool {
         let shade_bits = draw(self.seed, self.steps_taken, x, y, Purpose::Shade) & 0xf;
         let shade = u8::try_from(shade_bits).unwrap_or(0);
@@ -197,15 +179,13 @@ impl Grid {
         true
     }
 
-    /// Chunked updates on (the default) or off: off, every cell every step.
-    /// Results are identical either way (tested).
+    /// Off: every cell every step. Results are identical either way (tested).
     pub fn set_chunked(&mut self, on: bool) {
         self.chunks.enabled = on;
-        // Turning on with nothing known: start with everything awake.
         self.chunks.now.fill(true);
     }
 
-    /// How many chunks the next step will update, of how many.
+    /// Chunks the next step will update, and the total.
     #[must_use]
     pub fn awake_chunks(&self) -> (usize, usize) {
         let total = self.chunks.now.len();
@@ -217,7 +197,6 @@ impl Grid {
         (awake, total)
     }
 
-    /// How many cells hold `material`.
     #[must_use]
     pub fn count(&self, material: Material) -> usize {
         self.cells

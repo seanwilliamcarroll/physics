@@ -17,7 +17,6 @@ fn invariants(grid: &Grid) -> [usize; 3] {
     ]
 }
 
-/// A random grid of every material.
 fn random(width: usize, height: usize, seed: u64) -> Grid {
     let mut grid = Grid::new(width, height, seed).unwrap();
     let mut rng = SplitMix64::new(seed);
