@@ -42,7 +42,6 @@ impl swarm::Colony
 pub fn swarm::Colony::ants(&self) -> impl core::iter::traits::iterator::Iterator<Item = swarm::Ant> + '_
 pub fn swarm::Colony::carrying(&self) -> u64
 pub const fn swarm::Colony::delivered(&self) -> u64
-pub fn swarm::Colony::erase(&mut self, f32, f32, f32) -> usize
 pub fn swarm::Colony::field(&self, swarm::Pheromone) -> &swarm::Field
 pub fn swarm::Colony::food(&self) -> &[u16]
 pub fn swarm::Colony::food_in_world(&self) -> u64
@@ -52,8 +51,6 @@ pub fn swarm::Colony::len(&self) -> usize
 pub const fn swarm::Colony::nest(&self) -> (f32, f32, f32)
 pub fn swarm::Colony::new(usize, usize, usize, (f32, f32, f32), swarm::AntParams, u64) -> core::option::Option<Self>
 pub fn swarm::Colony::open(&self) -> &[bool]
-pub fn swarm::Colony::paint_food(&mut self, f32, f32, f32, u16) -> u64
-pub fn swarm::Colony::paint_wall(&mut self, f32, f32, f32) -> usize
 pub const fn swarm::Colony::painted(&self) -> i64
 pub const fn swarm::Colony::params(&self) -> swarm::AntParams
 pub fn swarm::Colony::set_nest(&mut self, f32, f32, f32) -> bool
@@ -63,6 +60,10 @@ pub const fn swarm::Colony::size(&self) -> (usize, usize)
 pub fn swarm::Colony::state_bytes(&self) -> alloc::vec::Vec<u8>
 pub fn swarm::Colony::step(&mut self)
 pub const fn swarm::Colony::steps(&self) -> u64
+impl swarm::Colony
+pub fn swarm::Colony::erase(&mut self, f32, f32, f32) -> usize
+pub fn swarm::Colony::paint_food(&mut self, f32, f32, f32, u16) -> u64
+pub fn swarm::Colony::paint_wall(&mut self, f32, f32, f32) -> usize
 pub struct swarm::Evolve
 pub swarm::Evolve::elites: usize
 pub swarm::Evolve::generations: u32
