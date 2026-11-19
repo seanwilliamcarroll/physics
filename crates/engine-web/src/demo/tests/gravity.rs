@@ -15,13 +15,13 @@ fn cluster_demo_has_n_bodies_and_a_matching_energy() {
     )
     .unwrap();
     assert_eq!(demo.positions().len(), 2 * 40);
-    let mut w = cluster::<f64>(40, 5).unwrap();
+    let mut world = cluster::<f64>(40, 5).unwrap();
     for _ in 0..30 {
         demo.advance(PHYSICS_DT);
-        w.step(engine::TimeStep::new(PHYSICS_DT).unwrap());
+        world.step(engine::TimeStep::new(PHYSICS_DT).unwrap());
     }
-    let expect = total_energy(w.particles(), &cluster_gravity().unwrap());
-    assert_eq!(demo.energy().map(f64::to_bits), Some(expect.to_bits()));
+    let expected = total_energy(world.particles(), &cluster_gravity().unwrap());
+    assert_eq!(demo.energy().map(f64::to_bits), Some(expected.to_bits()));
 }
 
 #[test]
@@ -34,8 +34,11 @@ fn gravity_scenes_have_n_bodies_and_an_energy() {
         for scalar in [ScalarKind::F32, ScalarKind::F64] {
             let demo = Demo::new(DemoKind::Gravity(kind), scalar, 40, 3).unwrap();
             assert_eq!(demo.positions().len(), 80, "{kind:?} {scalar:?}");
-            let e = demo.energy().unwrap();
-            assert!(e.is_finite() && e < 0.0, "{kind:?} {scalar:?}: {e}");
+            let energy = demo.energy().unwrap();
+            assert!(
+                energy.is_finite() && energy < 0.0,
+                "{kind:?} {scalar:?}: {energy}"
+            );
         }
     }
 }
@@ -50,14 +53,14 @@ fn set_softening_rebuilds_the_force_and_the_energy_readout() {
         3,
     )
     .unwrap();
-    let eps = Softening::new(0.5).unwrap();
-    assert!(demo.set_softening(eps));
+    let softening = Softening::new(0.5).unwrap();
+    assert!(demo.set_softening(softening));
     // Readout under the new force: same as diagnostics on an identical
     // world with newtonian(0.5).
-    let w = collapse::<f64>(40, 3).unwrap();
+    let world = collapse::<f64>(40, 3).unwrap();
     assert_eq!(
         demo.energy(),
-        Some(total_energy(w.particles(), &newtonian(eps)))
+        Some(total_energy(world.particles(), &newtonian(softening)))
     );
 
     // And the world steps under it: a softer force pulls less, so after
@@ -122,10 +125,11 @@ fn set_theta_switches_to_barnes_hut_and_keeps_the_exact_energy() {
     for demo in [&mut direct, &mut tree, &mut exact_tree] {
         demo.advance(PHYSICS_DT * 10.0);
     }
-    let gap = |a: &Demo, b: &Demo| {
-        a.positions()
+    let gap = |first: &Demo, second: &Demo| {
+        first
+            .positions()
             .iter()
-            .zip(b.positions())
+            .zip(second.positions())
             .map(|(x, y)| (x - y).abs())
             .fold(0.0_f32, f32::max)
     };

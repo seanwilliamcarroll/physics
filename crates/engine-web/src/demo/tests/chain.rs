@@ -5,7 +5,7 @@ use engine::{Order, Solver, Stabilization};
 use super::super::{Demo, DemoKind, ScalarKind};
 use super::PHYSICS_DT;
 
-/// The M4 chain (10 links, 1:100), `setup` applied, after one second: its
+/// The chain (10 links, 1:100), `setup` applied, after one second: its
 /// particles' positions.
 fn chain_after(setup: impl FnOnce(&mut Demo)) -> Vec<f32> {
     let mut demo = Demo::new_chain(ScalarKind::F64, 10, 100.0).unwrap();
@@ -17,10 +17,7 @@ fn chain_after(setup: impl FnOnce(&mut Demo)) -> Vec<f32> {
 }
 
 #[test]
-fn the_m4_controls_reach_the_world() {
-    // From the full cargo-mutants run: set_iterations, set_order and
-    // set_stabilization could each do nothing (the M4 page's iterations,
-    // order and "impulse uses" controls).
+fn the_chain_page_controls_reach_the_world() {
     let base = chain_after(|_| {});
     let iterations = chain_after(|demo| demo.set_iterations(NonZeroU32::new(5).unwrap()));
     let order = chain_after(|demo| demo.set_order(Order::Reverse));
@@ -42,8 +39,6 @@ fn the_m4_controls_reach_the_world() {
 
 #[test]
 fn only_solver_stepped_worlds_can_be_grabbed() {
-    // From the full cargo-mutants run: `grabbable` could answer always yes
-    // or always no.
     assert!(
         Demo::new_chain(ScalarKind::F64, 10, 100.0)
             .unwrap()

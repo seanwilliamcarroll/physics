@@ -40,13 +40,13 @@ fn set_rate_changes_how_many_steps_a_frame_buys() {
 fn orbit_energy_matches_diagnostics_on_the_same_world() {
     let mut demo = orbit_demo(ScalarKind::F64);
     demo.set_integrator(Integrator::VelocityVerlet);
-    let mut w = orbit::<f64>(Integrator::VelocityVerlet, 1.0).unwrap();
+    let mut world = orbit::<f64>(Integrator::VelocityVerlet, 1.0).unwrap();
     for _ in 0..90 {
         demo.advance(PHYSICS_DT);
-        w.step(engine::TimeStep::new(PHYSICS_DT).unwrap());
+        world.step(engine::TimeStep::new(PHYSICS_DT).unwrap());
     }
-    let expect = total_energy(w.particles(), &orbit_gravity().unwrap());
-    assert_eq!(demo.energy().map(f64::to_bits), Some(expect.to_bits()));
+    let expected = total_energy(world.particles(), &orbit_gravity().unwrap());
+    assert_eq!(demo.energy().map(f64::to_bits), Some(expected.to_bits()));
 }
 
 #[test]
@@ -79,16 +79,16 @@ fn advance_steps_the_world_and_refreshes_the_buffer() {
 fn f32_and_f64_demos_agree_before_rounding_compounds() {
     // Same seed, same scene: after 0.5 s (before any particle lands and
     // respawns) the two scalars differ only by f32 rounding.
-    let (mut a, mut b) = (
+    let (mut demo_f32, mut demo_f64) = (
         fountain_demo(ScalarKind::F32),
         fountain_demo(ScalarKind::F64),
     );
     for _ in 0..30 {
-        a.advance(PHYSICS_DT);
-        b.advance(PHYSICS_DT);
+        demo_f32.advance(PHYSICS_DT);
+        demo_f64.advance(PHYSICS_DT);
     }
-    for (x, y) in a.positions().iter().zip(b.positions()) {
-        assert!((x - y).abs() < 1e-4, "{x} vs {y}");
+    for (x32, x64) in demo_f32.positions().iter().zip(demo_f64.positions()) {
+        assert!((x32 - x64).abs() < 1e-4, "{x32} vs {x64}");
     }
 }
 

@@ -30,13 +30,13 @@ impl ScalarKind {
 pub(crate) enum DemoKind {
     Fountain,
     Orbit,
-    /// One of the M2 scenes of `n` bodies under pairwise gravity.
+    /// Bodies under pairwise gravity.
     Gravity(GravityScene),
-    /// M3: `01-solvers.md`'s pendulum (a pin and a bob on a rod).
+    /// A pin and a bob on a rod.
     Pendulum,
 }
 
-/// The M2 gravity scenes, all under `scenarios::cluster_gravity` (same ε).
+/// The pairwise-gravity scenes, all under `scenarios::cluster_gravity`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum GravityScene {
     /// Random bodies in a disk, drifting (`scenarios::cluster`).
@@ -64,7 +64,7 @@ impl DemoKind {
 }
 
 /// Decodes a `demo_set_integrator` code ([`abi`]). A free function because
-/// `Integrator` belongs to the engine, which knows nothing of wire codes.
+/// the engine knows nothing of wire codes.
 #[must_use]
 pub(crate) const fn integrator_from_code(code: u32) -> Option<Integrator> {
     match code {

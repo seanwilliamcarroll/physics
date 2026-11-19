@@ -1,5 +1,5 @@
-//! [`AnyWorld`]: the runtime scalar choice, and the two macros that keep
-//! every per-scalar `match` to one line.
+//! [`AnyWorld`]: the runtime scalar choice, and the macros that keep every
+//! per-scalar `match` to one line.
 
 use engine::{Scalar, World};
 use math::convert::f64_to_f32;
@@ -7,21 +7,21 @@ use math::convert::f64_to_f32;
 use super::sim::Sim;
 
 /// Runtime scalar choice. Each variant monomorphizes a full engine copy into
-/// the `.wasm`, so binary size grows per variant (measure when adding one).
+/// the `.wasm`, so binary size grows per variant.
 pub(super) enum AnyWorld {
     F32(Sim<f32>),
     F64(Sim<f64>),
 }
 
-/// Runs `$body` on whichever `Sim` `$world` holds, bound as `$s`:
+/// Runs `$body` on whichever `Sim` `$world` holds, bound as `$sim`:
 /// `each_scalar!(&mut self.world, sim => sim.world.set_solver(x))`. The body
 /// is compiled once per scalar type, so it must type-check for both
-/// (values parsed in `f64` go through `.cast()`, exact for `f64` itself).
+/// (values parsed in `f64` go through `.cast()`).
 macro_rules! each_scalar {
-    ($world:expr, $s:ident => $body:expr) => {
+    ($world:expr, $sim:ident => $body:expr) => {
         match $world {
-            $crate::demo::any_world::AnyWorld::F32($s) => $body,
-            $crate::demo::any_world::AnyWorld::F64($s) => $body,
+            $crate::demo::any_world::AnyWorld::F32($sim) => $body,
+            $crate::demo::any_world::AnyWorld::F64($sim) => $body,
         }
     };
 }
@@ -39,18 +39,17 @@ macro_rules! build_any {
 }
 pub(super) use build_any;
 
-/// Copies `w`'s positions into `buf` as interleaved `f32` (the render
-/// buffer the page reads).
-pub(super) fn fill_positions<S: Scalar>(w: &World<S>, buf: &mut Vec<f32>) {
-    buf.clear();
-    for p in w.particles().pos() {
-        buf.push(to_render(p.x));
-        buf.push(to_render(p.y));
+/// Copies `world`'s positions into `buffer` as interleaved `f32`, the render
+/// buffer the page reads.
+pub(super) fn fill_positions<S: Scalar>(world: &World<S>, buffer: &mut Vec<f32>) {
+    buffer.clear();
+    for position in world.particles().pos() {
+        buffer.push(to_render(position.x));
+        buffer.push(to_render(position.y));
     }
 }
 
-/// Engine scalar to render coordinate. `to_f64` is the lossless readout;
-/// narrowing to `f32` is fine for drawing (sub-micrometer at demo scales).
-fn to_render<S: Scalar>(x: S) -> f32 {
-    f64_to_f32(x.to_f64())
+/// Narrowing to `f32` is fine for drawing (sub-micrometer at demo scales).
+fn to_render<S: Scalar>(coordinate: S) -> f32 {
+    f64_to_f32(coordinate.to_f64())
 }

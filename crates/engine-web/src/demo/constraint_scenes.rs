@@ -1,5 +1,5 @@
-//! The M4 scenes' constructors: they take parameters `demo_new`'s
-//! `(n, seed)` can't carry (a mass ratio, a start and an offset).
+//! The chain and double pendulum: constructors taking parameters `demo_new`'s
+//! `(n, seed)` can't carry.
 
 use core::num::NonZeroU32;
 
@@ -10,10 +10,8 @@ use super::any_world::build_any;
 use super::sim::Sim;
 use super::{BetweenSteps, Demo, ScalarKind};
 
-/// Substeps the M4 scenes start with: 20, the setting `01` and M4.4
-/// measured (chains hold under XPBD; the impulse double pendulum keeps its
-/// energy). The page can change it.
-// `unwrap` in a const item runs at compile time (as `PHYSICS_RATE`).
+/// Chains hold under XPBD and the impulse double pendulum keeps its energy
+/// at 20 substeps.
 const START_SUBSTEPS: NonZeroU32 = NonZeroU32::new(20).unwrap();
 
 impl Demo {

@@ -8,8 +8,8 @@ use super::PHYSICS_DT;
 
 /// A 4 × 4 jelly, soft enough to be stable at the demo's 10 substeps.
 const SIDE: usize = 4;
-const K: f64 = 500.0;
-const C: f64 = 0.5;
+const STIFFNESS: f64 = 500.0;
+const DAMPING: f64 = 0.5;
 /// Half a second: falling (kinetic), above the ground (potential), and
 /// wobbling (elastic) all at once.
 const STEPS: usize = 30;
@@ -22,23 +22,24 @@ const BODIES: [JellyBody; 3] = [
 
 #[test]
 fn jelly_energy_is_kinetic_plus_gravity_plus_elastic() {
-    // cargo-mutants (full run): flipping either `+` in the jelly's energy
-    // sum went unnoticed. A twin world stepped alike gives each term.
+    // A twin world stepped alike gives each term.
     for body in BODIES {
-        let mut demo = Demo::new_jelly(ScalarKind::F64, body, SIDE, SIDE, K, C).unwrap();
-        let mut j = jelly::<f64>(body, JELLY_START_SUBSTEPS, SIDE, SIDE, K, C).unwrap();
+        let mut demo =
+            Demo::new_jelly(ScalarKind::F64, body, SIDE, SIDE, STIFFNESS, DAMPING).unwrap();
+        let mut twin =
+            jelly::<f64>(body, JELLY_START_SUBSTEPS, SIDE, SIDE, STIFFNESS, DAMPING).unwrap();
         for _ in 0..STEPS {
             demo.advance(PHYSICS_DT);
-            j.world.step(TimeStep::new(PHYSICS_DT).unwrap());
+            twin.world.step(TimeStep::new(PHYSICS_DT).unwrap());
         }
-        let p = j.world.particles();
-        let elastic = j.springs.as_ref().map_or_else(
-            || constraint_potential(p, j.world.constraints()),
-            |s| s.potential(p),
+        let particles = twin.world.particles();
+        let elastic = twin.springs.as_ref().map_or_else(
+            || constraint_potential(particles, twin.world.constraints()),
+            |springs| springs.potential(particles),
         );
         let terms = [
-            kinetic_energy(p),
-            uniform_gravity_potential(p, &pendulum_gravity()),
+            kinetic_energy(particles),
+            uniform_gravity_potential(particles, &pendulum_gravity()),
             elastic,
         ];
         assert!(
@@ -56,14 +57,21 @@ fn jelly_energy_is_kinetic_plus_gravity_plus_elastic() {
 
 #[test]
 fn a_live_stiffness_change_reaches_the_springs_the_world_steps() {
-    // cargo-mutants: the force jelly's live k could update only the
-    // readout's copy of its springs (`reinstall` replaced by nothing). Far
-    // past k_crit, the stepped jelly must blow up.
-    let kinetic_after = |k: Option<f64>| {
-        let mut demo =
-            Demo::new_jelly(ScalarKind::F64, JellyBody::Springs, SIDE, SIDE, K, C).unwrap();
-        if let Some(k) = k {
-            assert!(demo.set_stiffness(k));
+    // Far past the critical stiffness the stepped jelly must blow up: the
+    // change has to reach the springs the world steps, not only the
+    // readout's copy.
+    let kinetic_after = |new_stiffness: Option<f64>| {
+        let mut demo = Demo::new_jelly(
+            ScalarKind::F64,
+            JellyBody::Springs,
+            SIDE,
+            SIDE,
+            STIFFNESS,
+            DAMPING,
+        )
+        .unwrap();
+        if let Some(new_stiffness) = new_stiffness {
+            assert!(demo.set_stiffness(new_stiffness));
         }
         for _ in 0..60 {
             demo.advance(PHYSICS_DT);
@@ -71,7 +79,7 @@ fn a_live_stiffness_change_reaches_the_springs_the_world_steps() {
         demo.kinetic_energy()
     };
     let (calm, stiff) = (kinetic_after(None), kinetic_after(Some(1e6)));
-    assert!(calm < 10.0, "k = {K}: {calm} J");
+    assert!(calm < 10.0, "k = {STIFFNESS}: {calm} J");
     assert!(
         stiff.is_nan() || stiff >= 1e3,
         "k = 1e6: {stiff} J (NaN counts as exploded)"

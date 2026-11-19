@@ -60,21 +60,26 @@ fn pendulum_energy_falls_under_xpbd_in_f32_too() {
 
 #[test]
 fn pendulum_energy_is_kinetic_plus_potential() {
-    // cargo-mutants (full run): `kinetic * potential` passed the tests
-    // above (0 at release, negative once swinging). Mid-swing both terms
-    // are nonzero, and the readout is exactly their sum.
+    // Mid-swing both terms are nonzero (at release the product is 0), and the
+    // readout is exactly their sum.
     let mut demo = pendulum_demo(ScalarKind::F64);
     for _ in 0..20 {
         demo.advance(PHYSICS_DT);
     }
-    let AnyWorld::F64(s) = &demo.world else {
+    let AnyWorld::F64(sim) = &demo.world else {
         panic!("an f64 demo")
     };
-    let p = s.world.particles();
-    let (k, u) = (
-        kinetic_energy(p),
-        uniform_gravity_potential(p, &pendulum_gravity()),
+    let particles = sim.world.particles();
+    let (kinetic, potential) = (
+        kinetic_energy(particles),
+        uniform_gravity_potential(particles, &pendulum_gravity()),
     );
-    assert!(k > 0.0 && u < 0.0, "kinetic {k}, potential {u}");
-    assert_eq!(demo.energy().map(f64::to_bits), Some((k + u).to_bits()));
+    assert!(
+        kinetic > 0.0 && potential < 0.0,
+        "kinetic {kinetic}, potential {potential}"
+    );
+    assert_eq!(
+        demo.energy().map(f64::to_bits),
+        Some((kinetic + potential).to_bits())
+    );
 }
