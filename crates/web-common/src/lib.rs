@@ -1,20 +1,9 @@
-//! What every `*-web` crate (engine, acoustic, sand, swarm)
-//! shares around its simulation, and nothing about any simulation: the
-//! common part of the wasm shell (`docs/03-wasm-shell.md`). Scope is kept
-//! to that; anything simulation-specific belongs in its own `*-web` crate.
-//!
-//! - [`install_panic_hook`]: a Rust panic's message to the browser console
-//!   (the `env.console_error` import).
-//! - [`FixedStep`]: frame times to a whole number of fixed physics steps,
-//!   with the step budget's cap.
-//! - [`boundary`]: parsing helpers for values crossing the C ABI.
-//!
-//! No simulation crate depends on this one.
+//! What every `*-web` crate shares around its simulation (`docs/03-wasm-shell.md`),
+//! and nothing simulation-specific.
 
 pub mod boundary;
 mod fixed_step;
-// Only wasm builds contain unsafe here (the import call), so the
-// expectation is wasm-only too; natively it would go unfulfilled.
+// Wasm-only: natively there is no unsafe, and the expectation would go unfulfilled.
 #[cfg_attr(
     target_arch = "wasm32",
     expect(
