@@ -28,6 +28,13 @@ use swarm::{
 /// after 300 / 1,000 / 3,000 / 10,000 steps: Grid 3.6 / 4.4 / 5.4 / 4.9
 /// ms; Vicsek's keeps climbing, 0.6 to 1.5 ms; the ants settle by 1,000;
 /// Physarum stays within 10%).
+///
+/// The warm-up steps in the default mode (Sorted), so a change to its
+/// sums' last bits (allowed: `docs/04-testing.md`) warms a different
+/// flock: after #332, 300 boids had 83.7 neighbours each, not 59.6, and
+/// Grid and Sorted at 300 read 30–66% slower with nothing slower in their
+/// code (2026-11-19 records). Large flocks average it out (10,000: 57.5
+/// against 58.4). Read a small flock's jump against its neighbour count.
 const FLOCK_WARM_UP: usize = 1_000;
 const VICSEK_WARM_UP: usize = 3_000;
 const ANTS_WARM_UP: usize = 1_000;

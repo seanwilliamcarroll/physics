@@ -374,7 +374,14 @@ ranges as an order of magnitude.
   −26%/−30% (SSE2); the M4 −7%/−31%; V8 −17%/−19% (Zen 5), −2%/−15%
   (the M4). The block removes the leftovers' branches (branch misses
   3.6% → 0.3%). At 1k (about a boid a span) V8 is 7–20% slower: large
-  flocks first.
+  flocks first. **The records after it (2026-11-19) showed V8 21–35%
+  slower,** not faster: the sweep's 8-lane build gave brute force 8
+  lanes too, so the lane loop had two callers and stayed out of line;
+  as shipped (brute force 16) it was inlined into `step_sorted`, too big
+  a function for V8 (the M4: 2.26 ms at 10k against 1.63). Kept out of
+  line for Sorted in wasm (`Lanes::add_apart`): 1.69 ms; brute force
+  keeps it inlined (apart: 22% slower). The lesson, as with Grid's:
+  a sweep build must change only what it names.
 
 ### Findings
 
