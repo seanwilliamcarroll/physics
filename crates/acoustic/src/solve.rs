@@ -3,46 +3,52 @@
 
 /// Solves the augmented system `[A | b]` in place by Gaussian elimination
 /// with partial pivoting; `None` if it's singular.
-pub(crate) fn solve(m: &mut [Vec<f64>]) -> Option<Vec<f64>> {
-    let n = m.len();
-    for c in 0..n {
-        let pivot = (c..n).max_by(|&a, &b| {
-            let (x, y) = (
-                m.get(a).and_then(|r| r.get(c)),
-                m.get(b).and_then(|r| r.get(c)),
+pub(crate) fn solve(system: &mut [Vec<f64>]) -> Option<Vec<f64>> {
+    let size = system.len();
+    for column in 0..size {
+        let pivot = (column..size).max_by(|&first, &second| {
+            let (first_value, second_value) = (
+                system.get(first).and_then(|row| row.get(column)),
+                system.get(second).and_then(|row| row.get(column)),
             );
-            x.map_or(0.0, |v| v.abs())
-                .total_cmp(&y.map_or(0.0, |v| v.abs()))
+            first_value
+                .map_or(0.0, |value| value.abs())
+                .total_cmp(&second_value.map_or(0.0, |value| value.abs()))
         })?;
-        m.swap(c, pivot);
-        let (top, rest) = m.split_at_mut(c + 1);
-        let row = top.last()?;
-        let lead = *row.get(c)?;
+        system.swap(column, pivot);
+        let (top, rest) = system.split_at_mut(column + 1);
+        let pivot_row = top.last()?;
+        let lead = *pivot_row.get(column)?;
         if lead == 0.0 {
             return None;
         }
-        let tail = row.get(c..).unwrap_or_default();
+        let tail = pivot_row.get(column..).unwrap_or_default();
         for other in rest {
-            let f = other.get(c).copied().unwrap_or(0.0) / lead;
-            // Over the slices from column c on, not `zip(…).skip(c)`: a
+            let factor = other.get(column).copied().unwrap_or(0.0) / lead;
+            // Over the slices from `column` on, not `zip(…).skip(column)`: a
             // known length, so the loop vectorizes (it didn't).
-            for (o, &v) in other.get_mut(c..).unwrap_or_default().iter_mut().zip(tail) {
-                *o -= f * v;
+            for (entry, &pivot_entry) in other
+                .get_mut(column..)
+                .unwrap_or_default()
+                .iter_mut()
+                .zip(tail)
+            {
+                *entry -= factor * pivot_entry;
             }
         }
     }
-    let mut x = vec![0.0; n];
-    for c in (0..n).rev() {
-        let row = m.get(c)?;
+    let mut solution = vec![0.0; size];
+    for column in (0..size).rev() {
+        let row = system.get(column)?;
         let tail: f64 = row
             .iter()
-            .zip(&x)
-            .skip(c + 1)
-            .take(n - c - 1)
-            .map(|(a, b)| a * b)
+            .zip(&solution)
+            .skip(column + 1)
+            .take(size - column - 1)
+            .map(|(coefficient, unknown)| coefficient * unknown)
             .sum();
-        let value = (row.get(n)? - tail) / row.get(c)?;
-        *x.get_mut(c)? = value;
+        let value = (row.get(size)? - tail) / row.get(column)?;
+        *solution.get_mut(column)? = value;
     }
-    Some(x)
+    Some(solution)
 }

@@ -31,14 +31,14 @@ impl Excitation {
             Self::Noise => string.pluck(|_, _| S::from_f64(rng.range(-1.0, 1.0))),
             Self::Triangle { peak } => {
                 let peak = peak.clamp(PEAK_MARGIN, 1.0 - PEAK_MARGIN);
-                string.pluck(|i, n| {
-                    let x = usize_to_f64(i) / usize_to_f64(n);
-                    let y = if x < peak {
+                string.pluck(|slot, loop_length| {
+                    let x = usize_to_f64(slot) / usize_to_f64(loop_length);
+                    let height = if x < peak {
                         x / peak
                     } else {
                         (1.0 - x) / (1.0 - peak)
                     };
-                    S::from_f64(y)
+                    S::from_f64(height)
                 });
             }
         }
@@ -58,11 +58,11 @@ impl Excitation {
             Self::Noise => string.pluck(|_| S::from_f64(rng.range(-1.0, 1.0))),
             Self::Triangle { peak } => {
                 let peak = peak.clamp(PEAK_MARGIN, 1.0 - PEAK_MARGIN);
-                string.pluck(|s| {
-                    S::from_f64(if s < peak {
-                        s / peak
+                string.pluck(|position| {
+                    S::from_f64(if position < peak {
+                        position / peak
                     } else {
-                        (1.0 - s) / (1.0 - peak)
+                        (1.0 - position) / (1.0 - peak)
                     })
                 });
             }

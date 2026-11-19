@@ -15,8 +15,8 @@ const BASS_INTERCEPT: f64 = -6.012;
 /// `B` for MIDI key `midi` (21 is A0, 108 is C8).
 #[must_use]
 pub fn inharmonicity(midi: u8) -> f64 {
-    let m = f64::from(midi);
-    libm::exp(BASS_SLOPE * m + BASS_INTERCEPT) + libm::exp(TREBLE_SLOPE * m + TREBLE_INTERCEPT)
+    let key = f64::from(midi);
+    libm::exp(BASS_SLOPE * key + BASS_INTERCEPT) + libm::exp(TREBLE_SLOPE * key + TREBLE_INTERCEPT)
 }
 
 #[cfg(test)]
