@@ -40,6 +40,8 @@ comments are for what the code can't say.
   iterator chains, if the chain names the thing (`.map(|boid| boid.x)`
   over `.map(|b| b.x)`, but `|&(x, y)|` is fine).
 - Test function names are already sentences; leave them.
+- `test-support`'s literal shorthands `s(…)`, `v(…)`, `kg(…)` and
+  `bits(…)`: a deliberate vocabulary for test literals.
 
 **Public API names are in scope.** Rename a short or unclear public
 field, method, function, type or constant, and update every caller in the
