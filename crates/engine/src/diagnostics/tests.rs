@@ -65,12 +65,15 @@ const G: f64 = 6.674_30e-11;
 
 #[test]
 fn potential_of_a_pair_is_the_softened_plummer_form() {
-    let (m1, m2, d, eps) = (1.0e10, 3.0e10, 2.0, 0.1);
+    let (m1, m2, d, epsilon) = (1.0e10, 3.0e10, 2.0, 0.1);
     let mut p = Particles::new();
     p.add(Vec2::ZERO, Vec2::ZERO, kg(m1));
     p.add(Vec2::new(d, 0.0), Vec2::ZERO, kg(m2));
-    let u = gravity_potential(&p, &PairwiseGravity::new(G, Softening::new(eps).unwrap()));
-    let expect = -G * m1 * m2 / (d * d + eps * eps).sqrt();
+    let u = gravity_potential(
+        &p,
+        &PairwiseGravity::new(G, Softening::new(epsilon).unwrap()),
+    );
+    let expect = -G * m1 * m2 / (d * d + epsilon * epsilon).sqrt();
     assert!(
         (u - expect).abs() <= 1e-12 * expect.abs(),
         "{u} vs {expect}"
@@ -155,8 +158,6 @@ fn constraint_error_is_max_and_rms_of_c() {
 
 #[test]
 fn constraint_potential_is_half_c_squared_over_alpha_for_soft_rods_only() {
-    // From the full cargo-mutants run: every operator in it could change
-    // unnoticed (the jelly's readout was its only use).
     use crate::{Compliance, DistanceConstraint};
     let mut p = Particles::new();
     let pin = p.add_static(Vec2::ZERO).id();
@@ -180,8 +181,8 @@ fn constraint_potential_is_half_c_squared_over_alpha_for_soft_rods_only() {
 }
 
 /// `m R² |ω|² / 5` over spinning circles; statics and points carry none
-/// (the full mutation run: `&&` → `||` in the filter survived, which
-/// divides a static circle's 0 by its inverse mass 0: NaN).
+/// (`&&` → `||` in the filter would divide a static circle's 0 by its
+/// inverse mass 0: NaN).
 #[test]
 fn rotational_energy_skips_statics_and_points() {
     let mut p = Particles::new();
