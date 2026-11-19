@@ -39,14 +39,12 @@ impl<S: Scalar> DelayLine<S> {
         self.samples.capacity()
     }
 
-    /// Never true: a line has at least one sample (see [`new`](Self::new)).
     #[cfg(test)]
     #[must_use]
     pub(crate) fn is_empty(&self) -> bool {
         self.samples.is_empty()
     }
 
-    /// The oldest sample, written `len` pushes ago.
     #[must_use]
     pub(crate) fn front(&self) -> S {
         self.samples.get(self.head).copied().unwrap_or(S::ZERO)
@@ -79,14 +77,12 @@ impl<S: Scalar> DelayLine<S> {
         }
     }
 
-    /// The newest sample (the last pushed).
     #[cfg(test)]
     #[must_use]
     pub(crate) fn back(&self) -> S {
         self.at(self.samples.len() - 1)
     }
 
-    /// Replaces the oldest sample with `sample`, the newest.
     pub(crate) fn push(&mut self, sample: S) {
         if let Some(slot) = self.samples.get_mut(self.head) {
             *slot = sample;
@@ -94,7 +90,6 @@ impl<S: Scalar> DelayLine<S> {
         self.head = (self.head + 1) % self.samples.len();
     }
 
-    /// The samples, oldest first.
     pub(crate) fn iter(&self) -> impl Iterator<Item = S> + '_ {
         let (newer, older) = self.samples.split_at(self.head);
         older.iter().chain(newer).copied()

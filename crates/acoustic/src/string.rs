@@ -73,12 +73,10 @@ impl<S: Scalar> KsString<S> {
         self.bridge.damp(decay_time_60db, ramp);
     }
 
-    /// Subtracts the delay line's mean (`DelayLine::remove_mean`).
     pub fn remove_mean(&mut self) {
         self.line.remove_mean();
     }
 
-    /// The delay line's length `N`, samples.
     #[must_use]
     pub fn delay(&self) -> usize {
         self.line.len()
@@ -100,21 +98,18 @@ impl<S: Scalar> KsString<S> {
         self.bridge.clear();
     }
 
-    /// The next output sample.
     pub fn next_sample(&mut self) -> S {
         let output = self.bridge.process(self.line.front());
         self.line.push(output);
         output
     }
 
-    /// Fills `out` with the next samples.
     pub fn render(&mut self, out: &mut [S]) {
         for sample in out {
             *sample = self.next_sample();
         }
     }
 
-    /// The delay line, oldest first.
     pub fn samples(&self) -> impl Iterator<Item = S> + '_ {
         self.line.iter()
     }

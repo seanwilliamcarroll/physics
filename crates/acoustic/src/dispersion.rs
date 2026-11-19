@@ -55,7 +55,6 @@ pub(crate) struct Dispersion {
 }
 
 impl Dispersion {
-    /// The whole cascade's phase delay at `omega` rad/sample.
     pub(crate) fn delay(&self, omega: f64) -> f64 {
         self.poles
             .iter()
@@ -80,8 +79,6 @@ fn biquad_delay(radius: f64, angle: f64, omega: f64) -> f64 {
     Angles::new(angle, omega).delay(radius, omega)
 }
 
-/// [`biquad_delay`]'s derivatives in radius and angle at `omega`
-/// ([`Angles::gradient`]).
 #[cfg(test)]
 fn biquad_delay_gradient(radius: f64, angle: f64, omega: f64) -> (f64, f64) {
     Angles::new(angle, omega).gradient(radius, omega)
@@ -106,7 +103,6 @@ impl Angles {
         }
     }
 
-    /// The biquad's phase delay at `omega` with pole radius `radius`.
     fn delay(self, radius: f64, omega: f64) -> f64 {
         let factor = |(sin, cos): (f64, f64)| libm::atan2(-radius * sin, 1.0 - radius * cos);
         (2.0 * omega + 2.0 * (factor(self.plus) + factor(self.minus))) / omega

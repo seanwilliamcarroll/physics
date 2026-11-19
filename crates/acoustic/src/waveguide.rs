@@ -41,8 +41,7 @@ pub struct Waveguide<S> {
     hammer: Option<(Hammer, usize)>,
 }
 
-/// Where a new string's pickup sits, from the bridge: near it, as on a
-/// guitar.
+/// Where a new string's pickup sits, from the bridge.
 pub(crate) const DEFAULT_PICKUP: f64 = 0.1;
 
 impl<S: Scalar> Waveguide<S> {
@@ -135,13 +134,11 @@ impl<S: Scalar> Waveguide<S> {
         2 * self.right.len() + usize::from(self.odd_sample.is_some())
     }
 
-    /// Each rail's length `M`, samples.
     #[must_use]
     pub fn rail(&self) -> usize {
         self.right.len()
     }
 
-    /// The pitch this string plays, Hz.
     #[must_use]
     pub const fn pitch(&self) -> f64 {
         self.bridge.pitch()
@@ -201,7 +198,6 @@ impl<S: Scalar> Waveguide<S> {
         filtered
     }
 
-    /// Moves the pickup to `position` (from the bridge, clamped to 0..1).
     pub const fn set_pickup(&mut self, position: f64) {
         self.pickup = position.clamp(0.0, 1.0);
     }
@@ -220,34 +216,28 @@ impl<S: Scalar> Waveguide<S> {
         lower + (self.cell(upper_cell) - lower) * fraction
     }
 
-    /// The displacement at `cell` (0 nearest the bridge).
     fn cell(&self, cell: usize) -> S {
         let rail_length = self.right.len();
         self.right.at(cell) + self.left.at(rail_length - 1 - cell)
     }
 
-    /// The next output: advance one sample, read the pickup.
     pub fn next_sample(&mut self) -> S {
         self.step();
         self.displacement()
     }
 
-    /// Fills `out` with the next samples.
     pub fn render(&mut self, out: &mut [S]) {
         for sample in out {
             *sample = self.next_sample();
         }
     }
 
-    /// Where `cell`'s center is, from the bridge (0 to 1 of the effective
-    /// length).
     #[must_use]
     pub fn position(&self, cell: usize) -> f64 {
         let cell = usize_to_f64(cell);
         (cell + self.first_cell_offset) / self.length
     }
 
-    /// The string's shape, cell by cell from the bridge.
     pub fn shape(&self) -> impl Iterator<Item = S> + '_ {
         (0..self.right.len()).map(|cell| self.cell(cell))
     }
@@ -268,7 +258,6 @@ impl<S: Scalar> Waveguide<S> {
         self.bridge.clear();
     }
 
-    /// Sets the rails directly, front first (missing samples 0).
     #[cfg(test)]
     pub(crate) fn load_rails(&mut self, right: &[S], left: &[S]) {
         self.right
@@ -277,14 +266,12 @@ impl<S: Scalar> Waveguide<S> {
             .fill(|index| left.get(index).copied().unwrap_or(S::ZERO));
     }
 
-    /// The right and left rails' values at `cell`.
     #[cfg(test)]
     pub(crate) fn rails_at(&self, cell: usize) -> (S, S) {
         let rail_length = self.right.len();
         (self.right.at(cell), self.left.at(rail_length - 1 - cell))
     }
 
-    /// The left rail's newest sample (just reflected at the bridge).
     #[cfg(test)]
     pub(crate) fn left_newest(&self) -> S {
         self.left.back()

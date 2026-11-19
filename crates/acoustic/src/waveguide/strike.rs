@@ -32,7 +32,6 @@ impl<S: Scalar> Waveguide<S> {
         true
     }
 
-    /// Zeros the rails and the bridge's memory.
     pub(super) fn silence(&mut self) {
         self.right.fill(|_| S::ZERO);
         self.left.fill(|_| S::ZERO);
@@ -42,7 +41,6 @@ impl<S: Scalar> Waveguide<S> {
         self.bridge.clear();
     }
 
-    /// The hammer on the string, if struck.
     #[must_use]
     pub fn hammer(&self) -> Option<&Hammer> {
         self.hammer.as_ref().map(|(hammer, _)| hammer)

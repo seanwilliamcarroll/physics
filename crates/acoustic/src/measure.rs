@@ -129,10 +129,9 @@ pub fn partial(signal: &[f64], sample_rate: f64, estimate_hz: f64, periods: f64)
     Some(estimate_hz + error * sample_rate / (tau * hop))
 }
 
-/// The amplitude of `signal`'s component at `frequency` Hz: a
-/// Hann-windowed DFT at exactly `frequency` (one bin, not the FFT's grid),
-/// scaled so a sine of amplitude `a` reads `a`. The window should span
-/// many periods of `frequency` and of its neighbors, so they don't leak in.
+/// The amplitude of `signal`'s component at `frequency` Hz: a Hann-windowed
+/// DFT at exactly that frequency, scaled so a sine of amplitude `a` reads
+/// `a`. The window should span many periods of it and of its neighbors.
 #[must_use]
 pub fn amplitude(signal: &[f64], sample_rate: f64, frequency: f64) -> f64 {
     let length = usize_to_f64(signal.len());

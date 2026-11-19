@@ -48,7 +48,6 @@ pub(crate) struct Bridge<S> {
 }
 
 impl<S: Scalar> Bridge<S> {
-    /// A silent bridge with the note's coefficients.
     pub(crate) fn new(coefficients: &Coefficients) -> Self {
         let mut bridge = Self {
             tap_now: S::ZERO,
@@ -68,7 +67,6 @@ impl<S: Scalar> Bridge<S> {
         bridge
     }
 
-    /// Takes a new note's coefficients, and clears the memory.
     pub(crate) fn apply(&mut self, coefficients: &Coefficients) {
         self.tap_now = S::from_f64(coefficients.rho * (1.0 - coefficients.stretch));
         self.tap_previous = S::from_f64(coefficients.rho * coefficients.stretch);
@@ -89,7 +87,6 @@ impl<S: Scalar> Bridge<S> {
         self.clear();
     }
 
-    /// Clears the filters' memory (a new pluck).
     pub(crate) fn clear(&mut self) {
         self.previous_input = S::ZERO;
         self.allpass_input = S::ZERO;
@@ -157,7 +154,6 @@ impl<S: Scalar> Bridge<S> {
         self.ramp = Some((S::from_f64(per_sample_factor), ramp.get()));
     }
 
-    /// The pitch the loop plays, Hz.
     pub(crate) const fn pitch(&self) -> f64 {
         self.pitch
     }

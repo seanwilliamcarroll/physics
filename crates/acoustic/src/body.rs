@@ -19,7 +19,6 @@ const RESONANCES: [(f64, f64, f64); 5] = [
 ];
 pub(crate) const RESONANCE_COUNT: usize = RESONANCES.len();
 
-/// Test-only: the resonances' frequencies, Hz.
 #[cfg(test)]
 #[must_use]
 pub(crate) fn resonances() -> [f64; RESONANCE_COUNT] {
@@ -38,7 +37,6 @@ struct Bandpass<S> {
     outputs: (S, S),
 }
 
-/// The body's filter.
 #[derive(Clone, Debug)]
 pub(crate) struct Body<S> {
     bands: [Bandpass<S>; RESONANCE_COUNT],

@@ -49,13 +49,11 @@ impl<S: Scalar> Fft<S> {
         })
     }
 
-    /// The size.
     #[must_use]
     pub const fn len(&self) -> usize {
         self.size
     }
 
-    /// Never true: an FFT has at least 2 points.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.size == 0
@@ -144,8 +142,6 @@ impl<S: Scalar> Spectrum<S> {
         })
     }
 
-    /// The magnitudes the last [`analyze`](Self::analyze) computed (zeros
-    /// before the first).
     #[must_use]
     pub fn last(&self) -> &[S] {
         &self.levels_db
