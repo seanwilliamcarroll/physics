@@ -5,8 +5,8 @@
 //! **A hammer per string.** At impact the strings are identical, and a
 //! cent of detuning barely changes them during a 1–4 ms contact, so `N`
 //! hammers of mass `M` on `N` strings behave like one of `N M` on all of
-//! them: the fitted hammer (A3.3) is a hammer *per string*, and the
-//! contact times stay the tested ones.
+//! them: the fitted hammer is a hammer *per string*, and the contact times
+//! stay the tested ones.
 
 use crate::dispersion::Dispersion;
 use crate::hammer::{self, Hammer, STRIKE};
@@ -39,12 +39,12 @@ pub const fn strings(midi: u8) -> usize {
     }
 }
 
-/// String `i`'s tuning of `n`, cents from the note: symmetric, so the
-/// group's mean is the note (−½, ½ for two; −1, 0, 1 for three).
+/// String `index`'s tuning of `count`, cents from the note: symmetric, so
+/// the group's mean is the note (−½, ½ for two; −1, 0, 1 for three).
 #[must_use]
-pub fn offset(i: usize, n: usize) -> f64 {
-    let (i, n) = (usize_to_f64(i), usize_to_f64(n));
-    (i - (n - 1.0) / 2.0) * DETUNE_CENTS
+pub fn offset(index: usize, count: usize) -> f64 {
+    let (index, count) = (usize_to_f64(index), usize_to_f64(count));
+    (index - (count - 1.0) / 2.0) * DETUNE_CENTS
 }
 
 /// One key's strings, struck. [`MAX_STRINGS`] strings are allocated up
@@ -59,44 +59,45 @@ pub struct Unison<S> {
     /// `2 Z fs`: an arriving wave's displacement change per sample to the
     /// force on the bridge, N per m.
     force_scale: S,
-    z: f64,
-    fs: f64,
+    string_impedance: f64,
+    sample_rate: f64,
 }
 
 impl<S: Scalar> Unison<S> {
-    /// Silent strings at `fs` Hz with room for any key (A0's loop);
-    /// `None` for a rate that can't play A0.
+    /// Silent strings at `sample_rate` Hz with room for any key (A0's
+    /// loop); `None` for a rate that can't play A0.
     #[must_use]
-    pub fn with_capacity(fs: f64) -> Option<Self> {
+    pub fn with_capacity(sample_rate: f64) -> Option<Self> {
         let probe = Voicing {
             tuned: true,
             decay: Decay::Loss(1.0),
             inharmonicity: 0.0,
         };
-        let cap = f64_to_usize(libm::ceil(fs / LOWEST_HZ)).unwrap_or(0);
-        let string = Waveguide::with_capacity(fs, LOWEST_HZ, probe, cap)?;
+        let capacity = f64_to_usize(libm::ceil(sample_rate / LOWEST_HZ)).unwrap_or(0);
+        let string = Waveguide::with_capacity(sample_rate, LOWEST_HZ, probe, capacity)?;
         Some(Self {
             strings: vec![string; MAX_STRINGS],
             active: 0,
             previous: [S::ZERO; MAX_STRINGS],
             force_scale: S::ZERO,
             // Until struck: `restrike` sets the key's.
-            z: 1.0,
-            fs,
+            string_impedance: 1.0,
+            sample_rate,
         })
     }
 
-    /// Key `midi`'s strings at `fs` Hz, voiced by `voicing` (its pitch is
-    /// the key's, equal-tempered; each string detuned by [`offset`]),
-    /// struck at `velocity` m/s; the dispersion designed here (milliseconds:
-    /// voices use a stored design instead). `None` off the keyboard or for
-    /// settings the strings or hammer can't take.
+    /// Key `midi`'s strings at `sample_rate` Hz, voiced by `voicing` (its
+    /// pitch is the key's, equal-tempered; each string detuned by
+    /// [`offset`]), struck at `velocity` m/s; the dispersion designed here
+    /// (milliseconds: voices use a stored design instead). `None` off the
+    /// keyboard or for settings the strings or hammer can't take.
     #[must_use]
-    pub fn new(fs: f64, midi: u8, voicing: Voicing, velocity: f64) -> Option<Self> {
-        let mut u = Self::with_capacity(fs)?;
-        let design = voicing.design(fs, crate::piano::frequency(midi));
-        u.restrike(midi, voicing, design.as_ref(), velocity)
-            .then_some(u)
+    pub fn new(sample_rate: f64, midi: u8, voicing: Voicing, velocity: f64) -> Option<Self> {
+        let mut unison = Self::with_capacity(sample_rate)?;
+        let design = voicing.design(sample_rate, crate::piano::frequency(midi));
+        unison
+            .restrike(midi, voicing, design.as_ref(), velocity)
+            .then_some(unison)
     }
 
     /// Re-strings these strings for key `midi` with `voicing` and the
@@ -105,8 +106,7 @@ impl<S: Scalar> Unison<S> {
     /// keeps ringing), off the keyboard or for a velocity the hammer can't
     /// take: both are checked before the strings are touched. (Strings
     /// that can't be restrung, which no key on the keyboard asks for, are
-    /// left silent.) A refused strike used to silence the key first (found
-    /// by the synth's property test at 10 000 cases).
+    /// left silent.)
     pub(crate) fn restrike(
         &mut self,
         midi: u8,
@@ -117,33 +117,33 @@ impl<S: Scalar> Unison<S> {
         let Some(felt) = hammer::felt(midi) else {
             return false;
         };
-        let z = hammer::impedance(midi);
+        let string_impedance = hammer::impedance(midi);
         // One hammer for every string of the key: the same felt, impedance
         // and speed.
-        let Some(h) = Hammer::new(felt, z, self.fs, velocity) else {
+        let Some(hammer) = Hammer::new(felt, string_impedance, self.sample_rate, velocity) else {
             return false;
         };
         self.active = 0;
-        let f0 = crate::piano::frequency(midi);
-        let n = strings(midi);
-        for (i, s) in self.strings.iter_mut().take(n).enumerate() {
-            let tuned = f0 * libm::exp2(offset(i, n) / CENTS_PER_OCTAVE);
-            if !(s.restring_designed(self.fs, tuned, voicing, design) && s.strike(h, 1.0 - STRIKE))
-            {
+        let fundamental_hz = crate::piano::frequency(midi);
+        let count = strings(midi);
+        for (index, string) in self.strings.iter_mut().take(count).enumerate() {
+            let tuned_hz = fundamental_hz * libm::exp2(offset(index, count) / CENTS_PER_OCTAVE);
+            let restrung = string.restring_designed(self.sample_rate, tuned_hz, voicing, design);
+            if !(restrung && string.strike(hammer, 1.0 - STRIKE)) {
                 return false;
             }
         }
-        self.active = n;
+        self.active = count;
         self.previous = [S::ZERO; MAX_STRINGS];
-        self.force_scale = S::from_f64(2.0 * z * self.fs);
-        self.z = z;
+        self.force_scale = S::from_f64(2.0 * string_impedance * self.sample_rate);
+        self.string_impedance = string_impedance;
         true
     }
 
     /// The release: every string's damper (see [`Waveguide::damp`]).
-    pub fn damp(&mut self, t60: f64, ramp: core::num::NonZeroUsize) {
-        for s in self.strings.iter_mut().take(self.active) {
-            s.damp(t60, ramp);
+    pub fn damp(&mut self, decay_time_60db: f64, ramp: core::num::NonZeroUsize) {
+        for string in self.strings.iter_mut().take(self.active) {
+            string.damp(decay_time_60db, ramp);
         }
     }
 
@@ -185,7 +185,7 @@ impl<S: Scalar> Unison<S> {
         self.strings
             .iter()
             .take(self.active)
-            .map(|s| s.energy(self.z, self.fs))
+            .map(|string| string.energy(self.string_impedance, self.sample_rate))
             .sum()
     }
 
@@ -193,18 +193,18 @@ impl<S: Scalar> Unison<S> {
     pub fn next_sample(&mut self) -> S {
         let mut sum = S::ZERO;
         let strings = self.strings.iter_mut().take(self.active);
-        for (s, previous) in strings.zip(self.previous.iter_mut()) {
-            let y = s.step();
-            sum += self.force_scale * (y - *previous);
-            *previous = y;
+        for (string, previous) in strings.zip(self.previous.iter_mut()) {
+            let output = string.step();
+            sum += self.force_scale * (output - *previous);
+            *previous = output;
         }
         sum
     }
 
     /// Fills `out` with the next samples.
     pub fn render(&mut self, out: &mut [S]) {
-        for x in out {
-            *x = self.next_sample();
+        for sample in out {
+            *sample = self.next_sample();
         }
     }
 }

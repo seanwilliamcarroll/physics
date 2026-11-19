@@ -23,9 +23,9 @@ const DECAY: (f64, f64) = (20.0, 1.5);
 /// Key `midi`'s fundamental decay time, s (clamped to the keyboard).
 #[must_use]
 pub fn t60(midi: u8) -> f64 {
-    let t =
+    let fraction =
         (f64::from(midi.clamp(FIRST_KEY, LAST_KEY) - FIRST_KEY)) / f64::from(LAST_KEY - FIRST_KEY);
-    DECAY.0 * libm::pow(DECAY.1 / DECAY.0, t)
+    DECAY.0 * libm::pow(DECAY.1 / DECAY.0, fraction)
 }
 
 /// Key `midi`'s equal-tempered pitch, Hz (A4 = 440).
@@ -54,10 +54,10 @@ pub(crate) struct Designs {
 }
 
 impl Designs {
-    /// Designs all 88 keys at `fs` Hz (about 200 ms natively).
-    pub(crate) fn new(fs: f64) -> Self {
+    /// Designs all 88 keys at `sample_rate` Hz (about 200 ms natively).
+    pub(crate) fn new(sample_rate: f64) -> Self {
         let designs = (FIRST_KEY..=LAST_KEY)
-            .map(|key| voicing(key, true).design(fs, frequency(key)))
+            .map(|key| voicing(key, true).design(sample_rate, frequency(key)))
             .collect();
         Self { designs }
     }
@@ -65,14 +65,16 @@ impl Designs {
     /// Key `midi`'s design: `None` off the keyboard, or where the key has
     /// no cascade (too few partials in the band, at the very top).
     pub(crate) fn get(&self, midi: u8) -> Option<&Dispersion> {
-        let i = usize::from(midi.checked_sub(FIRST_KEY)?);
-        self.designs.get(i)?.as_ref()
+        let index = usize::from(midi.checked_sub(FIRST_KEY)?);
+        self.designs.get(index)?.as_ref()
     }
 
-    /// How many keys have a cascade.
     #[cfg(test)]
     pub(crate) fn designed(&self) -> usize {
-        self.designs.iter().filter(|d| d.is_some()).count()
+        self.designs
+            .iter()
+            .filter(|design| design.is_some())
+            .count()
     }
 }
 
