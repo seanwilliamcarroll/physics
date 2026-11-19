@@ -21,12 +21,13 @@ pub struct Params {
     pub margin: f32,
     /// The speed band every boid ends a step in.
     pub min_speed: f32,
+    /// The top of the speed band (see `min_speed`).
     pub max_speed: f32,
 }
 
 impl Params {
     /// The ECE 4760 boids algorithm's recommended values (Hunter Adams,
-    /// Cornell; read 2026-11-11): a course's tuning, not measurements.
+    /// Cornell): a course's tuning, not measurements.
     pub const ECE4760: Self = Self {
         visual_range: 40.0,
         protected_range: 8.0,
@@ -44,7 +45,7 @@ impl Params {
     /// `None`.
     #[must_use]
     pub fn checked(self) -> Option<Self> {
-        let all = [
+        let every_value = [
             self.visual_range,
             self.protected_range,
             self.centering,
@@ -55,11 +56,13 @@ impl Params {
             self.min_speed,
             self.max_speed,
         ];
-        let ok = all.iter().all(|v| v.is_finite() && *v >= 0.0)
+        let usable = every_value
+            .iter()
+            .all(|value| value.is_finite() && *value >= 0.0)
             && self.protected_range < self.visual_range
             && self.min_speed > 0.0
             && self.min_speed <= self.max_speed;
-        ok.then_some(self)
+        usable.then_some(self)
     }
 }
 
@@ -75,15 +78,17 @@ impl Arena {
     /// `None` unless both sides are finite and positive.
     #[must_use]
     pub fn new(width: f32, height: f32) -> Option<Self> {
-        let ok = |v: f32| v.is_finite() && v > 0.0;
-        (ok(width) && ok(height)).then_some(Self { width, height })
+        let usable = |side: f32| side.is_finite() && side > 0.0;
+        (usable(width) && usable(height)).then_some(Self { width, height })
     }
 
+    /// The arena's width, pixels.
     #[must_use]
     pub const fn width(self) -> f32 {
         self.width
     }
 
+    /// The arena's height, pixels.
     #[must_use]
     pub const fn height(self) -> f32 {
         self.height

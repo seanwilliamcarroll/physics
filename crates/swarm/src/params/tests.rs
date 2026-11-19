@@ -7,44 +7,50 @@ fn the_published_values_are_usable() {
 
 #[test]
 fn unusable_values_are_refused() {
-    let p = Params::ECE4760;
-    let bad = [
+    let published = Params::ECE4760;
+    let unusable = [
         Params {
             visual_range: f32::NAN,
-            ..p
+            ..published
         },
         Params {
             protected_range: 40.0,
-            ..p
+            ..published
         },
         Params {
             protected_range: -1.0,
-            ..p
+            ..published
         },
         Params {
             centering: f32::INFINITY,
-            ..p
+            ..published
         },
-        Params { avoid: -0.1, ..p },
+        Params {
+            avoid: -0.1,
+            ..published
+        },
         Params {
             min_speed: 0.0,
-            ..p
+            ..published
         },
         Params {
             min_speed: 7.0,
-            ..p
+            ..published
         },
-        Params { margin: -1.0, ..p },
+        Params {
+            margin: -1.0,
+            ..published
+        },
     ];
-    for b in bad {
-        assert_eq!(b.checked(), None, "{b:?}");
+    for params in unusable {
+        assert_eq!(params.checked(), None, "{params:?}");
     }
     // Equal speeds (a constant-speed flock, as Vicsek's) are fine.
     assert!(
         Params {
             min_speed: 4.0,
             max_speed: 4.0,
-            ..p
+            ..published
         }
         .checked()
         .is_some()
@@ -54,12 +60,12 @@ fn unusable_values_are_refused() {
 #[test]
 fn an_arena_needs_two_positive_sides() {
     assert!(Arena::new(1280.0, 720.0).is_some());
-    for (w, h) in [
+    for (width, height) in [
         (0.0, 1.0),
         (1.0, -1.0),
         (f32::NAN, 1.0),
         (1.0, f32::INFINITY),
     ] {
-        assert_eq!(Arena::new(w, h), None);
+        assert_eq!(Arena::new(width, height), None);
     }
 }
