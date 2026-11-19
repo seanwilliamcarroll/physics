@@ -281,40 +281,27 @@ the flock's step split by technique (#286). In order:
 
 The audit is `docs/perf-audit.md` (its guide `perf-code-audit-guide.md`):
 profiles on both machines and in V8, floors, and a ranking by time to be
-saved. Golden hashes are gone (#301): results are tested against
-tolerances, and native and wasm needn't agree to the bit. In order:
+saved; each change's measurements under its "Done" entry there.
 
-1. **Piano design:** 231 → 40 ms in V8 (#303 the Jacobian in closed
-   form; #304 convergence, short refits; this PR: the asm read on all
-   five paths, `sincos`, cached normal equations, the elimination
-   vectorized, shared `sin`/`cos`; algebraic adds tried, no gain).
-   Still:
-   - ~~`std` in place of `libm`~~: measured, kept `libm` (fused
-     `sincos` and inlining: the design 20% slower in V8 with `std`,
-     Vicsek 13% natively; `docs/perf-audit.md`);
-   - maybe vectorized trig (a polynomial `sincos`, `atan` across the
-     target frequencies): the trig is half of what's left;
-   - 11 keys miss the design tests' 1-cent tolerance (key 107: 10.9
-     cents), found by the probe in #303: look into it, and test all 88.
-2. **Per-architecture kernels:** pairwise gravity done (this PR:
-   `force/pairwise/tuning.rs`, a kernel per target and scalar; `f64`
-   in V8 −17%, on the M4 −6%; Zen 5's x86 levels to confirm on `llm`).
-   The boids' lane loop the same way (this PR: `rules/tuning.rs`, a
-   lane count per target and per search; sorted −18% on the M4).
-   `experiments/perf-audit/kernels.py` checks what each target compiled
-   the tables to: run it after any tuning change.
-3. ~~**Exact-bit tests to tolerances.**~~ Reviewed (2026-11-17): every
-   remaining exact-bit test is one where exact is the point
-   (repeatability, two paths built to do the same arithmetic, a value
-   against the same expression, IEEE identities): `docs/04-testing.md`,
-   "Exact bits, reviewed". Hashing removed: the repeatability tests
-   compare whole states (`math::Fnv1a` gone; `state_hash` → `state_bits`).
-4. **The audit's ranking, continued:** the boids' Grid mode (100k: 42
-   ms, scalar), Brute force and Sorted (lane counts per target and per
-   mode; Sorted's span edges), sand's chunk waking, pairwise, Barnes–Hut,
-   Physarum, Vicsek. And phase 2: a recorded wasm baseline.
-5. **A thorough health check:** file sizes, the module hierarchies and
-   organization, and the API surfaces (`cargo xtask api`), as after M7.
+Done: the piano design 231 → 40 ms in V8 (#303, #304); per-target
+kernels for pairwise gravity and the boids' lane loop (`tuning.rs` in
+each; `experiments/perf-audit/kernels.py` checks what each target
+compiled them to: run it after any tuning change); exact-bit tests
+reviewed, hashes gone (#301, `docs/04-testing.md`, "Exact bits,
+reviewed"); the boids' Grid (#320, #324), Vicsek (a negative result,
+#325), sand's chunk waking (#326) and dispatch (#328), Sorted's span
+edges (#332); the health check (file sizes, module layout, API
+surfaces: this PR). Still open:
+
+1. **Piano design:** maybe vectorized trig (a polynomial `sincos`,
+   `atan` across the target frequencies: half of what's left); 11 keys
+   miss the design tests' 1-cent tolerance (key 107: 10.9 cents, found
+   by #303's probe): look into it, and test all 88.
+2. **The ranking's rest:** Barnes–Hut, Physarum; phase 2, a recorded
+   wasm baseline. Zen 5's x86 levels for gravity's kernels to confirm
+   on `llm`.
+3. **Sand:** the empty-run skip (+16% on the bench's uniform scene,
+   −26% settled) needs a busy scene like the page's brush to judge.
 
 ---
 
@@ -347,37 +334,41 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 
 ---
 
-## Out of scope for S5 (carried forward)
+## Out of scope, carried forward
+
+What each milestone left out, kept for later planning.
+
+**S5:**
 
 - Collective construction (Werfel et al. 2014): deferred to its own
   milestone. CMA-ES. Evolving boids or Physarum (the same machinery
   would apply). Evolution in the browser.
 
-## Out of scope for S4 (carried forward)
+**S4:**
 
 - The GPU path (recorded as a decision with numbers, not built);
   chemorepulsion; the one-particle-per-cell exclusion; multiple species.
 
-## Out of scope for S3 (carried forward)
+**S3:**
 
 - Ant Colony Optimization on graphs (Dorigo et al.): context only.
 - Several colonies, castes, recruitment beyond pheromone; 3D; the GPU
   (S4 decides).
 
-## Out of scope for S2 (carried forward)
+**S2:**
 
 - Vectorial noise and the large-system bands (Grégoire & Chaté 2004;
   Chaté et al. 2008): noted, not reproduced.
 - Critical exponents (β, δ): the later papers dispute a critical point.
 - Fields (S3), the GPU (S4), 3D, variable speed.
 
-## Out of scope for S1 (carried forward)
+**S1:**
 
 - Vicsek's model and periodic boundaries (S2); fields and stigmergy (S3,
   S4); the GPU (S4 decides); threads (`docs/workers.md`).
 - Fixed point (M8's panel); 3D; obstacles; the lab's scout bias.
 
-## Out of scope for M9 (carried forward)
+**M9:**
 
 - Per-cell velocity and momentum (cells move by rules, not forces);
   frictional, particle-based sand is M10's DEM panel.
@@ -385,7 +376,7 @@ testing"); `docs/setup.md`, Node through nvm. Open:
 - Threads or the GPU (`docs/workers.md`; the swarm track's S4 decides
   WebGPU).
 
-## Out of scope for M7 (carried forward)
+**M7:**
 
 - Sidespin (english), throw, cushion-induced spin.
 - Contact friction in the solvers (M10).
@@ -410,7 +401,8 @@ tones are nearly pure too).
 ~55 ms a display frame in the browser, against 16.7 ms at 60 Hz, and the
 page ran at about 1 fps (2048 keeps up, ~7 ms a step). **A step budget
 is in** (`docs/workers.md`, option 1): the page should now run in slow
-motion with a responsive display, to check by hand (`?n=4096`). If slow
+motion with a responsive display, to check by hand (`?n=8192`, the cap
+since 2026-11-15: "Your check" under Health). If slow
 motion isn't enough, the next option is a Web Worker per panel
 (`docs/workers.md`, option 2). The exact energy readout (6.6 ms at 4096)
 runs 4 times a second, not every frame.
