@@ -4,6 +4,8 @@
 
 use math::SplitMix64;
 
+/// Odd multipliers (`SplitMix64`'s and xxHash's) spreading each part over the
+/// key's bits before the mix.
 const STEP_MULTIPLIER: u64 = 0x9e37_79b9_7f4a_7c15;
 const Y_MULTIPLIER: u64 = 0xc2b2_ae3d_27d4_eb4f;
 const X_MULTIPLIER: u64 = 0x1656_67b1_9e37_79f9;
