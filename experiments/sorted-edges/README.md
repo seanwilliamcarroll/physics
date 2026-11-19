@@ -94,3 +94,45 @@ Every knob set in every build (unset, each is now the target's).
 
 Against `base` and `all`, larger flocks first (10k and 100k: 1k is
 tens of microseconds).
+
+### Results (2026-11-18): `results/{llm,m4}-r2-{native,v8}`
+
+Mean step time against `base` (the M4 quiet this time; its native
+`span-tail` rerun: +4%, −4%, −29% at 1k, 10k, 100k).
+
+| machine | level | boids | all | table | all-8 | table-8 |
+|---|---|---|---|---|---|---|
+| llm | SSE2 | 10k | −24% | −26% | | |
+| | | 100k | −28% | −30% | | |
+| | AVX2 | 10k | −24% | **−36%** | | |
+| | | 100k | −26% | **−37%** | | |
+| | AVX-512 | 10k | −29% | **−38%** | | |
+| | | 100k | −30% | **−38%** | | |
+| | V8 | 10k | −1% | −9% | −13% | **−17%** |
+| | | 100k | 0% | −6% | −15% | **−19%** |
+| M4 | native | 10k | −5% | **−7%** | | |
+| | | 100k | −29% | **−31%** | | |
+| | V8 | 10k | +15% | +13% | −1% | **−2%** |
+| | | 100k | +5% | +3% | −14% | **−15%** |
+
+At 1,000 boids: `table` natively −5% to −12% on llm, 0% on the M4;
+`table-8` in V8 +7% (llm) and +20% (the M4).
+
+- The table's mask: the hot path one load (natively an `adrp`/`add` to
+  `STEPS`, after `end == L`, almost always so); the lane-number compares
+  only in the fallback for spans in the arrays' first block.
+- `all` here is slower than round 1's (AVX-512 10k: 663 µs against
+  572): the compare form now builds its mask as an array of floats and
+  multiplies by it, where round 1 folded the compare into each lane's
+  test. `table` is about round 1's `all`, and wins against this one.
+- 8 lanes in wasm: LLVM still builds part of the loop lane by lane
+  (`f32x4.replace_lane`, scalar compares), but V8's stack stores fall
+  from 137 to 14 (16 lanes' seven sums don't fit its 16 registers), and
+  the masked block covers spans of about 12 with less masked out.
+- The M4 gains less at 10k than at 100k (−7% against −31%); on Zen 5
+  the two match.
+
+Kept (`rules/tuning.rs`): `table` on every target, with 8 lanes for
+Sorted in wasm (brute force keeps 16). The 1k loss in V8 is the price;
+a per-span check (few leftovers: scalar) could win it back, a branch of
+the kind the block removed.

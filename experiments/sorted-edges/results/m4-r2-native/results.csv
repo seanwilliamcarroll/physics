@@ -1,0 +1,13 @@
+level,experiment,bench,mean_ns
+native,all,swarm_step/Sorted/1000,83064.5
+native,all,swarm_step/Sorted/10000,974014.6
+native,all,swarm_step/Sorted/100000,10610727.0
+native,base,swarm_step/Sorted/1000,80102.9
+native,base,swarm_step/Sorted/10000,1022442.1
+native,base,swarm_step/Sorted/100000,14967310.4
+native,span-tail,swarm_step/Sorted/1000,83382.0
+native,span-tail,swarm_step/Sorted/10000,977903.1
+native,span-tail,swarm_step/Sorted/100000,10609913.6
+native,table,swarm_step/Sorted/1000,80461.2
+native,table,swarm_step/Sorted/10000,947648.8
+native,table,swarm_step/Sorted/100000,10356673.2
