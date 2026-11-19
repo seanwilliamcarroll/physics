@@ -15,9 +15,9 @@ pub struct Params {
     pub avoid: f32,
     /// Gain toward the neighbours' mean velocity (alignment).
     pub matching: f32,
-    /// The push back inside, per step, past the margin (edge turning).
+    /// The push back inside, per step, past the margin.
     pub turn: f32,
-    /// Distance from each side of the arena where turning starts.
+    /// Distance from each side where turning starts.
     pub margin: f32,
     /// The speed band every boid ends a step in.
     pub min_speed: f32,
@@ -25,8 +25,7 @@ pub struct Params {
 }
 
 impl Params {
-    /// The ECE 4760 boids algorithm's recommended values (Hunter Adams,
-    /// Cornell; read 2026-11-11): a course's tuning, not measurements.
+    /// ECE 4760's recommended values (Hunter Adams, Cornell).
     pub const ECE4760: Self = Self {
         visual_range: 40.0,
         protected_range: 8.0,
@@ -39,12 +38,11 @@ impl Params {
         max_speed: 6.0,
     };
 
-    /// `self` if every value is finite and usable: ranges `0 ≤ protected <
-    /// visual`, gains and margin `≥ 0`, speeds `0 < min ≤ max`; else
-    /// `None`.
+    /// `self` if every value is finite and `≥ 0`, `protected < visual`
+    /// and `0 < min ≤ max` speed; else `None`.
     #[must_use]
     pub fn checked(self) -> Option<Self> {
-        let all = [
+        let every_value = [
             self.visual_range,
             self.protected_range,
             self.centering,
@@ -55,11 +53,13 @@ impl Params {
             self.min_speed,
             self.max_speed,
         ];
-        let ok = all.iter().all(|v| v.is_finite() && *v >= 0.0)
+        let usable = every_value
+            .iter()
+            .all(|value| value.is_finite() && *value >= 0.0)
             && self.protected_range < self.visual_range
             && self.min_speed > 0.0
             && self.min_speed <= self.max_speed;
-        ok.then_some(self)
+        usable.then_some(self)
     }
 }
 
@@ -75,8 +75,8 @@ impl Arena {
     /// `None` unless both sides are finite and positive.
     #[must_use]
     pub fn new(width: f32, height: f32) -> Option<Self> {
-        let ok = |v: f32| v.is_finite() && v > 0.0;
-        (ok(width) && ok(height)).then_some(Self { width, height })
+        let usable = |side: f32| side.is_finite() && side > 0.0;
+        (usable(width) && usable(height)).then_some(Self { width, height })
     }
 
     #[must_use]

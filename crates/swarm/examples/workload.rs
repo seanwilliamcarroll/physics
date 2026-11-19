@@ -3,10 +3,8 @@
 //!
 //!   cargo run --profile profiling -p swarm --example workload -- ants [SECONDS]
 //!
-//! Workloads: `boids` (10k, sorted lanes), `vicsek` (4,000, the grid),
-//! `ants` (the page's 200 × 120 world, 500 ants, food), `slime` (512²,
-//! 100k agents). Each at its page's size.
-// An example, not library code: printing is its output.
+//! Workloads, each at its page's size: `boids` (10k, sorted lanes),
+//! `vicsek` (4,000), `ants` (500), `slime` (512², 100k agents).
 #![expect(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -37,27 +35,30 @@ fn run(seconds: f64, mut step: impl FnMut()) -> u64 {
 fn main() {
     let mut args = std::env::args().skip(1);
     let what = args.next().unwrap_or_default();
-    let seconds = args.next().and_then(|s| s.parse().ok()).unwrap_or(3.0);
+    let seconds = args
+        .next()
+        .and_then(|text| text.parse().ok())
+        .unwrap_or(3.0);
     let steps = match what.as_str() {
         "boids" => {
             let arena = Arena::new(2560.0, 1440.0).unwrap();
-            let mut f = Flock::new(10_000, arena, Params::ECE4760, 1).unwrap();
-            f.set_neighbours(Neighbours::Sorted);
-            run(seconds, || f.step())
+            let mut flock = Flock::new(10_000, arena, Params::ECE4760, 1).unwrap();
+            flock.set_neighbours(Neighbours::Sorted);
+            run(seconds, || flock.step())
         }
         "vicsek" => {
-            let mut v = Vicsek::new(4_000, 31.6, VicsekParams::paper(2.0), 1).unwrap();
-            run(seconds, || v.step())
+            let mut vicsek = Vicsek::new(4_000, 31.6, VicsekParams::paper(2.0), 1).unwrap();
+            run(seconds, || vicsek.step())
         }
         "ants" => {
-            let mut c =
+            let mut colony =
                 Colony::new(200, 120, 500, (25.0, 60.0, 6.0), AntParams::DEFAULT, 1).unwrap();
-            c.paint_food(160.0, 60.0, 8.0, 50);
-            run(seconds, || c.step())
+            colony.paint_food(160.0, 60.0, 8.0, 50);
+            run(seconds, || colony.step())
         }
         "slime" => {
-            let mut s = Slime::new(512, 100_000, SlimeParams::DEFAULT, 1).unwrap();
-            run(seconds, || s.step())
+            let mut slime = Slime::new(512, 100_000, SlimeParams::DEFAULT, 1).unwrap();
+            run(seconds, || slime.step())
         }
         _ => {
             eprintln!("usage: workload boids|vicsek|ants|slime [SECONDS]");

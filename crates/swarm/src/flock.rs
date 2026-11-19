@@ -19,16 +19,13 @@ pub const MAX_BOIDS: usize = 1 << 18;
 /// in a different order, so trajectories agree only to rounding.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Neighbours {
-    /// Every boid: n² checks a step, through the lane loop. The
-    /// reference for which boids are neighbours.
+    /// Every boid: n² checks a step. The reference.
     Brute,
     /// A cell list by counting sort: the 3 × 3 cells around each boid.
     Grid,
-    /// The grid, with the boids themselves moved into cell order every
-    /// step, so a block's candidates are three contiguous runs of the
-    /// arrays, read by a branchless loop in independent lanes (vector
-    /// instructions). The default: 10k boids in 1.4 ms natively against
-    /// the grid's 7.3. Boids' indices change every step.
+    /// The grid, with the boids moved into cell order every step (so
+    /// their indices change). The default: 10k boids in 1.4 ms natively
+    /// against the grid's 7.3.
     Sorted,
 }
 
@@ -42,7 +39,6 @@ pub struct Boid {
     pub vy: f32,
 }
 
-/// Every boid's state, one array per component.
 #[derive(Clone, Debug, Default)]
 struct Boids {
     x: Vec<f32>,
@@ -52,111 +48,112 @@ struct Boids {
 }
 
 impl Boids {
-    fn get(&self, i: usize) -> Option<Boid> {
+    fn get(&self, index: usize) -> Option<Boid> {
         Some(Boid {
-            x: *self.x.get(i)?,
-            y: *self.y.get(i)?,
-            vx: *self.vx.get(i)?,
-            vy: *self.vy.get(i)?,
+            x: *self.x.get(index)?,
+            y: *self.y.get(index)?,
+            vx: *self.vx.get(index)?,
+            vy: *self.vy.get(index)?,
         })
     }
 
-    fn set(&mut self, i: usize, b: Boid) {
+    fn set(&mut self, index: usize, boid: Boid) {
         let slots = (
-            self.x.get_mut(i),
-            self.y.get_mut(i),
-            self.vx.get_mut(i),
-            self.vy.get_mut(i),
+            self.x.get_mut(index),
+            self.y.get_mut(index),
+            self.vx.get_mut(index),
+            self.vy.get_mut(index),
         );
         if let (Some(x), Some(y), Some(vx), Some(vy)) = slots {
-            (*x, *y, *vx, *vy) = (b.x, b.y, b.vx, b.vy);
+            (*x, *y, *vx, *vy) = (boid.x, boid.y, boid.vx, boid.vy);
         }
     }
 
-    fn push(&mut self, b: Boid) {
-        self.x.push(b.x);
-        self.y.push(b.y);
-        self.vx.push(b.vx);
-        self.vy.push(b.vy);
+    fn push(&mut self, boid: Boid) {
+        self.x.push(boid.x);
+        self.y.push(boid.y);
+        self.vx.push(boid.vx);
+        self.vy.push(boid.vy);
     }
 
     fn len(&self) -> usize {
         self.x.len()
     }
 
-    /// `src`'s boids in the order `order` lists them.
-    fn gather(&mut self, src: &Self, order: &[u32]) {
-        let pick = |v: &[f32], out: &mut Vec<f32>| {
-            out.clear();
-            out.extend(
+    fn gather(&mut self, source: &Self, order: &[u32]) {
+        let pick = |values: &[f32], gathered: &mut Vec<f32>| {
+            gathered.clear();
+            gathered.extend(
                 order
                     .iter()
-                    .filter_map(|&i| v.get(usize::try_from(i).ok()?).copied()),
+                    .filter_map(|&index| values.get(usize::try_from(index).ok()?).copied()),
             );
         };
-        pick(&src.x, &mut self.x);
-        pick(&src.y, &mut self.y);
-        pick(&src.vx, &mut self.vx);
-        pick(&src.vy, &mut self.vy);
+        pick(&source.x, &mut self.x);
+        pick(&source.y, &mut self.y);
+        pick(&source.vx, &mut self.vx);
+        pick(&source.vy, &mut self.vy);
     }
 }
 
-/// A flock: the boids now (`cur`) and the buffer the next step is written
+/// A flock: the boids now (`now`) and the buffer the next step is written
 /// into (`next`), swapped after every step, so every boid sees the same
 /// instant whatever order they're stored in.
 #[derive(Clone, Debug)]
 pub struct Flock {
-    cur: Boids,
+    now: Boids,
     next: Boids,
     params: Params,
     arena: Arena,
     steps: u64,
     neighbours: Neighbours,
     grid: Grid,
-    /// Where the predator is, if anywhere (the page's pointer).
     predator: Option<(f32, f32)>,
 }
 
 impl Flock {
-    /// `n` boids (1 to [`MAX_BOIDS`]) at random inside the margins (the
-    /// whole arena if it's narrower than two margins), heading in random
-    /// directions at random speeds in the band; `seed` makes it
+    /// `boid_count` boids (1 to [`MAX_BOIDS`]) at random inside the margins
+    /// (the whole arena if it's narrower than two margins), heading in
+    /// random directions at random speeds in the band; `seed` makes it
     /// repeatable. `None` for a bad count or unusable `params`.
     #[must_use]
-    pub fn new(n: usize, arena: Arena, params: Params, seed: u64) -> Option<Self> {
+    pub fn new(boid_count: usize, arena: Arena, params: Params, seed: u64) -> Option<Self> {
         let params = params.checked()?;
-        if !(1..=MAX_BOIDS).contains(&n) {
+        if !(1..=MAX_BOIDS).contains(&boid_count) {
             return None;
         }
         let mut rng = SplitMix64::new(seed);
         let span = |side: f32| {
-            let m = f64::from(params.margin);
+            let margin = f64::from(params.margin);
             let side = f64::from(side);
-            if side > 2.0 * m {
-                (m, side - m)
+            if side > 2.0 * margin {
+                (margin, side - margin)
             } else {
                 (0.0, side)
             }
         };
-        let (xs, ys) = (span(arena.width()), span(arena.height()));
-        let (lo, hi) = (f64::from(params.min_speed), f64::from(params.max_speed));
-        let boids = (0..n).map(|_| {
-            let (x, y) = (rng.range(xs.0, xs.1), rng.range(ys.0, ys.1));
-            // A direction: a point in the unit disc (rejection, no trig),
-            // normalized; the speed uniform in the band.
-            let (dx, dy, len) = loop {
+        let (x_span, y_span) = (span(arena.width()), span(arena.height()));
+        let (min_speed, max_speed) = (f64::from(params.min_speed), f64::from(params.max_speed));
+        let boids = (0..boid_count).map(|_| {
+            let (x, y) = (rng.range(x_span.0, x_span.1), rng.range(y_span.0, y_span.1));
+            // A point in the unit disc (rejection, no trig), normalized.
+            let (dx, dy, length) = loop {
                 let (dx, dy) = (rng.range(-1.0, 1.0), rng.range(-1.0, 1.0));
-                let len = (dx * dx + dy * dy).sqrt();
-                if len > 1e-3 && len <= 1.0 {
-                    break (dx, dy, len);
+                let length = (dx * dx + dy * dy).sqrt();
+                if length > 1e-3 && length <= 1.0 {
+                    break (dx, dy, length);
                 }
             };
-            let speed = if hi > lo { rng.range(lo, hi) } else { lo };
+            let speed = if max_speed > min_speed {
+                rng.range(min_speed, max_speed)
+            } else {
+                min_speed
+            };
             Boid {
                 x: f64_to_f32(x),
                 y: f64_to_f32(y),
-                vx: f64_to_f32(dx / len * speed),
-                vy: f64_to_f32(dy / len * speed),
+                vx: f64_to_f32(dx / length * speed),
+                vy: f64_to_f32(dy / length * speed),
             }
         });
         Self::with_boids(arena, params, boids)
@@ -171,16 +168,16 @@ impl Flock {
         boids: impl IntoIterator<Item = Boid>,
     ) -> Option<Self> {
         let params = params.checked()?;
-        let mut cur = Boids::default();
-        for b in boids.into_iter().take(MAX_BOIDS + 1) {
-            cur.push(b);
+        let mut now = Boids::default();
+        for boid in boids.into_iter().take(MAX_BOIDS + 1) {
+            now.push(boid);
         }
-        if cur.len() == 0 || cur.len() > MAX_BOIDS {
+        if now.len() == 0 || now.len() > MAX_BOIDS {
             return None;
         }
         Some(Self {
-            next: cur.clone(),
-            cur,
+            next: now.clone(),
+            now,
             params,
             arena,
             steps: 0,
@@ -190,19 +187,15 @@ impl Flock {
         })
     }
 
-    /// One step: every boid's next state, from the current state into
-    /// the next buffer by the technique [`Self::neighbours`] says
-    /// ([`Neighbours::Sorted`] by default: the fastest, measured), then the
-    /// swap. Each technique is a method of its own (`flock/brute.rs`,
-    /// `grid.rs`, `sorted.rs`): the same rules, the same neighbours, found
-    /// differently.
+    /// One step, finding neighbours as [`Self::neighbours`] says, then
+    /// swapping the buffers.
     pub fn step(&mut self) {
         match self.neighbours {
             Neighbours::Brute => self.step_brute(),
             Neighbours::Grid => self.step_grid(),
             Neighbours::Sorted => self.step_sorted(),
         }
-        core::mem::swap(&mut self.cur, &mut self.next);
+        core::mem::swap(&mut self.now, &mut self.next);
         self.steps += 1;
     }
 
@@ -222,9 +215,8 @@ impl Flock {
         self.predator
     }
 
-    /// How neighbours are found, from the next step.
-    pub const fn set_neighbours(&mut self, how: Neighbours) {
-        self.neighbours = how;
+    pub const fn set_neighbours(&mut self, method: Neighbours) {
+        self.neighbours = method;
     }
 
     #[must_use]
@@ -234,23 +226,23 @@ impl Flock {
 
     #[must_use]
     pub fn len(&self) -> usize {
-        self.cur.len()
+        self.now.len()
     }
 
     /// Never true: a flock has at least one boid.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.cur.len() == 0
+        self.now.len() == 0
     }
 
+    /// The boid at `index`, or `None` past the end.
     #[must_use]
-    pub fn boid(&self, i: usize) -> Option<Boid> {
-        self.cur.get(i)
+    pub fn boid(&self, index: usize) -> Option<Boid> {
+        self.now.get(index)
     }
 
-    /// Every boid, in storage order.
     pub fn boids(&self) -> impl Iterator<Item = Boid> + '_ {
-        (0..self.len()).filter_map(|i| self.cur.get(i))
+        (0..self.len()).filter_map(|index| self.now.get(index))
     }
 
     #[must_use]
@@ -258,10 +250,12 @@ impl Flock {
         self.params
     }
 
-    /// Replaces the rules' constants from the next step; `false` (and
-    /// nothing changed) if they're unusable.
+    /// `false` (and nothing changed) if `params` are unusable.
     pub fn set_params(&mut self, params: Params) -> bool {
-        params.checked().map(|p| self.params = p).is_some()
+        params
+            .checked()
+            .map(|usable| self.params = usable)
+            .is_some()
     }
 
     #[must_use]
@@ -279,24 +273,23 @@ impl Flock {
     /// group polarization; Vicsek et al.'s `v_a`). Summed in `f64`.
     #[must_use]
     pub fn polarization(&self) -> f64 {
-        let (mut sx, mut sy, mut n) = (0.0_f64, 0.0_f64, 0.0_f64);
-        for b in self.boids() {
-            let (vx, vy) = (f64::from(b.vx), f64::from(b.vy));
-            let s = (vx * vx + vy * vy).sqrt();
-            if s > 0.0 {
-                sx += vx / s;
-                sy += vy / s;
+        let (mut sum_x, mut sum_y, mut boid_count) = (0.0_f64, 0.0_f64, 0.0_f64);
+        for boid in self.boids() {
+            let (vx, vy) = (f64::from(boid.vx), f64::from(boid.vy));
+            let speed = (vx * vx + vy * vy).sqrt();
+            if speed > 0.0 {
+                sum_x += vx / speed;
+                sum_y += vy / speed;
             }
-            n += 1.0;
+            boid_count += 1.0;
         }
-        (sx * sx + sy * sy).sqrt() / n
+        (sum_x * sum_x + sum_y * sum_y).sqrt() / boid_count
     }
 
-    /// The state's bytes for hashing (the repeatability tests): every component's bits,
-    /// boid by boid.
+    /// Every component's bits, boid by boid, for hashing.
     pub fn state_bytes(&self) -> impl Iterator<Item = u8> + '_ {
         self.boids()
-            .flat_map(|b| [b.x, b.y, b.vx, b.vy])
+            .flat_map(|boid| [boid.x, boid.y, boid.vx, boid.vy])
             .flat_map(f32::to_le_bytes)
     }
 }

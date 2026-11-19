@@ -1,5 +1,5 @@
-//! S4's model (`docs/15-swarm.md`, S4): the field's accounting with the
-//! periodic mean filter, and the agents' invariants.
+//! The Physarum model (`docs/15-swarm.md`, "Physarum"): the field's
+//! accounting with the periodic mean filter, and the agents' invariants.
 // Whole file is test code (docs/lint-policy.md).
 #![cfg(test)]
 
@@ -11,17 +11,18 @@ use swarm::{Slime, SlimeParams};
 /// Agents stay in the field.
 #[test]
 fn the_field_keeps_its_accounts_and_agents_stay_in_the_world() {
-    let mut s = Slime::new(128, 5000, SlimeParams::DEFAULT, 1).unwrap();
-    assert!(s.add_node(30, 30, 3.0));
+    let mut slime = Slime::new(128, 5000, SlimeParams::DEFAULT, 1).unwrap();
+    assert!(slime.add_node(30, 30, 3.0));
     let keep = 1.0 - f64::from(SlimeParams::DEFAULT.decay);
     for _ in 0..1000 {
-        let before = s.field().total();
-        s.step();
-        let expected = (before + s.last_deposits()) * keep;
-        let off = (s.field().total() / expected - 1.0).abs();
-        assert!(off < 3e-7, "off by {off:e}");
+        let before = slime.field().total();
+        slime.step();
+        let expected = (before + slime.last_deposits()) * keep;
+        let relative_error = (slime.field().total() / expected - 1.0).abs();
+        assert!(relative_error < 3e-7, "off by {relative_error:e}");
         assert!(
-            s.positions()
+            slime
+                .positions()
                 .all(|(x, y)| (0.0..128.0).contains(&x) && (0.0..128.0).contains(&y))
         );
     }

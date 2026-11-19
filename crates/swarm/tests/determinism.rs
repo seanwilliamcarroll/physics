@@ -5,20 +5,21 @@
 
 use swarm::{Arena, Flock, Neighbours, Params};
 
-/// 200 boids, 300 steps, neighbours found `how`.
-fn run_with(how: Neighbours) -> Vec<u8> {
-    let mut f = Flock::new(200, Arena::new(640.0, 480.0).unwrap(), Params::ECE4760, 42).unwrap();
-    f.set_neighbours(how);
+/// 200 boids, 300 steps, neighbours found by `method`.
+fn run_with(method: Neighbours) -> Vec<u8> {
+    let mut flock =
+        Flock::new(200, Arena::new(640.0, 480.0).unwrap(), Params::ECE4760, 42).unwrap();
+    flock.set_neighbours(method);
     for _ in 0..300 {
-        f.step();
+        flock.step();
     }
-    f.state_bytes().collect::<Vec<u8>>()
+    flock.state_bytes().collect::<Vec<u8>>()
 }
 
 #[test]
 fn a_run_is_repeatable() {
-    for how in [Neighbours::Brute, Neighbours::Grid, Neighbours::Sorted] {
-        assert_eq!(run_with(how), run_with(how), "{how:?}");
+    for method in [Neighbours::Brute, Neighbours::Grid, Neighbours::Sorted] {
+        assert_eq!(run_with(method), run_with(method), "{method:?}");
     }
 }
 

@@ -4,112 +4,130 @@ use super::{Slime, SlimeParams, wrap_cell, wrap_position};
 
 #[test]
 fn sizes_and_params_are_checked() {
-    let d = SlimeParams::DEFAULT;
-    assert!(d.checked().is_some());
+    let defaults = SlimeParams::DEFAULT;
+    assert!(defaults.checked().is_some());
     for bad in [
-        SlimeParams { step: 0.0, ..d },
-        SlimeParams { decay: 2.0, ..d },
-        SlimeParams { turn: 4.0, ..d },
+        SlimeParams {
+            step_distance: 0.0,
+            ..defaults
+        },
+        SlimeParams {
+            decay: 2.0,
+            ..defaults
+        },
+        SlimeParams {
+            turn: 4.0,
+            ..defaults
+        },
         SlimeParams {
             deposit: crate::MAX_DEPOSIT * 1.001,
-            ..d
+            ..defaults
         },
         SlimeParams {
             deposit: f32::NAN,
-            ..d
+            ..defaults
         },
-        SlimeParams { deposit: -1.0, ..d },
+        SlimeParams {
+            deposit: -1.0,
+            ..defaults
+        },
     ] {
         assert!(bad.checked().is_none(), "{bad:?}");
     }
     let most = SlimeParams {
         deposit: crate::MAX_DEPOSIT,
-        ..d
+        ..defaults
     };
     assert!(most.checked().is_some(), "the cap itself is allowed");
-    assert!(Slime::new(0, 10, d, 1).is_none());
-    assert!(Slime::new(64, 0, d, 1).is_none());
+    assert!(Slime::new(0, 10, defaults, 1).is_none());
+    assert!(Slime::new(64, 0, defaults, 1).is_none());
     assert!(
-        Slime::new(2, 10, d, 1).is_none(),
+        Slime::new(2, 10, defaults, 1).is_none(),
         "a step of half the world"
     );
-    let s = Slime::new(64, 500, d, 1).unwrap();
+    let slime = Slime::new(64, 500, defaults, 1).unwrap();
     assert!(
-        s.positions()
+        slime
+            .positions()
             .all(|(x, y)| (0.0..64.0).contains(&x) && (0.0..64.0).contains(&y))
     );
 }
 
 #[test]
 fn agents_wrap_and_deposit_where_they_land() {
-    let p = SlimeParams {
+    let params = SlimeParams {
         diffusion: 0.0,
         decay: 0.0,
         ..SlimeParams::DEFAULT
     };
-    let mut s = Slime::new(32, 1, p, 1).unwrap();
-    (s.x[0], s.y[0], s.cos[0], s.sin[0]) = (31.5, 10.5, 1.0, 0.0);
-    s.step();
-    assert!((s.x[0] - 0.5).abs() < 1e-5, "wrapped: {}", s.x[0]);
-    assert_eq!(s.field.get(0, 10), Some(5.0));
+    let mut slime = Slime::new(32, 1, params, 1).unwrap();
+    (slime.x[0], slime.y[0], slime.cos[0], slime.sin[0]) = (31.5, 10.5, 1.0, 0.0);
+    slime.step();
+    assert!((slime.x[0] - 0.5).abs() < 1e-5, "wrapped: {}", slime.x[0]);
+    assert_eq!(slime.field.get(0, 10), Some(5.0));
 }
 
 #[test]
 fn an_agent_turns_toward_the_stronger_side() {
-    let p = SlimeParams {
+    let params = SlimeParams {
         diffusion: 0.0,
         decay: 0.0,
         ..SlimeParams::DEFAULT
     };
-    let mut s = Slime::new(64, 1, p, 1).unwrap();
-    (s.x[0], s.y[0], s.cos[0], s.sin[0]) = (20.5, 20.5, 1.0, 0.0);
-    // Something at the +SA sensor: (20.5 + 9 cos 22.5°, 20.5 + 9 sin 22.5°).
-    let (a, o) = (p.sensor_angle, p.sensor_offset);
-    let (sx, sy) = (20.5 + o * a.cos(), 20.5 + o * a.sin());
-    let cell = |v: f32| math::convert::f64_to_usize(f64::from(v.floor())).unwrap();
-    assert!(s.field.deposit(cell(sx), cell(sy), 10.0));
-    s.step();
-    let turned = s.sin[0].atan2(s.cos[0]);
-    assert!((turned - p.turn).abs() < 1e-5, "turned {turned}");
+    let mut slime = Slime::new(64, 1, params, 1).unwrap();
+    (slime.x[0], slime.y[0], slime.cos[0], slime.sin[0]) = (20.5, 20.5, 1.0, 0.0);
+    let (sensor_angle, sensor_offset) = (params.sensor_angle, params.sensor_offset);
+    let (sensor_x, sensor_y) = (
+        20.5 + sensor_offset * sensor_angle.cos(),
+        20.5 + sensor_offset * sensor_angle.sin(),
+    );
+    let cell =
+        |coordinate: f32| math::convert::f64_to_usize(f64::from(coordinate.floor())).unwrap();
+    assert!(slime.field.deposit(cell(sensor_x), cell(sensor_y), 10.0));
+    slime.step();
+    let turned = slime.sin[0].atan2(slime.cos[0]);
+    assert!((turned - params.turn).abs() < 1e-5, "turned {turned}");
 }
 
 #[test]
 fn nodes_deposit_every_step() {
-    let p = SlimeParams {
+    let params = SlimeParams {
         diffusion: 0.0,
         decay: 0.0,
         deposit: 0.0,
         ..SlimeParams::DEFAULT
     };
-    let mut s = Slime::new(32, 1, p, 1).unwrap();
-    assert!(s.add_node(5, 5, 2.0) && !s.add_node(40, 5, 1.0) && !s.add_node(1, 1, -1.0));
+    let mut slime = Slime::new(32, 1, params, 1).unwrap();
+    assert!(
+        slime.add_node(5, 5, 2.0) && !slime.add_node(40, 5, 1.0) && !slime.add_node(1, 1, -1.0)
+    );
     for _ in 0..3 {
-        s.step();
+        slime.step();
     }
-    assert_eq!(s.field.get(5, 5), Some(6.0));
-    s.clear_nodes();
-    assert_eq!(s.nodes(), []);
+    assert_eq!(slime.field.get(5, 5), Some(6.0));
+    slime.clear_nodes();
+    assert_eq!(slime.nodes(), []);
 }
 
 /// Values around every branch of the wraps: inside, one world out each
 /// way, the boundaries and their neighbours in `f32`, far out, and the
 /// non-finite.
-fn wrap_cases(l: f32) -> Vec<f32> {
-    let mut out = vec![f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 1e30, -1e30];
+fn wrap_cases(side_length: f32) -> Vec<f32> {
+    let mut cases = vec![f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 1e30, -1e30];
     for base in [
-        -3.0 * l,
-        -2.0 * l,
-        -l,
+        -3.0 * side_length,
+        -2.0 * side_length,
+        -side_length,
         -1.0,
         -0.0,
         0.0,
         1.0,
-        0.5 * l,
-        l,
-        2.0 * l,
-        3.0 * l,
+        0.5 * side_length,
+        side_length,
+        2.0 * side_length,
+        3.0 * side_length,
     ] {
-        for v in [
+        for value in [
             base.next_down().next_down(),
             base.next_down(),
             base,
@@ -117,44 +135,59 @@ fn wrap_cases(l: f32) -> Vec<f32> {
             base + 0.25,
             base + 7.75,
         ] {
-            out.push(v);
+            cases.push(value);
         }
     }
-    out.extend([-1e-9, -1e-30, -f32::MIN_POSITIVE]);
-    out
+    cases.extend([-1e-9, -1e-30, -f32::MIN_POSITIVE]);
+    cases
 }
 
 #[test]
 fn wrap_cell_is_floor_mod_side_everywhere() {
     for side in [1_usize, 7, 96, 512] {
-        let l = usize_to_f64(side);
-        for v in wrap_cases(f64_to_f32(l)) {
-            let general = f64_to_usize(f64::from(v.floor()).rem_euclid(l))
+        let side_length = usize_to_f64(side);
+        for coordinate in wrap_cases(f64_to_f32(side_length)) {
+            let general = f64_to_usize(f64::from(coordinate.floor()).rem_euclid(side_length))
                 .unwrap_or(0)
                 .min(side - 1);
-            assert_eq!(wrap_cell(v, side), general, "v = {v:e}, side = {side}");
+            assert_eq!(
+                wrap_cell(coordinate, side),
+                general,
+                "coordinate = {coordinate:e}, side = {side}"
+            );
         }
     }
 }
 
 #[test]
 fn wrap_position_is_rem_euclid() {
-    for l in [1.0_f32, 7.0, 96.0, 512.0] {
-        for v in wrap_cases(l) {
-            let r = v.rem_euclid(l);
-            let general = if r >= l { 0.0 } else { r };
-            let got = wrap_position(v, l);
-            // NaN for NaN; otherwise inside [0, l), and the same place on
-            // the torus as `rem_euclid`'s to rounding (today, the same
-            // bits): a distance that wraps, so l − tiny and 0 are close.
-            if general.is_nan() {
-                assert!(got.is_nan(), "v = {v:e}, l = {l}: {got}");
+    for side_length in [1.0_f32, 7.0, 96.0, 512.0] {
+        for position in wrap_cases(side_length) {
+            let remainder = position.rem_euclid(side_length);
+            let general = if remainder >= side_length {
+                0.0
             } else {
-                assert!((0.0..l).contains(&got), "v = {v:e}, l = {l}: {got}");
-                let d = (got - general).abs();
+                remainder
+            };
+            let got = wrap_position(position, side_length);
+            // NaN for NaN; otherwise inside [0, side_length), and the same
+            // place on the torus as `rem_euclid`'s to rounding (in fact the
+            // same bits): a distance that wraps, so side_length − tiny and 0
+            // are close.
+            if general.is_nan() {
                 assert!(
-                    d.min(l - d) <= 4.0 * f32::EPSILON * l,
-                    "v = {v:e}, l = {l}: {got} vs {general}"
+                    got.is_nan(),
+                    "position = {position:e}, side_length = {side_length}: {got}"
+                );
+            } else {
+                assert!(
+                    (0.0..side_length).contains(&got),
+                    "position = {position:e}, side_length = {side_length}: {got}"
+                );
+                let distance = (got - general).abs();
+                assert!(
+                    distance.min(side_length - distance) <= 4.0 * f32::EPSILON * side_length,
+                    "position = {position:e}, side_length = {side_length}: {got} vs {general}"
                 );
             }
         }
@@ -163,8 +196,8 @@ fn wrap_position_is_rem_euclid() {
 
 #[test]
 fn a_node_deposits_at_most_the_cap() {
-    let mut s = Slime::new(64, 10, SlimeParams::DEFAULT, 1).unwrap();
-    assert!(s.add_node(3, 3, crate::MAX_DEPOSIT));
+    let mut slime = Slime::new(64, 10, SlimeParams::DEFAULT, 1).unwrap();
+    assert!(slime.add_node(3, 3, crate::MAX_DEPOSIT));
     for bad in [
         crate::MAX_DEPOSIT * 1.001,
         f32::MAX,
@@ -172,67 +205,74 @@ fn a_node_deposits_at_most_the_cap() {
         f32::NAN,
         -1.0,
     ] {
-        assert!(!s.add_node(3, 3, bad), "{bad}");
+        assert!(!slime.add_node(3, 3, bad), "{bad}");
     }
-    assert_eq!(s.nodes().len(), 1);
-    assert!(!s.add_node(64, 3, 1.0) && !s.add_node(3, 64, 1.0));
+    assert_eq!(slime.nodes().len(), 1);
+    assert!(!slime.add_node(64, 3, 1.0) && !slime.add_node(3, 64, 1.0));
 }
-
-// Found by the full mutation run of 2026-11-12: nothing read the
-// accessors, `set_params`, or which way an unsensing agent turns.
 
 #[test]
 fn the_accessors_report_the_system() {
-    let mut s = Slime::new(64, 500, SlimeParams::DEFAULT, 1).unwrap();
+    let mut slime = Slime::new(64, 500, SlimeParams::DEFAULT, 1).unwrap();
     assert_eq!(
-        (s.side(), s.len(), s.is_empty(), s.steps()),
+        (slime.side(), slime.len(), slime.is_empty(), slime.steps()),
         (64, 500, false, 0)
     );
-    let at: Vec<(f32, f32)> = s.positions().collect();
-    assert_eq!(at.len(), 500);
-    assert_eq!(at[7], (s.x[7], s.y[7]));
-    s.step();
-    s.step();
-    assert_eq!(s.steps(), 2);
+    let positions: Vec<(f32, f32)> = slime.positions().collect();
+    assert_eq!(positions.len(), 500);
+    assert_eq!(positions[7], (slime.x[7], slime.y[7]));
+    slime.step();
+    slime.step();
+    assert_eq!(slime.steps(), 2);
 }
 
 #[test]
 fn params_are_replaced_only_by_usable_ones_that_fit_the_world() {
-    let d = SlimeParams::DEFAULT;
-    let mut s = Slime::new(16, 10, d, 1).unwrap();
-    let slower = SlimeParams { step: 0.5, ..d };
-    assert!(s.set_params(slower));
-    assert_eq!(s.params(), slower);
-    assert!(!s.set_params(SlimeParams { decay: 2.0, ..d }));
-    assert_eq!(s.params(), slower, "a refusal changes nothing");
-    // A step of half the world (8 cells) is refused; just under is taken.
-    assert!(!s.set_params(SlimeParams { step: 8.0, ..d }));
-    assert!(s.set_params(SlimeParams { step: 7.9, ..d }));
+    let defaults = SlimeParams::DEFAULT;
+    let mut slime = Slime::new(16, 10, defaults, 1).unwrap();
+    let slower = SlimeParams {
+        step_distance: 0.5,
+        ..defaults
+    };
+    assert!(slime.set_params(slower));
+    assert_eq!(slime.params(), slower);
+    assert!(!slime.set_params(SlimeParams {
+        decay: 2.0,
+        ..defaults
+    }));
+    assert_eq!(slime.params(), slower, "a refusal changes nothing");
+    assert!(!slime.set_params(SlimeParams {
+        step_distance: 8.0,
+        ..defaults
+    }));
+    assert!(slime.set_params(SlimeParams {
+        step_distance: 7.9,
+        ..defaults
+    }));
 }
 
-/// The way each agent turned in one step: −1, 0 or +1 (by the turn
-/// angle), from its heading before and after.
+/// How many agents turned each way in one step: `[left, straight,
+/// right]` (by the turn angle), from their headings before and after.
 fn turns(before: &Slime, after: &Slime) -> [usize; 3] {
     let mut counts = [0; 3];
-    for i in 0..before.len() {
-        let (c, s) = (before.cos[i], before.sin[i]);
-        let (nc, ns) = (after.cos[i], after.sin[i]);
-        let cross = c * ns - s * nc;
-        let k = if cross.abs() < 1e-4 {
+    for agent in 0..before.len() {
+        let (cos, sin) = (before.cos[agent], before.sin[agent]);
+        let (new_cos, new_sin) = (after.cos[agent], after.sin[agent]);
+        let cross = cos * new_sin - sin * new_cos;
+        let direction = if cross.abs() < 1e-4 {
             1
         } else if cross < 0.0 {
             0
         } else {
             2
         };
-        counts[k] += 1;
+        counts[direction] += 1;
     }
     counts
 }
 
 #[test]
 fn on_an_empty_field_a_sensing_agent_goes_straight() {
-    // Left, front and right all read 0: no side is stronger.
     let before = Slime::new(64, 300, SlimeParams::DEFAULT, 3).unwrap();
     let mut after = before.clone();
     after.step();
@@ -247,7 +287,7 @@ fn without_sensing_left_straight_and_right_are_equally_likely() {
     after.step();
     let [left, straight, right] = turns(&before, &after);
     // 1000 each expected; σ = √(3000 · ⅓ · ⅔) ≈ 26, so ±130 is 5σ.
-    for (what, n) in [("left", left), ("straight", straight), ("right", right)] {
-        assert!((870..=1130).contains(&n), "{what}: {n} of 3000");
+    for (what, count) in [("left", left), ("straight", straight), ("right", right)] {
+        assert!((870..=1130).contains(&count), "{what}: {count} of 3000");
     }
 }

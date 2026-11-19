@@ -13,14 +13,14 @@ fn the_settings_parse_and_default() {
     assert_eq!(sum(Some("ordered")), Sum::Ordered);
     assert_eq!(sum(Some("algebraic")), Sum::Algebraic);
     assert_eq!(mask(None), None);
-    for (text, m) in [
+    for (text, expected) in [
         ("convert", Mask::Convert),
         ("select", Mask::Select),
         ("bits", Mask::Bits),
         ("value", Mask::Value),
         ("branch", Mask::Branch),
     ] {
-        assert_eq!(mask(Some(text)), Some(m));
+        assert_eq!(mask(Some(text)), Some(expected));
     }
 }
 
@@ -63,8 +63,6 @@ fn the_mask_must_be_one_of_the_five() {
     mask(Some("fast"));
 }
 
-/// Every digit counts, in place: a wrong operator or place value gives
-/// another number.
 #[test]
 fn numbers_are_decimal() {
     assert_eq!(number("0"), Some(0));
@@ -77,8 +75,6 @@ fn numbers_are_decimal() {
     assert_eq!(number("-1"), None);
 }
 
-/// Up to a thousand, and no further: a long string stops early rather
-/// than overflowing.
 #[test]
 fn numbers_stop_at_a_thousand() {
     assert_eq!(number("1000"), Some(1_000));
