@@ -8,7 +8,7 @@ impl Flock {
     /// Every boid's next state into `next`, its candidates the 3 × 3
     /// cells around it, as in [`Self::step_grid`], but with the boids
     /// themselves moved into cell order first: cell c's boids become
-    /// slots `start[c]..start[c + 1]`, so a block's candidates are three
+    /// slots `cell_start[c]..cell_start[c + 1]`, so a block's candidates are three
     /// contiguous runs of the arrays, read whole by the branchless lane
     /// loop (`Seen::add_span`, vector instructions). The default, and the
     /// fastest. Boids' indices change every step.
