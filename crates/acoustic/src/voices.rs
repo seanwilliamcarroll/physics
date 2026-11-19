@@ -37,7 +37,7 @@ pub const RELEASE_RAMP: f64 = 0.01;
 /// The piano's output per newton of bridge force (the strings' summed
 /// force, through the body): **our choice**, so a loud chord stays off the
 /// clamp at the default gain (`tests/determinism.rs` measures it).
-pub const PIANO_SCALE: f64 = 0.014;
+pub(crate) const PIANO_SCALE: f64 = 0.014;
 
 /// The piano's body runs over blocks of at most this many samples
 /// (preallocated, so `render` of any length never allocates).

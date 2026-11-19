@@ -12,7 +12,6 @@ impl<S: math::scalar::Scalar> acoustic::fft::Spectrum<S>
 pub fn acoustic::fft::Spectrum<S>::analyze(&mut self, &[S]) -> core::option::Option<&[S]>
 pub fn acoustic::fft::Spectrum<S>::last(&self) -> &[S]
 pub fn acoustic::fft::Spectrum<S>::new(usize) -> core::option::Option<Self>
-pub const acoustic::fft::FLOOR_DB: f64
 pub mod acoustic::hammer
 pub struct acoustic::hammer::Felt
 pub acoustic::hammer::Felt::exponent: f64
@@ -27,18 +26,14 @@ pub fn acoustic::hammer::Hammer::launched(&self) -> f64
 pub fn acoustic::hammer::Hammer::new(acoustic::hammer::Felt, f64, f64, f64) -> core::option::Option<Self>
 pub const fn acoustic::hammer::Hammer::retired(&self) -> bool
 pub fn acoustic::hammer::Hammer::step(&mut self, f64) -> f64
-pub const acoustic::hammer::FITTED_AT: f64
 pub const acoustic::hammer::FORTISSIMO: f64
 pub const acoustic::hammer::MAX_VELOCITY: f64
 pub const acoustic::hammer::PIANISSIMO: f64
-pub const acoustic::hammer::SPREAD: f64
 pub const acoustic::hammer::STRIKE: f64
 pub fn acoustic::hammer::contact_target(u8) -> f64
-pub fn acoustic::hammer::contact_time(f64, f64, acoustic::hammer::Felt, f64, f64) -> core::option::Option<f64>
 pub fn acoustic::hammer::exponent(u8) -> f64
 pub fn acoustic::hammer::felt(u8) -> core::option::Option<acoustic::hammer::Felt>
 pub fn acoustic::hammer::impedance(u8) -> f64
-pub fn acoustic::hammer::mezzo_forte() -> f64
 pub mod acoustic::measure
 pub const acoustic::measure::CENTS_PER_OCTAVE: f64
 pub fn acoustic::measure::amplitude(&[f64], f64, f64) -> f64
@@ -76,29 +71,10 @@ pub enum acoustic::Excitation
 pub acoustic::Excitation::Noise
 pub acoustic::Excitation::Triangle
 pub acoustic::Excitation::Triangle::peak: f64
-impl acoustic::Excitation
-pub fn acoustic::Excitation::excite<S: math::scalar::Scalar>(self, &mut acoustic::KsString<S>, &mut math::rng::SplitMix64)
-pub fn acoustic::Excitation::excite_waveguide<S: math::scalar::Scalar>(self, &mut acoustic::Waveguide<S>, &mut math::rng::SplitMix64)
 pub enum acoustic::Model
 pub acoustic::Model::Loop
 pub acoustic::Model::Piano
 pub acoustic::Model::Waveguide
-pub struct acoustic::DelayLine<S>
-impl<S: math::scalar::Scalar> acoustic::DelayLine<S>
-pub fn acoustic::DelayLine<S>::add_at(&mut self, usize, S)
-pub fn acoustic::DelayLine<S>::at(&self, usize) -> S
-pub fn acoustic::DelayLine<S>::back(&self) -> S
-pub fn acoustic::DelayLine<S>::capacity(&self) -> usize
-pub fn acoustic::DelayLine<S>::fill(&mut self, impl core::ops::function::FnMut(usize) -> S)
-pub fn acoustic::DelayLine<S>::front(&self) -> S
-pub fn acoustic::DelayLine<S>::is_empty(&self) -> bool
-pub fn acoustic::DelayLine<S>::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = S> + '_
-pub fn acoustic::DelayLine<S>::len(&self) -> usize
-pub fn acoustic::DelayLine<S>::new(usize) -> core::option::Option<Self>
-pub fn acoustic::DelayLine<S>::push(&mut self, S)
-pub fn acoustic::DelayLine<S>::remove_mean(&mut self)
-pub fn acoustic::DelayLine<S>::reset(&mut self, usize) -> bool
-pub fn acoustic::DelayLine<S>::with_capacity(usize, usize) -> core::option::Option<Self>
 pub struct acoustic::KsString<S>
 impl<S: math::scalar::Scalar> acoustic::KsString<S>
 pub fn acoustic::KsString<S>::damp(&mut self, f64, core::num::nonzero::NonZeroUsize)
@@ -156,9 +132,7 @@ pub fn acoustic::Waveguide<S>::energy(&self, f64, f64) -> f64
 pub fn acoustic::Waveguide<S>::hammer(&self) -> core::option::Option<&acoustic::hammer::Hammer>
 pub fn acoustic::Waveguide<S>::strike(&mut self, acoustic::hammer::Hammer, f64) -> bool
 pub const acoustic::DEFAULT_GAIN: f64
-pub const acoustic::DEFAULT_PICKUP: f64
 pub const acoustic::LOWEST_HZ: f64
-pub const acoustic::PIANO_SCALE: f64
 pub const acoustic::RELEASE_RAMP: f64
 pub const acoustic::RELEASE_T60: f64
 pub const acoustic::TRACE_SECONDS: f64

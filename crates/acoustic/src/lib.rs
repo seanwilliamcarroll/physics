@@ -26,14 +26,14 @@ mod voices;
 mod voicing;
 mod waveguide;
 
-pub use delay_line::DelayLine;
+pub(crate) use delay_line::DelayLine;
 pub use excitation::Excitation;
 pub use math::Scalar;
 pub use stiffness::inharmonicity;
 pub use string::KsString;
 pub use voices::{
-    DEFAULT_GAIN, LOWEST_HZ, Model, PIANO_SCALE, RELEASE_RAMP, RELEASE_T60, TRACE_SECONDS, VOICES,
-    Voices,
+    DEFAULT_GAIN, LOWEST_HZ, Model, RELEASE_RAMP, RELEASE_T60, TRACE_SECONDS, VOICES, Voices,
 };
 pub use voicing::{Decay, Voicing};
-pub use waveguide::{DEFAULT_PICKUP, Waveguide};
+pub(crate) use waveguide::DEFAULT_PICKUP;
+pub use waveguide::Waveguide;

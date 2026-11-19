@@ -197,7 +197,7 @@ impl Field {
     /// neighbours' values, so the total is conserved (in reals; to
     /// rounding in f32). `d = 8/9` is the 3 × 3 mean filter. Written as a
     /// gather (each cell reads its neighbours), which reads in order.
-    pub fn diffuse_periodic(&mut self, d: f32) {
+    pub(crate) fn diffuse_periodic(&mut self, d: f32) {
         let d = if d.is_finite() {
             d.clamp(0.0, 1.0)
         } else {

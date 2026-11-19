@@ -11,7 +11,7 @@ use core::num::NonZeroU32;
 /// (a stalled or backgrounded tab) are clamped, so the simulation slows
 /// down instead of running hundreds of catch-up steps that make the next
 /// frame slow too (the "spiral of death").
-pub const MAX_FRAME_TIME: f64 = 0.25;
+pub(crate) const MAX_FRAME_TIME: f64 = 0.25;
 
 /// Accumulates real time and pays it out in steps of `dt`.
 #[derive(Clone, Debug)]

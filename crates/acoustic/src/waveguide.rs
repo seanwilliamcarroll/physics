@@ -50,7 +50,7 @@ pub struct Waveguide<S> {
 
 /// Where a new string's pickup sits, from the bridge: near it, as on a
 /// guitar (`set_pickup` moves it).
-pub const DEFAULT_PICKUP: f64 = 0.1;
+pub(crate) const DEFAULT_PICKUP: f64 = 0.1;
 
 impl<S: Scalar> Waveguide<S> {
     /// A silent string for pitch `f0` Hz at `fs` Hz, voiced by `voicing`;

@@ -24,5 +24,5 @@ mod fixed_step;
 )]
 mod panic_hook;
 
-pub use fixed_step::{FixedStep, MAX_FRAME_TIME};
+pub use fixed_step::FixedStep;
 pub use panic_hook::install_panic_hook;
