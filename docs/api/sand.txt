@@ -24,7 +24,7 @@ pub const fn sand::Grid::steps(&self) -> u64
 pub const fn sand::Grid::width(&self) -> usize
 impl sand::Grid
 pub fn sand::Grid::step(&mut self) -> usize
-pub const sand::CHUNK: usize
+pub const sand::CHUNK_SIDE: usize
 pub const sand::DISPERSION: usize
 pub const sand::MAX_CELLS: usize
 pub const fn sand::unpack(u8) -> (sand::Material, u8)

@@ -7,11 +7,12 @@ pub enum Material {
     Empty = 0,
     Sand = 1,
     Water = 2,
-    /// Static: never moves.
+    /// Never moves.
     Stone = 3,
-    /// A slow liquid; with water it makes stone and steam (M9.4).
+    /// A slow liquid; touching water, it turns to stone and the water to
+    /// steam.
     Lava = 4,
-    /// Rises; condenses back to water when it can't (M9.4).
+    /// Rises; condenses back to water when it can't.
     Steam = 5,
 }
 
@@ -46,31 +47,30 @@ impl Material {
     }
 }
 
-/// The material bits of a cell byte.
 const MATERIAL_MASK: u8 = 0b0000_0111;
-/// The shade bits: `0..16`, rendering only.
+/// The shade bits sit above the material's: `0..16`, for rendering only.
 const SHADE_SHIFT: u32 = 3;
 const SHADE_MASK: u8 = 0b1111;
 
 /// A cell's material. Cells are only ever written through [`cell`], so an
 /// unknown code can't occur; it would read as empty.
-pub(crate) const fn material(cell: u8) -> Material {
-    match Material::from_code(cell & MATERIAL_MASK) {
-        Some(m) => m,
+pub(crate) const fn material(cell_byte: u8) -> Material {
+    match Material::from_code(cell_byte & MATERIAL_MASK) {
+        Some(known) => known,
         None => Material::Empty,
     }
 }
 
 /// A cell's shade, `0..16`.
-pub(crate) const fn shade(cell: u8) -> u8 {
-    (cell >> SHADE_SHIFT) & SHADE_MASK
+pub(crate) const fn shade(cell_byte: u8) -> u8 {
+    (cell_byte >> SHADE_SHIFT) & SHADE_MASK
 }
 
 /// A cell byte (from [`Grid::cells`](crate::Grid::cells)) as its material
-/// and shade (`0..16`): for renderers, which can tabulate all 256.
+/// and shade (`0..16`), for renderers.
 #[must_use]
-pub const fn unpack(cell: u8) -> (Material, u8) {
-    (material(cell), shade(cell))
+pub const fn unpack(cell_byte: u8) -> (Material, u8) {
+    (material(cell_byte), shade(cell_byte))
 }
 
 /// The byte for `material` with `shade` (its low 4 bits).
