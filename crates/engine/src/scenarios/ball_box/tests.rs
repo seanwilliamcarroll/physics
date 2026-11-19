@@ -5,19 +5,26 @@ use crate::Solver;
 
 #[test]
 fn balls_start_inside_the_box_apart_from_each_other() {
-    let w = ball_box::<f64>(Solver::Impulse, NonZeroU32::MIN, BOX_MAX_BALLS, 7).unwrap();
-    let p = &w.particles;
-    assert_eq!(p.len(), BOX_MAX_BALLS);
-    let r = BOX_BALL_RADIUS;
-    for (i, x) in p.pos().iter().enumerate() {
+    let world = ball_box::<f64>(Solver::Impulse, NonZeroU32::MIN, BOX_MAX_BALLS, 7).unwrap();
+    let particles = &world.particles;
+    assert_eq!(particles.len(), BOX_MAX_BALLS);
+    let radius = BOX_BALL_RADIUS;
+    for (index, position) in particles.pos().iter().enumerate() {
         assert!(
-            x.x - r > -BOX_HALF_WIDTH && x.x + r < BOX_HALF_WIDTH,
-            "ball {i} x {}",
-            x.x
+            position.x - radius > -BOX_HALF_WIDTH && position.x + radius < BOX_HALF_WIDTH,
+            "ball {index} x {}",
+            position.x
         );
-        assert!(x.y - r > 0.0 && x.y + r < BOX_HEIGHT, "ball {i} y {}", x.y);
-        for (j, y) in p.pos().iter().enumerate().skip(i + 1) {
-            assert!((*y - *x).length() > 2.0 * r, "balls {i} and {j} overlap");
+        assert!(
+            position.y - radius > 0.0 && position.y + radius < BOX_HEIGHT,
+            "ball {index} y {}",
+            position.y
+        );
+        for (other_index, other) in particles.pos().iter().enumerate().skip(index + 1) {
+            assert!(
+                (*other - *position).length() > 2.0 * radius,
+                "balls {index} and {other_index} overlap"
+            );
         }
     }
 }
@@ -26,14 +33,14 @@ fn balls_start_inside_the_box_apart_from_each_other() {
 fn more_balls_than_slots_are_clamped_and_seeds_repeat() {
     let many = ball_box::<f64>(Solver::Xpbd, NonZeroU32::MIN, 10 * BOX_MAX_BALLS, 1).unwrap();
     assert_eq!(many.particles.len(), BOX_MAX_BALLS);
-    let a = ball_box::<f64>(Solver::Xpbd, NonZeroU32::MIN, BOX_BALLS, 3).unwrap();
-    let b = ball_box::<f64>(Solver::Xpbd, NonZeroU32::MIN, BOX_BALLS, 3).unwrap();
-    let c = ball_box::<f64>(Solver::Xpbd, NonZeroU32::MIN, BOX_BALLS, 4).unwrap();
-    assert_eq!(a.particles.pos(), b.particles.pos());
-    assert_eq!(a.particles.vel(), b.particles.vel());
+    let first = ball_box::<f64>(Solver::Xpbd, NonZeroU32::MIN, BOX_BALLS, 3).unwrap();
+    let repeat = ball_box::<f64>(Solver::Xpbd, NonZeroU32::MIN, BOX_BALLS, 3).unwrap();
+    let other_seed = ball_box::<f64>(Solver::Xpbd, NonZeroU32::MIN, BOX_BALLS, 4).unwrap();
+    assert_eq!(first.particles.pos(), repeat.particles.pos());
+    assert_eq!(first.particles.vel(), repeat.particles.vel());
     assert_ne!(
-        a.particles.vel(),
-        c.particles.vel(),
+        first.particles.vel(),
+        other_seed.particles.vel(),
         "another seed, another box"
     );
 }

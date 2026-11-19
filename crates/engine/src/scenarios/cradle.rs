@@ -1,4 +1,4 @@
-//! [`cradle`]: Newton's cradle (M6).
+//! [`cradle`]: Newton's cradle (`docs/08-collision.md`).
 
 use core::num::NonZeroU32;
 
@@ -37,34 +37,38 @@ const PULL: (f64, f64) = (-0.6, 0.2);
 ///
 /// # Errors
 /// [`ConfigError::InvalidMass`] or [`ConfigError::InvalidRadius`] if a
-/// scene constant doesn't fit `S` (never, for `f32` and `f64`).
+/// scenario constant doesn't fit `S` (never, for `f32` and `f64`).
 pub fn cradle<S: Scalar>(
     solver: Solver,
     substeps: NonZeroU32,
     balls: usize,
     pulled: usize,
 ) -> Result<World<S>, ConfigError> {
-    let m = mass(CRADLE_MASS)?;
-    let r = radius(CRADLE_RADIUS)?;
-    let mut w = World::new(Integrator::SymplecticEuler, substeps);
-    w.set_solver(solver);
-    w.set_restitution(Restitution::ELASTIC);
-    w.add_force(pendulum_gravity());
-    let center = (usize_to_f64(balls) - 1.0) / 2.0;
-    for i in 0..balls {
-        let x = (usize_to_f64(i) - center) * 2.0 * CRADLE_RADIUS;
-        let pin = w.particles.add_static(Vec2::new(S::from_f64(x), S::ZERO));
-        let (dx, dy) = if i < pulled { PULL } else { (0.0, 0.0) };
-        let at = Vec2::new(
-            S::from_f64(x + dx * CRADLE_LENGTH),
+    let ball_mass = mass(CRADLE_MASS)?;
+    let ball_radius = radius(CRADLE_RADIUS)?;
+    let mut world = World::new(Integrator::SymplecticEuler, substeps);
+    world.set_solver(solver);
+    world.set_restitution(Restitution::ELASTIC);
+    world.add_force(pendulum_gravity());
+    let middle = (usize_to_f64(balls) - 1.0) / 2.0;
+    for index in 0..balls {
+        let pin_x = (usize_to_f64(index) - middle) * 2.0 * CRADLE_RADIUS;
+        let pin = world
+            .particles
+            .add_static(Vec2::new(S::from_f64(pin_x), S::ZERO));
+        let (dx, dy) = if index < pulled { PULL } else { (0.0, 0.0) };
+        let ball_position = Vec2::new(
+            S::from_f64(pin_x + dx * CRADLE_LENGTH),
             S::from_f64(-CRADLE_LENGTH + dy * CRADLE_LENGTH),
         );
-        let ball = w.particles.add_circle(at, Vec2::ZERO, m, r);
-        let rod = DistanceConstraint::between(&w.particles, pin, ball)
+        let ball = world
+            .particles
+            .add_circle(ball_position, Vec2::ZERO, ball_mass, ball_radius);
+        let rod = DistanceConstraint::between(&world.particles, pin, ball)
             .ok_or(ConfigError::UnknownParticle)?;
-        w.add_constraint(rod)?;
+        world.add_constraint(rod)?;
     }
-    Ok(w)
+    Ok(world)
 }
 
 #[cfg(test)]
