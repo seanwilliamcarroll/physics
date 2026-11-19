@@ -11,32 +11,35 @@ use crate::abi::{EXCITATION_TRIANGLE, MODEL_PIANO, MODEL_WAVEGUIDE, STATUS_OK, S
 
 #[test]
 fn round_trip_through_the_c_abi() {
-    let s = synth_new(48_000.0, 1);
-    assert!(!s.is_null());
+    let synth = synth_new(48_000.0, 1);
+    assert!(!synth.is_null());
     unsafe {
-        assert_eq!(synth_set_tuned(s, 0), STATUS_OK);
-        assert_eq!(synth_set_tuned(s, 2), STATUS_REFUSED);
-        assert_eq!(synth_set_t60(s, 1.5), STATUS_OK);
-        assert_eq!(synth_set_excitation(s, EXCITATION_TRIANGLE, 0.1), STATUS_OK);
-        assert_eq!(synth_set_gain(s, 0.3), STATUS_OK);
-        assert_eq!(synth_note_on(s, 60), STATUS_OK);
-        assert_eq!(synth_note_on(s, 5), STATUS_REFUSED);
-        let p = synth_render(s, 128);
-        assert!(!p.is_null());
-        let block = core::slice::from_raw_parts(p, 128);
-        assert!(block.iter().any(|&x| x != 0.0));
-        let n = synth_snapshot(s);
-        assert!(n > 0);
-        assert!(!synth_snapshot_ptr(s).is_null());
-        synth_note_off(s, 60);
-        assert_eq!(synth_clipped(s), 0.0);
-        assert!(synth_render(s, 1 << 20).is_null(), "over MAX_FRAMES");
-        assert_eq!(synth_set_model(s, MODEL_WAVEGUIDE), STATUS_OK);
-        assert_eq!(synth_set_pickup(s, 0.3), STATUS_OK);
-        assert_eq!(synth_set_pickup(s, 2.0), STATUS_REFUSED);
-        assert_eq!(synth_spectrum(s), 2048);
-        assert!(!synth_spectrum_ptr(s).is_null());
-        synth_free(s);
+        assert_eq!(synth_set_tuned(synth, 0), STATUS_OK);
+        assert_eq!(synth_set_tuned(synth, 2), STATUS_REFUSED);
+        assert_eq!(synth_set_t60(synth, 1.5), STATUS_OK);
+        assert_eq!(
+            synth_set_excitation(synth, EXCITATION_TRIANGLE, 0.1),
+            STATUS_OK
+        );
+        assert_eq!(synth_set_gain(synth, 0.3), STATUS_OK);
+        assert_eq!(synth_note_on(synth, 60), STATUS_OK);
+        assert_eq!(synth_note_on(synth, 5), STATUS_REFUSED);
+        let pointer = synth_render(synth, 128);
+        assert!(!pointer.is_null());
+        let block = core::slice::from_raw_parts(pointer, 128);
+        assert!(block.iter().any(|&sample| sample != 0.0));
+        let snapshot_len = synth_snapshot(synth);
+        assert!(snapshot_len > 0);
+        assert!(!synth_snapshot_ptr(synth).is_null());
+        synth_note_off(synth, 60);
+        assert_eq!(synth_clipped(synth), 0.0);
+        assert!(synth_render(synth, 1 << 20).is_null(), "over MAX_FRAMES");
+        assert_eq!(synth_set_model(synth, MODEL_WAVEGUIDE), STATUS_OK);
+        assert_eq!(synth_set_pickup(synth, 0.3), STATUS_OK);
+        assert_eq!(synth_set_pickup(synth, 2.0), STATUS_REFUSED);
+        assert_eq!(synth_spectrum(synth), 2048);
+        assert!(!synth_spectrum_ptr(synth).is_null());
+        synth_free(synth);
     }
 }
 
@@ -61,19 +64,19 @@ fn null_handles_are_harmless() {
 
 #[test]
 fn the_piano_through_the_c_abi() {
-    let s = synth_new(48_000.0, 1);
+    let synth = synth_new(48_000.0, 1);
     unsafe {
-        assert_eq!(synth_strike_trace(s), 0, "no strike yet");
-        assert_eq!(synth_set_model(s, MODEL_PIANO), STATUS_OK);
-        assert_eq!(synth_note_on_velocity(s, 60, 1.58), STATUS_OK);
+        assert_eq!(synth_strike_trace(synth), 0, "no strike yet");
+        assert_eq!(synth_set_model(synth, MODEL_PIANO), STATUS_OK);
+        assert_eq!(synth_note_on_velocity(synth, 60, 1.58), STATUS_OK);
         for _ in 0..8 {
-            assert!(!synth_render(s, 128).is_null());
+            assert!(!synth_render(synth, 128).is_null());
         }
-        let n = synth_strike_trace(s) as usize;
-        assert!(n > 0);
-        let trace = core::slice::from_raw_parts(synth_strike_trace_ptr(s), n);
-        assert!(trace.iter().any(|&f| f > 0.0), "the hammer pushed");
-        synth_free(s);
+        let trace_len = synth_strike_trace(synth) as usize;
+        assert!(trace_len > 0);
+        let trace = core::slice::from_raw_parts(synth_strike_trace_ptr(synth), trace_len);
+        assert!(trace.iter().any(|&force| force > 0.0), "the hammer pushed");
+        synth_free(synth);
         assert_eq!(synth_strike_trace(ptr::null_mut()), 0);
         assert!(synth_strike_trace_ptr(ptr::null()).is_null());
     }
